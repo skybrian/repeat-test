@@ -1,55 +1,65 @@
+import prand from "pure-rand";
+
 /**
- * An infinite stream of numbers that's based on a byte array.
- * When the end of the input has been reached, the stream will continue to return zero.
- *
- * Bytes are read from the stream in little-endian order.
+ * An infinite stream of choices. Each choice is a number.
  */
-export class NumberStream {
+interface Choices {
+  /**
+   * Returns the next choice as a safe integer in the given range.
+   * Min and max must be safe integers, with min <= max.
+   */
+  nextInt(min: number, max: number): number;
+}
+
+export class RandomChoices implements Choices {
+  private gen: prand.RandomGenerator;
+
+  constructor(private seed: number) {
+    this.gen = prand.xoroshiro128plus(seed);
+  }
+
+  nextInt(min: number, max: number): number {
+    if (!Number.isSafeInteger(min)) {
+      throw new Error(`min must be a safe integer, got ${min}`);
+    }
+    if (!Number.isSafeInteger(max)) {
+      throw new Error(`max must be a safe integer, got ${max}`);
+    }
+    if (min > max) {
+      throw new Error(`min must be <= max, got ${min} > ${max}`);
+    }
+
+    return prand.unsafeUniformIntDistribution(min, max, this.gen);
+  }
+}
+
+/**
+ * An infinite stream of numbers that's based on an array.
+ */
+export class SavedChoices implements Choices {
   offset: number = 0;
 
-  constructor(private bytes: Uint8Array) {}
+  constructor(private data: number[]) {}
 
-  /**
-   * Returns a non-negative integer from the stream that's less than the given limit.
-   * If the end of the input has been reached, returns zero.
-   *
-   * @param limit must be between 2 and 2**53.
-   */
-  unsignedInt(limit: number): number {
-    if (limit < 2 || limit > 2 ** 53) {
-      throw new Error(`limit must be between 2 and 2**53, got ${limit}`);
+  nextInt(min: number, max: number): number {
+    if (!Number.isSafeInteger(min)) {
+      throw new Error(`min must be a safe integer, got ${min}`);
     }
-    if (!Number.isSafeInteger(limit - 1)) {
-      throw new Error(`limit includes unsafe integers, got ${limit}`);
+    if (!Number.isSafeInteger(max)) {
+      throw new Error(`max must be a safe integer, got ${max}`);
     }
-    const bitsNeeded = Math.ceil(Math.log2(limit));
-    const bytesNeeded = Math.ceil(bitsNeeded / 8);
+    if (min > max) {
+      throw new Error(`min must be <= max, got ${min} > ${max}`);
+    }
 
-    let n: number = 0;
-    // loop over all but the last byte
-    for (let i = 0; i < bytesNeeded - 1; i++) {
-      const byte = this.bytes[this.offset + i];
-      if (byte === undefined) {
-        this.offset += i;
-        return n;
+    while (this.offset < this.data.length) {
+      const num = this.data[this.offset++];
+      if (num >= min && num <= max) {
+        return num;
       }
-      n += byte * (2 ** (8 * i));
+      // mismatch found, try again
     }
-
-    const lastByte = this.bytes[this.offset + bytesNeeded - 1];
-    if (lastByte === undefined) {
-      this.offset += bytesNeeded;
-      return n;
-    }
-
-    // we might not need all the bits in the last byte.
-    const remainingBits = bitsNeeded - 8 * (bytesNeeded - 1);
-    const lastByteMask = (1 << remainingBits) - 1;
-    n = n + (lastByte & lastByteMask) * (2 ** (8 * (bytesNeeded - 1)));
-
-    this.offset += bytesNeeded;
-    // the limit might not be a power of two.
-    return (n >= limit) ? n - limit : n;
+    return min;
   }
 }
 

@@ -4,7 +4,8 @@
     "specifiers": {
       "jsr:@std/assert@^1.0.0-rc.1": "jsr:@std/assert@1.0.0-rc.1",
       "jsr:@std/internal@^1.0.0": "jsr:@std/internal@1.0.0",
-      "jsr:@std/testing@^0.225.1": "jsr:@std/testing@0.225.1"
+      "jsr:@std/testing@^0.225.1": "jsr:@std/testing@0.225.1",
+      "npm:pure-rand@^6.1.0": "npm:pure-rand@6.1.0"
     },
     "jsr": {
       "@std/assert@1.0.0-rc.1": {
@@ -19,13 +20,20 @@
       "@std/testing@0.225.1": {
         "integrity": "1a11119553fc33410abe8566731ae513c53e73db040cedbf901858fbd7587819"
       }
+    },
+    "npm": {
+      "pure-rand@6.1.0": {
+        "integrity": "sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==",
+        "dependencies": {}
+      }
     }
   },
   "remote": {},
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@^1.0.0-rc.1",
-      "jsr:@std/testing@^0.225.1"
+      "jsr:@std/testing@^0.225.1",
+      "npm:pure-rand@^6.1.0"
     ]
   }
 }
