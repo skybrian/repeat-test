@@ -51,14 +51,14 @@ export class RandomChoices implements Choices {
     return items[index];
   }
 
-  gen<T>(g: Generator<T>): T {
-    return g(this);
+  gen<T>(arb: Arbitrary<T>): T {
+    return arb.generator(this);
   }
 
-  samples<T>(generator: Generator<T>, count = 100): T[] {
+  samples<T>(arb: Arbitrary<T>, count = 100): T[] {
     const result: T[] = [];
     for (let i = 0; i < count; i++) {
-      result.push(generator(this));
+      result.push(this.gen(arb));
     }
     return result;
   }
@@ -73,7 +73,7 @@ export class Runner {
     this.random = new RandomChoices({ seed: this.seed });
   }
 
-  check<T>(examples: Generator<T>, run: (example: T) => void): void {
+  check<T>(examples: Arbitrary<T>, run: (example: T) => void): void {
     const debug = false;
 
     let first = true;
@@ -92,16 +92,20 @@ export class Runner {
   }
 }
 
+export class Arbitrary<T> {
+  constructor(readonly generator: Generator<T>) {}
+}
+
 /**
  * Returns an integer between min and max.
  * For large ranges, the choice will be biased towards special cases.
  */
-export function intFrom(min: number, max: number): Generator<number> {
+export function intFrom(min: number, max: number): Arbitrary<number> {
   const size = max - min + 1;
   if (size <= 10) {
-    return (r) => r.nextInt(min, max);
+    return new Arbitrary((r) => r.nextInt(min, max));
   }
-  return (r) => {
+  return new Arbitrary((r) => {
     switch (r.nextInt(1, 20)) {
       case 1:
         return min;
@@ -111,7 +115,7 @@ export function intFrom(min: number, max: number): Generator<number> {
         if (min <= 0 && max >= 0) return 0;
     }
     return r.nextInt(min, max);
-  };
+  });
 }
 
 export const safeInt = intFrom(
@@ -119,27 +123,27 @@ export const safeInt = intFrom(
   Number.MAX_SAFE_INTEGER,
 );
 
-export function example<T>(values: T[]): Generator<T> {
+export function example<T>(values: T[]): Arbitrary<T> {
   if (values.length === 0) {
     throw new Error("Can't choose an example from an empty array");
   }
   if (values.length === 1) {
-    return () => values[0];
+    return new Arbitrary(() => values[0]);
   }
-  return (r) => values[r.nextInt(0, values.length - 1)];
+  return new Arbitrary((r) => values[r.nextInt(0, values.length - 1)]);
 }
 
-export function oneOf<T>(args: Generator<T>[]): Generator<T> {
+export function oneOf<T>(args: Arbitrary<T>[]): Arbitrary<T> {
   if (args.length === 0) {
     throw new Error("Can't choose an item from an empty array");
   }
   if (args.length === 1) {
     return args[0];
   }
-  return (r) => {
+  return new Arbitrary((r) => {
     const choice = r.gen(example(args));
     return r.gen(choice);
-  };
+  });
 }
 
 export const strangeNumber = example([
@@ -151,39 +155,39 @@ export const strangeNumber = example([
 type AnyTuple = unknown[];
 
 export function tuple<T extends AnyTuple>(
-  ...generators: { [K in keyof T]: Generator<T[K]> }
-): Generator<T> {
-  return (r) => generators.map((g) => r.gen(g)) as T;
+  ...items: { [K in keyof T]: Arbitrary<T[K]> }
+): Arbitrary<T> {
+  return new Arbitrary((r) => items.map((g) => r.gen(g)) as T);
 }
 
 export function array<T>(
-  generator: Generator<T>,
+  item: Arbitrary<T>,
   opts?: { min: number; max: number },
-): Generator<T[]> {
+): Arbitrary<T[]> {
   const minLength = opts?.min ?? 0;
   const maxLength = opts?.max ?? 10;
-  return (r) => {
+  return new Arbitrary((r) => {
     const length = r.gen(intFrom(minLength, maxLength));
     const result: T[] = [];
     for (let i = 0; i < length; i++) {
-      result.push(r.gen(generator));
+      result.push(r.gen(item));
     }
     return result;
-  };
+  });
 }
 
 type AnyRecord = Record<string, unknown>;
-type RecordShape<T extends AnyRecord> = { [K in keyof T]: Generator<T[K]> };
+type RecordShape<T extends AnyRecord> = { [K in keyof T]: Arbitrary<T[K]> };
 
 export function record<T extends AnyRecord>(
-  generators: RecordShape<T>,
-): Generator<T> {
-  return (r) => {
-    const keys = Object.keys(generators) as (keyof T)[];
+  shape: RecordShape<T>,
+): Arbitrary<T> {
+  return new Arbitrary((r) => {
+    const keys = Object.keys(shape) as (keyof T)[];
     const result = {} as Partial<T>;
     for (const key of keys) {
-      result[key] = r.gen(generators[key]);
+      result[key] = r.gen(shape[key]);
     }
     return result as T;
-  };
+  });
 }
