@@ -1,8 +1,19 @@
 import prand from "pure-rand";
 
-export type Generator<T> = (r: Random) => T;
+/**
+ * An infinite stream of choices. Each choice is a number.
+ */
+export interface Choices {
+  /**
+   * Returns the next choice as a safe integer in the given range.
+   * Min and max must be safe integers, with min <= max.
+   */
+  nextInt(min: number, max: number): number;
+}
 
-export class Random {
+export type Generator<T> = (r: RandomChoices) => T;
+
+export class RandomChoices implements Choices {
   readonly seed;
   private readonly rng: prand.RandomGenerator;
 
@@ -51,12 +62,22 @@ export class Random {
     }
     return result;
   }
+}
+
+export class Runner {
+  readonly seed;
+  private readonly random: RandomChoices;
+
+  constructor(opts?: { seed: number }) {
+    this.seed = opts?.seed ?? Date.now() ^ (Math.random() * 0x100000000);
+    this.random = new RandomChoices({ seed: this.seed });
+  }
 
   check<T>(examples: Generator<T>, run: (example: T) => void): void {
     const debug = false;
 
     let first = true;
-    for (const example of this.samples(examples, 100)) {
+    for (const example of this.random.samples(examples, 100)) {
       if (first && debug) {
         console.log("First example:", example);
       }

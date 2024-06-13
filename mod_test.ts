@@ -32,9 +32,9 @@ const validRange = arb.oneOf<Range>([
   },
 ]);
 
-const random = new arb.Random();
+const runner = new arb.Runner();
 
-function validStream(r: arb.Random) {
+function validStream(r: arb.RandomChoices) {
   const inputs = r.gen(arb.array(arb.safeInt));
   return new SavedChoices(inputs);
 }
@@ -46,7 +46,7 @@ describe("SavedChoices", () => {
         stream: validStream,
         range: invalidRange,
       });
-      random.check(examples, ({ stream, range }) => {
+      runner.check(examples, ({ stream, range }) => {
         const { min, max } = range;
         assertThrows(() => stream.nextInt(min, max));
       });
@@ -54,21 +54,21 @@ describe("SavedChoices", () => {
     describe("for an empty array", () => {
       const stream = new SavedChoices([]);
       it("returns min for any valid range", () => {
-        random.check(validRange, ({ min, max }) => {
+        runner.check(validRange, ({ min, max }) => {
           assertEquals(stream.nextInt(min, max), min);
         });
       });
     });
     describe("for an array with a safe integer", () => {
       it("returns it for any limit that contains it", () => {
-        function example(r: arb.Random) {
+        function example(r: arb.RandomChoices) {
           const n = r.gen(arb.safeInt);
           const stream = new SavedChoices([n]);
           const min = r.nextInt(Number.MIN_SAFE_INTEGER, n);
           const max = r.nextInt(n, Number.MAX_SAFE_INTEGER);
           return { n, stream, min, max };
         }
-        random.check(example, ({ n, stream, min, max }) => {
+        runner.check(example, ({ n, stream, min, max }) => {
           assertEquals(stream.nextInt(min, max), n);
         });
       });
