@@ -1,18 +1,9 @@
 import prand from "pure-rand";
+import { Arbitrary, ChoiceRequest, Choices } from "./types.ts";
 
 /**
- * An infinite stream of choices. Each choice is a number.
+ * Choices that are generated using a random number generator.
  */
-export interface Choices {
-  /**
-   * Returns the next choice as a safe integer in the given range.
-   * Min and max must be safe integers, with min <= max.
-   */
-  nextInt(min: number, max: number): number;
-}
-
-export type Generator<T> = (r: RandomChoices) => T;
-
 export class RandomChoices implements Choices {
   readonly seed;
   private readonly rng: prand.RandomGenerator;
@@ -22,48 +13,26 @@ export class RandomChoices implements Choices {
     this.rng = prand.xoroshiro128plus(this.seed);
   }
 
-  /**
-   * Returns a signed 32-bit integer.
-   * -(2 ** 31) <= n <= (2 ** 31) - 1.
-   */
-  nextInt32(): number {
-    return this.rng.unsafeNext();
+  next(req: ChoiceRequest): number {
+    return prand.unsafeUniformIntDistribution(req.min, req.max, this.rng);
   }
 
-  nextBool(): boolean {
-    const val = this.nextInt32();
-    return val >= 0;
+  gen<T>(req: Arbitrary<T>): T {
+    return req.parse(this);
   }
 
-  /**
-   * Returns an integer between min and max.
-   * min <= n <= max.
-   */
-  nextInt(min: number, max: number): number {
-    return prand.unsafeUniformIntDistribution(min, max, this.rng);
-  }
-
-  nextMember<T>(items: T[]): T {
-    if (items.length === 0) {
-      throw new Error("Can't choose an item from an empty array");
-    }
-    const index = this.nextInt(0, items.length - 1);
-    return items[index];
-  }
-
-  gen<T>(arb: Arbitrary<T>): T {
-    return arb.generator(this);
-  }
-
-  samples<T>(arb: Arbitrary<T>, count = 100): T[] {
+  samples<T>(req: Arbitrary<T>, count: number): T[] {
     const result: T[] = [];
     for (let i = 0; i < count; i++) {
-      result.push(this.gen(arb));
+      result.push(this.gen(req));
     }
     return result;
   }
 }
 
+/**
+ * Calls a given function repeatedly with randomly generated values.
+ */
 export class Runner {
   readonly seed;
   private readonly random: RandomChoices;
@@ -92,21 +61,21 @@ export class Runner {
   }
 }
 
-export class Arbitrary<T> {
-  constructor(readonly generator: Generator<T>) {}
+export function unbiasedInt(min: number, max: number): Arbitrary<number> {
+  return new ChoiceRequest(min, max);
 }
 
 /**
  * Returns an integer between min and max.
  * For large ranges, the choice will be biased towards special cases.
  */
-export function intFrom(min: number, max: number): Arbitrary<number> {
+export function biasedInt(min: number, max: number): Arbitrary<number> {
   const size = max - min + 1;
   if (size <= 10) {
-    return new Arbitrary((r) => r.nextInt(min, max));
+    return new Arbitrary((r) => r.gen(unbiasedInt(min, max)));
   }
   return new Arbitrary((r) => {
-    switch (r.nextInt(1, 20)) {
+    switch (r.gen(unbiasedInt(1, 20))) {
       case 1:
         return min;
       case 2:
@@ -114,11 +83,11 @@ export function intFrom(min: number, max: number): Arbitrary<number> {
       case 3:
         if (min <= 0 && max >= 0) return 0;
     }
-    return r.nextInt(min, max);
+    return r.gen(unbiasedInt(min, max));
   });
 }
 
-export const safeInt = intFrom(
+export const safeInt = biasedInt(
   Number.MIN_SAFE_INTEGER,
   Number.MAX_SAFE_INTEGER,
 );
@@ -130,18 +99,18 @@ export function example<T>(values: T[]): Arbitrary<T> {
   if (values.length === 1) {
     return new Arbitrary(() => values[0]);
   }
-  return new Arbitrary((r) => values[r.nextInt(0, values.length - 1)]);
+  return new Arbitrary((r) => values[r.gen(biasedInt(0, values.length - 1))]);
 }
 
-export function oneOf<T>(args: Arbitrary<T>[]): Arbitrary<T> {
-  if (args.length === 0) {
+export function oneOf<T>(reqs: Arbitrary<T>[]): Arbitrary<T> {
+  if (reqs.length === 0) {
     throw new Error("Can't choose an item from an empty array");
   }
-  if (args.length === 1) {
-    return args[0];
+  if (reqs.length === 1) {
+    return reqs[0];
   }
   return new Arbitrary((r) => {
-    const choice = r.gen(example(args));
+    const choice = r.gen(example(reqs));
     return r.gen(choice);
   });
 }
@@ -167,7 +136,7 @@ export function array<T>(
   const minLength = opts?.min ?? 0;
   const maxLength = opts?.max ?? 10;
   return new Arbitrary((r) => {
-    const length = r.gen(intFrom(minLength, maxLength));
+    const length = r.gen(biasedInt(minLength, maxLength));
     const result: T[] = [];
     for (let i = 0; i < length; i++) {
       result.push(r.gen(item));

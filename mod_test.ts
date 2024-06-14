@@ -1,7 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals, assertThrows } from "@std/assert";
+import { assertEquals, assertThrows, fail } from "@std/assert";
+import { Arbitrary, ChoiceRequest } from "./types.ts";
 import * as arb from "./simple.ts";
-import { Arbitrary } from "./simple.ts";
 
 import { SavedChoices } from "./mod.ts";
 
@@ -24,9 +24,12 @@ const invalidRange = arb.oneOf<Range>([
 const validRange = arb.oneOf<Range>([
   arb.example([{ min: 0, max: 0 }, { min: 0, max: 1 }]),
   new Arbitrary((r) => {
-    const size = r.gen(arb.intFrom(1, 100));
+    const size = r.gen(arb.biasedInt(1, 100));
     const min = r.gen(
-      arb.intFrom(Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER - size + 1),
+      arb.biasedInt(
+        Number.MIN_SAFE_INTEGER,
+        Number.MAX_SAFE_INTEGER - size + 1,
+      ),
     );
     const max = min + size - 1;
     return { min, max };
@@ -35,42 +38,61 @@ const validRange = arb.oneOf<Range>([
 
 const runner = new arb.Runner();
 
-const validStream = new Arbitrary((r) => {
-  const inputs = r.gen(arb.array(arb.safeInt));
-  return new SavedChoices(inputs);
+describe("NextInt", () => {
+  it("throws when given an invalid range", () => {
+    runner.check(invalidRange, ({ min, max }) => {
+      assertThrows(() => new ChoiceRequest(min, max));
+    });
+  });
+});
+
+describe("RandomChoices", () => {
+  describe("gen", () => {
+    it("generates numbers in range for a NextInt request", () => {
+      // Not using the framework since this is a primitive operation.
+      const choices = new arb.RandomChoices();
+      const bits = new ChoiceRequest(0, 1);
+      const expected = [0, 1];
+      const counts = [0, 0];
+      for (let i = 0; i < 100; i++) {
+        const val = choices.gen(bits);
+        if (!expected.includes(val)) {
+          fail(`unexpected output from gen(unbiasedInt): ${val}`);
+        }
+        counts[val]++;
+      }
+      for (const val of expected) {
+        if (counts[val] < 10) {
+          fail();
+        }
+      }
+    });
+  });
 });
 
 describe("SavedChoices", () => {
-  describe("nextInt", () => {
-    it("throws for any invalid ranges", () => {
-      const examples = arb.record({
-        stream: validStream,
-        range: invalidRange,
-      });
-      runner.check(examples, ({ stream, range }) => {
-        const { min, max } = range;
-        assertThrows(() => stream.nextInt(min, max));
-      });
-    });
-    describe("for an empty array", () => {
+  describe("gen", () => {
+    describe("with an empty array", () => {
       const stream = new SavedChoices([]);
-      it("returns min for any valid range", () => {
+      it("returns min for any valid NextInt request", () => {
         runner.check(validRange, ({ min, max }) => {
-          assertEquals(stream.nextInt(min, max), min);
+          const arb = new ChoiceRequest(min, max);
+          assertEquals(stream.gen(arb), min);
         });
       });
     });
-    describe("for an array with a safe integer", () => {
-      it("returns it for any limit that contains it", () => {
+    describe("for an array with a safe integer n", () => {
+      it("returns n for a NextInt request that includes it", () => {
         const example = new Arbitrary((r) => {
           const n = r.gen(arb.safeInt);
           const stream = new SavedChoices([n]);
-          const min = r.nextInt(Number.MIN_SAFE_INTEGER, n);
-          const max = r.nextInt(n, Number.MAX_SAFE_INTEGER);
+          const min = r.gen(arb.biasedInt(Number.MIN_SAFE_INTEGER, n));
+          const max = r.gen(arb.biasedInt(n, Number.MAX_SAFE_INTEGER));
           return { n, stream, min, max };
         });
         runner.check(example, ({ n, stream, min, max }) => {
-          assertEquals(stream.nextInt(min, max), n);
+          const arb = new ChoiceRequest(min, max);
+          assertEquals(stream.gen(arb), n);
         });
       });
     });

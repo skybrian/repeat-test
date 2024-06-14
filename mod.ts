@@ -1,24 +1,18 @@
-import { Choices } from "./simple.ts";
+import { Arbitrary, ChoiceRequest, Choices } from "./types.ts";
 
 /**
- * An infinite stream of numbers that's based on an array.
+ * Choices that are stored in an array.
+ *
+ * After the array runs out, the minimum value that satisfies the request
+ * will be returned.
  */
 export class SavedChoices implements Choices {
   offset: number = 0;
 
   constructor(private data: number[]) {}
 
-  nextInt(min: number, max: number): number {
-    if (!Number.isSafeInteger(min)) {
-      throw new Error(`min must be a safe integer, got ${min}`);
-    }
-    if (!Number.isSafeInteger(max)) {
-      throw new Error(`max must be a safe integer, got ${max}`);
-    }
-    if (min > max) {
-      throw new Error(`min must be <= max, got ${min} > ${max}`);
-    }
-
+  next(arb: ChoiceRequest): number {
+    const { min, max } = arb;
     while (this.offset < this.data.length) {
       const num = this.data[this.offset++];
       if (num >= min && num <= max) {
@@ -26,6 +20,12 @@ export class SavedChoices implements Choices {
       }
       // mismatch found, try again
     }
+
+    // After the end of the saved data, return the default value.
     return min;
+  }
+
+  gen<T>(arb: Arbitrary<T>): T {
+    return arb.parse(this);
   }
 }
