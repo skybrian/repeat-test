@@ -6,13 +6,13 @@ import { RandomChoices } from "../src/simple_runner.ts";
 
 describe("RandomChoices", () => {
   describe("gen", () => {
-    it("generates numbers in range for a NextInt request", () => {
+    it("generates numbers within the range of a ChoiceRequest", () => {
       const choices = new RandomChoices();
-      const bits = new ChoiceRequest(0, 1);
+      const bit = new ChoiceRequest(0, 1);
       const expected = [0, 1];
       const counts = [0, 0];
       for (let i = 0; i < 100; i++) {
-        const val = choices.gen(bits);
+        const val = choices.next(bit);
         if (!expected.includes(val)) {
           fail(`unexpected output from gen(unbiasedInt): ${val}`);
         }

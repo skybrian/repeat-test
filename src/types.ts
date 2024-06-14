@@ -1,9 +1,8 @@
 /**
  * An iterator over a infinite stream of choices.
  *
- * Each choice is represented as an integer that's selected from a finite range.
- * The minimum value in the range is considered the default value, even if it's
- * not zero.
+ * Each choice is represented as a safe integer that's selected from a range specified
+ * by a {@link ChoiceRequest}.
  *
  * This interface is typically implemented using a random number generator, but
  * any scheme may be used.
@@ -12,7 +11,7 @@ export interface Choices {
   /** Returns the next choice from the stream. */
   next(req: ChoiceRequest): number;
 
-  /** Generates a value using the next choices from the stream. */
+  /** Generates a value by taking choices from the stream. */
   gen<T>(req: Arbitrary<T>): T;
 }
 
@@ -44,7 +43,7 @@ export class Arbitrary<T> {
  * The range must have at least one entry; that is, min must be less or equal to
  * max.
  */
-export class ChoiceRequest extends Arbitrary<number> {
+export class ChoiceRequest {
   constructor(readonly min: number, readonly max: number) {
     if (!Number.isSafeInteger(min)) {
       throw new Error(`min must be a safe integer, got ${min}`);
@@ -55,6 +54,5 @@ export class ChoiceRequest extends Arbitrary<number> {
     if (min > max) {
       throw new Error(`min must be <= max, got ${min} > ${max}`);
     }
-    super((ch) => ch.next(this));
   }
 }

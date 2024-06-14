@@ -1,7 +1,7 @@
 import { Arbitrary, ChoiceRequest } from "./types.ts";
 
 export function unbiasedInt(min: number, max: number): Arbitrary<number> {
-  return new ChoiceRequest(min, max);
+  return new Arbitrary((ch) => ch.next(new ChoiceRequest(min, max)));
 }
 
 /**

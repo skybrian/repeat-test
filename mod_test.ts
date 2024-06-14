@@ -27,18 +27,18 @@ const validRange = arb.oneOf<Range>([
 const runner = new SimpleRunner();
 
 describe("SavedChoices", () => {
-  describe("gen", () => {
-    describe("with an empty array", () => {
+  describe("next", () => {
+    describe("for empty array", () => {
       const stream = new SavedChoices([]);
-      it("returns min for any valid NextInt request", () => {
+      it("returns min for any valid ChoiceRequest", () => {
         runner.check(validRange, ({ min, max }) => {
-          const arb = new ChoiceRequest(min, max);
-          assertEquals(stream.gen(arb), min);
+          const req = new ChoiceRequest(min, max);
+          assertEquals(stream.next(req), min);
         });
       });
     });
-    describe("for an array with a safe integer n", () => {
-      it("returns n for a NextInt request that includes it", () => {
+    describe("for a safe integer", () => {
+      it("returns the integer for any ChoiceRequest that allows it", () => {
         const example = new Arbitrary((r) => {
           const n = r.gen(arb.safeInt);
           const stream = new SavedChoices([n]);
@@ -47,8 +47,8 @@ describe("SavedChoices", () => {
           return { n, stream, min, max };
         });
         runner.check(example, ({ n, stream, min, max }) => {
-          const arb = new ChoiceRequest(min, max);
-          assertEquals(stream.gen(arb), n);
+          const req = new ChoiceRequest(min, max);
+          assertEquals(stream.next(req), n);
         });
       });
     });
