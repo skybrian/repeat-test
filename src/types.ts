@@ -21,6 +21,11 @@ export interface Choices {
  * Invariant: min <= max, so the range has at least one value.
  */
 export class ChoiceRequest {
+  /**
+   * The default value for this request. It will be the value that's closest to zero.
+   */
+  readonly default: number;
+
   constructor(readonly min: number, readonly max: number) {
     if (!Number.isSafeInteger(min)) {
       throw new Error(`min must be a safe integer; got ${min}`);
@@ -33,10 +38,7 @@ export class ChoiceRequest {
         `the range (min, max) must not be empty; got ${min} > ${max}`,
       );
     }
-  }
-
-  get default(): number {
-    return this.min;
+    this.default = (this.min >= 0) ? this.min : (this.max <= 0) ? this.max : 0;
   }
 
   toArbitrary(): Arbitrary<number> {

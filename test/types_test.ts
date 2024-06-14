@@ -1,32 +1,34 @@
 import { describe, it } from "@std/testing/bdd";
-import { assertThrows } from "@std/assert";
-
-import { Arbitrary, ChoiceRequest } from "../src/types.ts";
+import { assert, assertEquals, assertThrows } from "@std/assert";
+import { invalidRange, validRange } from "../src/ranges.ts";
 import SimpleRunner from "../src/simple_runner.ts";
-import * as arb from "../src/arbitraries.ts";
 
-type Range = { min: number; max: number };
-
-const invalidRange = arb.oneOf<Range>([
-  arb.example([{ min: 1, max: 0 }]),
-  new Arbitrary((r) => {
-    const min = r.gen(arb.safeInt);
-    const max = r.gen(arb.strangeNumber);
-    return { min, max };
-  }),
-  new Arbitrary((r) => {
-    const min = r.gen(arb.strangeNumber);
-    const max = r.gen(arb.safeInt);
-    return { min, max };
-  }),
-]);
+import { ChoiceRequest } from "../src/types.ts";
 
 const runner = new SimpleRunner();
 
 describe("ChoiceRequest", () => {
-  it("throws when given an invalid range", () => {
-    runner.check(invalidRange, ({ min, max }) => {
-      assertThrows(() => new ChoiceRequest(min, max));
+  describe("constructor", () => {
+    it("throws when given an invalid range", () => {
+      runner.check(invalidRange, ({ min, max }) => {
+        assertThrows(() => new ChoiceRequest(min, max));
+      });
+    });
+  });
+  describe("default", () => {
+    it("returns the default value for a range", () => {
+      runner.check(validRange, ({ min, max }) => {
+        const request = new ChoiceRequest(min, max);
+        assert(request.default >= min);
+        assert(request.default <= max);
+        if (min >= 0) {
+          assertEquals(request.default, min);
+        } else if (max <= 0) {
+          assertEquals(request.default, max);
+        } else {
+          assertEquals(request.default, 0);
+        }
+      });
     });
   });
 });
