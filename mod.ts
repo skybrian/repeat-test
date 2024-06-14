@@ -1,4 +1,4 @@
-import { Arbitrary, ChoiceRequest, Choices } from "./src/types.ts";
+import { Arbitrary, ChoiceRequest, Choices } from "./src/choices.ts";
 
 /**
  * Choices that are stored in an array.

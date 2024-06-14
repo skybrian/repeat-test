@@ -1,4 +1,4 @@
-import { Arbitrary, ChoiceRequest, Choices } from "./types.ts";
+import { Arbitrary, ChoiceRequest, Choices } from "./choices.ts";
 
 /**
  * Returns an integer between min and max, chosen arbitrarily.
@@ -14,6 +14,8 @@ export function chosenInt(min: number, max: number): Arbitrary<number> {
 export function custom<T>(parse: (it: Choices) => T) {
   return new Arbitrary(parse);
 }
+
+export const boolean = custom((it) => it.gen(chosenInt(0, 1)) === 1);
 
 /**
  * Returns an integer between min and max.

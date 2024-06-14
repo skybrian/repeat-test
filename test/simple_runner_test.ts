@@ -1,7 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
 import { fail } from "@std/assert";
 
-import { ChoiceRequest } from "../src/types.ts";
+import { ChoiceRequest } from "../src/choices.ts";
 import { RandomChoices } from "../src/simple_runner.ts";
 
 describe("RandomChoices", () => {

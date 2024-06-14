@@ -1,5 +1,5 @@
 import prand from "pure-rand";
-import { Arbitrary, ChoiceRequest, Choices } from "./types.ts";
+import { Arbitrary, ChoiceRequest, Choices } from "./choices.ts";
 
 /**
  * Randomly generates choices, without recording them.
@@ -22,8 +22,8 @@ export class RandomChoices implements Choices {
   }
 
   samples<T>(req: Arbitrary<T>, count: number): T[] {
-    const result: T[] = [];
-    for (let i = 0; i < count; i++) {
+    const result = [];
+    for (let i = 1; i < count; i++) {
       result.push(this.gen(req));
     }
     return result;
@@ -45,19 +45,23 @@ export default class SimpleRunner {
   }
 
   check<T>(examples: Arbitrary<T>, run: (example: T) => void): void {
-    const debug = false;
+    const samples = [examples.default].concat(
+      this.random.samples(examples, this.count - 1),
+    );
 
-    let first = true;
-    for (const example of this.random.samples(examples, this.count)) {
-      if (first && debug) {
-        console.log("First example:", example);
-      }
-      first = false;
+    let passed = 0;
+    let first: T | null = null;
+    for (const example of samples) {
       try {
         run(example);
       } catch (e) {
-        console.log("Failed! Example:", example);
+        if (first !== null) console.log(`example 1:`, example);
+        console.error(`Failed! example ${passed + 1}:`, example);
         throw e;
+      }
+      passed++;
+      if (passed === 1) {
+        first = example;
       }
     }
   }
