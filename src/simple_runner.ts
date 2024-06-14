@@ -2,7 +2,7 @@ import prand from "pure-rand";
 import { Arbitrary, ChoiceRequest, Choices } from "./types.ts";
 
 /**
- * Choices that are generated using a random number generator.
+ * Randomly generates choices, without recording them.
  */
 export class RandomChoices implements Choices {
   readonly seed;
@@ -33,12 +33,14 @@ export class RandomChoices implements Choices {
 /**
  * Calls a given function repeatedly with randomly generated values.
  */
-export class Runner {
+export default class SimpleRunner {
   readonly seed;
+  readonly count;
   private readonly random: RandomChoices;
 
-  constructor(opts?: { seed: number }) {
+  constructor(opts?: { seed: number; count: number }) {
     this.seed = opts?.seed ?? Date.now() ^ (Math.random() * 0x100000000);
+    this.count = opts?.count ?? 100;
     this.random = new RandomChoices({ seed: this.seed });
   }
 
@@ -46,7 +48,7 @@ export class Runner {
     const debug = false;
 
     let first = true;
-    for (const example of this.random.samples(examples, 100)) {
+    for (const example of this.random.samples(examples, this.count)) {
       if (first && debug) {
         console.log("First example:", example);
       }

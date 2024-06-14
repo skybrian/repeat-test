@@ -1,7 +1,8 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertThrows } from "@std/assert";
+
 import { Arbitrary, ChoiceRequest } from "../src/types.ts";
-import { Runner } from "../src/simple.ts";
+import SimpleRunner from "../src/simple_runner.ts";
 import * as arb from "../src/arbitraries.ts";
 
 type Range = { min: number; max: number };
@@ -20,7 +21,7 @@ const invalidRange = arb.oneOf<Range>([
   }),
 ]);
 
-const runner = new Runner();
+const runner = new SimpleRunner();
 
 describe("ChoiceRequest", () => {
   it("throws when given an invalid range", () => {

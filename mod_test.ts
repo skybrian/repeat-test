@@ -1,7 +1,8 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals } from "@std/assert";
+
 import { Arbitrary, ChoiceRequest } from "./src/types.ts";
-import { Runner } from "./src/simple.ts";
+import SimpleRunner from "./src/simple_runner.ts";
 import * as arb from "./src/arbitraries.ts";
 
 import { SavedChoices } from "./mod.ts";
@@ -23,7 +24,7 @@ const validRange = arb.oneOf<Range>([
   }),
 ]);
 
-const runner = new Runner();
+const runner = new SimpleRunner();
 
 describe("SavedChoices", () => {
   describe("gen", () => {
