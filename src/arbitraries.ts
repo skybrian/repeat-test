@@ -1,7 +1,10 @@
 import { Arbitrary, ChoiceRequest } from "./types.ts";
 
-export function unbiasedInt(min: number, max: number): Arbitrary<number> {
-  return new Arbitrary((ch) => ch.next(new ChoiceRequest(min, max)));
+/**
+ * Returns an integer between min and max, chosen arbitrarily.
+ */
+export function chosenInt(min: number, max: number): Arbitrary<number> {
+  return new ChoiceRequest(min, max).toArbitrary();
 }
 
 /**
@@ -11,10 +14,10 @@ export function unbiasedInt(min: number, max: number): Arbitrary<number> {
 export function biasedInt(min: number, max: number): Arbitrary<number> {
   const size = max - min + 1;
   if (size <= 10) {
-    return new Arbitrary((r) => r.gen(unbiasedInt(min, max)));
+    return new Arbitrary((r) => r.gen(chosenInt(min, max)));
   }
   return new Arbitrary((r) => {
-    switch (r.gen(unbiasedInt(1, 20))) {
+    switch (r.gen(chosenInt(1, 20))) {
       case 1:
         return min;
       case 2:
@@ -22,7 +25,7 @@ export function biasedInt(min: number, max: number): Arbitrary<number> {
       case 3:
         if (min <= 0 && max >= 0) return 0;
     }
-    return r.gen(unbiasedInt(min, max));
+    return r.gen(chosenInt(min, max));
   });
 }
 
