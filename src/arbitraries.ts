@@ -57,15 +57,15 @@ export const strangeNumber = example([
   Number.NaN,
 ]);
 
-export function oneOf<T>(reqs: Arbitrary<T>[]): Arbitrary<T> {
-  if (reqs.length === 0) {
-    throw new Error("Can't choose an item from an empty array");
+export function oneOf<T>(alternatives: Arbitrary<T>[]): Arbitrary<T> {
+  if (alternatives.length === 0) {
+    throw new Error("oneOf must be called with at least one alternative");
   }
-  if (reqs.length === 1) {
-    return reqs[0];
+  if (alternatives.length === 1) {
+    return alternatives[0];
   }
   return custom((it) => {
-    const choice = it.gen(example(reqs));
+    const choice = it.gen(example(alternatives));
     return it.gen(choice);
   });
 }

@@ -66,3 +66,41 @@ describe("boolean", () => {
     checkParses(arb.boolean, [1], true);
   });
 });
+
+describe("example", () => {
+  const oneWay = arb.example([1]);
+  const twoWay = arb.example([1, 2]);
+  it("shouldn't ask for a decision when there's only one example", () => {
+    checkParses(oneWay, [], 1);
+  });
+  it("should default to the first example", () => {
+    checkParseFails(twoWay, [], 1, 0);
+  });
+  it("should select the next example using the next item in the stream", () => {
+    checkParses(twoWay, [0], 1);
+    checkParses(twoWay, [1], 2);
+  });
+});
+
+describe("oneOf", () => {
+  const oneWay = arb.oneOf([
+    arb.chosenInt(1, 2),
+  ]);
+  const threeWay = arb.oneOf([
+    arb.chosenInt(1, 2),
+    arb.chosenInt(3, 4),
+    arb.chosenInt(5, 6),
+  ]);
+  it("should default to the first branch", () => {
+    checkParseFails(oneWay, [], 1, 0);
+    checkParseFails(threeWay, [], 1, 0);
+  });
+  it("shouldn't ask for a decision when there's only one branch", () => {
+    checkParses(oneWay, [1], 1);
+  });
+  it("should select a branch using the next item in the stream", () => {
+    checkParses(threeWay, [0, 1], 1);
+    checkParses(threeWay, [1, 3], 3);
+    checkParses(threeWay, [2, 5], 5);
+  });
+});
