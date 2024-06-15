@@ -1,1 +1,1 @@
-export * from "./src/choices.ts";
+export * from "./src/core.ts";

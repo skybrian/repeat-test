@@ -1,3 +1,4 @@
+import { ChoiceRequest } from "./core.ts";
 import * as arb from "./arbitraries.ts";
 
 export type Range = { min: number; max: number };
@@ -17,5 +18,17 @@ export const validRange = arb.oneOf<Range>([
     );
     const max = min + extras;
     return { min, max };
+  }),
+]);
+
+export const validRequest = arb.oneOf<ChoiceRequest>([
+  arb.custom((it) => {
+    const { min, max } = it.gen(validRange);
+    return new ChoiceRequest(min, max);
+  }),
+  arb.custom((it) => {
+    const { min, max } = it.gen(validRange);
+    const def = it.gen(arb.biasedInt(min, max));
+    return new ChoiceRequest(min, max, { default: def });
   }),
 ]);

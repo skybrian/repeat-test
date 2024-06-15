@@ -1,8 +1,10 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals } from "@std/assert";
+
+import { Arbitrary } from "../src/core.ts";
+import { ArrayChoices } from "../src/choices.ts";
+
 import * as arb from "../src/arbitraries.ts";
-import { Arbitrary } from "../src/choices.ts";
-import { ArrayChoices } from "../src/simple_choices.ts";
 
 function checkParse<T>(arb: Arbitrary<T>, choices: number[], expected: T) {
   const it = new ArrayChoices(choices);

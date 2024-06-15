@@ -1,4 +1,4 @@
-import { Arbitrary, ChoiceRequest, Choices } from "./choices.ts";
+import { Arbitrary, ChoiceRequest, Choices } from "./core.ts";
 
 /**
  * Returns an integer between min and max, chosen arbitrarily.
@@ -35,6 +35,18 @@ export function biasedInt(min: number, max: number): Arbitrary<number> {
         if (min <= 0 && max >= 0) return 0;
     }
     return it.gen(chosenInt(min, max));
+  });
+}
+
+export function intOutsideRange(min: number, max: number): Arbitrary<number> {
+  return custom((it): number => {
+    if (it.gen(boolean)) {
+      if (min - 1 < min) return min - 1;
+      return min - 2 ** 32;
+    } else {
+      if (max + 1 > max) return max + 1;
+      return max + 2 ** 32;
+    }
   });
 }
 

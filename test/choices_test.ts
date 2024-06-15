@@ -1,69 +1,54 @@
 import { describe, it } from "@std/testing/bdd";
-import { assert, assertEquals, assertThrows } from "@std/assert";
-import { invalidRange, validRange } from "../src/ranges.ts";
-import * as arb from "../src/arbitraries.ts";
-import SimpleRunner from "../src/simple_runner.ts";
+import { assert, assertEquals } from "@std/assert";
 
-import { Arbitrary, ChoiceRequest } from "../src/choices.ts";
+import SimpleRunner from "../src/simple_runner.ts";
+import * as arb from "../src/arbitraries.ts";
+import { validRequest } from "../src/requests.ts";
+
+import { ArrayChoices } from "../src/choices.ts";
 
 const runner = new SimpleRunner();
 
-function badDefault(min: number, max: number): Arbitrary<number> {
-  return arb.custom((it): number => {
-    switch (it.gen(arb.biasedInt(1, 3))) {
-      case 2:
-        if (min - 1 < min) return min - 1;
-        return min - 2 ** 32;
-      case 3:
-        if (max + 1 > max) return max + 1;
-        return max + 2 ** 32;
-    }
-    return it.gen(arb.nonInteger);
-  });
-}
-
-describe("ChoiceRequest", () => {
-  describe("constructor", () => {
-    it("throws when given an invalid range", () => {
-      runner.check(invalidRange, ({ min, max }) => {
-        assertThrows(() => new ChoiceRequest(min, max));
+describe("ArrayChoices", () => {
+  describe("next", () => {
+    describe("for an empty array", () => {
+      const stream = new ArrayChoices([]);
+      it("chooses the request's default and fails", () => {
+        runner.check(validRequest, (req) => {
+          assertEquals(stream.next(req), req.default);
+          assert(stream.failed);
+          assertEquals(stream.failureOffset, 0);
+        });
       });
     });
-    it("throws when given an invalid default", () => {
-      const example = arb.custom((it) => {
-        const { min, max } = it.gen(validRange);
-        const def = it.gen(badDefault(min, max));
-        return { min, max, def };
+    describe("for an array containing a safe integer", () => {
+      describe("when the choice is valid", () => {
+        it("returns it", () => {
+          const example = arb.custom((it) => {
+            const req = it.gen(validRequest);
+            const n = it.gen(arb.biasedInt(req.min, req.max));
+            const stream = new ArrayChoices([n]);
+            return { req, n, stream };
+          });
+          runner.check(example, ({ req, n, stream }) => {
+            assertEquals(stream.next(req), n);
+          });
+        });
       });
-      runner.check(example, ({ min, max, def }) => {
-        assertThrows(() => new ChoiceRequest(min, max, { default: def }));
-      });
-    });
-  });
-  describe("default", () => {
-    it("returns the number closest to zero when not overridden", () => {
-      runner.check(validRange, ({ min, max }) => {
-        const request = new ChoiceRequest(min, max);
-        assert(request.default >= min);
-        assert(request.default <= max);
-        if (min >= 0) {
-          assertEquals(request.default, min);
-        } else if (max <= 0) {
-          assertEquals(request.default, max);
-        } else {
-          assertEquals(request.default, 0);
-        }
-      });
-    });
-    it("returns the overridden default when given", () => {
-      const example = arb.custom((it) => {
-        const { min, max } = it.gen(validRange);
-        const def = it.gen(arb.biasedInt(min, max));
-        return { min, max, def };
-      });
-      runner.check(example, ({ min, max, def }) => {
-        const request = new ChoiceRequest(min, max, { default: def });
-        assertEquals(request.default, def);
+      describe("when the choice is invalid", () => {
+        it("chooses the request's default and fails", () => {
+          const example = arb.custom((it) => {
+            const req = it.gen(validRequest);
+            const n = it.gen(arb.intOutsideRange(req.min, req.max));
+            const stream = new ArrayChoices([n]);
+            return { req, stream };
+          });
+          runner.check(example, ({ req, stream }) => {
+            assertEquals(stream.next(req), req.default);
+            assert(stream.failed);
+            assertEquals(stream.failureOffset, 0);
+          });
+        });
       });
     });
   });
