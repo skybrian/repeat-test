@@ -5,7 +5,7 @@ import SimpleRunner from "../src/simple_runner.ts";
 import * as arb from "../src/arbitraries.ts";
 import { validRequest } from "../src/requests.ts";
 
-import { ArrayChoices } from "../src/choices.ts";
+import { ArrayChoices } from "../src/parser.ts";
 
 const runner = new SimpleRunner();
 
@@ -17,7 +17,7 @@ describe("ArrayChoices", () => {
         runner.check(validRequest, (req) => {
           assertEquals(stream.next(req), req.default);
           assert(stream.failed);
-          assertEquals(stream.failureOffset, 0);
+          assertEquals(stream.errorOffset, 0);
         });
       });
     });
@@ -46,7 +46,7 @@ describe("ArrayChoices", () => {
           runner.check(example, ({ req, stream }) => {
             assertEquals(stream.next(req), req.default);
             assert(stream.failed);
-            assertEquals(stream.failureOffset, 0);
+            assertEquals(stream.errorOffset, 0);
           });
         });
       });
