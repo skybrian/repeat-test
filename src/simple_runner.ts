@@ -1,5 +1,5 @@
 import prand from "pure-rand";
-import { Arbitrary, ChoiceRequest, Choices } from "./core.ts";
+import { Arbitrary, ChoiceRequest, Choices, RETRY } from "./core.ts";
 
 /**
  * Randomly generates choices, without recording them.
@@ -32,7 +32,19 @@ export class RandomChoices implements Choices {
   }
 
   gen<T>(req: Arbitrary<T>): T {
-    return req.parse(this);
+    let retries = 0;
+    const maxRetries = 999;
+    while (retries < maxRetries) {
+      const parsed = req.parse(this);
+      if (parsed !== RETRY) {
+        return parsed;
+      }
+      retries++;
+    }
+    console.warn("Failed to generate arbitrary after ${maxRetries} retries");
+    const result = req.default;
+    console.warn("Using default value:", result);
+    return result;
   }
 
   samples<T>(req: Arbitrary<T>, count: number): T[] {

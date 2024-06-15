@@ -29,11 +29,12 @@ export class ChoiceRequest {
    * Constructs a new request. Min, max, and the default must be safe integers.
    * They must satisfy min <= default <= max.
    *
-   * @param opts.default Overrides the default value for this request.
-   * If not specified, it will be the number closest to zero that's between min and max.
+   * @param opts.default Overrides the default value for this request. If not
+   * specified, it will be the number closest to zero that's between min and
+   * max.
    *
-   * @param opts.biased A hint that when choosing randomly, the min, max, and default
-   * choices should be picked more often.
+   * @param opts.biased A hint that when choosing randomly, the min, max, and
+   * default choices should be picked more often.
    */
   constructor(
     readonly min: number,
@@ -79,6 +80,31 @@ export class ChoiceRequest {
   }
 }
 
+export const RETRY = Symbol("retry");
+
+/**
+ * A function implementing a parser that reads any number of choices from its
+ * input.
+ *
+ * It returns {@link Success} if the parse succeeds. Returning {@link RETRY}
+ * means the parse failed and the caller should try again with different
+ * (typically randomly generated) input. This is a way of implementing
+ * backtracking.
+ *
+ * The *default value* of a parser is whatever it returns when its input is all
+ * default values. Returning {@link RETRY} as a default value is a programming
+ * error.
+ */
+export type ParseFunction<T> = (input: Choices) => T | typeof RETRY;
+
+export function mustParse<T>(parse: ParseFunction<T>, input: Choices): T {
+  const parsed = parse(input);
+  if (parsed === RETRY) {
+    throw new Error("parse function returned RETRY unexpectedly");
+  }
+  return parsed;
+}
+
 /**
  * A request for an arbitrary value, taken from a set.
  *
@@ -89,22 +115,37 @@ export class ChoiceRequest {
  * The default value of an Arbitrary is whatever it returns when we choose the
  * default for each ChoiceRequest it makes.
  *
- * Arbitraries can make subrequests by calling r.gen(), which recursively
- * defines a tree of requests. The leaf nodes will be either ChoiceRequests or
- * arbitraries that return a constant.
+ * Arbitraries can make subrequests by calling r.gen(), recursively making a
+ * tree of requests. The leaf nodes will be either ChoiceRequests or arbitraries
+ * that return a constant.
  */
 export class Arbitrary<T> {
   /**
    * @param parse a callback that reads any number of choices from the stream
    * and returns a value. It should be deterministic and always finish.
    */
-  constructor(readonly parse: (it: Choices) => T) {}
+  constructor(readonly parse: ParseFunction<T>) {}
 
   get default(): T {
     const allDefaults: Choices = {
       next: (req) => req.default,
-      gen: (arb) => arb.parse(allDefaults),
+      gen: (arb) => mustParse(arb.parse, allDefaults),
     };
-    return this.parse(allDefaults);
+    return mustParse(this.parse, allDefaults);
+  }
+
+  /**
+   * Filters out unwanted values.
+   * @param pred returns true to accept the value.
+   * Note: it must return true for an arbitary's default value.
+   */
+  filter(pred: (val: T) => boolean): Arbitrary<T> {
+    return new Arbitrary((it) => {
+      const parsed = this.parse(it);
+      if (parsed === RETRY) {
+        return RETRY;
+      }
+      return pred(parsed) ? parsed : RETRY;
+    });
   }
 }

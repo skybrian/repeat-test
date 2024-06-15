@@ -19,7 +19,7 @@ export function biasedInt(min: number, max: number): Arbitrary<number> {
  * @param parse a deterministic function that takes a Choices iterator and returns a value.
  */
 export function custom<T>(parse: (it: Choices) => T) {
-  return new Arbitrary(parse);
+  return new Arbitrary((it) => parse(it));
 }
 
 export const boolean = custom((it) => it.gen(chosenInt(0, 1)) === 1);

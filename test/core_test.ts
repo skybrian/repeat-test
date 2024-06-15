@@ -56,3 +56,14 @@ describe("ChoiceRequest", () => {
     });
   });
 });
+
+describe("Arbitrary", () => {
+  describe("filter", () => {
+    it("filters out values that don't satisfy the predicate", () => {
+      const not3 = arb.chosenInt(1, 6).filter((n) => n !== 3);
+      runner.check(not3, (n) => {
+        assert(n !== 3);
+      });
+    });
+  });
+});

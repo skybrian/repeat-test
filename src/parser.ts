@@ -1,4 +1,4 @@
-import { Arbitrary, ChoiceRequest, Choices } from "./core.ts";
+import { Arbitrary, ChoiceRequest, Choices, RETRY } from "./core.ts";
 
 /**
  * Iterates over choices that are stored in an array.
@@ -34,7 +34,12 @@ export class ArrayChoices implements Choices {
   }
 
   gen<T>(req: Arbitrary<T>): T {
-    return req.parse(this);
+    const parsed = req.parse(this);
+    if (parsed === RETRY) {
+      this.errorOffset = this.offset;
+      return req.default;
+    }
+    return parsed;
   }
 }
 
@@ -56,7 +61,9 @@ export function parse<T>(
 ): Success<T> | ParseFailure<T> {
   const it = new ArrayChoices(choices);
   const val = arb.parse(it);
-  if (it.failed) {
+  if (val === RETRY) {
+    return { ok: false, guess: arb.default, errorOffset: it.offset };
+  } else if (it.failed) {
     return { ok: false, guess: val, errorOffset: it.errorOffset! };
   }
   return { ok: true, value: val };
