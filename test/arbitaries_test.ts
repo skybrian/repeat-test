@@ -23,6 +23,38 @@ function checkParseFails<T>(
   });
 }
 
+function intRangeTests(
+  f: (min: number, max: number) => Arbitrary<number>,
+) {
+  it("should accept numbers in range", () => {
+    for (let i = 1; i < 6; i++) {
+      checkParses(f(1, 6), [i], i);
+    }
+  });
+  it("should reject numbers out of range", () => {
+    for (const n of [-1, 0, 7]) {
+      checkParseFails(f(1, 6), [n], 1, 0);
+    }
+  });
+  it("should default to min for positive numbers", () => {
+    checkParseFails(f(1, 6), [], 1, 0);
+  });
+  it("should default to max for negative numbers", () => {
+    checkParseFails(f(-6, -1), [], -1, 0);
+  });
+  it("should default to 0 for a range that includes 0", () => {
+    checkParseFails(f(-6, 6), [], 0, 0);
+  });
+}
+
+describe("chosenInt", () => {
+  intRangeTests(arb.chosenInt);
+});
+
+describe("biasedInt", () => {
+  intRangeTests(arb.biasedInt);
+});
+
 describe("boolean", () => {
   it("should default to false", () => {
     checkParseFails(arb.boolean, [], false, 0);

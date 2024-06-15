@@ -23,15 +23,22 @@ export interface Choices {
 export class ChoiceRequest {
   readonly default: number;
 
+  readonly biased: boolean;
+
   /**
    * Constructs a new request. Min, max, and the default must be safe integers.
-   * They must satisfy min <= default <= max. If a default is not specified, it
-   * will be the number closest to zero that's between min and max.
+   * They must satisfy min <= default <= max.
+   *
+   * @param opts.default Overrides the default value for this request.
+   * If not specified, it will be the number closest to zero that's between min and max.
+   *
+   * @param opts.biased A hint that when choosing randomly, the min, max, and default
+   * choices should be picked more often.
    */
   constructor(
     readonly min: number,
     readonly max: number,
-    opts?: { default?: number },
+    opts?: { default?: number; biased?: boolean },
   ) {
     if (!Number.isSafeInteger(min)) {
       throw new Error(`min must be a safe integer; got ${min}`);
@@ -59,6 +66,8 @@ export class ChoiceRequest {
     } else {
       this.default = 0;
     }
+
+    this.biased = opts?.biased ?? false;
   }
 
   isValid(n: number): boolean {

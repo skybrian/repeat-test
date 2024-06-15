@@ -8,6 +8,13 @@ export function chosenInt(min: number, max: number): Arbitrary<number> {
 }
 
 /**
+ * Returns an integer between min and max, chosen with bias towards special cases.
+ */
+export function biasedInt(min: number, max: number): Arbitrary<number> {
+  return new ChoiceRequest(min, max, { biased: true }).toArbitrary();
+}
+
+/**
  * Creates a custom arbitrary, given a parse callback.
  * @param parse a deterministic function that takes a Choices iterator and returns a value.
  */
@@ -16,27 +23,6 @@ export function custom<T>(parse: (it: Choices) => T) {
 }
 
 export const boolean = custom((it) => it.gen(chosenInt(0, 1)) === 1);
-
-/**
- * Returns an integer between min and max.
- * For large ranges, the choice will be biased towards special cases.
- */
-export function biasedInt(min: number, max: number): Arbitrary<number> {
-  const size = max - min + 1;
-  if (size <= 10) return chosenInt(min, max);
-
-  return custom((it) => {
-    switch (it.gen(chosenInt(1, 20))) {
-      case 1:
-        return min;
-      case 2:
-        return max;
-      case 3:
-        if (min <= 0 && max >= 0) return 0;
-    }
-    return it.gen(chosenInt(min, max));
-  });
-}
 
 export function intOutsideRange(min: number, max: number): Arbitrary<number> {
   return custom((it): number => {
