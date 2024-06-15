@@ -46,12 +46,9 @@ export class ChoiceRequest {
     }
     const chosenDefault = opts?.default;
     if (chosenDefault !== undefined) {
-      if (!Number.isSafeInteger(chosenDefault)) {
-        throw new Error(`default must be a safe integer; got ${chosenDefault}`);
-      }
-      if (chosenDefault < min || chosenDefault > max) {
+      if (!this.isValid(chosenDefault)) {
         throw new Error(
-          `range must include default; got (${min}, ${max}), default ${chosenDefault}`,
+          `the default must within the range (${min}, ${max}); got ${chosenDefault}`,
         );
       }
       this.default = chosenDefault;
@@ -62,6 +59,10 @@ export class ChoiceRequest {
     } else {
       this.default = 0;
     }
+  }
+
+  isValid(n: number): boolean {
+    return Number.isSafeInteger(n) && n >= this.min && n <= this.max;
   }
 
   toArbitrary(): Arbitrary<number> {
