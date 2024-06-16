@@ -65,5 +65,8 @@ describe("Arbitrary", () => {
         assert(n !== 3);
       });
     });
+    it("throws an exception when the filter doesn't accept the default", () => {
+      assertThrows(() => arb.chosenInt(1, 6).filter(() => false));
+    });
   });
 });

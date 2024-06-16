@@ -135,11 +135,16 @@ export class Arbitrary<T> {
   }
 
   /**
-   * Filters out unwanted values.
-   * @param pred returns true to accept the value.
-   * Note: it must return true for an arbitary's default value.
+   * Removes values from the output set of this Arbitrary.
+   * (It must not filter out the default value.)
    */
   filter(pred: (val: T) => boolean): Arbitrary<T> {
+    if (!pred(this.default)) {
+      throw new Error(
+        "cannot filter out the default value of an Arbitrary",
+      );
+    }
+
     return new Arbitrary((it) => {
       const parsed = this.parse(it);
       if (parsed === RETRY) {
