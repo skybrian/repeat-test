@@ -5,6 +5,7 @@ import * as arb from "../src/arbitraries.ts";
 import SimpleRunner from "../src/simple_runner.ts";
 
 import { ChoiceRequest } from "../src/core.ts";
+import { RETRY } from "../mod.ts";
 
 const runner = new SimpleRunner();
 
@@ -58,6 +59,11 @@ describe("ChoiceRequest", () => {
 });
 
 describe("Arbitrary", () => {
+  describe("constructor", () => {
+    it("disallows parsers that don't have a default", () => {
+      assertThrows(() => arb.custom(() => RETRY));
+    });
+  });
   describe("filter", () => {
     it("filters out values that don't satisfy the predicate", () => {
       const not3 = arb.chosenInt(1, 6).filter((n) => n !== 3);
@@ -65,7 +71,7 @@ describe("Arbitrary", () => {
         assert(n !== 3);
       });
     });
-    it("throws an exception when the filter doesn't accept the default", () => {
+    it("disallows filters that doesn't accept the default", () => {
       assertThrows(() => arb.chosenInt(1, 6).filter(() => false));
     });
   });

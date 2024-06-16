@@ -83,26 +83,32 @@ export class ChoiceRequest {
 export const RETRY = Symbol("retry");
 
 /**
- * A function implementing a parser that reads any number of choices from its
- * input.
+ * A parser of choices, used to implement an {@link Arbitrary}.
  *
- * It returns {@link Success} if the parse succeeds. Returning {@link RETRY}
- * means the parse failed and the caller should try again with different
- * (typically randomly generated) input. This is a way of implementing
- * backtracking.
+ * If the parse succeeds, it returns a value. If it fails, it returns
+ * {@link RETRY}. The caller should try again with a different (typically
+ * randomly generated) input.
+ *
+ * This is a way of implementing backtracking. A ParseFunction should return
+ * `RETRY` instead of using a loop for backtracking so that the caller knows not
+ * to keep any choices that led to a failed parse.
  *
  * The *default value* of a parser is whatever it returns when its input is all
- * default values. Returning {@link RETRY} as a default value is a programming
- * error.
+ * default values. Since all Arbitraries must have a default, returning `RETRY`
+ * in this case is a programming error.
  */
 export type ParseFunction<T> = (input: Choices) => T | typeof RETRY;
 
-export function mustParse<T>(parse: ParseFunction<T>, input: Choices): T {
-  const parsed = parse(input);
-  if (parsed === RETRY) {
-    throw new Error("parse function returned RETRY unexpectedly");
+function calculateDefault<T>(parse: ParseFunction<T>): T {
+  const alwaysChooseDefault: Choices = {
+    next: (req) => req.default,
+    gen: (arb) => arb.default,
+  };
+  const def = parse(alwaysChooseDefault);
+  if (def === RETRY) {
+    throw new Error("parse function must return a default value");
   }
-  return parsed;
+  return def;
 }
 
 /**
@@ -111,9 +117,6 @@ export function mustParse<T>(parse: ParseFunction<T>, input: Choices): T {
  * An Arbitrary's *output set* is the set of values it can return. Its input is
  * a stream of choices. (See {@link Choices}.) We can think of it as a parser
  * that converts a stream of choices into a value.
- *
- * The default value of an Arbitrary is whatever it returns when we choose the
- * default for each ChoiceRequest it makes.
  *
  * Arbitraries can make subrequests by calling r.gen(), recursively making a
  * tree of requests. The leaf nodes will be either ChoiceRequests or arbitraries
@@ -124,19 +127,21 @@ export class Arbitrary<T> {
    * @param parse a callback that reads any number of choices from the stream
    * and returns a value. It should be deterministic and always finish.
    */
-  constructor(readonly parse: ParseFunction<T>) {}
-
-  get default(): T {
-    const allDefaults: Choices = {
-      next: (req) => req.default,
-      gen: (arb) => mustParse(arb.parse, allDefaults),
-    };
-    return mustParse(this.parse, allDefaults);
+  constructor(readonly parse: ParseFunction<T>) {
+    calculateDefault(parse); // dry run; throws exception if invalid
   }
 
   /**
-   * Removes values from the output set of this Arbitrary.
-   * (It must not filter out the default value.)
+   * The default value of an Arbitrary. This is whatever {@link parse} returns when
+   * we choose the default for each request.
+   */
+  get default(): T {
+    return calculateDefault(this.parse);
+  }
+
+  /**
+   * Removes values from the output set of this Arbitrary. (It must not filter
+   * out the default value.)
    */
   filter(pred: (val: T) => boolean): Arbitrary<T> {
     if (!pred(this.default)) {
