@@ -1,6 +1,6 @@
 import prand from "pure-rand";
 import { ChoiceRequest, Choices } from "./choices.ts";
-import { Arbitrary, ArbitraryInput } from "./core.ts";
+import { Arbitrary, ArbitraryInput } from "./arbitraries.ts";
 
 /**
  * Randomly generates choices, without recording them.

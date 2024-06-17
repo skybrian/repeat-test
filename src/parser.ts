@@ -1,5 +1,5 @@
 import { ChoiceRequest, Choices } from "./choices.ts";
-import { Arbitrary, ArbitraryInput, RETRY } from "./core.ts";
+import { Arbitrary, ArbitraryInput, RETRY } from "./arbitraries.ts";
 
 /**
  * Iterates over choices that are stored in an array.

@@ -1,10 +1,12 @@
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 
-import { Arbitrary } from "../src/core.ts";
 import { parse } from "../src/parser.ts";
 
+import { ChoiceRequest } from "../src/choices.ts";
+import { Arbitrary, RETRY } from "../src/arbitraries.ts";
 import * as arb from "../src/arbitraries.ts";
+import TestRunner from "../src/simple_runner.ts";
 
 function checkParses<T>(arb: Arbitrary<T>, choices: number[], expected: T) {
   assertEquals(parse(arb, choices), { ok: true, value: expected });
@@ -22,6 +24,30 @@ function checkParseFails<T>(
     errorOffset: expectedErrorOffset,
   });
 }
+
+const runner = new TestRunner();
+const oneToSix = new ChoiceRequest(1, 6);
+const sixSided = new Arbitrary((it) => it.next(oneToSix));
+
+describe("Arbitrary", () => {
+  describe("constructor", () => {
+    it("disallows parsers that don't have a default", () => {
+      assertThrows(() => new Arbitrary(() => RETRY));
+    });
+  });
+  describe("filter", () => {
+    it("disallows filters that doesn't accept the default", () => {
+      const rejectEverything = () => false;
+      assertThrows(() => sixSided.filter(rejectEverything));
+    });
+    it("filters out values that don't satisfy the predicate", () => {
+      const not3 = sixSided.filter((n) => n !== 3);
+      runner.repeat(not3, (n) => {
+        assert(n !== 3);
+      });
+    });
+  });
+});
 
 function intRangeTests(
   f: (min: number, max: number) => Arbitrary<number>,

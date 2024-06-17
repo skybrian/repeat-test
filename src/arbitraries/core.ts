@@ -1,4 +1,4 @@
-import { alwaysChooseDefault, ChoiceRequest, Choices } from "./choices.ts";
+import { alwaysChooseDefault, ChoiceRequest, Choices } from "../choices.ts";
 
 export class ArbitraryInput {
   constructor(
@@ -101,4 +101,53 @@ export class Arbitrary<T> {
   toString() {
     return `Arbitrary(default: ${this.default})`;
   }
+}
+
+/**
+ * Returns an integer between min and max, chosen arbitrarily.
+ */
+export function chosenInt(min: number, max: number): Arbitrary<number> {
+  const req = new ChoiceRequest(min, max);
+  return new Arbitrary((it) => it.next(req));
+}
+
+/**
+ * Returns an integer between min and max, chosen with bias towards special cases.
+ */
+export function biasedInt(min: number, max: number): Arbitrary<number> {
+  const req = new ChoiceRequest(min, max, { biased: true });
+  return new Arbitrary((it) => it.next(req));
+}
+
+/**
+ * Creates a custom arbitrary, given a parse callback.
+ * @param parse a deterministic function that takes a Choices iterator and returns a value.
+ */
+export function custom<T>(parse: (it: ArbitraryInput) => T) {
+  return new Arbitrary((it) => parse(it));
+}
+
+export function example<T>(values: T[]): Arbitrary<T> {
+  if (values.length === 0) {
+    throw new Error("Can't choose an example from an empty array");
+  }
+  if (values.length === 1) {
+    return custom(() => values[0]);
+  }
+  return custom((it) => values[it.gen(biasedInt(0, values.length - 1))]);
+}
+
+export const boolean = example([false, true]);
+
+export function oneOf<T>(alternatives: Arbitrary<T>[]): Arbitrary<T> {
+  if (alternatives.length === 0) {
+    throw new Error("oneOf must be called with at least one alternative");
+  }
+  if (alternatives.length === 1) {
+    return alternatives[0];
+  }
+  return custom((it) => {
+    const choice = it.gen(example(alternatives));
+    return it.gen(choice);
+  });
 }
