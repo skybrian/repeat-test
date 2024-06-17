@@ -1,4 +1,4 @@
-import { ChoiceRequest } from "./core.ts";
+import { ChoiceRequest } from "./choices.ts";
 import * as arb from "./arbitraries.ts";
 
 export type Range = { min: number; max: number };

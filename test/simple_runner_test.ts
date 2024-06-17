@@ -1,7 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals, fail } from "@std/assert";
 
-import { ChoiceRequest } from "../src/core.ts";
+import { ChoiceRequest } from "../src/choices.ts";
 import { RandomChoices } from "../src/simple_runner.ts";
 import TestRunner from "../src/simple_runner.ts";
 import { Arbitrary } from "../mod.ts";

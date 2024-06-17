@@ -1,78 +1,30 @@
 import { describe, it } from "@std/testing/bdd";
-import { assert, assertEquals, assertThrows } from "@std/assert";
-import { invalidRange, validRange } from "../src/requests.ts";
-import * as arb from "../src/arbitraries.ts";
+import { assert, assertThrows } from "@std/assert";
 import TestRunner from "../src/simple_runner.ts";
 
-import { ChoiceRequest } from "../src/core.ts";
-import { RETRY } from "../mod.ts";
+import { ChoiceRequest } from "../src/choices.ts";
+import { Arbitrary, RETRY } from "../src/core.ts";
 
 const runner = new TestRunner();
-
-describe("ChoiceRequest", () => {
-  describe("constructor", () => {
-    it("throws when given an invalid range", () => {
-      runner.repeat(invalidRange, ({ min, max }) => {
-        assertThrows(() => new ChoiceRequest(min, max));
-      });
-    });
-    it("throws when given an invalid default", () => {
-      const example = arb.custom((it) => {
-        const { min, max } = it.gen(validRange);
-        const def = it.gen(
-          arb.oneOf([arb.nonInteger, arb.intOutsideRange(min, max)]),
-        );
-        return { min, max, def };
-      });
-      runner.repeat(example, ({ min, max, def }) => {
-        assertThrows(() => new ChoiceRequest(min, max, { default: def }));
-      });
-    });
-  });
-  describe("default", () => {
-    it("returns the number closest to zero when not overridden", () => {
-      runner.repeat(validRange, ({ min, max }) => {
-        const request = new ChoiceRequest(min, max);
-        assert(request.default >= min);
-        assert(request.default <= max);
-        if (min >= 0) {
-          assertEquals(request.default, min);
-        } else if (max <= 0) {
-          assertEquals(request.default, max);
-        } else {
-          assertEquals(request.default, 0);
-        }
-      });
-    });
-    it("returns the overridden default when given", () => {
-      const example = arb.custom((it) => {
-        const { min, max } = it.gen(validRange);
-        const def = it.gen(arb.biasedInt(min, max));
-        return { min, max, def };
-      });
-      runner.repeat(example, ({ min, max, def }) => {
-        const request = new ChoiceRequest(min, max, { default: def });
-        assertEquals(request.default, def);
-      });
-    });
-  });
-});
+const oneToSix = new ChoiceRequest(1, 6);
+const sixSided = new Arbitrary((it) => it.next(oneToSix));
 
 describe("Arbitrary", () => {
   describe("constructor", () => {
     it("disallows parsers that don't have a default", () => {
-      assertThrows(() => arb.custom(() => RETRY));
+      assertThrows(() => new Arbitrary(() => RETRY));
     });
   });
   describe("filter", () => {
     it("filters out values that don't satisfy the predicate", () => {
-      const not3 = arb.chosenInt(1, 6).filter((n) => n !== 3);
+      const not3 = sixSided.filter((n) => n !== 3);
       runner.repeat(not3, (n) => {
         assert(n !== 3);
       });
     });
     it("disallows filters that doesn't accept the default", () => {
-      assertThrows(() => arb.chosenInt(1, 6).filter(() => false));
+      const rejectEverything = () => false;
+      assertThrows(() => sixSided.filter(rejectEverything));
     });
   });
 });

@@ -1,17 +1,20 @@
-import { Arbitrary, ArbitraryInput, ChoiceRequest } from "./core.ts";
+import { ChoiceRequest } from "./choices.ts";
+import { Arbitrary, ArbitraryInput } from "./core.ts";
 
 /**
  * Returns an integer between min and max, chosen arbitrarily.
  */
 export function chosenInt(min: number, max: number): Arbitrary<number> {
-  return new ChoiceRequest(min, max).toArbitrary();
+  const req = new ChoiceRequest(min, max);
+  return new Arbitrary((it) => it.next(req));
 }
 
 /**
  * Returns an integer between min and max, chosen with bias towards special cases.
  */
 export function biasedInt(min: number, max: number): Arbitrary<number> {
-  return new ChoiceRequest(min, max, { biased: true }).toArbitrary();
+  const req = new ChoiceRequest(min, max, { biased: true });
+  return new Arbitrary((it) => it.next(req));
 }
 
 /**
