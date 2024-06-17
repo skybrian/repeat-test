@@ -74,3 +74,37 @@ export class ChoiceRequest {
     return Number.isSafeInteger(n) && n >= this.min && n <= this.max;
   }
 }
+
+/**
+ * Iterates over choices that are stored in an array.
+ */
+export class ArrayChoices implements Choices {
+  offset: number = 0;
+  errorOffset: number | null = null;
+
+  constructor(private answers: number[]) {}
+
+  get failed() {
+    return this.errorOffset !== null;
+  }
+
+  next(req: ChoiceRequest): number {
+    while (this.offset < this.answers.length) {
+      const offset = this.offset++;
+      const choice = this.answers[offset];
+      if (req.isValid(choice)) {
+        return choice;
+      }
+      if (this.errorOffset === null) {
+        this.errorOffset = offset;
+      }
+      // retry with next value.
+    }
+
+    // ran off the end.
+    if (this.errorOffset === null) {
+      this.errorOffset = this.answers.length;
+    }
+    return req.default;
+  }
+}
