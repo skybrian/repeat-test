@@ -1,11 +1,13 @@
 import { describe, it } from "@std/testing/bdd";
-import { fail } from "@std/assert";
+import { assertEquals, fail } from "@std/assert";
 
 import { ChoiceRequest } from "../src/core.ts";
 import { RandomChoices } from "../src/simple_runner.ts";
+import TestRunner from "../src/simple_runner.ts";
+import { Arbitrary } from "../mod.ts";
 
 describe("RandomChoices", () => {
-  describe("gen", () => {
+  describe("next", () => {
     it("generates numbers within the range of a ChoiceRequest", () => {
       const choices = new RandomChoices();
       const bit = new ChoiceRequest(0, 1);
@@ -14,7 +16,7 @@ describe("RandomChoices", () => {
       for (let i = 0; i < 100; i++) {
         const val = choices.next(bit);
         if (!expected.includes(val)) {
-          fail(`unexpected output from gen(unbiasedInt): ${val}`);
+          fail(`unexpected output from next(): ${val}`);
         }
         counts[val]++;
       }
@@ -22,6 +24,23 @@ describe("RandomChoices", () => {
         if (counts[val] < 10) {
           fail();
         }
+      }
+    });
+  });
+});
+
+describe("TestRunner", () => {
+  describe("repeatTest", () => {
+    it("runs the test function the specified number of times", () => {
+      const runner = new TestRunner();
+      for (let expected = 0; expected < 100; expected++) {
+        let actual = 0;
+        const increment = () => {
+          actual++;
+        };
+        const zero = new Arbitrary(() => 0);
+        runner.repeat(zero, increment, { reps: expected });
+        assertEquals(actual, expected);
       }
     });
   });

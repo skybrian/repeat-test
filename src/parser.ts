@@ -1,4 +1,10 @@
-import { Arbitrary, ChoiceRequest, Choices, RETRY } from "./core.ts";
+import {
+  Arbitrary,
+  ArbitraryInput,
+  ChoiceRequest,
+  Choices,
+  RETRY,
+} from "./core.ts";
 
 /**
  * Iterates over choices that are stored in an array.
@@ -32,15 +38,6 @@ export class ArrayChoices implements Choices {
     }
     return req.default;
   }
-
-  gen<T>(req: Arbitrary<T>): T {
-    const parsed = req.parse(this);
-    if (parsed === RETRY) {
-      this.errorOffset = this.offset;
-      return req.default;
-    }
-    return parsed;
-  }
 }
 
 type Success<T> = {
@@ -54,17 +51,22 @@ type ParseFailure<T> = {
   errorOffset: number;
 };
 
-/** Parses an array of choices using an Arbitrary. */
+/**
+ * Parses an array of choices using an Arbitrary.
+ *
+ * Doesn't retry; all filters must succeed the first time with the given data,
+ * or the parse fails.
+ */
 export function parse<T>(
   arb: Arbitrary<T>,
   choices: number[],
 ): Success<T> | ParseFailure<T> {
-  const it = new ArrayChoices(choices);
-  const val = arb.parse(it);
+  const input = new ArrayChoices(choices);
+  const val = new ArbitraryInput(input, 1).gen(arb);
   if (val === RETRY) {
-    return { ok: false, guess: arb.default, errorOffset: it.offset };
-  } else if (it.failed) {
-    return { ok: false, guess: val, errorOffset: it.errorOffset! };
+    return { ok: false, guess: arb.default, errorOffset: input.offset };
+  } else if (input.failed) {
+    return { ok: false, guess: val, errorOffset: input.errorOffset! };
   }
   return { ok: true, value: val };
 }

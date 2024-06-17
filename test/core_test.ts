@@ -2,17 +2,17 @@ import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { invalidRange, validRange } from "../src/requests.ts";
 import * as arb from "../src/arbitraries.ts";
-import SimpleRunner from "../src/simple_runner.ts";
+import TestRunner from "../src/simple_runner.ts";
 
 import { ChoiceRequest } from "../src/core.ts";
 import { RETRY } from "../mod.ts";
 
-const runner = new SimpleRunner();
+const runner = new TestRunner();
 
 describe("ChoiceRequest", () => {
   describe("constructor", () => {
     it("throws when given an invalid range", () => {
-      runner.check(invalidRange, ({ min, max }) => {
+      runner.repeat(invalidRange, ({ min, max }) => {
         assertThrows(() => new ChoiceRequest(min, max));
       });
     });
@@ -24,14 +24,14 @@ describe("ChoiceRequest", () => {
         );
         return { min, max, def };
       });
-      runner.check(example, ({ min, max, def }) => {
+      runner.repeat(example, ({ min, max, def }) => {
         assertThrows(() => new ChoiceRequest(min, max, { default: def }));
       });
     });
   });
   describe("default", () => {
     it("returns the number closest to zero when not overridden", () => {
-      runner.check(validRange, ({ min, max }) => {
+      runner.repeat(validRange, ({ min, max }) => {
         const request = new ChoiceRequest(min, max);
         assert(request.default >= min);
         assert(request.default <= max);
@@ -50,7 +50,7 @@ describe("ChoiceRequest", () => {
         const def = it.gen(arb.biasedInt(min, max));
         return { min, max, def };
       });
-      runner.check(example, ({ min, max, def }) => {
+      runner.repeat(example, ({ min, max, def }) => {
         const request = new ChoiceRequest(min, max, { default: def });
         assertEquals(request.default, def);
       });
@@ -67,7 +67,7 @@ describe("Arbitrary", () => {
   describe("filter", () => {
     it("filters out values that don't satisfy the predicate", () => {
       const not3 = arb.chosenInt(1, 6).filter((n) => n !== 3);
-      runner.check(not3, (n) => {
+      runner.repeat(not3, (n) => {
         assert(n !== 3);
       });
     });

@@ -1,4 +1,4 @@
-import { Arbitrary, ChoiceRequest, Choices } from "./core.ts";
+import { Arbitrary, ArbitraryInput, ChoiceRequest } from "./core.ts";
 
 /**
  * Returns an integer between min and max, chosen arbitrarily.
@@ -18,7 +18,7 @@ export function biasedInt(min: number, max: number): Arbitrary<number> {
  * Creates a custom arbitrary, given a parse callback.
  * @param parse a deterministic function that takes a Choices iterator and returns a value.
  */
-export function custom<T>(parse: (it: Choices) => T) {
+export function custom<T>(parse: (it: ArbitraryInput) => T) {
   return new Arbitrary((it) => parse(it));
 }
 

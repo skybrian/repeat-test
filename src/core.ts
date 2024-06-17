@@ -10,9 +10,33 @@
 export interface Choices {
   /** Returns the next choice from the stream. */
   next(req: ChoiceRequest): number;
+}
 
-  /** Generates a value by taking choices from the stream. */
-  gen<T>(req: Arbitrary<T>): T;
+export const alwaysChooseDefault: Choices = { next: (req) => req.default };
+
+export class ArbitraryInput {
+  constructor(
+    private readonly choices: Choices,
+    readonly maxTries: number,
+  ) {
+    if (this.maxTries < 1 || !Number.isSafeInteger(maxTries)) {
+      throw new Error("maxTries must be a positive integer");
+    }
+  }
+
+  next(req: ChoiceRequest): number {
+    return this.choices.next(req);
+  }
+
+  gen<T>(req: Arbitrary<T>): T {
+    for (let tries = 0; tries < this.maxTries; tries++) {
+      const parsed = req.parse(this);
+      if (parsed !== RETRY) {
+        return parsed;
+      }
+    }
+    throw new Error(`Failed to generate ${req} after ${this.maxTries} tries`);
+  }
 }
 
 /**
@@ -97,14 +121,10 @@ export const RETRY = Symbol("retry");
  * default values. Since all Arbitraries must have a default, returning `RETRY`
  * in this case is a programming error.
  */
-export type ParseFunction<T> = (input: Choices) => T | typeof RETRY;
+export type ParseFunction<T> = (input: ArbitraryInput) => T | typeof RETRY;
 
 function calculateDefault<T>(parse: ParseFunction<T>): T {
-  const alwaysChooseDefault: Choices = {
-    next: (req) => req.default,
-    gen: (arb) => arb.default,
-  };
-  const def = parse(alwaysChooseDefault);
+  const def = parse(new ArbitraryInput(alwaysChooseDefault, 1));
   if (def === RETRY) {
     throw new Error("parse function must return a default value");
   }
@@ -119,7 +139,7 @@ function calculateDefault<T>(parse: ParseFunction<T>): T {
  * that converts a stream of choices into a value.
  *
  * Arbitraries can make subrequests by calling r.gen(), recursively making a
- * tree of requests. The leaf nodes will be either ChoiceRequests or arbitraries
+ * tree of requests. The leaf nodes will be either ChoiceRequests or Arbitraries
  * that return a constant.
  */
 export class Arbitrary<T> {
@@ -143,8 +163,8 @@ export class Arbitrary<T> {
    * Removes values from the output set of this Arbitrary. (It must not filter
    * out the default value.)
    */
-  filter(pred: (val: T) => boolean): Arbitrary<T> {
-    if (!pred(this.default)) {
+  filter(accept: (val: T) => boolean): Arbitrary<T> {
+    if (!accept(this.default)) {
       throw new Error(
         "cannot filter out the default value of an Arbitrary",
       );
@@ -152,10 +172,12 @@ export class Arbitrary<T> {
 
     return new Arbitrary((it) => {
       const parsed = this.parse(it);
-      if (parsed === RETRY) {
-        return RETRY;
-      }
-      return pred(parsed) ? parsed : RETRY;
+      if (parsed === RETRY) return RETRY;
+      return accept(parsed) ? parsed : RETRY;
     });
+  }
+
+  toString() {
+    return `Arbitrary(default: ${this.default})`;
   }
 }
