@@ -91,9 +91,8 @@ export class Arbitrary<T> {
   }
 
   /**
-   * Attempts to parse a prerecorded list of choices. It fails instead of
-   * backtracking, so all filters must succeed the first time, or the parse
-   * fails.
+   * Attempts to parse a prerecorded list of choices. All filters must succeed
+   * the first time, or the parse fails. (There is no backtracking.)
    *
    * This can be used to test what an Arbitrary accepts.
    */
@@ -117,6 +116,14 @@ export class Arbitrary<T> {
       }
     }
     throw new Error(`Failed to generate ${this} after ${input.maxTries} tries`);
+  }
+
+  /**
+   * Post-processes the outputs of this Arbitrary.
+   * (The default value is also changed.)
+   */
+  map<U>(convert: (val: T) => U): Arbitrary<U> {
+    return new Arbitrary((it) => convert(it.gen(this)));
   }
 
   /**

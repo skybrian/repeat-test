@@ -25,5 +25,5 @@ export function intOutsideRange(min: number, max: number) {
 
 export const nonInteger = oneOf<number>([
   strangeNumber,
-  custom((it) => it.gen(biasedInt(-100, 100)) + 0.5),
+  biasedInt(-100, 100).map((n) => n + 0.5),
 ]);
