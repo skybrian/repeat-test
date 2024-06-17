@@ -119,8 +119,8 @@ export class Arbitrary<T> {
   }
 
   /**
-   * Post-processes the outputs of this Arbitrary.
-   * (The default value is also changed.)
+   * Post-processes each output of this Arbitrary by converting it to a
+   * different value. (The default value is also changed.)
    */
   map<U>(convert: (val: T) => U): Arbitrary<U> {
     return new Arbitrary((it) => convert(it.gen(this)));
@@ -141,6 +141,19 @@ export class Arbitrary<T> {
       const parsed = this.callback(it);
       if (parsed === RETRY) return RETRY;
       return accept(parsed) ? parsed : RETRY;
+    });
+  }
+
+  /**
+   * Post-processes each output of this Arbitrary by creating a new Arbitrary
+   * and then choosing from it.
+   */
+  chain<U>(
+    convert: (val: T) => Arbitrary<U>,
+  ): Arbitrary<U> {
+    return new Arbitrary((it) => {
+      const val = it.gen(this);
+      return it.gen(convert(val));
     });
   }
 
@@ -205,7 +218,7 @@ export function example<T>(values: T[]): Arbitrary<T> {
   if (values.length === 1) {
     return custom(() => values[0]);
   }
-  return custom((it) => values[it.gen(biasedInt(0, values.length - 1))]);
+  return biasedInt(0, values.length - 1).map((idx) => values[idx]);
 }
 
 export const boolean = example([false, true]);
@@ -217,8 +230,5 @@ export function oneOf<T>(alternatives: Arbitrary<T>[]): Arbitrary<T> {
   if (alternatives.length === 1) {
     return alternatives[0];
   }
-  return custom((it) => {
-    const choice = it.gen(example(alternatives));
-    return it.gen(choice);
-  });
+  return example(alternatives).chain((choice) => choice);
 }
