@@ -1,4 +1,9 @@
-import { alwaysChooseDefault, ChoiceRequest, Choices } from "../choices.ts";
+import {
+  alwaysChooseDefault,
+  ArrayChoices,
+  ChoiceRequest,
+  Choices,
+} from "../choices.ts";
 
 export class ArbitraryInput {
   constructor(
@@ -15,32 +20,26 @@ export class ArbitraryInput {
   }
 
   gen<T>(req: Arbitrary<T>): T {
-    for (let tries = 0; tries < this.maxTries; tries++) {
-      const parsed = req.parse(this);
-      if (parsed !== RETRY) {
-        return parsed;
-      }
-    }
-    throw new Error(`Failed to generate ${req} after ${this.maxTries} tries`);
+    return req.generate(this);
   }
 }
 
 export const RETRY = Symbol("retry");
 
 /**
- * A parser of choices, used to implement an {@link Arbitrary}.
+ * A function that attempts to convert a stream of choices into a value.
  *
- * If the parse succeeds, it returns a value. If it fails, it returns
+ * If the parse succeeds, it returns the value. If it fails, it returns
  * {@link RETRY}. The caller should try again with a different (typically
  * randomly generated) input.
  *
  * This is a way of implementing backtracking. A ParseFunction should return
- * `RETRY` instead of using a loop for backtracking so that the caller knows not
- * to keep any choices that led to a failed parse.
+ * `RETRY` instead of using a loop so that the caller knows not to record any
+ * choices that led to a failed parse.
  *
  * The *default value* of a parser is whatever it returns when its input is all
- * default values. Since all Arbitraries must have a default, returning `RETRY`
- * in this case is a programming error.
+ * default values. Returning `RETRY` as the default value is a programming
+ * error.
  */
 export type ParseFunction<T> = (input: ArbitraryInput) => T | typeof RETRY;
 
@@ -51,6 +50,17 @@ function calculateDefault<T>(parse: ParseFunction<T>): T {
   }
   return def;
 }
+
+export type ParseSuccess<T> = {
+  ok: true;
+  value: T;
+};
+
+export type ParseFailure<T> = {
+  ok: false;
+  guess: T;
+  errorOffset: number;
+};
 
 /**
  * A request for an arbitrary value, taken from a set.
@@ -65,11 +75,11 @@ function calculateDefault<T>(parse: ParseFunction<T>): T {
  */
 export class Arbitrary<T> {
   /**
-   * @param parse a callback that reads any number of choices from the stream
+   * @param callback reads any number of choices from the stream
    * and returns a value. It should be deterministic and always finish.
    */
-  constructor(readonly parse: ParseFunction<T>) {
-    calculateDefault(parse); // dry run; throws exception if invalid
+  constructor(private readonly callback: ParseFunction<T>) {
+    calculateDefault(callback); // dry run; throws exception if invalid
   }
 
   /**
@@ -77,7 +87,36 @@ export class Arbitrary<T> {
    * we choose the default for each request.
    */
   get default(): T {
-    return calculateDefault(this.parse);
+    return calculateDefault(this.callback); // a clone, in case it's mutable
+  }
+
+  /**
+   * Attempts to parse a prerecorded list of choices. It fails instead of
+   * backtracking, so all filters must succeed the first time, or the parse
+   * fails.
+   *
+   * This can be used to test what an Arbitrary accepts.
+   */
+  parse(choices: number[]): ParseSuccess<T> | ParseFailure<T> {
+    const input = new ArrayChoices(choices);
+    const val = new ArbitraryInput(input, 1).gen(this);
+    if (val === RETRY) {
+      return { ok: false, guess: this.default, errorOffset: input.offset };
+    } else if (input.failed) {
+      return { ok: false, guess: val, errorOffset: input.errorOffset! };
+    }
+    return { ok: true, value: val };
+  }
+
+  /** Attempts to generate a value, backtracking if needed. */
+  generate(input: ArbitraryInput): T {
+    for (let tries = 0; tries < input.maxTries; tries++) {
+      const parsed = this.callback(input);
+      if (parsed !== RETRY) {
+        return parsed;
+      }
+    }
+    throw new Error(`Failed to generate ${this} after ${input.maxTries} tries`);
   }
 
   /**
@@ -92,7 +131,7 @@ export class Arbitrary<T> {
     }
 
     return new Arbitrary((it) => {
-      const parsed = this.parse(it);
+      const parsed = this.callback(it);
       if (parsed === RETRY) return RETRY;
       return accept(parsed) ? parsed : RETRY;
     });
@@ -102,6 +141,8 @@ export class Arbitrary<T> {
     return `Arbitrary(default: ${this.default})`;
   }
 }
+
+// === constructor functions for core arbitraries ===
 
 /**
  * Returns an integer between min and max, chosen arbitrarily.

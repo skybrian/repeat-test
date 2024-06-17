@@ -1,15 +1,13 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 
-import { parse } from "../src/parser.ts";
-
 import { ChoiceRequest } from "../src/choices.ts";
 import { Arbitrary, RETRY } from "../src/arbitraries.ts";
 import * as arb from "../src/arbitraries.ts";
 import TestRunner from "../src/simple_runner.ts";
 
 function checkParses<T>(arb: Arbitrary<T>, choices: number[], expected: T) {
-  assertEquals(parse(arb, choices), { ok: true, value: expected });
+  assertEquals(arb.parse(choices), { ok: true, value: expected });
 }
 
 function checkParseFails<T>(
@@ -18,7 +16,7 @@ function checkParseFails<T>(
   guess: T,
   expectedErrorOffset: number,
 ) {
-  assertEquals(parse(arb, choices), {
+  assertEquals(arb.parse(choices), {
     ok: false,
     guess,
     errorOffset: expectedErrorOffset,
