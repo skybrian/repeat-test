@@ -1,18 +1,10 @@
 /**
- * An iterator over a infinite stream of choices.
- *
- * Each choice is represented as a safe integer that's selected from a range
- * specified by a {@link ChoiceRequest}.
- *
- * This interface is typically implemented using a random number generator, but
- * any scheme may be used.
+ * A function that chooses a response using a random number generator.
  */
-export interface Choices {
-  /** Returns the next choice from the stream. */
-  next(req: ChoiceRequest): number;
-}
-
-export const alwaysChooseDefault: Choices = { next: (req) => req.default };
+export type BiasFunction = (
+  /** Picks a number between min and max (inclusive), using a uniform distribution. */
+  uniform: (min: number, max: number) => number,
+) => number;
 
 /**
  * A request for a safe integer between min and max (inclusive).
@@ -22,7 +14,7 @@ export const alwaysChooseDefault: Choices = { next: (req) => req.default };
 export class ChoiceRequest {
   readonly default: number;
 
-  readonly biased: boolean;
+  readonly bias: BiasFunction | null;
 
   /**
    * Constructs a new request. Min, max, and the default must be safe integers.
@@ -32,13 +24,14 @@ export class ChoiceRequest {
    * specified, it will be the number closest to zero that's between min and
    * max.
    *
-   * @param opts.biased A hint that when choosing randomly, the min, max, and
-   * default choices should be picked more often.
+   * @param opts.bias A function that picks randomly using a non-uniform
+   * distribution. If not specified, a uniform distribution should be used. This
+   * hint will be ignored when not generating choices randomly.
    */
   constructor(
     readonly min: number,
     readonly max: number,
-    opts?: { default?: number; biased?: boolean },
+    opts?: { default?: number; bias?: BiasFunction },
   ) {
     if (!Number.isSafeInteger(min)) {
       throw new Error(`min must be a safe integer; got ${min}`);
@@ -67,7 +60,7 @@ export class ChoiceRequest {
       this.default = 0;
     }
 
-    this.biased = opts?.biased ?? false;
+    this.bias = opts?.bias ?? null;
   }
 
   isValid(n: number): boolean {
@@ -76,7 +69,29 @@ export class ChoiceRequest {
 }
 
 /**
- * Iterates over choices that are stored in an array.
+ * An iterator over a infinite stream of choices.
+ *
+ * Each choice is represented as a safe integer that's selected from a range
+ * specified by a {@link ChoiceRequest}.
+ *
+ * This interface is typically implemented using a random number generator, but
+ * any scheme may be used.
+ */
+export interface Choices {
+  /** Returns the next choice from the stream. */
+  next(req: ChoiceRequest): number;
+}
+
+export const alwaysChooseDefault: Choices = { next: (req) => req.default };
+
+/**
+ * Answers to choice requests that are stored in an array.
+ *
+ * If a choice doesn't match a request, it recovers by skipping items until a
+ * match is found, or returning the request's default value. As a result, a
+ * parse should always succeed, but may return a different value than expected.
+ *
+ * To check for a parse error, see {@link failed} and {@link errorOffset}.
  */
 export class ArrayChoices implements Choices {
   offset: number = 0;

@@ -156,7 +156,30 @@ export function chosenInt(min: number, max: number): Arbitrary<number> {
  * Returns an integer between min and max, chosen with bias towards special cases.
  */
 export function biasedInt(min: number, max: number): Arbitrary<number> {
-  const req = new ChoiceRequest(min, max, { biased: true });
+  if (max - min <= 10) {
+    return chosenInt(min, max);
+  }
+  function pickBiased(
+    uniform: (min: number, max: number) => number,
+  ): number {
+    switch (uniform(0, 15)) {
+      case 0:
+        return req.min;
+      case 1:
+        return req.max;
+      case 2:
+        if (min <= 0 && max >= 0) return 0;
+        break;
+      case 3:
+        if (min <= 1 && max >= 1) return 1;
+        break;
+      case 4:
+        if (min <= -1 && max >= -1) return -1;
+    }
+    return uniform(min, max);
+  }
+
+  const req = new ChoiceRequest(min, max, { bias: pickBiased });
   return new Arbitrary((it) => it.next(req));
 }
 

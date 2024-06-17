@@ -6,28 +6,17 @@ import { ChoiceRequest, Choices } from "./choices.ts";
  */
 export class RandomChoices implements Choices {
   readonly seed;
-  private readonly rng: prand.RandomGenerator;
+  private readonly uniform: (min: number, max: number) => number;
 
   constructor(opts?: { seed: number }) {
     this.seed = opts?.seed ?? Date.now() ^ (Math.random() * 0x100000000);
-    this.rng = prand.xoroshiro128plus(this.seed);
-  }
-
-  private choose(min: number, max: number): number {
-    return prand.unsafeUniformIntDistribution(min, max, this.rng);
+    const rng = prand.xoroshiro128plus(this.seed);
+    this.uniform = (min, max) =>
+      prand.unsafeUniformIntDistribution(min, max, rng);
   }
 
   next(req: ChoiceRequest): number {
-    if (!req.biased && req.max - req.min >= 9) {
-      switch (this.choose(1, 20)) {
-        case 1:
-          return req.default;
-        case 2:
-          return req.min;
-        case 3:
-          return req.max;
-      }
-    }
-    return this.choose(req.min, req.max);
+    if (req.bias) return req.bias(this.uniform);
+    return this.uniform(req.min, req.max);
   }
 }
