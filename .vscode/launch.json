@@ -1,0 +1,24 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "request": "launch",
+            "name": "Debug Runner Test",
+            "type": "node",
+            "program": "${workspaceFolder}/test/runner_test.ts",
+            "cwd": "${workspaceFolder}",
+            "env": {},
+            "runtimeExecutable": "/Users/skybrian/.deno/bin/deno",
+            "runtimeArgs": [
+                "test",
+                "--inspect-brk",
+                "--allow-all"
+            ],
+            "attachSimplePort": 9229,
+            "outputCapture": "std",
+        }
+    ]
+}
