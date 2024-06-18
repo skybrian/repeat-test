@@ -6,22 +6,7 @@ import { Arbitrary, RETRY } from "../src/arbitraries.ts";
 import * as arb from "../src/arbitraries.ts";
 import TestRunner from "../src/simple_runner.ts";
 
-function checkParses<T>(arb: Arbitrary<T>, choices: number[], expected: T) {
-  assertEquals(arb.parse(choices), { ok: true, value: expected });
-}
-
-function checkParseFails<T>(
-  arb: Arbitrary<T>,
-  choices: number[],
-  guess: T,
-  expectedErrorOffset: number,
-) {
-  assertEquals(arb.parse(choices), {
-    ok: false,
-    guess,
-    errorOffset: expectedErrorOffset,
-  });
-}
+import { assertParseFails, assertParses } from "../src/asserts.ts";
 
 const runner = new TestRunner();
 const oneToSix = new ChoiceRequest(1, 6);
@@ -45,29 +30,46 @@ describe("Arbitrary", () => {
       });
     });
   });
+  describe("map", () => {
+    it("changes the default", () => {
+      const req = new ChoiceRequest(1, 6, { default: 3 });
+      const original = new Arbitrary((it) => it.next(req));
+      assertEquals(original.default, 3);
+
+      const mapped = original.map((n) => n * 2);
+      assertEquals(mapped.default, 6);
+    });
+  });
 });
 
 function intRangeTests(
-  f: (min: number, max: number) => Arbitrary<number>,
+  f: (
+    min: number,
+    max: number,
+    opts?: { default?: number },
+  ) => Arbitrary<number>,
 ) {
+  it("should default to min for positive numbers", () => {
+    assertEquals(f(1, 6).default, 1);
+  });
+  it("should default to max for negative numbers", () => {
+    assertEquals(f(-6, -1).default, -1);
+  });
+  it("should default to 0 for a range that includes 0", () => {
+    assertEquals(f(-6, 6).default, 0);
+  });
+  it("should default to a custom default value", () => {
+    assertEquals(f(1, 6, { default: 3 }).default, 3);
+  });
   it("should accept numbers in range", () => {
     for (let i = 1; i < 6; i++) {
-      checkParses(f(1, 6), [i], i);
+      assertParses(f(1, 6), [i], i);
     }
   });
   it("should reject numbers out of range", () => {
     for (const n of [-1, 0, 7]) {
-      checkParseFails(f(1, 6), [n], 1, 0);
+      assertParseFails(f(1, 6), [n], 1, 0);
     }
-  });
-  it("should default to min for positive numbers", () => {
-    checkParseFails(f(1, 6), [], 1, 0);
-  });
-  it("should default to max for negative numbers", () => {
-    checkParseFails(f(-6, -1), [], -1, 0);
-  });
-  it("should default to 0 for a range that includes 0", () => {
-    checkParseFails(f(-6, 6), [], 0, 0);
   });
 }
 
@@ -81,13 +83,13 @@ describe("biasedInt", () => {
 
 describe("boolean", () => {
   it("should default to false", () => {
-    checkParseFails(arb.boolean, [], false, 0);
+    assertParseFails(arb.boolean, [], false, 0);
   });
   it("should parse a 0 as false", () => {
-    checkParses(arb.boolean, [0], false);
+    assertParses(arb.boolean, [0], false);
   });
   it("should parse a 1 as true", () => {
-    checkParses(arb.boolean, [1], true);
+    assertParses(arb.boolean, [1], true);
   });
 });
 
@@ -95,14 +97,14 @@ describe("example", () => {
   const oneWay = arb.example([1]);
   const twoWay = arb.example([1, 2]);
   it("shouldn't ask for a decision when there's only one example", () => {
-    checkParses(oneWay, [], 1);
+    assertParses(oneWay, [], 1);
   });
   it("should default to the first example", () => {
-    checkParseFails(twoWay, [], 1, 0);
+    assertParseFails(twoWay, [], 1, 0);
   });
   it("should select the next example using the next item in the stream", () => {
-    checkParses(twoWay, [0], 1);
-    checkParses(twoWay, [1], 2);
+    assertParses(twoWay, [0], 1);
+    assertParses(twoWay, [1], 2);
   });
 });
 
@@ -116,23 +118,23 @@ describe("oneOf", () => {
     arb.chosenInt(5, 6),
   ]);
   it("should default to the first branch", () => {
-    checkParseFails(oneWay, [], 1, 0);
-    checkParseFails(threeWay, [], 1, 0);
+    assertParseFails(oneWay, [], 1, 0);
+    assertParseFails(threeWay, [], 1, 0);
   });
   it("shouldn't ask for a decision when there's only one branch", () => {
-    checkParses(oneWay, [1], 1);
+    assertParses(oneWay, [1], 1);
   });
   it("should select a branch using the next item in the stream", () => {
-    checkParses(threeWay, [0, 1], 1);
-    checkParses(threeWay, [1, 3], 3);
-    checkParses(threeWay, [2, 5], 5);
+    assertParses(threeWay, [0, 1], 1);
+    assertParses(threeWay, [1, 3], 3);
+    assertParses(threeWay, [2, 5], 5);
   });
 });
 
 describe("record", () => {
   describe("for an empty record shape", () => {
     it("returns it without needing a decision", () => {
-      checkParses(arb.record({}), [], {});
+      assertParses(arb.record({}), [], {});
     });
   });
   describe("for a constant record shape", () => {
@@ -141,7 +143,7 @@ describe("record", () => {
       b: arb.example([2]),
     });
     it("returns it without needing a decision", () => {
-      checkParses(example, [], { a: 1, b: 2 });
+      assertParses(example, [], { a: 1, b: 2 });
     });
   });
   describe("for a record that requires a decision", () => {
@@ -149,7 +151,7 @@ describe("record", () => {
       a: arb.chosenInt(1, 2),
     });
     it("defaults to using the default value of the field", () => {
-      checkParseFails(oneField, [], { a: 1 }, 0);
+      assertParseFails(oneField, [], { a: 1 }, 0);
     });
   });
   describe("for a record that requires multiple decisions", () => {
@@ -158,7 +160,7 @@ describe("record", () => {
       b: arb.chosenInt(3, 4),
     });
     it("reads decisions ordered by its keys", () => {
-      checkParses(example, [1, 3], { a: 1, b: 3 });
+      assertParses(example, [1, 3], { a: 1, b: 3 });
     });
   });
 });

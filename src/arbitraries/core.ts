@@ -167,17 +167,25 @@ export class Arbitrary<T> {
 /**
  * Returns an integer between min and max, chosen arbitrarily.
  */
-export function chosenInt(min: number, max: number): Arbitrary<number> {
-  const req = new ChoiceRequest(min, max);
+export function chosenInt(
+  min: number,
+  max: number,
+  opts?: { default?: number },
+): Arbitrary<number> {
+  const req = new ChoiceRequest(min, max, opts);
   return new Arbitrary((it) => it.next(req));
 }
 
 /**
  * Returns an integer between min and max, chosen with bias towards special cases.
  */
-export function biasedInt(min: number, max: number): Arbitrary<number> {
+export function biasedInt(
+  min: number,
+  max: number,
+  opts?: { default?: number },
+): Arbitrary<number> {
   if (max - min <= 10) {
-    return chosenInt(min, max);
+    return chosenInt(min, max, opts);
   }
   function pickBiased(
     uniform: (min: number, max: number) => number,
@@ -188,18 +196,20 @@ export function biasedInt(min: number, max: number): Arbitrary<number> {
       case 1:
         return req.max;
       case 2:
+        return req.default;
+      case 3:
         if (min <= 0 && max >= 0) return 0;
         break;
-      case 3:
+      case 4:
         if (min <= 1 && max >= 1) return 1;
         break;
-      case 4:
+      case 5:
         if (min <= -1 && max >= -1) return -1;
     }
     return uniform(min, max);
   }
 
-  const req = new ChoiceRequest(min, max, { bias: pickBiased });
+  const req = new ChoiceRequest(min, max, { ...opts, bias: pickBiased });
   return new Arbitrary((it) => it.next(req));
 }
 
@@ -231,4 +241,20 @@ export function oneOf<T>(alternatives: Arbitrary<T>[]): Arbitrary<T> {
     return alternatives[0];
   }
   return example(alternatives).chain((choice) => choice);
+}
+
+export function array<T>(
+  item: Arbitrary<T>,
+  opts?: { min: number; max: number },
+): Arbitrary<T[]> {
+  const minLength = opts?.min ?? 0;
+  const maxLength = opts?.max ?? 10;
+  return custom((it) => {
+    const length = it.gen(biasedInt(minLength, maxLength));
+    const result: T[] = [];
+    for (let i = 0; i < length; i++) {
+      result.push(it.gen(item));
+    }
+    return result;
+  });
 }
