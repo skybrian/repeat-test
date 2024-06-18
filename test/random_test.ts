@@ -1,10 +1,10 @@
 import { describe, it } from "@std/testing/bdd";
 import { fail } from "@std/assert";
 
-import { BiasedPicker, Picker, PickRequest } from "../src/picks.ts";
+import { BiasedPicker, NumberPicker, PickRequest } from "../src/picks.ts";
 import { RandomPicker } from "../src/random.ts";
 
-function checkReturnsAllNumbers(picker: Picker, req: PickRequest) {
+function checkReturnsAllNumbers(picker: NumberPicker, req: PickRequest) {
   const size = req.max - req.min + 1;
   const expected = new Array(size).fill(0).map((_, i) => i + req.min);
   const counts = new Array(size).fill(0);

@@ -97,11 +97,11 @@ export class PickRequest {
  *
  * Invariant: req.isValidReply(result).
  */
-export interface Picker {
+export interface NumberPicker {
   pick(req: PickRequest): number;
 }
 
-export const alwaysChooseDefault: Picker = { pick: (req) => req.default };
+export const alwaysChooseDefault: NumberPicker = { pick: (req) => req.default };
 
 /**
  * Answers pick requests using predetermined replies, when possible.
@@ -111,7 +111,7 @@ export const alwaysChooseDefault: Picker = { pick: (req) => req.default };
  *
  * To check for an error, see {@link failed} and {@link errorOffset}.
  */
-export class ArrayPicker implements Picker {
+export class ArrayPicker implements NumberPicker {
   offset: number = 0;
   errorOffset: number | null = null;
 

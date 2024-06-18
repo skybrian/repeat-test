@@ -1,13 +1,13 @@
 import {
   alwaysChooseDefault,
   ArrayPicker,
-  Picker,
+  NumberPicker,
   PickRequest,
 } from "../picks.ts";
 
-export class Generator implements Picker {
+export class Generator implements NumberPicker {
   constructor(
-    private readonly picker: Picker,
+    private readonly picker: NumberPicker,
     readonly maxTries: number,
   ) {
     if (this.maxTries < 1 || !Number.isSafeInteger(maxTries)) {
@@ -15,11 +15,12 @@ export class Generator implements Picker {
     }
   }
 
-  pick(req: PickRequest): number {
-    return this.picker.pick(req);
-  }
-
-  gen<T>(req: Arbitrary<T>): T {
+  pick<T>(req: PickRequest): number;
+  pick<T>(req: Arbitrary<T>): T;
+  pick<T>(req: PickRequest | Arbitrary<T>): number | T {
+    if (req instanceof PickRequest) {
+      return this.picker.pick(req);
+    }
     for (let tries = 0; tries < this.maxTries; tries++) {
       const parsed = req.callback(this);
       if (parsed !== RETRY) {
@@ -32,11 +33,11 @@ export class Generator implements Picker {
 
 export function generate<T>(
   arb: Arbitrary<T>,
-  picker: Picker,
+  picker: NumberPicker,
   maxTries: number,
 ): T {
   const gen = new Generator(picker, maxTries);
-  return gen.gen(arb);
+  return gen.pick(arb);
 }
 
 export const RETRY = Symbol("retry");
@@ -81,7 +82,7 @@ export type ParseFailure<T> = {
  * A request for an arbitrary value, taken from a set.
  *
  * An Arbitrary's *output set* is the set of values it can return. Its input is
- * a stream of picks. (See {@link Picker}.) We can think of it as a parser
+ * a stream of picks. (See {@link NumberPicker}.) We can think of it as a parser
  * that converts a stream of picks into a value.
  */
 export class Arbitrary<T> {
@@ -123,7 +124,10 @@ export class Arbitrary<T> {
    * different value. (The default value is also changed.)
    */
   map<U>(convert: (val: T) => U): Arbitrary<U> {
-    return new Arbitrary((it) => convert(it.gen(this)));
+    return new Arbitrary((it) => {
+      const choice = it.pick(this);
+      return convert(choice);
+    });
   }
 
   /**
@@ -152,8 +156,8 @@ export class Arbitrary<T> {
     convert: (val: T) => Arbitrary<U>,
   ): Arbitrary<U> {
     return new Arbitrary((it) => {
-      const val = it.gen(this);
-      return it.gen(convert(val));
+      const val = it.pick(this);
+      return it.pick(convert(val));
     });
   }
 
@@ -254,10 +258,10 @@ export function array<T>(
   const minLength = opts?.min ?? 0;
   const maxLength = opts?.max ?? 10;
   return custom((it) => {
-    const length = it.gen(biasedInt(minLength, maxLength));
+    const length = it.pick(biasedInt(minLength, maxLength));
     const result: T[] = [];
     for (let i = 0; i < length; i++) {
-      result.push(it.gen(item));
+      result.push(it.pick(item));
     }
     return result;
   });

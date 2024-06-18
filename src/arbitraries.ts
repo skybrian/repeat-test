@@ -9,7 +9,7 @@ type AnyTuple = unknown[];
 export function tuple<T extends AnyTuple>(
   ...items: { [K in keyof T]: Arbitrary<T[K]> }
 ): Arbitrary<T> {
-  return custom((it) => items.map((item) => it.gen(item)) as T);
+  return custom((it) => items.map((item) => it.pick(item)) as T);
 }
 
 type AnyRecord = Record<string, unknown>;
@@ -22,7 +22,7 @@ export function record<T extends AnyRecord>(
     const keys = Object.keys(shape) as (keyof T)[];
     const result = {} as Partial<T>;
     for (const key of keys) {
-      result[key] = it.gen(shape[key]);
+      result[key] = it.pick(shape[key]);
     }
     return result as T;
   });

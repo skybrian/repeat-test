@@ -16,8 +16,8 @@ export const invalidRange = arb.oneOf<Range>([
 export const validRange = arb.oneOf<Range>([
   arb.example([{ min: 0, max: 0 }, { min: 0, max: 1 }]),
   arb.custom((it) => {
-    const extras = it.gen(arb.biasedInt(0, 100));
-    const min = it.gen(
+    const extras = it.pick(arb.biasedInt(0, 100));
+    const min = it.pick(
       arb.biasedInt(Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER - extras),
     );
     const max = min + extras;
@@ -27,12 +27,12 @@ export const validRange = arb.oneOf<Range>([
 
 export const validRequest = arb.oneOf<PickRequest>([
   arb.custom((it) => {
-    const { min, max } = it.gen(validRange);
+    const { min, max } = it.pick(validRange);
     return new PickRequest(min, max);
   }),
   arb.custom((it) => {
-    const { min, max } = it.gen(validRange);
-    const def = it.gen(arb.biasedInt(min, max));
+    const { min, max } = it.pick(validRange);
+    const def = it.pick(arb.biasedInt(min, max));
     return new PickRequest(min, max, { default: def });
   }),
 ]);
@@ -46,8 +46,8 @@ describe("PickRequest", () => {
     });
     it("throws when given an invalid default", () => {
       const example = arb.custom((it) => {
-        const { min, max } = it.gen(validRange);
-        const def = it.gen(
+        const { min, max } = it.pick(validRange);
+        const def = it.pick(
           arb.oneOf([arb.nonInteger, arb.intOutsideRange(min, max)]),
         );
         return { min, max, def };
@@ -74,8 +74,8 @@ describe("PickRequest", () => {
     });
     it("returns the overridden default when given", () => {
       const example = arb.custom((it) => {
-        const { min, max } = it.gen(validRange);
-        const def = it.gen(arb.biasedInt(min, max));
+        const { min, max } = it.pick(validRange);
+        const def = it.pick(arb.biasedInt(min, max));
         return { min, max, def };
       });
       repeatTest(example, ({ min, max, def }) => {
@@ -102,8 +102,8 @@ describe("ArrayPicker", () => {
       describe("when the pick is valid", () => {
         it("returns it", () => {
           const example = arb.custom((it) => {
-            const req = it.gen(validRequest);
-            const n = it.gen(arb.biasedInt(req.min, req.max));
+            const req = it.pick(validRequest);
+            const n = it.pick(arb.biasedInt(req.min, req.max));
             const stream = new ArrayPicker([n]);
             return { req, n, stream };
           });
@@ -115,8 +115,8 @@ describe("ArrayPicker", () => {
       describe("when the pick is invalid", () => {
         it("chooses the request's default and fails", () => {
           const example = arb.custom((it) => {
-            const req = it.gen(validRequest);
-            const n = it.gen(arb.intOutsideRange(req.min, req.max));
+            const req = it.pick(validRequest);
+            const n = it.pick(arb.intOutsideRange(req.min, req.max));
             const stream = new ArrayPicker([n]);
             return { req, stream };
           });
