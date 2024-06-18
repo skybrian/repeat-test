@@ -1,4 +1,4 @@
-import { Picker } from "./choices.ts";
+import { Picker } from "./picks.ts";
 import { RandomPicker } from "./random.ts";
 import { Arbitrary, ArbitraryInput } from "./arbitraries.ts";
 

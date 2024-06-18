@@ -1,5 +1,5 @@
 import prand from "pure-rand";
-import { Picker, PickRequest } from "./choices.ts";
+import { Picker, PickRequest } from "./picks.ts";
 
 /**
  * Picks randomly from the requested distribution.

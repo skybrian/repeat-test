@@ -3,7 +3,7 @@ import {
   ArrayPicker,
   Picker,
   PickRequest,
-} from "../choices.ts";
+} from "../picks.ts";
 
 export class ArbitraryInput {
   constructor(

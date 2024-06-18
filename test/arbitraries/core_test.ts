@@ -1,7 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 
-import { PickRequest } from "../../src/choices.ts";
+import { PickRequest } from "../../src/picks.ts";
 import { Arbitrary, RETRY } from "../../src/arbitraries.ts";
 import * as arb from "../../src/arbitraries.ts";
 import TestRunner from "../../src/simple_runner.ts";

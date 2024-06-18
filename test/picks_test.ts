@@ -3,7 +3,7 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import * as arb from "../src/arbitraries.ts";
 import TestRunner from "../src/simple_runner.ts";
 
-import { ArrayPicker, PickRequest } from "../src/choices.ts";
+import { ArrayPicker, PickRequest } from "../src/picks.ts";
 
 const runner = new TestRunner();
 
