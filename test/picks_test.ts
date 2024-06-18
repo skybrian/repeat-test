@@ -1,11 +1,9 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import * as arb from "../src/arbitraries.ts";
-import TestRunner from "../src/simple_runner.ts";
+import { repeatTest } from "../src/simple_runner.ts";
 
 import { ArrayPicker, PickRequest } from "../src/picks.ts";
-
-const runner = new TestRunner();
 
 export type Range = { min: number; max: number };
 
@@ -42,7 +40,7 @@ export const validRequest = arb.oneOf<PickRequest>([
 describe("PickRequest", () => {
   describe("constructor", () => {
     it("throws when given an invalid range", () => {
-      runner.repeat(invalidRange, ({ min, max }) => {
+      repeatTest(invalidRange, ({ min, max }) => {
         assertThrows(() => new PickRequest(min, max));
       });
     });
@@ -54,14 +52,14 @@ describe("PickRequest", () => {
         );
         return { min, max, def };
       });
-      runner.repeat(example, ({ min, max, def }) => {
+      repeatTest(example, ({ min, max, def }) => {
         assertThrows(() => new PickRequest(min, max, { default: def }));
       });
     });
   });
   describe("default", () => {
     it("returns the number closest to zero when not overridden", () => {
-      runner.repeat(validRange, ({ min, max }) => {
+      repeatTest(validRange, ({ min, max }) => {
         const request = new PickRequest(min, max);
         assert(request.default >= min);
         assert(request.default <= max);
@@ -80,7 +78,7 @@ describe("PickRequest", () => {
         const def = it.gen(arb.biasedInt(min, max));
         return { min, max, def };
       });
-      runner.repeat(example, ({ min, max, def }) => {
+      repeatTest(example, ({ min, max, def }) => {
         const request = new PickRequest(min, max, { default: def });
         assertEquals(request.default, def);
       });
@@ -93,7 +91,7 @@ describe("ArrayPicker", () => {
     describe("for an empty array", () => {
       const stream = new ArrayPicker([]);
       it("chooses the request's default and fails", () => {
-        runner.repeat(validRequest, (req) => {
+        repeatTest(validRequest, (req) => {
           assertEquals(stream.pick(req), req.default);
           assert(stream.failed);
           assertEquals(stream.errorOffset, 0);
@@ -109,7 +107,7 @@ describe("ArrayPicker", () => {
             const stream = new ArrayPicker([n]);
             return { req, n, stream };
           });
-          runner.repeat(example, ({ req, n, stream }) => {
+          repeatTest(example, ({ req, n, stream }) => {
             assertEquals(stream.pick(req), n);
           });
         });
@@ -122,7 +120,7 @@ describe("ArrayPicker", () => {
             const stream = new ArrayPicker([n]);
             return { req, stream };
           });
-          runner.repeat(example, ({ req, stream }) => {
+          repeatTest(example, ({ req, stream }) => {
             assertEquals(stream.pick(req), req.default);
             assert(stream.failed);
             assertEquals(stream.errorOffset, 0);

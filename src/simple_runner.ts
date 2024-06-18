@@ -2,6 +2,9 @@ import { Picker } from "./picks.ts";
 import { RandomPicker } from "./random.ts";
 import { Arbitrary, ArbitraryInput } from "./arbitraries.ts";
 
+const defaultReps = 1000;
+const defaultFilterLimit = 1000;
+
 /**
  * Generates an infinite stream of test data from an arbitrary.
  *
@@ -12,7 +15,7 @@ export function* testDataStream<T>(
   opts?: { picker?: Picker; filterLimit?: number },
 ): IterableIterator<T> {
   const picker = opts?.picker ?? new RandomPicker();
-  const maxTries = opts?.filterLimit ?? 100;
+  const maxTries = opts?.filterLimit ?? defaultFilterLimit;
   const input = new ArbitraryInput(picker, maxTries);
   while (true) {
     yield input.gen(arb);
@@ -20,9 +23,22 @@ export function* testDataStream<T>(
 }
 
 /**
+ * A test function that takes generated input.
+ */
+export type TestFunction<T> = (input: T) => void;
+
+/**
+ * Options to {@link repeatTest}.
+ */
+export type RepeatOptions = {
+  /** The number of times to run the test. If not specified, defaults to 1000. */
+  reps?: number;
+};
+
+/**
  * Runs test functions with randomly generated input.
  */
-export default class TestRunner {
+export class TestRunner {
   readonly seed;
   readonly defaultReps;
   readonly filterLimit;
@@ -33,22 +49,15 @@ export default class TestRunner {
     opts?: { seed?: number; defaultReps: number; filterLimit?: number },
   ) {
     this.seed = opts?.seed ?? Date.now() ^ (Math.random() * 0x100000000);
-    this.defaultReps = opts?.defaultReps ?? 100;
-    this.filterLimit = opts?.filterLimit ?? 100;
+    this.defaultReps = opts?.defaultReps ?? defaultReps;
+    this.filterLimit = opts?.filterLimit ?? defaultFilterLimit;
     this.random = new RandomPicker({ seed: this.seed });
   }
 
-  /**
-   * Runs a test function repeatedly with randomly generated input.
-   * @param input An arbitrary used to generate the input.
-   * @param test A test function that requires input.
-   * @param opts.reps The number of times to run the test. If not specified
-   * either here or in the constructor, defaults to 100.
-   */
   repeat<T>(
     input: Arbitrary<T>,
-    test: (input: T) => void,
-    opts?: { reps?: number },
+    test: TestFunction<T>,
+    opts?: RepeatOptions,
   ): void {
     const reps = opts?.reps ?? this.defaultReps;
 
@@ -79,4 +88,22 @@ export default class TestRunner {
       }
     }
   }
+}
+
+const runner = new TestRunner();
+
+/**
+ * Runs a test function repeatedly with randomly generated input.
+ *
+ * @param input An arbitrary used to generate the input.
+ * @param test A test function that requires input.
+ * @param opts.reps The number of times to run the test. If not specified
+ * either here or in the constructor, defaults to 1000.
+ */
+export function repeatTest<T>(
+  input: Arbitrary<T>,
+  test: TestFunction<T>,
+  opts?: RepeatOptions,
+): void {
+  runner.repeat(input, test, opts);
 }

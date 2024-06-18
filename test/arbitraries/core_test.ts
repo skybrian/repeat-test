@@ -4,11 +4,10 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { PickRequest } from "../../src/picks.ts";
 import { Arbitrary, RETRY } from "../../src/arbitraries.ts";
 import * as arb from "../../src/arbitraries.ts";
-import TestRunner from "../../src/simple_runner.ts";
+import { repeatTest } from "../../src/simple_runner.ts";
 
 import { assertParseFails, assertParses } from "../../src/asserts.ts";
 
-const runner = new TestRunner();
 const oneToSix = new PickRequest(1, 6);
 const sixSided = new Arbitrary((it) => it.next(oneToSix));
 
@@ -25,7 +24,7 @@ describe("Arbitrary", () => {
     });
     it("filters out values that don't satisfy the predicate", () => {
       const not3 = sixSided.filter((n) => n !== 3);
-      runner.repeat(not3, (n) => {
+      repeatTest(not3, (n) => {
         assert(n !== 3);
       });
     });

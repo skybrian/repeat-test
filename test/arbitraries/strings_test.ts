@@ -1,12 +1,10 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals, fail } from "@std/assert";
 import { assertParses } from "../../src/asserts.ts";
-import TestRunner from "../../src/simple_runner.ts";
+import { repeatTest } from "../../src/simple_runner.ts";
 import { isWellFormed } from "../../src/workarounds.ts";
 
 import * as arb from "../../src/arbitraries.ts";
-
-const runner = new TestRunner();
 
 describe("char16", () => {
   it("should default to 'x'", () => {
@@ -47,7 +45,7 @@ describe("unicodeChar", () => {
     assertEquals(arb.unicodeChar.default, "x");
   });
   it("should always return a well-formed string", () => {
-    runner.repeat(arb.unicodeChar, (str) => {
+    repeatTest(arb.unicodeChar, (str) => {
       assertEquals(
         isWellFormed(str),
         true,
@@ -68,7 +66,7 @@ describe("wellFormedString", () => {
     assertParses(arb.wellFormedString(), [1, 0x1FA97 - surrogateGap], "🪗");
   });
   it("should always return a well-formed string", () => {
-    runner.repeat(arb.wellFormedString(), (str) => {
+    repeatTest(arb.wellFormedString(), (str) => {
       assertEquals(
         isWellFormed(str),
         true,
