@@ -2,6 +2,7 @@ import { describe, it } from "@std/testing/bdd";
 import { assertEquals, fail } from "@std/assert";
 import { assertParses } from "../../src/asserts.ts";
 import TestRunner from "../../src/simple_runner.ts";
+import { isWellFormed } from "../../src/workarounds.ts";
 
 import * as arb from "../../src/arbitraries.ts";
 
@@ -34,15 +35,6 @@ describe("anyString", () => {
     assertParses(arb.anyString(), [1, 0xD800], "\uD800");
   });
 });
-
-// Workaround for https://github.com/denoland/deno/issues/24238
-interface ExtraStringMethods {
-  isWellFormed(): boolean;
-}
-
-function isWellFormed(str: string): boolean {
-  return (str as unknown as ExtraStringMethods).isWellFormed();
-}
 
 function codeUnits(str: string): string[] {
   return [...str].map((c) => c.charCodeAt(0).toString(16));
