@@ -75,16 +75,16 @@ export type ParseFailure<T> = {
  */
 export class Arbitrary<T> {
   /**
-   * @param callback reads any number of choices from the stream
-   * and returns a value. It should be deterministic and always finish.
+   * @param callback reads any number of choices from the stream and returns a
+   * value. It should be deterministic and always finish.
    */
   constructor(private readonly callback: ParseFunction<T>) {
     calculateDefault(callback); // dry run; throws exception if invalid
   }
 
   /**
-   * The default value of an Arbitrary. This is whatever {@link parse} returns when
-   * we choose the default for each request.
+   * The default value of an Arbitrary. This is whatever {@link parse} returns
+   * when we choose the default for each request.
    */
   get default(): T {
     return calculateDefault(this.callback); // a clone, in case it's mutable
@@ -177,7 +177,8 @@ export function chosenInt(
 }
 
 /**
- * Returns an integer between min and max, chosen with bias towards special cases.
+ * Returns an integer between min and max, chosen with bias towards special
+ * cases.
  */
 export function biasedInt(
   min: number,
@@ -215,7 +216,8 @@ export function biasedInt(
 
 /**
  * Creates a custom arbitrary, given a parse callback.
- * @param parse a deterministic function that takes a Choices iterator and returns a value.
+ * @param parse a deterministic function that takes a Choices iterator and
+ * returns a value.
  */
 export function custom<T>(parse: (it: ArbitraryInput) => T) {
   return new Arbitrary((it) => parse(it));
