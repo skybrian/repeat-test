@@ -5,7 +5,7 @@ import {
   PickRequest,
 } from "../picks.ts";
 
-export class ArbitraryInput {
+export class Generator implements Picker {
   constructor(
     private readonly picker: Picker,
     readonly maxTries: number,
@@ -20,8 +20,23 @@ export class ArbitraryInput {
   }
 
   gen<T>(req: Arbitrary<T>): T {
-    return req.generate(this);
+    for (let tries = 0; tries < this.maxTries; tries++) {
+      const parsed = req.callback(this);
+      if (parsed !== RETRY) {
+        return parsed;
+      }
+    }
+    throw new Error(`Failed to generate ${this} after ${this.maxTries} tries`);
   }
+}
+
+export function generate<T>(
+  arb: Arbitrary<T>,
+  picker: Picker,
+  maxTries: number,
+): T {
+  const gen = new Generator(picker, maxTries);
+  return gen.gen(arb);
 }
 
 export const RETRY = Symbol("retry");
@@ -41,10 +56,10 @@ export const RETRY = Symbol("retry");
  * default values. Returning `RETRY` as the default value is a programming
  * error.
  */
-export type ParseFunction<T> = (input: ArbitraryInput) => T | typeof RETRY;
+export type ParseFunction<T> = (input: Generator) => T | typeof RETRY;
 
 function calculateDefault<T>(parse: ParseFunction<T>): T {
-  const def = parse(new ArbitraryInput(alwaysChooseDefault, 1));
+  const def = parse(new Generator(alwaysChooseDefault, 1));
   if (def === RETRY) {
     throw new Error("parse function must return a default value");
   }
@@ -74,7 +89,7 @@ export class Arbitrary<T> {
    * @param callback reads any number of picks from the stream and either
    * returns a value or RETRY. It should be deterministic and always finish.
    */
-  constructor(private readonly callback: ParseFunction<T>) {
+  constructor(readonly callback: ParseFunction<T>) {
     calculateDefault(callback); // dry run; throws exception if invalid
   }
 
@@ -94,24 +109,13 @@ export class Arbitrary<T> {
    */
   parse(picks: number[]): ParseSuccess<T> | ParseFailure<T> {
     const input = new ArrayPicker(picks);
-    const val = new ArbitraryInput(input, 1).gen(this);
+    const val = generate(this, input, 1);
     if (val === RETRY) {
       return { ok: false, guess: this.default, errorOffset: input.offset };
     } else if (input.failed) {
       return { ok: false, guess: val, errorOffset: input.errorOffset! };
     }
     return { ok: true, value: val };
-  }
-
-  /** Attempts to generate a value, backtracking if needed. */
-  generate(input: ArbitraryInput): T {
-    for (let tries = 0; tries < input.maxTries; tries++) {
-      const parsed = this.callback(input);
-      if (parsed !== RETRY) {
-        return parsed;
-      }
-    }
-    throw new Error(`Failed to generate ${this} after ${input.maxTries} tries`);
   }
 
   /**
@@ -217,7 +221,7 @@ export function biasedInt(
  * The callback must always succeed, but see {@link Arbitrary.filter} for a way
  * to do backtracking in a subrequest.
  */
-export function custom<T>(generate: (it: ArbitraryInput) => T) {
+export function custom<T>(generate: (it: Generator) => T) {
   return new Arbitrary((it) => generate(it));
 }
 
