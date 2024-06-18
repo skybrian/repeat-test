@@ -1,6 +1,6 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals, fail } from "@std/assert";
-import { assertParseFails, assertParses } from "../../src/asserts.ts";
+import { assertParses } from "../../src/asserts.ts";
 import TestRunner from "../../src/simple_runner.ts";
 
 import * as arb from "../../src/arbitraries.ts";
@@ -27,8 +27,11 @@ describe("anyString", () => {
   it("should default to an empty string", () => {
     assertEquals(arb.anyString().default, "");
   });
-  it("should parse a string", () => {
+  it("should parse ascii characters", () => {
     assertParses(arb.anyString(), [2, 0x20, 0x21], " !");
+  });
+  it("should parse an unpaired surrogate", () => {
+    assertParses(arb.anyString(), [1, 0xD800], "\uD800");
   });
 });
 
@@ -41,19 +44,44 @@ function isWellFormed(str: string): boolean {
   return (str as unknown as ExtraStringMethods).isWellFormed();
 }
 
+function codeUnits(str: string): string[] {
+  return [...str].map((c) => c.charCodeAt(0).toString(16));
+}
+
+const surrogateGap = 0xdfff - 0xd800 + 1;
+
+describe("unicodeChar", () => {
+  it("should default to 'x'", () => {
+    assertEquals(arb.unicodeChar.default, "x");
+  });
+  it("should always return a well-formed string", () => {
+    runner.repeat(arb.unicodeChar, (str) => {
+      assertEquals(
+        isWellFormed(str),
+        true,
+        `not well-formed: ${codeUnits(str)}`,
+      );
+    });
+  });
+});
+
 describe("wellFormedString", () => {
   it("should default to an empty string", () => {
     assertEquals(arb.wellFormedString().default, "");
   });
-  it("should parse a string", () => {
+  it("should parse ascii characters", () => {
     assertParses(arb.wellFormedString(), [2, 0x20, 0x21], " !");
   });
-  it("should not parse an unpaired surrogate", () => {
-    assertParseFails(arb.wellFormedString(), [0xD800], "", 0);
+  it("should parse an emoji", () => {
+    assertParses(arb.wellFormedString(), [1, 0x1FA97 - surrogateGap], "🪗");
   });
   it("should always return a well-formed string", () => {
     runner.repeat(arb.wellFormedString(), (str) => {
-      assertEquals(isWellFormed(str), true);
+      assertEquals(
+        isWellFormed(str),
+        true,
+        `not well-formed: ${codeUnits(str)}`,
+      );
     });
   });
 });

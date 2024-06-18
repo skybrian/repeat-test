@@ -247,7 +247,7 @@ export function oneOf<T>(alternatives: Arbitrary<T>[]): Arbitrary<T> {
 
 export function array<T>(
   item: Arbitrary<T>,
-  opts?: { min: number; max: number },
+  opts?: { min?: number; max?: number },
 ): Arbitrary<T[]> {
   const minLength = opts?.min ?? 0;
   const maxLength = opts?.max ?? 10;

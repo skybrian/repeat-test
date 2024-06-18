@@ -9,7 +9,7 @@ function checkReturnsAllNumbers(req: ChoiceRequest) {
   const size = req.max - req.min + 1;
   const expected = new Array(size).fill(0).map((_, i) => i + req.min);
   const counts = new Array(size).fill(0);
-  for (let i = 0; i < size * 10; i++) {
+  for (let i = 0; i < size * 20; i++) {
     const val = choices.next(req);
     if (!expected.includes(val)) {
       fail(`unexpected output from next(): ${val}`);
