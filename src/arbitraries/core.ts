@@ -1,13 +1,13 @@
 import {
   alwaysChooseDefault,
-  ArrayChoices,
-  ChoiceRequest,
-  Choices,
+  ArrayPicker,
+  Picker,
+  PickRequest,
 } from "../choices.ts";
 
 export class ArbitraryInput {
   constructor(
-    private readonly choices: Choices,
+    private readonly picker: Picker,
     readonly maxTries: number,
   ) {
     if (this.maxTries < 1 || !Number.isSafeInteger(maxTries)) {
@@ -15,8 +15,8 @@ export class ArbitraryInput {
     }
   }
 
-  next(req: ChoiceRequest): number {
-    return this.choices.next(req);
+  next(req: PickRequest): number {
+    return this.picker.pick(req);
   }
 
   gen<T>(req: Arbitrary<T>): T {
@@ -27,15 +27,15 @@ export class ArbitraryInput {
 export const RETRY = Symbol("retry");
 
 /**
- * A function that attempts to convert a stream of choices into a value.
+ * A function that attempts to convert a stream of picks into a value.
  *
  * If the parse succeeds, it returns the value. If it fails, it returns
  * {@link RETRY}. The caller should try again with a different (typically
- * randomly generated) input.
+ * randomly generated) picks.
  *
  * This is a way of implementing backtracking. A ParseFunction should return
  * `RETRY` instead of using a loop so that the caller knows not to record any
- * choices that led to a failed parse.
+ * picks that led to a failed parse.
  *
  * The *default value* of a parser is whatever it returns when its input is all
  * default values. Returning `RETRY` as the default value is a programming
@@ -66,17 +66,13 @@ export type ParseFailure<T> = {
  * A request for an arbitrary value, taken from a set.
  *
  * An Arbitrary's *output set* is the set of values it can return. Its input is
- * a stream of choices. (See {@link Choices}.) We can think of it as a parser
- * that converts a stream of choices into a value.
- *
- * Arbitraries can make subrequests by calling r.gen(), recursively making a
- * tree of requests. The leaf nodes will be either ChoiceRequests or Arbitraries
- * that return a constant.
+ * a stream of picks. (See {@link Picker}.) We can think of it as a parser
+ * that converts a stream of picks into a value.
  */
 export class Arbitrary<T> {
   /**
-   * @param callback reads any number of choices from the stream and returns a
-   * value. It should be deterministic and always finish.
+   * @param callback reads any number of picks from the stream and either
+   * returns a value or RETRY. It should be deterministic and always finish.
    */
   constructor(private readonly callback: ParseFunction<T>) {
     calculateDefault(callback); // dry run; throws exception if invalid
@@ -91,13 +87,13 @@ export class Arbitrary<T> {
   }
 
   /**
-   * Attempts to parse a prerecorded list of choices. All filters must succeed
+   * Attempts to parse a prerecorded list of picks. All filters must succeed
    * the first time, or the parse fails. (There is no backtracking.)
    *
    * This can be used to test what an Arbitrary accepts.
    */
-  parse(choices: number[]): ParseSuccess<T> | ParseFailure<T> {
-    const input = new ArrayChoices(choices);
+  parse(picks: number[]): ParseSuccess<T> | ParseFailure<T> {
+    const input = new ArrayPicker(picks);
     const val = new ArbitraryInput(input, 1).gen(this);
     if (val === RETRY) {
       return { ok: false, guess: this.default, errorOffset: input.offset };
@@ -172,7 +168,7 @@ export function chosenInt(
   max: number,
   opts?: { default?: number },
 ): Arbitrary<number> {
-  const req = new ChoiceRequest(min, max, opts);
+  const req = new PickRequest(min, max, opts);
   return new Arbitrary((it) => it.next(req));
 }
 
@@ -210,17 +206,19 @@ export function biasedInt(
     return uniform(min, max);
   }
 
-  const req = new ChoiceRequest(min, max, { ...opts, bias: pickBiased });
+  const req = new PickRequest(min, max, { ...opts, bias: pickBiased });
   return new Arbitrary((it) => it.next(req));
 }
 
 /**
- * Creates a custom arbitrary, given a parse callback.
- * @param parse a deterministic function that takes a Choices iterator and
- * returns a value.
+ * Defines an arbitrary that's based on a callback function that generates a
+ * value from a stream of picks.
+ *
+ * The callback must always succeed, but see {@link Arbitrary.filter} for a way
+ * to do backtracking in a subrequest.
  */
-export function custom<T>(parse: (it: ArbitraryInput) => T) {
-  return new Arbitrary((it) => parse(it));
+export function custom<T>(generate: (it: ArbitraryInput) => T) {
+  return new Arbitrary((it) => generate(it));
 }
 
 export function example<T>(values: T[]): Arbitrary<T> {
@@ -242,7 +240,7 @@ export function oneOf<T>(alternatives: Arbitrary<T>[]): Arbitrary<T> {
   if (alternatives.length === 1) {
     return alternatives[0];
   }
-  return example(alternatives).chain((choice) => choice);
+  return example(alternatives).chain((chosen) => chosen);
 }
 
 export function array<T>(

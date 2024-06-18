@@ -1,5 +1,5 @@
-import { Choices } from "./choices.ts";
-import { RandomChoices } from "./random.ts";
+import { Picker } from "./choices.ts";
+import { RandomPicker } from "./random.ts";
 import { Arbitrary, ArbitraryInput } from "./arbitraries.ts";
 
 /**
@@ -9,11 +9,11 @@ import { Arbitrary, ArbitraryInput } from "./arbitraries.ts";
  */
 export function* testDataStream<T>(
   arb: Arbitrary<T>,
-  opts?: { choices?: Choices; filterLimit?: number },
+  opts?: { picker?: Picker; filterLimit?: number },
 ): IterableIterator<T> {
-  const choices = opts?.choices ?? new RandomChoices();
+  const picker = opts?.picker ?? new RandomPicker();
   const maxTries = opts?.filterLimit ?? 100;
-  const input = new ArbitraryInput(choices, maxTries);
+  const input = new ArbitraryInput(picker, maxTries);
   while (true) {
     yield input.gen(arb);
   }
@@ -27,7 +27,7 @@ export default class TestRunner {
   readonly defaultReps;
   readonly filterLimit;
 
-  private readonly random: RandomChoices;
+  private readonly random: RandomPicker;
 
   constructor(
     opts?: { seed?: number; defaultReps: number; filterLimit?: number },
@@ -35,7 +35,7 @@ export default class TestRunner {
     this.seed = opts?.seed ?? Date.now() ^ (Math.random() * 0x100000000);
     this.defaultReps = opts?.defaultReps ?? 100;
     this.filterLimit = opts?.filterLimit ?? 100;
-    this.random = new RandomChoices({ seed: this.seed });
+    this.random = new RandomPicker({ seed: this.seed });
   }
 
   /**
@@ -53,7 +53,7 @@ export default class TestRunner {
     const reps = opts?.reps ?? this.defaultReps;
 
     const randomData = testDataStream(input, {
-      choices: this.random,
+      picker: this.random,
       filterLimit: this.filterLimit,
     });
 

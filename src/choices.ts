@@ -1,37 +1,58 @@
 /**
- * A function that chooses a response using a random number generator.
+ * Picks an integer within a given range.
+ *
+ * Invariant: min <= result <= max, where min and max are safe integers.
  */
-export type BiasFunction = (
-  /** Picks a number between min and max (inclusive), using a uniform distribution. */
-  uniform: (min: number, max: number) => number,
-) => number;
+export type RangePicker = (min: number, max: number) => number;
 
 /**
- * A request for a safe integer between min and max (inclusive).
+ * Picks a random integer somehow.
  *
- * Invariant: min <= max, so the range contains at least one value.
+ * Specifies a random distribution. The range is fixed (given by context).
+ *
+ * @param uniform Picks a random number with a uniform distribution. (A source
+ * of random numbers.)
  */
-export class ChoiceRequest {
-  readonly default: number;
+export type BiasedPicker = (uniform: RangePicker) => number;
 
-  readonly bias: BiasFunction | null;
+/**
+ * Requests a integer by picking from a given range, optionally using a
+ * distribution or default value.
+ */
+export class PickRequest {
+  /**
+   * The distribution to use when picking randomly.
+   *
+   * Invariant: min <= bias(uniform) <= max, where all are safe integers.
+   */
+  readonly bias: BiasedPicker;
 
   /**
-   * Constructs a new request. Min, max, and the default must be safe integers.
-   * They must satisfy min <= default <= max.
+   * A default pick that can be used when not picking randomly.
    *
-   * @param opts.default Overrides the default value for this request. If not
-   * specified, it will be the number closest to zero that's between min and
-   * max.
+   * Invariant: min <= default <= max, where they are all safe integers.
+   */
+  readonly default: number;
+
+  /**
+   * Constructs a new request.
    *
-   * @param opts.bias A function that picks randomly using a non-uniform
-   * distribution. If not specified, a uniform distribution should be used. This
-   * hint will be ignored when not generating choices randomly.
+   * When the result is picked randomly, it will use a uniform distribution
+   * unless overridden by {@link opts.bias}.
+   *
+   * When the result is not picked randomly, the default value may be used. If
+   * not overridden by {@link opts.bias}, it will be the number closest to zero
+   * that's between min and max.
+   *
+   * @param opts.default Overrides the default value for this request.
+   *
+   * @param opts.bias Overrides the distribution for this request. It should be
+   * a function that picks a random integer between min and max.
    */
   constructor(
     readonly min: number,
     readonly max: number,
-    opts?: { default?: number; bias?: BiasFunction },
+    opts?: { default?: number; bias?: BiasedPicker },
   ) {
     if (!Number.isSafeInteger(min)) {
       throw new Error(`min must be a safe integer; got ${min}`);
@@ -46,9 +67,9 @@ export class ChoiceRequest {
     }
     const chosenDefault = opts?.default;
     if (chosenDefault !== undefined) {
-      if (!this.isValid(chosenDefault)) {
+      if (!this.isValidReply(chosenDefault)) {
         throw new Error(
-          `the default must within the range (${min}, ${max}); got ${chosenDefault}`,
+          `the default must be within the range (${min}, ${max}); got ${chosenDefault}`,
         );
       }
       this.default = chosenDefault;
@@ -60,55 +81,52 @@ export class ChoiceRequest {
       this.default = 0;
     }
 
-    this.bias = opts?.bias ?? null;
+    this.bias = opts?.bias ?? ((uniform: RangePicker) => uniform(min, max));
   }
 
-  isValid(n: number): boolean {
+  /**
+   * Returns true if the given number satisfies this request.
+   */
+  isValidReply(n: number): boolean {
     return Number.isSafeInteger(n) && n >= this.min && n <= this.max;
   }
 }
 
 /**
- * An iterator over a infinite stream of choices.
+ * Picks a number, given a request.
  *
- * Each choice is represented as a safe integer that's selected from a range
- * specified by a {@link ChoiceRequest}.
- *
- * This interface is typically implemented using a random number generator, but
- * any scheme may be used.
+ * Invariant: req.isValidReply(result).
  */
-export interface Choices {
-  /** Returns the next choice from the stream. */
-  next(req: ChoiceRequest): number;
+export interface Picker {
+  pick(req: PickRequest): number;
 }
 
-export const alwaysChooseDefault: Choices = { next: (req) => req.default };
+export const alwaysChooseDefault: Picker = { pick: (req) => req.default };
 
 /**
- * Answers to choice requests that are stored in an array.
+ * Answers pick requests using predetermined replies, when possible.
  *
- * If a choice doesn't match a request, it recovers by skipping items until a
- * match is found, or returning the request's default value. As a result, a
- * parse should always succeed, but may return a different value than expected.
+ * If a saved pick doesn't match a request, some other pick will be used,
+ * possibly the default. If this happens, it's considered an error.
  *
- * To check for a parse error, see {@link failed} and {@link errorOffset}.
+ * To check for an error, see {@link failed} and {@link errorOffset}.
  */
-export class ArrayChoices implements Choices {
+export class ArrayPicker implements Picker {
   offset: number = 0;
   errorOffset: number | null = null;
 
-  constructor(private answers: number[]) {}
+  constructor(private picks: number[]) {}
 
   get failed() {
     return this.errorOffset !== null;
   }
 
-  next(req: ChoiceRequest): number {
-    while (this.offset < this.answers.length) {
+  pick(req: PickRequest): number {
+    while (this.offset < this.picks.length) {
       const offset = this.offset++;
-      const choice = this.answers[offset];
-      if (req.isValid(choice)) {
-        return choice;
+      const pick = this.picks[offset];
+      if (req.isValidReply(pick)) {
+        return pick;
       }
       if (this.errorOffset === null) {
         this.errorOffset = offset;
@@ -116,9 +134,9 @@ export class ArrayChoices implements Choices {
       // retry with next value.
     }
 
-    // ran off the end.
+    // ran off the end, so use the default value.
     if (this.errorOffset === null) {
-      this.errorOffset = this.answers.length;
+      this.errorOffset = this.picks.length;
     }
     return req.default;
   }

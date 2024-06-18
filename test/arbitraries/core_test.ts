@@ -1,7 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 
-import { ChoiceRequest } from "../../src/choices.ts";
+import { PickRequest } from "../../src/choices.ts";
 import { Arbitrary, RETRY } from "../../src/arbitraries.ts";
 import * as arb from "../../src/arbitraries.ts";
 import TestRunner from "../../src/simple_runner.ts";
@@ -9,7 +9,7 @@ import TestRunner from "../../src/simple_runner.ts";
 import { assertParseFails, assertParses } from "../../src/asserts.ts";
 
 const runner = new TestRunner();
-const oneToSix = new ChoiceRequest(1, 6);
+const oneToSix = new PickRequest(1, 6);
 const sixSided = new Arbitrary((it) => it.next(oneToSix));
 
 describe("Arbitrary", () => {
@@ -32,7 +32,7 @@ describe("Arbitrary", () => {
   });
   describe("map", () => {
     it("changes the default", () => {
-      const req = new ChoiceRequest(1, 6, { default: 3 });
+      const req = new PickRequest(1, 6, { default: 3 });
       const original = new Arbitrary((it) => it.next(req));
       assertEquals(original.default, 3);
 

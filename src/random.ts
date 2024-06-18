@@ -1,10 +1,10 @@
 import prand from "pure-rand";
-import { ChoiceRequest, Choices } from "./choices.ts";
+import { Picker, PickRequest } from "./choices.ts";
 
 /**
- * Randomly generates choices, without recording them.
+ * Picks randomly from the requested distribution.
  */
-export class RandomChoices implements Choices {
+export class RandomPicker implements Picker {
   readonly seed;
   private readonly uniform: (min: number, max: number) => number;
 
@@ -15,8 +15,7 @@ export class RandomChoices implements Choices {
       prand.unsafeUniformIntDistribution(min, max, rng);
   }
 
-  next(req: ChoiceRequest): number {
-    if (req.bias) return req.bias(this.uniform);
-    return this.uniform(req.min, req.max);
+  pick(req: PickRequest): number {
+    return req.bias(this.uniform);
   }
 }

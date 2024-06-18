@@ -3,19 +3,19 @@ import { Arbitrary } from "./arbitraries/core.ts";
 
 export function assertParses<T>(
   arb: Arbitrary<T>,
-  choices: number[],
+  picks: number[],
   expected: T,
 ) {
-  assertEquals(arb.parse(choices), { ok: true, value: expected });
+  assertEquals(arb.parse(picks), { ok: true, value: expected });
 }
 
 export function assertParseFails<T>(
   arb: Arbitrary<T>,
-  choices: number[],
+  picks: number[],
   guess: T,
   expectedErrorOffset: number,
 ) {
-  assertEquals(arb.parse(choices), {
+  assertEquals(arb.parse(picks), {
     ok: false,
     guess,
     errorOffset: expectedErrorOffset,
