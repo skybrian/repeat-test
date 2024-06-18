@@ -93,12 +93,10 @@ export class TestRunner {
 const runner = new TestRunner();
 
 /**
- * Runs a test function repeatedly with randomly generated input.
+ * Runs a test function repeatedly, using randomly generated input.
  *
- * @param input An arbitrary used to generate the input.
+ * @param input An arbitrary used to generate input.
  * @param test A test function that requires input.
- * @param opts.reps The number of times to run the test. If not specified
- * either here or in the constructor, defaults to 1000.
  */
 export function repeatTest<T>(
   input: Arbitrary<T>,

@@ -15,7 +15,7 @@ export class ArbitraryInput {
     }
   }
 
-  next(req: PickRequest): number {
+  pick(req: PickRequest): number {
     return this.picker.pick(req);
   }
 
@@ -169,7 +169,7 @@ export function chosenInt(
   opts?: { default?: number },
 ): Arbitrary<number> {
   const req = new PickRequest(min, max, opts);
-  return new Arbitrary((it) => it.next(req));
+  return new Arbitrary((it) => it.pick(req));
 }
 
 /**
@@ -207,7 +207,7 @@ export function biasedInt(
   }
 
   const req = new PickRequest(min, max, { ...opts, bias: pickBiased });
-  return new Arbitrary((it) => it.next(req));
+  return new Arbitrary((it) => it.pick(req));
 }
 
 /**

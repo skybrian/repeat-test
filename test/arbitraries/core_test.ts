@@ -9,7 +9,7 @@ import { repeatTest } from "../../src/runner.ts";
 import { assertParseFails, assertParses } from "../../src/asserts.ts";
 
 const oneToSix = new PickRequest(1, 6);
-const sixSided = new Arbitrary((it) => it.next(oneToSix));
+const sixSided = new Arbitrary((it) => it.pick(oneToSix));
 
 describe("Arbitrary", () => {
   describe("constructor", () => {
@@ -32,7 +32,7 @@ describe("Arbitrary", () => {
   describe("map", () => {
     it("changes the default", () => {
       const req = new PickRequest(1, 6, { default: 3 });
-      const original = new Arbitrary((it) => it.next(req));
+      const original = new Arbitrary((it) => it.pick(req));
       assertEquals(original.default, 3);
 
       const mapped = original.map((n) => n * 2);
