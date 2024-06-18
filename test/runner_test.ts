@@ -2,7 +2,7 @@ import { describe, it } from "@std/testing/bdd";
 import { assertEquals } from "@std/assert";
 import { Arbitrary } from "../mod.ts";
 
-import { repeatTest } from "../src/simple_runner.ts";
+import { repeatTest } from "../src/runner.ts";
 
 describe("TestRunner", () => {
   describe("repeatTest", () => {

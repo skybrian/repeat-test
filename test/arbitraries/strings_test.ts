@@ -1,7 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals, fail } from "@std/assert";
 import { assertParses } from "../../src/asserts.ts";
-import { repeatTest } from "../../src/simple_runner.ts";
+import { repeatTest } from "../../src/runner.ts";
 import { isWellFormed } from "../../src/workarounds.ts";
 
 import * as arb from "../../src/arbitraries.ts";
