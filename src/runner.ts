@@ -1,6 +1,6 @@
 import { NumberPicker } from "./picks.ts";
 import { RandomPicker } from "./random.ts";
-import { Arbitrary, Generator } from "./arbitraries.ts";
+import { Arbitrary, makePickFunction } from "./arbitraries.ts";
 
 const defaultReps = 1000;
 const defaultFilterLimit = 1000;
@@ -16,9 +16,9 @@ export function* testDataStream<T>(
 ): IterableIterator<T> {
   const picker = opts?.picker ?? new RandomPicker();
   const maxTries = opts?.filterLimit ?? defaultFilterLimit;
-  const input = new Generator(picker, maxTries);
+  const pick = makePickFunction(picker, maxTries);
   while (true) {
-    yield input.pick(arb);
+    yield pick(arb);
   }
 }
 

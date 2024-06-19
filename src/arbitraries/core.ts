@@ -10,40 +10,31 @@ interface PickFunction {
   <T>(req: Arbitrary<T>): T;
 }
 
-export class Generator implements NumberPicker {
-  readonly pick: PickFunction;
-
-  constructor(
-    private readonly picker: NumberPicker,
-    readonly maxTries: number,
-  ) {
-    if (!picker) throw new Error("picker must be defined");
-    if (this.maxTries < 1 || !Number.isSafeInteger(maxTries)) {
-      throw new Error("maxTries must be a positive integer");
-    }
-    this.pick = this.doPick.bind(this);
+export function makePickFunction(
+  picker: NumberPicker,
+  maxTries: number,
+): PickFunction {
+  if (!picker) throw new Error("picker must be defined");
+  if (maxTries < 1 || !Number.isSafeInteger(maxTries)) {
+    throw new Error("maxTries must be a positive integer");
   }
 
-  private doPick<T>(req: PickRequest | Arbitrary<T>): number | T {
+  const doPick: PickFunction = <T>(
+    req: PickRequest | Arbitrary<T>,
+  ): number | T => {
     if (req instanceof PickRequest) {
-      return this.picker.pick(req);
+      return picker.pick(req);
     }
-    for (let tries = 0; tries < this.maxTries; tries++) {
-      const parsed = req.callback(this.pick);
+    for (let tries = 0; tries < maxTries; tries++) {
+      const parsed = req.callback(doPick);
       if (parsed !== RETRY) {
         return parsed;
       }
     }
-    throw new Error(`Failed to generate ${this} after ${this.maxTries} tries`);
-  }
-}
+    throw new Error(`Failed to generate ${req} after ${maxTries} tries`);
+  };
 
-export function makePickFunction(
-  numbers: NumberPicker,
-  maxTries: number,
-): PickFunction {
-  const gen = new Generator(numbers, maxTries);
-  return gen.pick.bind(gen);
+  return doPick;
 }
 
 export const RETRY = Symbol("retry");
