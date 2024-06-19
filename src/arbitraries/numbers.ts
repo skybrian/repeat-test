@@ -12,8 +12,8 @@ export const strangeNumber = example([
 ]);
 
 export function intOutsideRange(min: number, max: number) {
-  return custom((it): number => {
-    if (it.pick(boolean)) {
+  return custom((pick): number => {
+    if (pick(boolean)) {
       if (min - 1 < min) return min - 1;
       return min - 2 ** 32;
     } else {

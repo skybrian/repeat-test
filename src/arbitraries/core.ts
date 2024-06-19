@@ -5,24 +5,31 @@ import {
   PickRequest,
 } from "../picks.ts";
 
+interface PickFunction {
+  (req: PickRequest): number;
+  <T>(req: Arbitrary<T>): T;
+}
+
 export class Generator implements NumberPicker {
+  readonly pick: PickFunction;
+
   constructor(
     private readonly picker: NumberPicker,
     readonly maxTries: number,
   ) {
+    if (!picker) throw new Error("picker must be defined");
     if (this.maxTries < 1 || !Number.isSafeInteger(maxTries)) {
       throw new Error("maxTries must be a positive integer");
     }
+    this.pick = this.doPick.bind(this);
   }
 
-  pick<T>(req: PickRequest): number;
-  pick<T>(req: Arbitrary<T>): T;
-  pick<T>(req: PickRequest | Arbitrary<T>): number | T {
+  private doPick<T>(req: PickRequest | Arbitrary<T>): number | T {
     if (req instanceof PickRequest) {
       return this.picker.pick(req);
     }
     for (let tries = 0; tries < this.maxTries; tries++) {
-      const parsed = req.callback(this);
+      const parsed = req.callback(this.pick);
       if (parsed !== RETRY) {
         return parsed;
       }
@@ -31,13 +38,12 @@ export class Generator implements NumberPicker {
   }
 }
 
-export function generate<T>(
-  arb: Arbitrary<T>,
-  picker: NumberPicker,
+export function makePickFunction(
+  numbers: NumberPicker,
   maxTries: number,
-): T {
-  const gen = new Generator(picker, maxTries);
-  return gen.pick(arb);
+): PickFunction {
+  const gen = new Generator(numbers, maxTries);
+  return gen.pick.bind(gen);
 }
 
 export const RETRY = Symbol("retry");
@@ -57,10 +63,10 @@ export const RETRY = Symbol("retry");
  * default values. Returning `RETRY` as the default value is a programming
  * error.
  */
-export type ParseFunction<T> = (input: Generator) => T | typeof RETRY;
+export type ParseFunction<T> = (pick: PickFunction) => T | typeof RETRY;
 
 function calculateDefault<T>(parse: ParseFunction<T>): T {
-  const def = parse(new Generator(alwaysChooseDefault, 1));
+  const def = parse(makePickFunction(alwaysChooseDefault, 1));
   if (def === RETRY) {
     throw new Error("parse function must return a default value");
   }
@@ -110,7 +116,8 @@ export class Arbitrary<T> {
    */
   parse(picks: number[]): ParseSuccess<T> | ParseFailure<T> {
     const input = new ArrayPicker(picks);
-    const val = generate(this, input, 1);
+    const pick = makePickFunction(input, 1);
+    const val = pick(this);
     if (val === RETRY) {
       return { ok: false, guess: this.default, errorOffset: input.offset };
     } else if (input.failed) {
@@ -120,13 +127,13 @@ export class Arbitrary<T> {
   }
 
   /**
-   * Post-processes each output of this Arbitrary by converting it to a
+   * Post-processes outputs of this Arbitrary, converting them to a
    * different value. (The default value is also changed.)
    */
   map<U>(convert: (val: T) => U): Arbitrary<U> {
-    return new Arbitrary((it) => {
-      const choice = it.pick(this);
-      return convert(choice);
+    return new Arbitrary((pick) => {
+      const output = pick(this);
+      return convert(output);
     });
   }
 
@@ -149,15 +156,16 @@ export class Arbitrary<T> {
   }
 
   /**
-   * Post-processes each output of this Arbitrary by creating a new Arbitrary
-   * and then choosing from it.
+   * Post-processes outputs of this Arbitrary by creating a new Arbitrary
+   * and then picking a value from it.
    */
   chain<U>(
     convert: (val: T) => Arbitrary<U>,
   ): Arbitrary<U> {
-    return new Arbitrary((it) => {
-      const val = it.pick(this);
-      return it.pick(convert(val));
+    return new Arbitrary((pick) => {
+      const output = pick(this);
+      const next = convert(output);
+      return pick(next);
     });
   }
 
@@ -169,7 +177,9 @@ export class Arbitrary<T> {
 // === constructor functions for core arbitraries ===
 
 /**
- * Returns an integer between min and max, chosen arbitrarily.
+ * An integer range, to be picked from uniformly.
+ *
+ * Invariant: min <= pick <= max.
  */
 export function chosenInt(
   min: number,
@@ -177,12 +187,11 @@ export function chosenInt(
   opts?: { default?: number },
 ): Arbitrary<number> {
   const req = new PickRequest(min, max, opts);
-  return new Arbitrary((it) => it.pick(req));
+  return new Arbitrary((pick) => pick(req));
 }
 
 /**
- * Returns an integer between min and max, chosen with bias towards special
- * cases.
+ * An integer range, to be picked from with bias towards special cases.
  */
 export function biasedInt(
   min: number,
@@ -215,7 +224,7 @@ export function biasedInt(
   }
 
   const req = new PickRequest(min, max, { ...opts, bias: pickBiased });
-  return new Arbitrary((it) => it.pick(req));
+  return new Arbitrary((pick) => pick(req));
 }
 
 /**
@@ -225,8 +234,8 @@ export function biasedInt(
  * The callback must always succeed, but see {@link Arbitrary.filter} for a way
  * to do backtracking in a subrequest.
  */
-export function custom<T>(generate: (it: Generator) => T) {
-  return new Arbitrary((it) => generate(it));
+export function custom<T>(callback: (pick: PickFunction) => T) {
+  return new Arbitrary((pick) => callback(pick));
 }
 
 export function example<T>(values: T[]): Arbitrary<T> {
@@ -257,11 +266,11 @@ export function array<T>(
 ): Arbitrary<T[]> {
   const minLength = opts?.min ?? 0;
   const maxLength = opts?.max ?? 10;
-  return custom((it) => {
-    const length = it.pick(biasedInt(minLength, maxLength));
+  return custom((pick) => {
+    const length = pick(biasedInt(minLength, maxLength));
     const result: T[] = [];
     for (let i = 0; i < length; i++) {
-      result.push(it.pick(item));
+      result.push(pick(item));
     }
     return result;
   });
