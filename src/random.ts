@@ -1,10 +1,10 @@
 import prand from "pure-rand";
-import { NumberPicker, PickRequest } from "./picks.ts";
+import { IntPicker, PickRequest } from "./picks.ts";
 
 /**
  * Picks randomly from the requested distribution.
  */
-export class RandomPicker implements NumberPicker {
+export class RandomPicker implements IntPicker {
   readonly seed;
   private readonly uniform: (min: number, max: number) => number;
 

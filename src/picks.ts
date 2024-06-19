@@ -1,23 +1,21 @@
 /**
- * Picks an integer within a given range.
+ * Randomly picks an integer from a uniform distribution.
  *
  * Invariant: min <= result <= max, where min and max are safe integers.
  */
-export type RangePicker = (min: number, max: number) => number;
+export type UniformIntPicker = (min: number, max: number) => number;
 
 /**
- * Picks a random integer somehow.
+ * Randomly picks an integer from a possibly non-uniform distribution.
  *
- * Specifies a random distribution. The range is fixed (given by context).
+ * The range is unspecified (given by context).
  *
- * @param uniform Picks a random number with a uniform distribution. (A source
- * of random numbers.)
+ * @param uniform A source of random numbers.
  */
-export type BiasedPicker = (uniform: RangePicker) => number;
+export type BiasedIntPicker = (uniform: UniformIntPicker) => number;
 
 /**
- * Requests a integer by picking from a given range, optionally using a
- * distribution or default value.
+ * Requests a integer within a given range, with options.
  */
 export class PickRequest {
   /**
@@ -25,7 +23,7 @@ export class PickRequest {
    *
    * Invariant: min <= bias(uniform) <= max, where all are safe integers.
    */
-  readonly bias: BiasedPicker;
+  readonly bias: BiasedIntPicker;
 
   /**
    * A default pick that can be used when not picking randomly.
@@ -52,7 +50,7 @@ export class PickRequest {
   constructor(
     readonly min: number,
     readonly max: number,
-    opts?: { default?: number; bias?: BiasedPicker },
+    opts?: { default?: number; bias?: BiasedIntPicker },
   ) {
     if (!Number.isSafeInteger(min)) {
       throw new Error(`min must be a safe integer; got ${min}`);
@@ -81,7 +79,8 @@ export class PickRequest {
       this.default = 0;
     }
 
-    this.bias = opts?.bias ?? ((uniform: RangePicker) => uniform(min, max));
+    this.bias = opts?.bias ??
+      ((uniform: UniformIntPicker) => uniform(min, max));
   }
 
   /**
@@ -93,25 +92,28 @@ export class PickRequest {
 }
 
 /**
- * Picks a number, given a request.
+ * Picks an integer, given a request.
  *
  * Invariant: req.isValidReply(result).
  */
-export interface NumberPicker {
+export interface IntPicker {
   pick(req: PickRequest): number;
 }
 
-export const alwaysChooseDefault: NumberPicker = { pick: (req) => req.default };
+export const alwaysChooseDefault: IntPicker = { pick: (req) => req.default };
 
 /**
- * Answers pick requests using predetermined replies, when possible.
+ * An infinite stream of integers, taken from an array until it runs out.
  *
- * If a saved pick doesn't match a request, some other pick will be used,
- * possibly the default. If this happens, it's considered an error.
+ * Invalid picks are skipped. After the end of the array, a request's default
+ * value will be returned.
+ *
+ * A parse is consider successful if all picks were taken from the array.
+ * (TODO: check for the case where not all picks were used.)
  *
  * To check for an error, see {@link failed} and {@link errorOffset}.
  */
-export class ArrayPicker implements NumberPicker {
+export class ArrayPicker implements IntPicker {
   offset: number = 0;
   errorOffset: number | null = null;
 

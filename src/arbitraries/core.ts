@@ -1,20 +1,29 @@
 import {
   alwaysChooseDefault,
   ArrayPicker,
-  NumberPicker,
+  IntPicker,
   PickRequest,
 } from "../picks.ts";
 
+/**
+ * A function that can pick values from integer ranges or arbitraries.
+ */
 interface PickFunction {
   (req: PickRequest): number;
   <T>(req: Arbitrary<T>): T;
 }
 
+/**
+ * Creates a PickFunction that can handle backtracking.
+ * @param ints a source of integer picks
+ * @param maxTries how many times to try to generate a pick from each Arbitrary.
+ * (Set it to 1 to disable backtracking.)
+ */
 export function makePickFunction(
-  picker: NumberPicker,
+  ints: IntPicker,
   maxTries: number,
 ): PickFunction {
-  if (!picker) throw new Error("picker must be defined");
+  if (!ints) throw new Error("no integer source given");
   if (maxTries < 1 || !Number.isSafeInteger(maxTries)) {
     throw new Error("maxTries must be a positive integer");
   }
@@ -23,12 +32,12 @@ export function makePickFunction(
     req: PickRequest | Arbitrary<T>,
   ): number | T => {
     if (req instanceof PickRequest) {
-      return picker.pick(req);
+      return ints.pick(req);
     }
     for (let tries = 0; tries < maxTries; tries++) {
-      const parsed = req.callback(doPick);
-      if (parsed !== RETRY) {
-        return parsed;
+      const val = req.callback(doPick);
+      if (val !== RETRY) {
+        return val;
       }
     }
     throw new Error(`Failed to generate ${req} after ${maxTries} tries`);
@@ -37,18 +46,22 @@ export function makePickFunction(
   return doPick;
 }
 
+/**
+ * Indicates a failed parse while attempting to generate a value for an
+ * Arbitrary.
+ */
 export const RETRY = Symbol("retry");
 
 /**
- * A function that attempts to convert a stream of picks into a value.
+ * A function that attempts to generate one of the values of an Arbitrary, given some
+ * picks.
  *
- * If the parse succeeds, it returns the value. If it fails, it returns
- * {@link RETRY}. The caller should try again with a different (typically
- * randomly generated) picks.
+ * The function may return {@link RETRY} as a way of backtracking if it's given
+ * some picks that can't be used. When that happens, the caller should try again
+ * with different picks.
  *
- * This is a way of implementing backtracking. A ParseFunction should return
- * `RETRY` instead of using a loop so that the caller knows not to record any
- * picks that led to a failed parse.
+ * (This is a better way than a loop to implement backtracking because the
+ * caller can forget about the picks that led to a dead end.)
  *
  * The *default value* of a parser is whatever it returns when its input is all
  * default values. Returning `RETRY` as the default value is a programming
@@ -76,34 +89,36 @@ export type ParseFailure<T> = {
 };
 
 /**
- * A request for an arbitrary value, taken from a set.
- *
- * An Arbitrary's *output set* is the set of values it can return. Its input is
- * a stream of picks. (See {@link NumberPicker}.) We can think of it as a parser
- * that converts a stream of picks into a value.
+ * A set of values that can be randomly picked from. Members are generated as
+ * needed.
  */
 export class Arbitrary<T> {
+  readonly callback: ParseFunction<T>;
+
   /**
-   * @param callback reads any number of picks from the stream and either
-   * returns a value or RETRY. It should be deterministic and always finish.
+   * @param callback reads some picks and either returns a value or RETRY. It
+   * should be deterministic and always finish.
    */
-  constructor(readonly callback: ParseFunction<T>) {
+  constructor(callback: ParseFunction<T>) {
+    this.callback = callback;
     calculateDefault(callback); // dry run; throws exception if invalid
   }
 
   /**
-   * The default value of an Arbitrary. This is whatever {@link parse} returns
-   * when we choose the default for each request.
+   * The default value of this Arbitrary. It's calculated by calling the
+   * {@link callback} with default picks.
    */
   get default(): T {
     return calculateDefault(this.callback); // a clone, in case it's mutable
   }
 
   /**
-   * Attempts to parse a prerecorded list of picks. All filters must succeed
-   * the first time, or the parse fails. (There is no backtracking.)
+   * Attempts to pick a value based on a prerecorded list of picks. All filters
+   * must succeed the first time, or the parse fails. (There is no
+   * backtracking.)
    *
-   * This can be used to test what an Arbitrary accepts.
+   * This function can be used to test which picks the Arbitrary accepts as
+   * input.
    */
   parse(picks: number[]): ParseSuccess<T> | ParseFailure<T> {
     const input = new ArrayPicker(picks);
@@ -118,8 +133,8 @@ export class Arbitrary<T> {
   }
 
   /**
-   * Post-processes outputs of this Arbitrary, converting them to a
-   * different value. (The default value is also changed.)
+   * Creates a new arbitrary by mapping each member. (The default value is also
+   * mapped.)
    */
   map<U>(convert: (val: T) => U): Arbitrary<U> {
     return new Arbitrary((pick) => {
@@ -129,8 +144,8 @@ export class Arbitrary<T> {
   }
 
   /**
-   * Removes values from the output set of this Arbitrary. (It must not filter
-   * out the default value.)
+   * Creates a new Arbitrary by removing members. (It must not filter out the
+   * default value.)
    */
   filter(accept: (val: T) => boolean): Arbitrary<T> {
     if (!accept(this.default)) {
@@ -147,8 +162,8 @@ export class Arbitrary<T> {
   }
 
   /**
-   * Post-processes outputs of this Arbitrary by creating a new Arbitrary
-   * and then picking a value from it.
+   * Creates a new Arbitrary by converting each member to another Arbitrary and
+   * then picking from it.
    */
   chain<U>(
     convert: (val: T) => Arbitrary<U>,

@@ -1,4 +1,4 @@
-import { NumberPicker } from "./picks.ts";
+import { IntPicker } from "./picks.ts";
 import { RandomPicker } from "./random.ts";
 import { Arbitrary, makePickFunction } from "./arbitraries.ts";
 
@@ -12,7 +12,7 @@ const defaultFilterLimit = 1000;
  */
 export function* testDataStream<T>(
   arb: Arbitrary<T>,
-  opts?: { picker?: NumberPicker; filterLimit?: number },
+  opts?: { picker?: IntPicker; filterLimit?: number },
 ): IterableIterator<T> {
   const picker = opts?.picker ?? new RandomPicker();
   const maxTries = opts?.filterLimit ?? defaultFilterLimit;
