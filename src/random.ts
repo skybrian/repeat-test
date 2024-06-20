@@ -9,6 +9,10 @@ function jump(r: prand.RandomGenerator): prand.RandomGenerator {
   return jump.bind(r)();
 }
 
+export function pickRandomSeed(): number {
+  return Date.now() ^ (Math.random() * 0x100000000);
+}
+
 /**
  * Returns a sequence of random number generators to use.
  */
