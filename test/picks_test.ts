@@ -3,7 +3,7 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import * as arb from "../src/arbitraries.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import { ArrayPicker, PickRequest } from "../src/picks.ts";
+import { ArrayPicker, PickLog, PickRequest } from "../src/picks.ts";
 
 export type Range = { min: number; max: number };
 
@@ -123,6 +123,56 @@ describe("ArrayPicker", () => {
             assertEquals(stream.errorOffset, 0);
           });
         });
+      });
+    });
+  });
+});
+
+describe("PickLog", () => {
+  const validRequestAndReply = arb.custom((pick) => {
+    const req = pick(validRequest);
+    const n = pick(req);
+    return { req, n };
+  });
+  describe("record", () => {
+    it("accepts any pick", () => {
+      repeatTest(validRequestAndReply, ({ req, n }) => {
+        const fakePicker = { pick: () => n };
+        const rec = new PickLog(fakePicker);
+        assertEquals(rec.length, 0);
+        assertEquals(rec.record().pick(req), n);
+        assertEquals(rec.length, 1);
+      });
+    });
+  });
+  describe("replay", () => {
+    it("replays a pick", () => {
+      repeatTest(validRequestAndReply, ({ req, n }) => {
+        const fakePicker = { pick: () => n };
+        const rec = new PickLog(fakePicker);
+        assertEquals(rec.record().pick(req), n);
+        assertEquals(rec.replay().pick(req), n);
+        assertEquals(rec.length, 1);
+      });
+    });
+  });
+  describe("replayNext", () => {
+    it("replays the next pick", () => {
+      repeatTest(validRequestAndReply, ({ req, n }) => {
+        const fakePicker = { pick: () => n };
+        const rec = new PickLog(fakePicker);
+        assertEquals(rec.record().pick(req), n);
+
+        const next = rec.replayNext();
+        if (!next) {
+          assertEquals(n, req.max);
+          assertEquals(rec.length, 0);
+          return;
+        }
+
+        assert(n < req.max);
+        assertEquals(rec.length, 1);
+        assertEquals(next.pick(req), n + 1);
       });
     });
   });

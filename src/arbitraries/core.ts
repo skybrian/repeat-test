@@ -1,12 +1,26 @@
 import {
   alwaysChooseDefault,
+  alwaysChooseMin,
   ArrayPicker,
   IntPicker,
+  PickLog,
   PickRequest,
 } from "../picks.ts";
 
+class PickFailed extends Error {
+  private constructor(msg: string) {
+    super(msg);
+  }
+  static create(req: Arbitrary<unknown>, tries: number): PickFailed {
+    return new PickFailed(`Failed to generate ${req} after ${tries} tries`);
+  }
+}
+
 /**
  * A function that can pick values from integer ranges or arbitraries.
+ *
+ * @throws PickFailed if a value couldn't be generated due to running out of
+ * retries.
  */
 interface PickFunction {
   (req: PickRequest): number;
@@ -40,7 +54,7 @@ export function makePickFunction(
         return val;
       }
     }
-    throw new Error(`Failed to generate ${req} after ${maxTries} tries`);
+    throw PickFailed.create(req, maxTries);
   };
 
   return doPick;
@@ -53,8 +67,8 @@ export function makePickFunction(
 export const RETRY = Symbol("retry");
 
 /**
- * A function that attempts to generate one of the values of an Arbitrary, given some
- * picks.
+ * A function that attempts to generate one of the values of an Arbitrary, given
+ * some picks.
  *
  * The function may return {@link RETRY} as a way of backtracking if it's given
  * some picks that can't be used. When that happens, the caller should try again
@@ -110,6 +124,42 @@ export class Arbitrary<T> {
    */
   get default(): T {
     return calculateDefault(this.callback); // a clone, in case it's mutable
+  }
+
+  /**
+   * Iterates over all members of this Arbitrary.
+   *
+   * The order is depth-first, from all minimum picks to all maximum picks.
+   *
+   * (Only works for arbitraries that don't do a lot of filtering.)
+   */
+  get members(): IterableIterator<T> {
+    function* runOnePath<T>(arb: Arbitrary<T>, input: IntPicker): Generator<T> {
+      const pick = makePickFunction(input, 1);
+      try {
+        yield pick(arb);
+      } catch (e) {
+        if (e instanceof PickFailed) {
+          // value was filtered out; continue
+        } else {
+          throw e;
+        }
+      }
+    }
+
+    function* runAllPaths<T>(arb: Arbitrary<T>): Generator<T> {
+      const log = new PickLog(alwaysChooseMin);
+      let next: IntPicker | null = log.record();
+      while (next !== null) {
+        yield* runOnePath(arb, next);
+        if (log.replaying) {
+          throw "didn't read every value";
+        }
+        next = log.replayNext();
+      }
+    }
+
+    return runAllPaths(this);
   }
 
   /**

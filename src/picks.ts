@@ -101,6 +101,7 @@ export interface IntPicker {
 }
 
 export const alwaysChooseDefault: IntPicker = { pick: (req) => req.default };
+export const alwaysChooseMin: IntPicker = { pick: (req) => req.min };
 
 /**
  * An infinite stream of integers, taken from an array until it runs out.
@@ -141,5 +142,124 @@ export class ArrayPicker implements IntPicker {
       this.errorOffset = this.picks.length;
     }
     return req.default;
+  }
+}
+
+/**
+ * Records and replays picks made by a proxied {@link IntPicker}.
+ *
+ * To record, it returns a proxy IntPicker that passes requests to an underlying
+ * picker and saves the requests and responses to the log.
+ *
+ * To replay, it returns another proxy IntPicker that throws an exception if a
+ * mismatch is found (where the requested range doesn't match). After reaching
+ * the end of the log, it will start recording again.
+ */
+export class PickLog {
+  private readonly maxLogSize: number;
+  private reqs: PickRequest[] = [];
+  private picks: number[] = [];
+  private offset = 0;
+  private proxyCount = 0;
+
+  /**
+   * @param wrapped the picker to use when recording picks
+   */
+  constructor(
+    private readonly wrapped: IntPicker,
+    opts?: { maxLogSize?: number },
+  ) {
+    this.maxLogSize = opts?.maxLogSize ?? 1000;
+  }
+
+  /** The number of requests that have been recorded. */
+  get length() {
+    return this.reqs.length;
+  }
+
+  /**
+   * Returns true if there are recorded picks that haven't been replayed.
+   */
+  get replaying() {
+    return this.offset < this.picks.length;
+  }
+
+  /**
+   * Clears the log and starts recording. Returns the picker to use.
+   *
+   * The picker's lifetime is until the next call to either {@link record} or
+   * {@link replay}.
+   */
+  record(): IntPicker {
+    this.reqs = [];
+    this.picks = [];
+    return this.replay();
+  }
+
+  /**
+   * Starts replaying the log, using a new picker. After reaching the end, it
+   * will start recording again.
+   *
+   * The picker's lifetime is until the next call to either {@link record} or
+   * {@link replay}.
+   */
+  replay(): IntPicker {
+    this.offset = 0;
+    this.proxyCount++;
+    const id = this.proxyCount;
+
+    const pick = (req: PickRequest): number => {
+      if (id !== this.proxyCount) {
+        throw new Error(
+          "can't use this picker anymore, because record() or replay() were called",
+        );
+      }
+      if (this.offset < this.reqs.length) {
+        // replaying
+        const prev = this.reqs[this.offset];
+        if (prev.min !== req.min || prev.max !== req.max) {
+          throw new Error(
+            "when replaying, pick() must be called with the same request as before",
+          );
+        }
+        return this.picks[this.offset++];
+      } else {
+        if (this.offset === this.maxLogSize) {
+          throw new Error(
+            `pick log is full (max size: ${this.maxLogSize})`,
+          );
+        }
+        // recording
+        const pick = this.wrapped.pick(req);
+        this.reqs.push(req);
+        this.picks.push(pick);
+        this.offset += 1;
+        return pick;
+      }
+    };
+    return { pick };
+  }
+
+  /**
+   * Increments the log and starts replaying it.
+   *
+   * To increment, it removes all trailing picks that are at maximum, then
+   * increments the last pick.
+   *
+   * If null is returned, there is no next log to replay (all picks were at
+   * maximum, so they were removed).
+   */
+  replayNext(): IntPicker | null {
+    while (this.length > 0) {
+      const i = this.length - 1;
+      const last = this.picks[i];
+      if (last < this.reqs[i].max) {
+        this.picks[i] = last + 1;
+        return this.replay();
+      }
+      this.picks.pop();
+      this.reqs.pop();
+    }
+    return null;
   }
 }
