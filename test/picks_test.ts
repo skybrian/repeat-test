@@ -16,9 +16,9 @@ export const invalidRange = arb.oneOf<Range>([
 export const validRange = arb.oneOf<Range>([
   arb.example([{ min: 0, max: 0 }, { min: 0, max: 1 }]),
   arb.custom((pick) => {
-    const extras = pick(arb.biasedInt(0, 100));
+    const extras = pick(arb.int(0, 100));
     const min = pick(
-      arb.biasedInt(Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER - extras),
+      arb.int(Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER - extras),
     );
     const max = min + extras;
     return { min, max };
@@ -29,7 +29,7 @@ export const validRequest = arb.oneOf<PickRequest>([
   validRange.map(({ min, max }) => new PickRequest(min, max)),
   arb.custom((pick) => {
     const { min, max } = pick(validRange);
-    const def = pick(arb.biasedInt(min, max));
+    const def = pick(arb.int(min, max));
     return new PickRequest(min, max, { default: def });
   }),
 ]);
@@ -72,7 +72,7 @@ describe("PickRequest", () => {
     it("returns the overridden default when given", () => {
       const example = arb.custom((pick) => {
         const { min, max } = pick(validRange);
-        const def = pick(arb.biasedInt(min, max));
+        const def = pick(arb.int(min, max));
         return { min, max, def };
       });
       repeatTest(example, ({ min, max, def }) => {
@@ -100,7 +100,7 @@ describe("ArrayPicker", () => {
         it("returns it", () => {
           const example = arb.custom((pick) => {
             const req = pick(validRequest);
-            const n = pick(arb.biasedInt(req.min, req.max));
+            const n = pick(arb.int(req.min, req.max));
             const stream = new ArrayPicker([n]);
             return { req, n, stream };
           });

@@ -1,14 +1,14 @@
-import { Arbitrary, array, biasedInt } from "./core.ts";
+import { Arbitrary, array, int } from "./core.ts";
 
 const defaultChar = "x".charCodeAt(0);
-const charCode = biasedInt(0, 0xffff, { default: defaultChar });
+const charCode = int(0, 0xffff, { default: defaultChar });
 
 const surrogateMin = 0xd800;
 const surrogateMax = 0xdfff;
 const surrogateGap = surrogateMax - surrogateMin + 1;
 const unicodeMax = 0x10ffff;
 
-const codePoint = biasedInt(0, unicodeMax - surrogateGap, {
+const codePoint = int(0, unicodeMax - surrogateGap, {
   default: defaultChar,
 }).map(
   (code) => (code >= surrogateMin) ? code + surrogateGap : code,

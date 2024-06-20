@@ -237,7 +237,7 @@ export class Arbitrary<T> {
  *
  * Invariant: min <= pick <= max.
  */
-export function chosenInt(
+export function uniformInt(
   min: number,
   max: number,
   opts?: { default?: number },
@@ -249,13 +249,13 @@ export function chosenInt(
 /**
  * An integer range, to be picked from with bias towards special cases.
  */
-export function biasedInt(
+export function int(
   min: number,
   max: number,
   opts?: { default?: number },
 ): Arbitrary<number> {
   if (max - min <= 10) {
-    return chosenInt(min, max, opts);
+    return uniformInt(min, max, opts);
   }
   function pickBiased(
     uniform: (min: number, max: number) => number,
@@ -301,7 +301,7 @@ export function example<T>(values: T[]): Arbitrary<T> {
   if (values.length === 1) {
     return custom(() => values[0]);
   }
-  return biasedInt(0, values.length - 1).map((idx) => values[idx]);
+  return int(0, values.length - 1).map((idx) => values[idx]);
 }
 
 export const boolean = example([false, true]);
@@ -323,7 +323,7 @@ export function array<T>(
   const minLength = opts?.min ?? 0;
   const maxLength = opts?.max ?? 10;
   return custom((pick) => {
-    const length = pick(biasedInt(minLength, maxLength));
+    const length = pick(int(minLength, maxLength));
     const result: T[] = [];
     for (let i = 0; i < length; i++) {
       result.push(pick(item));

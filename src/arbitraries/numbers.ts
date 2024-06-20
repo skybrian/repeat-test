@@ -1,6 +1,6 @@
-import { biasedInt, boolean, custom, example, oneOf } from "./core.ts";
+import { boolean, custom, example, int, oneOf } from "./core.ts";
 
-export const safeInt = biasedInt(
+export const safeInt = int(
   Number.MIN_SAFE_INTEGER,
   Number.MAX_SAFE_INTEGER,
 );
@@ -25,5 +25,5 @@ export function intOutsideRange(min: number, max: number) {
 
 export const nonInteger = oneOf<number>([
   strangeNumber,
-  biasedInt(-100, 100).map((n) => n + 0.5),
+  int(-100, 100).map((n) => n + 0.5),
 ]);

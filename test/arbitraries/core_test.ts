@@ -58,14 +58,14 @@ describe("Arbitrary", () => {
       assertEquals(Array.from(justFalse.members), [false]);
     });
     it("handles a chained Arbitrary", () => {
-      const len = arb.chosenInt(0, 1);
+      const len = arb.int(0, 1);
       const string = len.chain((len) =>
         arb.array(arb.example(["hi", "there"]), { min: len, max: len })
       );
       assertEquals(Array.from(string.members), [[], ["hi"], ["there"]]);
     });
     it("handles nested filters", () => {
-      repeatTest(arb.chosenInt(2, 5), (skip) => {
+      repeatTest(arb.int(2, 5), (skip) => {
         const left = arb.example([1, 2, 3, 4, 5]).filter((n) => n != skip);
         const right = arb.example([6, 7, 8, 9, 10]);
         const both = arb.oneOf([left, right]);
@@ -109,12 +109,12 @@ function intRangeTests(
   });
 }
 
-describe("chosenInt", () => {
-  intRangeTests(arb.chosenInt);
+describe("uniformInt", () => {
+  intRangeTests(arb.uniformInt);
 });
 
-describe("biasedInt", () => {
-  intRangeTests(arb.biasedInt);
+describe("int", () => {
+  intRangeTests(arb.int);
 });
 
 describe("boolean", () => {
@@ -146,12 +146,12 @@ describe("example", () => {
 
 describe("oneOf", () => {
   const oneWay = arb.oneOf([
-    arb.chosenInt(1, 2),
+    arb.uniformInt(1, 2),
   ]);
   const threeWay = arb.oneOf([
-    arb.chosenInt(1, 2),
-    arb.chosenInt(3, 4),
-    arb.chosenInt(5, 6),
+    arb.uniformInt(1, 2),
+    arb.uniformInt(3, 4),
+    arb.uniformInt(5, 6),
   ]);
   it("should default to the first branch", () => {
     assertParseFails(oneWay, [], 1, 0);
