@@ -1,21 +1,33 @@
 import prand from "pure-rand";
-import { IntPicker, PickRequest } from "./picks.ts";
+import { IntPicker, PickRequest, UniformIntPicker } from "./picks.ts";
+
+function jump(r: prand.RandomGenerator): prand.RandomGenerator {
+  const jump = r.jump;
+  if (!jump) {
+    throw new Error("no jump function");
+  }
+  return jump.bind(r)();
+}
 
 /**
- * Picks randomly from the requested distribution.
+ * Returns a sequence of random number generators to use.
  */
-export class RandomPicker implements IntPicker {
-  readonly seed;
-  private readonly uniform: (min: number, max: number) => number;
-
-  constructor(opts?: { seed: number }) {
-    this.seed = opts?.seed ?? Date.now() ^ (Math.random() * 0x100000000);
-    const rng = prand.xoroshiro128plus(this.seed);
-    this.uniform = (min, max) =>
-      prand.unsafeUniformIntDistribution(min, max, rng);
+export function* randomPickers(seed: number): IterableIterator<IntPicker> {
+  let rng = prand.xoroshiro128plus(seed);
+  while (true) {
+    const next = jump(rng);
+    yield makePicker(rng);
+    rng = next;
   }
+}
 
-  pick(req: PickRequest): number {
-    return req.bias(this.uniform);
-  }
+function makePicker(rng: prand.RandomGenerator): IntPicker {
+  const uniform: UniformIntPicker = (min, max) =>
+    prand.unsafeUniformIntDistribution(min, max, rng);
+
+  return {
+    pick(req: PickRequest) {
+      return req.bias(uniform);
+    },
+  };
 }
