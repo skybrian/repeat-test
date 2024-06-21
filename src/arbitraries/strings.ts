@@ -1,14 +1,15 @@
-import { Arbitrary, array, int } from "./core.ts";
+import { Arbitrary } from "./core.ts";
+import * as arb from "./basics.ts";
 
 const defaultChar = "x".charCodeAt(0);
-const charCode = int(0, 0xffff, { default: defaultChar });
+const charCode = arb.int(0, 0xffff, { default: defaultChar });
 
 const surrogateMin = 0xd800;
 const surrogateMax = 0xdfff;
 const surrogateGap = surrogateMax - surrogateMin + 1;
 const unicodeMax = 0x10ffff;
 
-const codePoint = int(0, unicodeMax - surrogateGap, {
+const codePoint = arb.int(0, unicodeMax - surrogateGap, {
   default: defaultChar,
 }).map(
   (code) => (code >= surrogateMin) ? code + surrogateGap : code,
@@ -46,7 +47,7 @@ export const unicodeChar: Arbitrary<string> = codePoint.map(
 export function anyString(
   opts?: { min: number; max: number },
 ): Arbitrary<string> {
-  return array(charCode, opts).map((arr) => String.fromCharCode(...arr));
+  return arb.array(charCode, opts).map((arr) => String.fromCharCode(...arr));
 }
 
 /**
@@ -58,5 +59,5 @@ export function anyString(
 export function wellFormedString(
   opts?: { min?: number; max?: number },
 ): Arbitrary<string> {
-  return array(codePoint, opts).map((arr) => String.fromCodePoint(...arr));
+  return arb.array(codePoint, opts).map((arr) => String.fromCodePoint(...arr));
 }

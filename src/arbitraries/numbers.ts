@@ -1,4 +1,4 @@
-import { boolean, custom, example, int, oneOf } from "./core.ts";
+import { boolean, custom, example, int, oneOf } from "./basics.ts";
 
 export const int32 = int(-(2 ** 31), 2 ** 31 - 1);
 
