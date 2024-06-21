@@ -7,6 +7,8 @@ import {
   PickRequest,
 } from "../picks.ts";
 
+import { Failure, Success } from "../results.ts";
+
 class PickFailed extends Error {
   private constructor(msg: string) {
     super(msg);
@@ -91,16 +93,10 @@ function calculateDefault<T>(parse: ParseFunction<T>): T {
   return def;
 }
 
-export type ParseSuccess<T> = {
-  ok: true;
-  value: T;
-};
-
-export type ParseFailure<T> = {
-  ok: false;
+export interface ParseFailure<T> extends Failure {
   guess: T;
   errorOffset: number;
-};
+}
 
 /**
  * A set of values that can be randomly picked from. Members are generated as
@@ -170,7 +166,7 @@ export class Arbitrary<T> {
    * This function can be used to test which picks the Arbitrary accepts as
    * input.
    */
-  parse(picks: number[]): ParseSuccess<T> | ParseFailure<T> {
+  parse(picks: number[]): Success<T> | ParseFailure<T> {
     const input = new ArrayPicker(picks);
     const pick = makePickFunction(input, 1);
     const val = pick(this);
@@ -179,7 +175,7 @@ export class Arbitrary<T> {
     } else if (input.failed) {
       return { ok: false, guess: val, errorOffset: input.errorOffset! };
     }
-    return { ok: true, value: val };
+    return { ok: true, val: val };
   }
 
   /**

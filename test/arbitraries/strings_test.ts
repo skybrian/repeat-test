@@ -16,8 +16,8 @@ describe("char16", () => {
       if (!parsed.ok) {
         fail(`Failed to parse ${i}`);
       }
-      assertEquals(parsed.value.length, 1);
-      assertEquals(parsed.value, String.fromCodePoint(i));
+      assertEquals(parsed.val.length, 1);
+      assertEquals(parsed.val, String.fromCodePoint(i));
     }
   });
 });

@@ -6,7 +6,7 @@ export function assertParses<T>(
   picks: number[],
   expected: T,
 ) {
-  assertEquals(arb.parse(picks), { ok: true, value: expected });
+  assertEquals(arb.parse(picks), { ok: true, val: expected });
 }
 
 export function assertParseFails<T>(

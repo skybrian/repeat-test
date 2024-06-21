@@ -1,5 +1,6 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
 import { Arbitrary, makePickFunction } from "./arbitraries.ts";
+import { fail, Failure, Success, success } from "./results.ts";
 
 /** A function that runs a test, using generated input. */
 export type TestFunction<T> = (arg: T) => void;
@@ -10,9 +11,18 @@ export type RepKey = {
   index: number;
 };
 
-export function parseRepKey(key: string): RepKey {
-  const [seed, index] = key.split(":").map((x) => parseInt(x));
-  return { seed, index };
+export function parseRepKey(key: string): Success<RepKey> | Failure {
+  const fields = key.split(":");
+  if (fields.length !== 2) return fail("invalid key format");
+  const [seed, index] = fields.map((x) => parseInt(x));
+
+  if (!Number.isSafeInteger(seed) || (seed | 0) !== seed) {
+    return fail("invalid seed in key");
+  }
+  if (!Number.isSafeInteger(index) || index < 0) {
+    return fail("invalid index in key");
+  }
+  return success({ seed, index });
 }
 
 export function serializeRepKey(key: RepKey): string {
@@ -101,6 +111,18 @@ export type RepeatOptions = {
   only?: string;
 };
 
+function getStartKey(opts?: RepeatOptions): Success<RepKey> | Failure {
+  if (!opts?.only) {
+    return success({
+      seed: pickRandomSeed(),
+      index: 0,
+    });
+  }
+  const parsed = parseRepKey(opts.only);
+  if (!parsed.ok) return fail("can't parse 'only' parameter");
+  return success(parsed.val);
+}
+
 /**
  * Runs a test function repeatedly, using randomly generated input.
  *
@@ -112,13 +134,11 @@ export function repeatTest<T>(
   test: TestFunction<T>,
   opts?: RepeatOptions,
 ): void {
-  const start: RepKey = opts?.only ? parseRepKey(opts.only) : {
-    seed: pickRandomSeed(),
-    index: 0,
-  };
+  const start = getStartKey(opts);
+  if (!start.ok) throw new Error(start.message ?? "can't get start key");
 
   const genOpts = { filterLimit: opts?.filterLimit };
-  const reps = generateReps(start, input, test, genOpts);
+  const reps = generateReps(start.val, input, test, genOpts);
 
   const count = opts?.only ? 1 : opts?.reps ?? defaultReps;
   runReps(reps, count);

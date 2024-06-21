@@ -2,13 +2,53 @@ import { describe, it } from "@std/testing/bdd";
 import { assertEquals } from "@std/assert";
 import { Arbitrary } from "../src/arbitraries.ts";
 import * as arb from "../src/arbitraries.ts";
+import { success } from "../src/results.ts";
 
-import { generateReps, repeatTest } from "../src/runner.ts";
+import {
+  generateReps,
+  parseRepKey,
+  repeatTest,
+  serializeRepKey,
+} from "../src/runner.ts";
+
+const anyKey = arb.record({ seed: arb.int32, index: arb.int(0, 100) });
+const badKey = arb.oneOf([
+  arb.record({ seed: arb.int32, index: arb.int(-100, -1) }),
+  arb.record({ seed: arb.strangeNumber, index: arb.int(0, 100) }),
+  arb.record({ seed: arb.int32, index: arb.strangeNumber }),
+  arb.example([{ seed: Number.MAX_SAFE_INTEGER, index: 0 }]),
+]);
+
+describe("parseRepKey", () => {
+  it("parses any key emitted by serializeRepKey", () => {
+    repeatTest(anyKey, (key) => {
+      const serialized = serializeRepKey(key);
+      assertEquals(parseRepKey(serialized), success(key));
+    });
+  });
+  it("returns a failure if the serialized key had bad data", () => {
+    repeatTest(badKey, (key) => {
+      const serialized = serializeRepKey(key);
+      assertEquals(parseRepKey(serialized).ok, false);
+    });
+  });
+  it("returns a failure if the serialized key isn't in the right format", () => {
+    const badString = arb.oneOf([
+      arb.anyString().filter((x) => x.split(":").length !== 2),
+      arb.record({ k: anyKey, junk: arb.anyString() }).map(({ k, junk }) =>
+        `${serializeRepKey(k)}:${junk}`
+      ),
+    ]);
+
+    repeatTest(badString, (s) => {
+      assertEquals(parseRepKey(s).ok, false);
+    });
+  });
+});
 
 describe("generateReps", () => {
   it("generates reps with the right keys", () => {
-    const key = arb.record({ seed: arb.int32, index: arb.int(0, 100) });
-    repeatTest(key, (start) => {
+    repeatTest(anyKey, (start) => {
       const zero = new Arbitrary(() => 0);
       const test = () => {};
       const reps = generateReps(start, zero, test);
