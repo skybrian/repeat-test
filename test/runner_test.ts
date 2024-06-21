@@ -1,5 +1,5 @@
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals } from "@std/assert";
+import { assertEquals, fail } from "@std/assert";
 import { Arbitrary } from "../src/arbitraries.ts";
 import * as arb from "../src/arbitraries.ts";
 import { success } from "../src/results.ts";
@@ -8,6 +8,7 @@ import {
   generateReps,
   parseRepKey,
   repeatTest,
+  runRep,
   serializeRepKey,
 } from "../src/runner.ts";
 
@@ -60,6 +61,28 @@ describe("generateReps", () => {
         });
       }
     });
+  });
+});
+
+describe("runRep", () => {
+  it("returns success if the test passes", () => {
+    const test = () => {};
+    const rep = { key: { seed: 1, index: 1 }, arg: 1, test };
+    assertEquals(runRep(rep), success());
+  });
+  it("returns a failure if the test throws", () => {
+    const test = () => {
+      throw new Error("test failed");
+    };
+    const rep = { key: { seed: 1, index: 1 }, arg: 1, test };
+    const result = runRep(rep);
+    if (result.ok) fail("expected a failure");
+    assertEquals(result.key, rep.key);
+    assertEquals(result.arg, rep.arg);
+    if (!(result.caught instanceof Error)) {
+      fail("expected caught to be an Error");
+    }
+    assertEquals(result.caught.message, "test failed");
   });
 });
 

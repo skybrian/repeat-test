@@ -75,27 +75,48 @@ export function* generateReps<T>(
   }
 }
 
+export interface TestFailure<T> extends Failure {
+  key: RepKey;
+  arg: T;
+  caught: unknown;
+}
+
+export function reportFailure<T>(failure: TestFailure<T>): never {
+  const key = serializeRepKey(failure.key);
+  console.error(`attempt ${failure.key.index} FAILED, using:`, failure.arg);
+  console.log(`rerun using {only: "${key}"}`);
+  throw failure.caught;
+}
+
 /** Runs one repetition. */
-export function runRep<T>(rep: Rep<T>) {
+export function runRep<T>(rep: Rep<T>): Success<void> | TestFailure<T> {
   try {
     rep.test(rep.arg);
+    return success();
   } catch (e) {
-    const key = serializeRepKey(rep.key);
-    console.error(`attempt ${rep.key.index} FAILED, using:`, rep.arg);
-    console.log(`rerun using {only: "${key}"}`);
-    throw e;
+    return {
+      ok: false,
+      key: rep.key,
+      arg: rep.arg,
+      caught: e,
+    };
   }
 }
 
-export function runReps<T>(reps: Iterable<Rep<T>>, count: number): void {
-  if (count === 0) return;
+export function runReps<T>(
+  reps: Iterable<Rep<T>>,
+  count: number,
+): Success<void> | TestFailure<T> {
+  if (count === 0) return success();
 
   let passed = 0;
   for (const rep of reps) {
-    runRep(rep);
+    const ran = runRep(rep);
+    if (!ran.ok) return ran;
     passed++;
     if (passed >= count) break;
   }
+  return success();
 }
 
 const defaultReps = 1000;
@@ -141,5 +162,6 @@ export function repeatTest<T>(
   const reps = generateReps(start.val, input, test, genOpts);
 
   const count = opts?.only ? 1 : opts?.reps ?? defaultReps;
-  runReps(reps, count);
+  const ran = runReps(reps, count);
+  if (!ran.ok) reportFailure(ran);
 }
