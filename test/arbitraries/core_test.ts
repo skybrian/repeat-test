@@ -6,8 +6,6 @@ import { Arbitrary, RETRY } from "../../src/arbitraries.ts";
 import * as arb from "../../src/arbitraries.ts";
 import { repeatTest } from "../../src/runner.ts";
 
-import { assertParseFails, assertParses } from "../../src/asserts.ts";
-
 const oneToSix = new PickRequest(1, 6);
 const sixSided = new Arbitrary((pick) => pick(oneToSix));
 
