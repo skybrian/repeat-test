@@ -1,3 +1,5 @@
+import { Failure, Success, success } from "./results.ts";
+
 /**
  * Randomly picks an integer from a uniform distribution.
  *
@@ -103,26 +105,26 @@ export interface IntPicker {
 export const alwaysChooseDefault: IntPicker = { pick: (req) => req.default };
 export const alwaysChooseMin: IntPicker = { pick: (req) => req.min };
 
+export interface ParseFailure<T> extends Failure {
+  guess: T;
+  errorOffset: number;
+}
+
 /**
- * An infinite stream of integers, taken from an array until it runs out.
+ * Input to a parser that converts picks into a value.
  *
- * Invalid picks are skipped. After the end of the array, a request's default
- * value will be returned.
+ * For a successful parse, the parser must take each pick given in the constructor.
  *
- * A parse is consider successful if all picks were taken from the array.
- * (TODO: check for the case where not all picks were used.)
+ * As a form of error recovery, invalid picks are skipped. If more picks are needed
+ * after the input runs out, a request's default value will be returned.
  *
- * To check for an error, see {@link failed} and {@link errorOffset}.
+ * To check for a parse error after parsing is done, use {@link finish}.
  */
-export class ArrayPicker implements IntPicker {
+export class ParserInput implements IntPicker {
   offset: number = 0;
   errorOffset: number | null = null;
 
   constructor(private picks: number[]) {}
-
-  get failed() {
-    return this.errorOffset !== null;
-  }
 
   pick(req: PickRequest): number {
     while (this.offset < this.picks.length) {
@@ -142,6 +144,18 @@ export class ArrayPicker implements IntPicker {
       this.errorOffset = this.picks.length;
     }
     return req.default;
+  }
+
+  finish<T>(val: T): Success<T> | ParseFailure<T> {
+    if (!this.errorOffset && this.offset !== this.picks.length) {
+      this.errorOffset = this.offset;
+    }
+
+    if (this.errorOffset !== null) {
+      return { ok: false, guess: val, errorOffset: this.errorOffset };
+    }
+
+    return success(val);
   }
 }
 

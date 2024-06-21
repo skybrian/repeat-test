@@ -1,13 +1,14 @@
 import {
   alwaysChooseDefault,
   alwaysChooseMin,
-  ArrayPicker,
   IntPicker,
+  ParseFailure,
+  ParserInput,
   PickLog,
   PickRequest,
 } from "../picks.ts";
 
-import { Failure, Success } from "../results.ts";
+import { Success } from "../results.ts";
 
 class PickFailed extends Error {
   private constructor(msg: string) {
@@ -93,11 +94,6 @@ function calculateDefault<T>(parse: ParseFunction<T>): T {
   return def;
 }
 
-export interface ParseFailure<T> extends Failure {
-  guess: T;
-  errorOffset: number;
-}
-
 /**
  * A set of values that can be randomly picked from. Members are generated as
  * needed.
@@ -167,15 +163,15 @@ export class Arbitrary<T> {
    * input.
    */
   parse(picks: number[]): Success<T> | ParseFailure<T> {
-    const input = new ArrayPicker(picks);
+    const input = new ParserInput(picks);
     const pick = makePickFunction(input, 1);
+
     const val = pick(this);
     if (val === RETRY) {
       return { ok: false, guess: this.default, errorOffset: input.offset };
-    } else if (input.failed) {
-      return { ok: false, guess: val, errorOffset: input.errorOffset! };
     }
-    return { ok: true, val: val };
+
+    return input.finish(val);
   }
 
   /**
