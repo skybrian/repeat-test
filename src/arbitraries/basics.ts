@@ -112,12 +112,14 @@ export function length(
   return new Arbitrary((pick) => pick(req));
 }
 
+const defaultArrayLimit = 100;
+
 export function array<T>(
   item: Arbitrary<T>,
   opts?: { min?: number; max?: number },
 ): Arbitrary<T[]> {
   const min = opts?.min ?? 0;
-  const max = opts?.max ?? 10;
+  const max = opts?.max ?? defaultArrayLimit;
   return custom((pick) => {
     const len = pick(length(min, max));
     const result: T[] = [];

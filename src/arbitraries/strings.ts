@@ -39,6 +39,8 @@ export const unicodeChar: Arbitrary<string> = codePoint.map(
   (code) => String.fromCodePoint(code),
 );
 
+const defaultStringLimit = 500;
+
 /**
  * Arbitrary strings, well-formed or not. Includes unpaired surrogates.
  *
@@ -47,7 +49,11 @@ export const unicodeChar: Arbitrary<string> = codePoint.map(
 export function anyString(
   opts?: { min: number; max: number },
 ): Arbitrary<string> {
-  return arb.array(charCode, opts).map((arr) => String.fromCharCode(...arr));
+  const min = opts?.min ?? 0;
+  const max = opts?.max ?? defaultStringLimit;
+  return arb.array(charCode, { min, max }).map((arr) =>
+    String.fromCharCode(...arr)
+  );
 }
 
 /**
@@ -59,5 +65,9 @@ export function anyString(
 export function wellFormedString(
   opts?: { min?: number; max?: number },
 ): Arbitrary<string> {
-  return arb.array(codePoint, opts).map((arr) => String.fromCodePoint(...arr));
+  const min = opts?.min ?? 0;
+  const max = opts?.max ?? defaultStringLimit;
+  return arb.array(codePoint, { min, max }).map((arr) =>
+    String.fromCodePoint(...arr)
+  );
 }
