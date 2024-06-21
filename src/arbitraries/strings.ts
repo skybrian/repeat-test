@@ -22,9 +22,9 @@ const codePoint = arb.int(0, unicodeMax - surrogateGap, {
  * surrogates. So, this arbitrary can be used if you want your code to handle
  * badly-formed strings somehow.
  */
-export const char16: Arbitrary<string> = charCode.map((code) =>
-  String.fromCharCode(code)
-);
+export function char16(): Arbitrary<string> {
+  return charCode.map((code) => String.fromCharCode(code));
+}
 
 /**
  * All well-formed strings that correspond to a single Unicode code point. The
@@ -35,9 +35,11 @@ export const char16: Arbitrary<string> = charCode.map((code) =>
  * they aren't included because they decode to unpaired surrogates, which aren't
  * well-formed.
  */
-export const unicodeChar: Arbitrary<string> = codePoint.map(
-  (code) => String.fromCodePoint(code),
-);
+export function unicodeChar(): Arbitrary<string> {
+  return codePoint.map(
+    (code) => String.fromCodePoint(code),
+  );
+}
 
 const defaultStringLimit = 500;
 

@@ -8,11 +8,11 @@ import * as arb from "../../src/arbitraries.ts";
 
 describe("char16", () => {
   it("should default to 'x'", () => {
-    assertEquals(arb.char16.default, "x");
+    assertEquals(arb.char16().default, "x");
   });
   it("should return a string of length 1 with the appropriate code point", () => {
     for (let i = 0; i < 0xFFFF; i++) {
-      const parsed = arb.char16.parse([i]);
+      const parsed = arb.char16().parse([i]);
       if (!parsed.ok) {
         fail(`Failed to parse ${i}`);
       }
@@ -42,10 +42,10 @@ const surrogateGap = 0xdfff - 0xd800 + 1;
 
 describe("unicodeChar", () => {
   it("should default to 'x'", () => {
-    assertEquals(arb.unicodeChar.default, "x");
+    assertEquals(arb.unicodeChar().default, "x");
   });
   it("should always return a well-formed string", () => {
-    repeatTest(arb.unicodeChar, (str) => {
+    repeatTest(arb.unicodeChar(), (str) => {
       assertEquals(
         isWellFormed(str),
         true,

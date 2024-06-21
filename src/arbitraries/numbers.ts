@@ -1,21 +1,28 @@
 import { boolean, custom, example, int, oneOf } from "./basics.ts";
+import { Arbitrary } from "./core.ts";
 
-export const int32 = int(-(2 ** 31), 2 ** 31 - 1);
+export function int32(): Arbitrary<number> {
+  return int(-(2 ** 31), 2 ** 31 - 1);
+}
 
-export const safeInt = int(
-  Number.MIN_SAFE_INTEGER,
-  Number.MAX_SAFE_INTEGER,
-);
+export function safeInt(): Arbitrary<number> {
+  return int(
+    Number.MIN_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER,
+  );
+}
 
-export const strangeNumber = example([
-  Number.POSITIVE_INFINITY,
-  Number.NEGATIVE_INFINITY,
-  Number.NaN,
-]);
+export function strangeNumber(): Arbitrary<number> {
+  return example([
+    Number.POSITIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+    Number.NaN,
+  ]);
+}
 
-export function intOutsideRange(min: number, max: number) {
+export function intOutsideRange(min: number, max: number): Arbitrary<number> {
   return custom((pick): number => {
-    if (pick(boolean)) {
+    if (pick(boolean())) {
       if (min - 1 < min) return min - 1;
       return min - 2 ** 32;
     } else {
@@ -25,7 +32,9 @@ export function intOutsideRange(min: number, max: number) {
   });
 }
 
-export const nonInteger = oneOf<number>([
-  strangeNumber,
-  int(-100, 100).map((n) => n + 0.5),
-]);
+export function nonInteger(): Arbitrary<number> {
+  return oneOf<number>([
+    strangeNumber(),
+    int(-100, 100).map((n) => n + 0.5),
+  ]);
+}

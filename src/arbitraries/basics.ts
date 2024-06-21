@@ -1,5 +1,6 @@
 import { Arbitrary, PickFunction } from "./core.ts";
 import { chooseDefault, PickRequest, PickRequestOptions } from "../picks.ts";
+import { BiasedIntPicker } from "../picks.ts";
 
 /**
  * Defines an arbitrary that's based on a callback function that generates a
@@ -8,7 +9,7 @@ import { chooseDefault, PickRequest, PickRequestOptions } from "../picks.ts";
  * The callback must always succeed, but see {@link Arbitrary.filter} for a way
  * to do backtracking in a subrequest.
  */
-export function custom<T>(callback: (pick: PickFunction) => T) {
+export function custom<T>(callback: (pick: PickFunction) => T): Arbitrary<T> {
   return new Arbitrary((pick) => callback(pick));
 }
 
@@ -26,7 +27,11 @@ export function uniformInt(
   return new Arbitrary((pick) => pick(req));
 }
 
-function specialNumberBias(min: number, max: number, defaultVal: number) {
+function specialNumberBias(
+  min: number,
+  max: number,
+  defaultVal: number,
+): BiasedIntPicker {
   function pick(uniform: (min: number, max: number) => number): number {
     switch (uniform(0, 15)) {
       case 0:
@@ -78,7 +83,9 @@ export function example<T>(values: T[]): Arbitrary<T> {
   return int(0, values.length - 1).map((idx) => values[idx]);
 }
 
-export const boolean = example([false, true]);
+export function boolean(): Arbitrary<boolean> {
+  return example([false, true]);
+}
 
 export function oneOf<T>(alternatives: Arbitrary<T>[]): Arbitrary<T> {
   if (alternatives.length === 0) {

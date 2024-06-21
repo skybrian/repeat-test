@@ -43,16 +43,16 @@ describe("Arbitrary", () => {
       assertEquals(Array.from(one.members), [1]);
     });
     it("returns each example from a boolean", () => {
-      const members = Array.from(arb.boolean.members);
+      const members = Array.from(arb.boolean().members);
       assertEquals(members, [false, true]);
     });
     it("handles a mapped Arbitrary", () => {
-      const bit = arb.boolean.map((b) => b ? 1 : 0);
+      const bit = arb.boolean().map((b) => b ? 1 : 0);
       const members = Array.from(bit.members);
       assertEquals(members, [0, 1]);
     });
     it("handles a filtered Arbitrary", () => {
-      const justFalse = arb.boolean.filter((b) => !b);
+      const justFalse = arb.boolean().filter((b) => !b);
       assertEquals(Array.from(justFalse.members), [false]);
     });
     it("handles a chained Arbitrary", () => {

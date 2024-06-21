@@ -9,8 +9,8 @@ export type Range = { min: number; max: number };
 
 export const invalidRange = arb.oneOf<Range>([
   arb.example([{ min: 1, max: 0 }]),
-  arb.record({ min: arb.safeInt, max: arb.nonInteger }),
-  arb.record({ min: arb.nonInteger, max: arb.safeInt }),
+  arb.record({ min: arb.safeInt(), max: arb.nonInteger() }),
+  arb.record({ min: arb.nonInteger(), max: arb.safeInt() }),
 ]);
 
 export const validRange = arb.oneOf<Range>([
@@ -45,7 +45,7 @@ describe("PickRequest", () => {
       const example = arb.custom((pick) => {
         const { min, max } = pick(validRange);
         const def = pick(
-          arb.oneOf([arb.nonInteger, arb.intOutsideRange(min, max)]),
+          arb.oneOf([arb.nonInteger(), arb.intOutsideRange(min, max)]),
         );
         return { min, max, def };
       });

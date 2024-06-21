@@ -47,13 +47,13 @@ describe("int", () => {
 
 describe("boolean", () => {
   it("should default to false", () => {
-    assertParseFails(arb.boolean, [], false, 0);
+    assertParseFails(arb.boolean(), [], false, 0);
   });
   it("should parse a 0 as false", () => {
-    assertParses(arb.boolean, [0], false);
+    assertParses(arb.boolean(), [0], false);
   });
   it("should parse a 1 as true", () => {
-    assertParses(arb.boolean, [1], true);
+    assertParses(arb.boolean(), [1], true);
   });
 });
 
