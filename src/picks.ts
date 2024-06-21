@@ -16,6 +16,55 @@ export type UniformIntPicker = (min: number, max: number) => number;
  */
 export type BiasedIntPicker = (uniform: UniformIntPicker) => number;
 
+export function uniformBias(min: number, max: number): BiasedIntPicker {
+  return (uniform: UniformIntPicker) => uniform(min, max);
+}
+
+export type PickRequestOptions = {
+  /**
+   * Overrides the default value for this request. This should be a value
+   * between min and max.
+   */
+  default?: number;
+
+  /**
+   * Overrides the distribution for this request. The function should return a
+   * random integer between min and max.
+   */
+  bias?: BiasedIntPicker;
+};
+
+function inRange(n: number, min: number, max: number) {
+  return Number.isSafeInteger(n) && n >= min && n <= max;
+}
+
+/**
+ * Chooses a suitable default for an integer range.
+ *
+ * If not overridden, it's the number closest to zero between min and max.
+ */
+export function chooseDefault(
+  min: number,
+  max: number,
+  opts?: { default?: number },
+) {
+  const chosenDefault = opts?.default;
+  if (chosenDefault !== undefined) {
+    if (!inRange(chosenDefault, min, max)) {
+      throw new Error(
+        `the default must be in the range (${min}, ${max}); got ${chosenDefault}`,
+      );
+    }
+    return chosenDefault;
+  } else if (min >= 0) {
+    return min;
+  } else if (max <= 0) {
+    return max;
+  } else {
+    return 0;
+  }
+}
+
 /**
  * Requests a integer within a given range, with options.
  */
@@ -37,22 +86,17 @@ export class PickRequest {
   /**
    * Constructs a new request.
    *
-   * When the result is picked randomly, it will use a uniform distribution
-   * unless overridden by {@link opts.bias}.
+   * When the result is picked randomly, it will use {@link uniformBias} unless
+   * overridden by {@link PickRequestOptions.bias}.
    *
-   * When the result is not picked randomly, the default value may be used. If
-   * not overridden by {@link opts.bias}, it will be the number closest to zero
-   * that's between min and max.
-   *
-   * @param opts.default Overrides the default value for this request.
-   *
-   * @param opts.bias Overrides the distribution for this request. It should be
-   * a function that picks a random integer between min and max.
+   * A request has a default value that may be used when not picking randomly.
+   * If not specified using {@link PickRequestOptions.default}, it will be the
+   * number closest to zero that's between min and max.
    */
   constructor(
     readonly min: number,
     readonly max: number,
-    opts?: { default?: number; bias?: BiasedIntPicker },
+    opts?: PickRequestOptions,
   ) {
     if (!Number.isSafeInteger(min)) {
       throw new Error(`min must be a safe integer; got ${min}`);
@@ -65,31 +109,15 @@ export class PickRequest {
         `the range (min, max) must not be empty; got ${min} > ${max}`,
       );
     }
-    const chosenDefault = opts?.default;
-    if (chosenDefault !== undefined) {
-      if (!this.isValidReply(chosenDefault)) {
-        throw new Error(
-          `the default must be within the range (${min}, ${max}); got ${chosenDefault}`,
-        );
-      }
-      this.default = chosenDefault;
-    } else if (min >= 0) {
-      this.default = min;
-    } else if (max <= 0) {
-      this.default = max;
-    } else {
-      this.default = 0;
-    }
-
-    this.bias = opts?.bias ??
-      ((uniform: UniformIntPicker) => uniform(min, max));
+    this.default = chooseDefault(min, max, opts);
+    this.bias = opts?.bias ?? uniformBias(min, max);
   }
 
   /**
    * Returns true if the given number satisfies this request.
    */
   isValidReply(n: number): boolean {
-    return Number.isSafeInteger(n) && n >= this.min && n <= this.max;
+    return inRange(n, this.min, this.max);
   }
 }
 
