@@ -5,30 +5,10 @@ import { repeatTest } from "../src/runner.ts";
 
 import { ParserInput, PickLog, PickRequest } from "../src/picks.ts";
 
-export type Range = { min: number; max: number };
-
-export const invalidRange = arb.oneOf<Range>([
-  arb.example([{ min: 1, max: 0 }]),
-  arb.record({ min: arb.safeInt(), max: arb.nonInteger() }),
-  arb.record({ min: arb.nonInteger(), max: arb.safeInt() }),
-]);
-
-export const validRange = arb.oneOf<Range>([
-  arb.example([{ min: 0, max: 0 }, { min: 0, max: 1 }]),
-  arb.custom((pick) => {
-    const extras = pick(arb.int(0, 100));
-    const min = pick(
-      arb.int(Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER - extras),
-    );
-    const max = min + extras;
-    return { min, max };
-  }),
-]);
-
 export const validRequest = arb.oneOf<PickRequest>([
-  validRange.map(({ min, max }) => new PickRequest(min, max)),
+  arb.intRange().map(({ min, max }) => new PickRequest(min, max)),
   arb.custom((pick) => {
-    const { min, max } = pick(validRange);
+    const { min, max } = pick(arb.intRange());
     const def = pick(arb.int(min, max));
     return new PickRequest(min, max, { default: def });
   }),
@@ -37,13 +17,13 @@ export const validRequest = arb.oneOf<PickRequest>([
 describe("PickRequest", () => {
   describe("constructor", () => {
     it("throws when given an invalid range", () => {
-      repeatTest(invalidRange, ({ min, max }) => {
+      repeatTest(arb.invalidIntRange(), ({ min, max }) => {
         assertThrows(() => new PickRequest(min, max));
       });
     });
     it("throws when given an invalid default", () => {
       const example = arb.custom((pick) => {
-        const { min, max } = pick(validRange);
+        const { min, max } = pick(arb.intRange());
         const def = pick(
           arb.oneOf([arb.nonInteger(), arb.intOutsideRange(min, max)]),
         );
@@ -56,7 +36,7 @@ describe("PickRequest", () => {
   });
   describe("default", () => {
     it("returns the number closest to zero when not overridden", () => {
-      repeatTest(validRange, ({ min, max }) => {
+      repeatTest(arb.intRange(), ({ min, max }) => {
         const request = new PickRequest(min, max);
         assert(request.default >= min);
         assert(request.default <= max);
@@ -71,7 +51,7 @@ describe("PickRequest", () => {
     });
     it("returns the overridden default when given", () => {
       const example = arb.custom((pick) => {
-        const { min, max } = pick(validRange);
+        const { min, max } = pick(arb.intRange());
         const def = pick(arb.int(min, max));
         return { min, max, def };
       });
