@@ -13,24 +13,24 @@ function itMakesInts(
     opts?: { default?: number },
   ) => Arbitrary<number>,
 ) {
-  it("should default to min for positive numbers", () => {
+  it("defaults to min for positive numbers", () => {
     assertEquals(someInt(1, 6).default, 1);
   });
-  it("should default to max for negative numbers", () => {
+  it("defaults to max for negative numbers", () => {
     assertEquals(someInt(-6, -1).default, -1);
   });
-  it("should default to 0 for a range that includes 0", () => {
+  it("defaults to 0 for a range that includes 0", () => {
     assertEquals(someInt(-6, 6).default, 0);
   });
-  it("should default to a custom default value", () => {
+  it("defaults to a custom default value", () => {
     assertEquals(someInt(1, 6, { default: 3 }).default, 3);
   });
-  it("should accept numbers in range", () => {
+  it("accepts numbers in range", () => {
     for (let i = 1; i < 6; i++) {
       assertParses(someInt(1, 6), [i], i);
     }
   });
-  it("should reject numbers out of range", () => {
+  it("rejects numbers out of range", () => {
     for (const n of [-1, 0, 7]) {
       assertParseFails(someInt(1, 6), [n], 1, 0);
     }
@@ -46,27 +46,32 @@ describe("int", () => {
 });
 
 describe("boolean", () => {
-  it("should default to false", () => {
+  it("defaults to false", () => {
     assertParseFails(arb.boolean(), [], false, 0);
   });
-  it("should parse a 0 as false", () => {
+  it("parses a 0 as false", () => {
     assertParses(arb.boolean(), [0], false);
   });
-  it("should parse a 1 as true", () => {
+  it("parses a 1 as true", () => {
     assertParses(arb.boolean(), [1], true);
   });
 });
 
 describe("example", () => {
-  const oneWay = arb.example([1]);
-  const twoWay = arb.example([1, 2]);
-  it("shouldn't ask for a decision when there's only one example", () => {
-    assertParses(oneWay, [], 1);
+  const oneWay = arb.example([123]);
+  describe("for a single example", () => {
+    it("defaults to the example", () => {
+      assertEquals(oneWay.default, 123);
+    });
+    it("reads no picks when there is no choice to make", () => {
+      assertParses(oneWay, [], 123);
+    });
   });
-  it("should default to the first example", () => {
+  const twoWay = arb.example([1, 2]);
+  it("defaults to the first example", () => {
     assertParseFails(twoWay, [], 1, 0);
   });
-  it("should select the next example using the next item in the stream", () => {
+  it("reads a pick to decide which example to pick", () => {
     assertParses(twoWay, [0], 1);
     assertParses(twoWay, [1], 2);
   });
@@ -81,16 +86,43 @@ describe("oneOf", () => {
     arb.uniformInt(3, 4),
     arb.uniformInt(5, 6),
   ]);
-  it("should default to the first branch", () => {
-    assertParseFails(oneWay, [], 1, 0);
-    assertParseFails(threeWay, [], 1, 0);
+  it("defaults to the first branch", () => {
+    assertEquals(oneWay.default, 1);
+    assertEquals(threeWay.default, 1);
   });
-  it("shouldn't ask for a decision when there's only one branch", () => {
+  it("reads no picks when there's only one branch", () => {
     assertParses(oneWay, [1], 1);
   });
-  it("should select a branch using the next item in the stream", () => {
+  it("reads a pick to select a branch", () => {
     assertParses(threeWay, [0, 1], 1);
     assertParses(threeWay, [1, 3], 3);
     assertParses(threeWay, [2, 5], 5);
+  });
+});
+
+describe("array", () => {
+  describe("with default settings", () => {
+    it("defaults to an empty array", () => {
+      assertEquals(arb.array(arb.boolean()).default, []);
+    });
+    it("parses a zero as ending the array", () => {
+      assertParses(arb.array(arb.boolean()), [0], []);
+    });
+    it("parses a one as starting an item", () => {
+      assertParses(arb.array(arb.boolean()), [1, 0, 0], [false]);
+    });
+    it("parses a two-item array", () => {
+      assertParses(arb.array(arb.boolean()), [1, 0, 1, 1, 0], [false, true]);
+    });
+  });
+  describe("with a fixed-size array", () => {
+    const item = arb.int(0, 3, { default: 1 });
+    const fixed = arb.array(item, { min: 2, max: 2 });
+    it("defaults to an array of default values", () => {
+      assertEquals(fixed.default, [1, 1]);
+    });
+    it("parses each item in the array", () => {
+      assertParses(fixed, [3, 2], [3, 2]);
+    });
   });
 });

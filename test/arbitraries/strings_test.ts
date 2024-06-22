@@ -7,10 +7,10 @@ import { isWellFormed } from "../../src/workarounds.ts";
 import * as arb from "../../src/arbitraries.ts";
 
 describe("char16", () => {
-  it("should default to 'x'", () => {
+  it("defaults to 'x'", () => {
     assertEquals(arb.char16().default, "x");
   });
-  it("should return a string of length 1 with the appropriate code point", () => {
+  it("parses a pick as as a code point", () => {
     for (let i = 0; i < 0xFFFF; i++) {
       const parsed = arb.char16().parse([i]);
       if (!parsed.ok) {
@@ -23,14 +23,14 @@ describe("char16", () => {
 });
 
 describe("anyString", () => {
-  it("should default to an empty string", () => {
+  it("defaults to an empty string", () => {
     assertEquals(arb.anyString().default, "");
   });
-  it("should parse ascii characters", () => {
-    assertParses(arb.anyString(), [2, 0x20, 0x21], " !");
+  it("parses an array of code points", () => {
+    assertParses(arb.anyString(), [1, 0x20, 1, 0x21, 0], " !");
   });
-  it("should parse an unpaired surrogate", () => {
-    assertParses(arb.anyString(), [1, 0xD800], "\uD800");
+  it("parses an unpaired surrogate", () => {
+    assertParses(arb.anyString(), [1, 0xD800, 0], "\uD800");
   });
 });
 
@@ -41,10 +41,10 @@ function codeUnits(str: string): string[] {
 const surrogateGap = 0xdfff - 0xd800 + 1;
 
 describe("unicodeChar", () => {
-  it("should default to 'x'", () => {
+  it("defaults to 'x'", () => {
     assertEquals(arb.unicodeChar().default, "x");
   });
-  it("should always return a well-formed string", () => {
+  it("always returns a well-formed string", () => {
     repeatTest(arb.unicodeChar(), (str) => {
       assertEquals(
         isWellFormed(str),
@@ -56,16 +56,16 @@ describe("unicodeChar", () => {
 });
 
 describe("wellFormedString", () => {
-  it("should default to an empty string", () => {
+  it("defaults to an empty string", () => {
     assertEquals(arb.wellFormedString().default, "");
   });
-  it("should parse ascii characters", () => {
-    assertParses(arb.wellFormedString(), [2, 0x20, 0x21], " !");
+  it("parses ascii characters", () => {
+    assertParses(arb.wellFormedString(), [1, 0x20, 1, 0x21, 0], " !");
   });
-  it("should parse an emoji", () => {
-    assertParses(arb.wellFormedString(), [1, 0x1FA97 - surrogateGap], "🪗");
+  it("parses an emoji", () => {
+    assertParses(arb.wellFormedString(), [1, 0x1FA97 - surrogateGap, 0], "🪗");
   });
-  it("should always return a well-formed string", () => {
+  it("always returns a well-formed string", () => {
     repeatTest(arb.wellFormedString(), (str) => {
       assertEquals(
         isWellFormed(str),

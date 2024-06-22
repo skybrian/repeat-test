@@ -1,5 +1,5 @@
 import { Arbitrary, PickFunction } from "./core.ts";
-import { chooseDefault, PickRequest, PickRequestOptions } from "../picks.ts";
+import { chooseDefault, PickRequest } from "../picks.ts";
 import { BiasedIntPicker } from "../picks.ts";
 
 /**
@@ -73,12 +73,16 @@ export function int(
   return new Arbitrary((pick) => pick(req));
 }
 
+export function just<T>(value: T): Arbitrary<T> {
+  return custom(() => value);
+}
+
 export function example<T>(values: T[]): Arbitrary<T> {
   if (values.length === 0) {
     throw new Error("Can't choose an example from an empty array");
   }
   if (values.length === 1) {
-    return custom(() => values[0]);
+    return just(values[0]);
   }
   return int(0, values.length - 1).map((idx) => values[idx]);
 }
@@ -87,39 +91,17 @@ export function boolean(): Arbitrary<boolean> {
   return example([false, true]);
 }
 
-export function oneOf<T>(alternatives: Arbitrary<T>[]): Arbitrary<T> {
-  if (alternatives.length === 0) {
+export function oneOf<T>(cases: Arbitrary<T>[]): Arbitrary<T> {
+  if (cases.length === 0) {
     throw new Error("oneOf must be called with at least one alternative");
   }
-  if (alternatives.length === 1) {
-    return alternatives[0];
+  if (cases.length === 1) {
+    return cases[0];
   }
-  return example(alternatives).chain((chosen) => chosen);
+  return example(cases).chain((chosen) => chosen);
 }
 
-/**
- * An arbitrary but practical limit for maximum array length.
- * (Deno becomes slow at 4e7 and crashes above that for a filled array.)
- */
-const maxArrayLength = 1e7;
-
-/** Returns a random integer that's a suitable length for an array. */
-export function length(
-  min: number,
-  max: number,
-  opts?: PickRequestOptions,
-): Arbitrary<number> {
-  if (min < 0) {
-    throw new Error("min must be non-negative");
-  }
-  if (max > maxArrayLength) {
-    throw new Error("max is too large");
-  }
-  const req = new PickRequest(min, max, opts);
-  return new Arbitrary((pick) => pick(req));
-}
-
-const defaultArrayLimit = 100;
+const defaultArrayLimit = 1000;
 
 export function array<T>(
   item: Arbitrary<T>,
@@ -127,11 +109,26 @@ export function array<T>(
 ): Arbitrary<T[]> {
   const min = opts?.min ?? 0;
   const max = opts?.max ?? defaultArrayLimit;
+
+  // Arrays are represented using a fixed-length part (items only) followed by a
+  // variable-length part where each item is preceded by a 1, followed by a 0 to
+  // terminate.
+  //
+  // Since we make a pick request for each item, this makes long arrays unlikely
+  // but possible, and it should be easier remove items when shrinking.
+  // TODO: change the odds; we don't want half of all arrays to be empty.
   return custom((pick) => {
-    const len = pick(length(min, max));
-    const result: T[] = [];
-    for (let i = 0; i < len; i++) {
+    const result = [];
+    // fixed-length portion
+    let i = 0;
+    while (i < min) {
       result.push(pick(item));
+      i++;
+    }
+    // variable-length portion
+    while (i < max && pick(boolean())) {
+      result.push(pick(item));
+      i++;
     }
     return result;
   });
