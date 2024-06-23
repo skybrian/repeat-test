@@ -2,7 +2,8 @@ import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 
 import { PickRequest } from "../../src/picks.ts";
-import { Arbitrary, RETRY } from "../../src/arbitraries.ts";
+import { NOT_FOUND } from "../../src/solver.ts";
+import { Arbitrary } from "../../src/arbitraries.ts";
 import * as arb from "../../src/arbitraries.ts";
 import { repeatTest } from "../../src/runner.ts";
 
@@ -12,7 +13,7 @@ const sixSided = new Arbitrary((pick) => pick(oneToSix));
 describe("Arbitrary", () => {
   describe("constructor", () => {
     it("disallows parsers that don't have a default", () => {
-      assertThrows(() => new Arbitrary(() => RETRY));
+      assertThrows(() => new Arbitrary(() => NOT_FOUND));
     });
   });
   describe("filter", () => {

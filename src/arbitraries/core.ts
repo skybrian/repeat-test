@@ -4,8 +4,9 @@ import {
   ParseFailure,
   ParserInput,
   PickRequest,
-  PickStack,
 } from "../picks.ts";
+
+import { NOT_FOUND, walkAllPaths } from "../solver.ts";
 
 import { Success } from "../results.ts";
 
@@ -52,7 +53,7 @@ export function makePickFunction(
     }
     for (let tries = 0; tries < maxTries; tries++) {
       const val = req.callback(doPick);
-      if (val !== RETRY) {
+      if (val !== NOT_FOUND) {
         return val;
       }
     }
@@ -63,16 +64,10 @@ export function makePickFunction(
 }
 
 /**
- * Indicates a failed parse while attempting to generate a value for an
- * Arbitrary.
- */
-export const RETRY = Symbol("retry");
-
-/**
  * A function that attempts to generate one of the values of an Arbitrary, given
  * some picks.
  *
- * The function may return {@link RETRY} as a way of backtracking if it's given
+ * The function may return {@link NOT_FOUND} as a way of backtracking if it's given
  * some picks that can't be used. When that happens, the caller should try again
  * with different picks.
  *
@@ -83,11 +78,11 @@ export const RETRY = Symbol("retry");
  * default values. Returning `RETRY` as the default value is a programming
  * error.
  */
-export type ParseFunction<T> = (pick: PickFunction) => T | typeof RETRY;
+export type ParseFunction<T> = (pick: PickFunction) => T | typeof NOT_FOUND;
 
 function calculateDefault<T>(parse: ParseFunction<T>): T {
   const def = parse(makePickFunction(alwaysPickDefault, 1));
-  if (def === RETRY) {
+  if (def === NOT_FOUND) {
     throw new Error("parse function must return a default value");
   }
   return def;
@@ -123,32 +118,19 @@ export class Arbitrary<T> {
    * Uses a depth-first search, starting from the default value.
    */
   get solutions(): IterableIterator<T> {
-    function* runOnePath<T>(arb: Arbitrary<T>, input: IntPicker): Generator<T> {
+    const walk = (input: IntPicker): T | typeof NOT_FOUND => {
       const pick = makePickFunction(input, 1);
       try {
-        yield pick(arb);
+        return pick(this);
       } catch (e) {
         if (e instanceof PickFailed) {
-          // value was filtered out; continue
+          return NOT_FOUND;
         } else {
           throw e;
         }
       }
-    }
-
-    function* runAllPaths<T>(arb: Arbitrary<T>): Generator<T> {
-      const stack = new PickStack(alwaysPickDefault);
-      let next: IntPicker | null = stack.record();
-      while (next !== null) {
-        yield* runOnePath(arb, next);
-        if (stack.playing) {
-          throw "didn't read every value";
-        }
-        next = stack.playNext();
-      }
-    }
-
-    return runAllPaths(this);
+    };
+    return walkAllPaths(walk);
   }
 
   /**
@@ -163,12 +145,16 @@ export class Arbitrary<T> {
     const input = new ParserInput(picks);
     const pick = makePickFunction(input, 1);
 
-    const val = pick(this);
-    if (val === RETRY) {
-      return { ok: false, guess: this.default, errorOffset: input.offset };
+    try {
+      const val = pick(this);
+      return input.finish(val);
+    } catch (e) {
+      if (e instanceof PickFailed) {
+        return { ok: false, guess: this.default, errorOffset: input.offset };
+      } else {
+        throw e;
+      }
     }
-
-    return input.finish(val);
   }
 
   /**
@@ -195,8 +181,8 @@ export class Arbitrary<T> {
 
     return new Arbitrary((it) => {
       const parsed = this.callback(it);
-      if (parsed === RETRY) return RETRY;
-      return accept(parsed) ? parsed : RETRY;
+      if (parsed === NOT_FOUND) return NOT_FOUND;
+      return accept(parsed) ? parsed : NOT_FOUND;
     });
   }
 
