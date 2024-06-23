@@ -4,8 +4,8 @@ import {
   IntPicker,
   ParseFailure,
   ParserInput,
-  PickLog,
   PickRequest,
+  PickStack,
 } from "../picks.ts";
 
 import { Success } from "../results.ts";
@@ -140,14 +140,14 @@ export class Arbitrary<T> {
     }
 
     function* runAllPaths<T>(arb: Arbitrary<T>): Generator<T> {
-      const log = new PickLog(alwaysChooseMin);
-      let next: IntPicker | null = log.record();
+      const stack = new PickStack(alwaysChooseMin);
+      let next: IntPicker | null = stack.record();
       while (next !== null) {
         yield* runOnePath(arb, next);
-        if (log.replaying) {
+        if (stack.playing) {
           throw "didn't read every value";
         }
-        next = log.replayNext();
+        next = stack.playNext();
       }
     }
 

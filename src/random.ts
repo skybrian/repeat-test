@@ -14,7 +14,14 @@ export function pickRandomSeed(): number {
 }
 
 /**
- * Returns a sequence of random number generators to use.
+ * Returns a single random number generator.
+ */
+export function randomPicker(seed: number): IntPicker {
+  return makePicker(prand.xoroshiro128plus(seed));
+}
+
+/**
+ * Returns a sequence of random number generators where each is independent.
  */
 export function* randomPickers(seed: number): IterableIterator<IntPicker> {
   let rng = prand.xoroshiro128plus(seed);

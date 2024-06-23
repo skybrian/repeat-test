@@ -6,9 +6,9 @@
     "configurations": [
         {
             "request": "launch",
-            "name": "Debug Runner Test",
+            "name": "Debug Current Test File",
             "type": "node",
-            "program": "${workspaceFolder}/test/runner_test.ts",
+            "program": "${file}",
             "cwd": "${workspaceFolder}",
             "env": {},
             "runtimeExecutable": "/Users/skybrian/.deno/bin/deno",
