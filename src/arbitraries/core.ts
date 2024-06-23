@@ -1,5 +1,5 @@
 import {
-  alwaysChooseDefault,
+  alwaysPickDefault,
   IntPicker,
   ParseFailure,
   ParserInput,
@@ -86,7 +86,7 @@ export const RETRY = Symbol("retry");
 export type ParseFunction<T> = (pick: PickFunction) => T | typeof RETRY;
 
 function calculateDefault<T>(parse: ParseFunction<T>): T {
-  const def = parse(makePickFunction(alwaysChooseDefault, 1));
+  const def = parse(makePickFunction(alwaysPickDefault, 1));
   if (def === RETRY) {
     throw new Error("parse function must return a default value");
   }
@@ -137,7 +137,7 @@ export class Arbitrary<T> {
     }
 
     function* runAllPaths<T>(arb: Arbitrary<T>): Generator<T> {
-      const stack = new PickStack(alwaysChooseDefault);
+      const stack = new PickStack(alwaysPickDefault);
       let next: IntPicker | null = stack.record();
       while (next !== null) {
         yield* runOnePath(arb, next);

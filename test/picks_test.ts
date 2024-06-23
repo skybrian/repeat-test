@@ -6,7 +6,8 @@ import { repeatTest } from "../src/runner.ts";
 import { randomPicker } from "../src/random.ts";
 
 import {
-  alwaysChooseMin,
+  alwaysPick,
+  alwaysPickMin,
   IntPicker,
   ParserInput,
   PickRequest,
@@ -133,22 +134,20 @@ describe("PickStack", () => {
   describe("record", () => {
     it("accepts any pick", () => {
       repeatTest(validRequestAndReply, ({ req, n }) => {
-        const fakePicker = { pick: () => n };
-        const rec = new PickStack(fakePicker);
-        assertEquals(rec.length, 0);
-        assertEquals(rec.record().pick(req), n);
-        assertEquals(rec.length, 1);
+        const stack = new PickStack(alwaysPick(n));
+        assertEquals(stack.length, 0);
+        assertEquals(stack.record().pick(req), n);
+        assertEquals(stack.length, 1);
       });
     });
   });
   describe("play", () => {
     it("replays any pick", () => {
       repeatTest(validRequestAndReply, ({ req, n }) => {
-        const fakePicker = { pick: () => n };
-        const rec = new PickStack(fakePicker);
-        assertEquals(rec.record().pick(req), n);
-        assertEquals(rec.play().pick(req), n);
-        assertEquals(rec.length, 1);
+        const stack = new PickStack(alwaysPick(n));
+        assertEquals(stack.record().pick(req), n);
+        assertEquals(stack.play().pick(req), n);
+        assertEquals(stack.length, 1);
       });
     });
   });
@@ -181,7 +180,7 @@ describe("PickStack", () => {
       const digits = Array(3).fill(digit);
 
       // set to 0, 0, 0
-      const stack = new PickStack(alwaysChooseMin);
+      const stack = new PickStack(alwaysPickMin);
       const record = stack.record();
       digits.forEach((req) => record.pick(req));
 

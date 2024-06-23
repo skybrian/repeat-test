@@ -1,16 +1,36 @@
 import prand from "pure-rand";
 import { IntPicker, PickRequest, UniformIntPicker } from "./picks.ts";
 
-function jump(r: prand.RandomGenerator): prand.RandomGenerator {
-  const jump = r.jump;
-  if (!jump) {
-    throw new Error("no jump function");
-  }
-  return jump.bind(r)();
-}
-
 export function pickRandomSeed(): number {
   return Date.now() ^ (Math.random() * 0x100000000);
+}
+
+/**
+ * Creates a random picker that uses the RandomGenerator's current state as a
+ * starting point.
+ */
+function makePicker(rng: prand.RandomGenerator): IntPicker {
+  // Clone so we can mutate it.
+  rng = rng.clone();
+
+  const uniform: UniformIntPicker = (min, max) =>
+    prand.unsafeUniformIntDistribution(min, max, rng);
+
+  return {
+    pick(req: PickRequest) {
+      return req.bias(uniform);
+    },
+
+    freeze() {
+      // Clone so we're unaffected by pick().
+      const frozen = rng.clone();
+      return {
+        start() {
+          return makePicker(frozen);
+        },
+      };
+    },
+  };
 }
 
 /**
@@ -20,25 +40,21 @@ export function randomPicker(seed: number): IntPicker {
   return makePicker(prand.xoroshiro128plus(seed));
 }
 
+function jump(r: prand.RandomGenerator): prand.RandomGenerator {
+  const jump = r.jump;
+  if (!jump) {
+    throw new Error("no jump function");
+  }
+  return jump.bind(r)();
+}
+
 /**
  * Returns a sequence of random number generators where each is independent.
  */
 export function* randomPickers(seed: number): IterableIterator<IntPicker> {
   let rng = prand.xoroshiro128plus(seed);
   while (true) {
-    const next = jump(rng);
     yield makePicker(rng);
-    rng = next;
+    rng = jump(rng);
   }
-}
-
-function makePicker(rng: prand.RandomGenerator): IntPicker {
-  const uniform: UniformIntPicker = (min, max) =>
-    prand.unsafeUniformIntDistribution(min, max, rng);
-
-  return {
-    pick(req: PickRequest) {
-      return req.bias(uniform);
-    },
-  };
 }

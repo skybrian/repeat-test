@@ -3,12 +3,17 @@ import { Failure, Success, success } from "./results.ts";
 /**
  * Randomly picks an integer from a uniform distribution.
  *
- * Invariant: min <= result <= max, where min and max are safe integers.
+ * Precondition: min and max are safe integers.
+ * Postcondition: see {@link inRange}.
  */
 export type UniformIntPicker = (min: number, max: number) => number;
 
+function inRange(n: number, min: number, max: number) {
+  return Number.isSafeInteger(n) && n >= min && n <= max;
+}
+
 /**
- * Randomly picks an integer from a possibly non-uniform distribution.
+ * Picks an integer from a random distribution.
  *
  * The range is unspecified (given by context).
  *
@@ -22,21 +27,17 @@ export function uniformBias(min: number, max: number): BiasedIntPicker {
 
 export type PickRequestOptions = {
   /**
-   * Overrides the default value for this request. This should be a value
-   * between min and max.
+   * Overrides the default value for this request. This number should satisfy
+   * {@link inRange} for the request.
    */
   default?: number;
 
   /**
-   * Overrides the distribution for this request. The function should return a
-   * random integer between min and max.
+   * Overrides the distribution for this request. The output should satisfy
+   * {@link inRange} for the request.
    */
   bias?: BiasedIntPicker;
 };
-
-function inRange(n: number, min: number, max: number) {
-  return Number.isSafeInteger(n) && n >= min && n <= max;
-}
 
 /**
  * Chooses a suitable default for an integer range.
@@ -48,14 +49,14 @@ export function chooseDefault(
   max: number,
   opts?: { default?: number },
 ) {
-  const chosenDefault = opts?.default;
-  if (chosenDefault !== undefined) {
-    if (!inRange(chosenDefault, min, max)) {
+  const override = opts?.default;
+  if (override !== undefined) {
+    if (!inRange(override, min, max)) {
       throw new Error(
-        `the default must be in the range (${min}, ${max}); got ${chosenDefault}`,
+        `the default must be in the range (${min}, ${max}); got ${override}`,
       );
     }
-    return chosenDefault;
+    return override;
   } else if (min >= 0) {
     return min;
   } else if (max <= 0) {
@@ -66,32 +67,32 @@ export function chooseDefault(
 }
 
 /**
- * Requests a integer within a given range, with options.
+ * Requests a integer within a given range, with optional hints to the picker.
  */
 export class PickRequest {
   /**
    * The distribution to use when picking randomly.
    *
-   * Invariant: min <= bias(uniform) <= max, where all are safe integers.
+   * The output is assumed to satisfy {@link PickRequest.inRange}.
    */
   readonly bias: BiasedIntPicker;
 
   /**
    * A default pick that can be used when not picking randomly.
    *
-   * Invariant: min <= default <= max, where they are all safe integers.
+   * Invariant: satisfies {@link inRange}.
    */
   readonly default: number;
 
   /**
    * Constructs a new request.
    *
-   * When the result is picked randomly, it will use {@link uniformBias} unless
-   * overridden by {@link PickRequestOptions.bias}.
+   * When picking randomly, uses a uniform distribution unless overridden by
+   * {@link PickRequestOptions.bias}.
    *
-   * A request has a default value that may be used when not picking randomly.
-   * If not specified using {@link PickRequestOptions.default}, it will be the
-   * number closest to zero that's between min and max.
+   * The request's default value will be the number closest to zero that's
+   * between min and max, unless overridden by
+   * {@link PickRequestOptions.default}.
    */
   constructor(
     readonly min: number,
@@ -113,25 +114,64 @@ export class PickRequest {
     this.bias = opts?.bias ?? uniformBias(min, max);
   }
 
-  /**
-   * Returns true if the given number satisfies this request.
-   */
-  isValidReply(n: number): boolean {
+  /** Returns true if the given number satisfies this request. */
+  inRange(n: number): boolean {
     return inRange(n, this.min, this.max);
   }
 }
 
 /**
- * Picks an integer, given a request.
- *
- * Invariant: req.isValidReply(result).
+ * A state machine that picks an integer, given a request.
+ * (Like an iterator, this is mutable.)
  */
 export interface IntPicker {
+  /**
+   * Transitions to a new state and returns a pick satisfying
+   * {@link PickRequest.inRange}.
+   */
   pick(req: PickRequest): number;
+
+  /** Extracts the picker's current state. It can be used to clone it. */
+  freeze(): PickState;
 }
 
-export const alwaysChooseDefault: IntPicker = { pick: (req) => req.default };
-export const alwaysChooseMin: IntPicker = { pick: (req) => req.min };
+/**
+ * An immutable starting point for creating an {@link IntPicker}.
+ * It represents a single state of the picker's state machine.
+ */
+export interface PickState {
+  start(): IntPicker;
+}
+
+export const alwaysPickDefault: IntPicker = {
+  pick: (req) => req.default,
+  freeze: () => ({ start: () => alwaysPickDefault }),
+};
+
+export const alwaysPickMin: IntPicker = {
+  pick: (req) => req.min,
+  freeze: () => ({ start: () => alwaysPickMin }),
+};
+
+/**
+ * Returns a single-state picker that always picks the same number.
+ *
+ * It will throw an exception if it can't satisfy a request.
+ */
+export function alwaysPick(n: number) {
+  const picker: IntPicker = {
+    pick: (req) => {
+      if (!req.inRange(n)) {
+        throw new Error(
+          `can't satisfy request for (${req.min}, ${req.max}) with ${n}`,
+        );
+      }
+      return n;
+    },
+    freeze: () => ({ start: () => picker }),
+  };
+  return picker;
+}
 
 export interface ParseFailure<T> extends Failure {
   guess: T;
@@ -158,7 +198,7 @@ export class ParserInput implements IntPicker {
     while (this.offset < this.picks.length) {
       const offset = this.offset++;
       const pick = this.picks[offset];
-      if (req.isValidReply(pick)) {
+      if (req.inRange(pick)) {
         return pick;
       }
       if (this.errorOffset === null) {
@@ -172,6 +212,14 @@ export class ParserInput implements IntPicker {
       this.errorOffset = this.picks.length;
     }
     return req.default;
+  }
+
+  /** Returns the remaining input. */
+  freeze(): PickState {
+    const picks = this.picks.slice(this.offset);
+    return {
+      start: () => new ParserInput(picks),
+    };
   }
 
   finish<T>(val: T): Success<T> | ParseFailure<T> {
@@ -271,12 +319,16 @@ export class PickStack {
     this.proxyCount++;
     const id = this.proxyCount;
 
-    const pick = (req: PickRequest): number => {
+    const checkAlive = () => {
       if (id !== this.proxyCount) {
         throw new Error(
           "can't use this picker anymore, because record() or replay() were called",
         );
       }
+    };
+
+    const pick = (req: PickRequest): number => {
+      checkAlive();
 
       if (this.playOffset < this.reqs.length) {
         // replaying
@@ -304,7 +356,15 @@ export class PickStack {
       this.playOffset += 1;
       return pick;
     };
-    return { pick };
+
+    const freeze = (): PickState => {
+      checkAlive();
+      return {
+        start: () => new ParserInput(this.playPicks.slice(this.playOffset)),
+      };
+    };
+
+    return { pick, freeze };
   }
 
   /**
