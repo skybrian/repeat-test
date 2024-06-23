@@ -37,41 +37,45 @@ describe("Arbitrary", () => {
       assertEquals(mapped.default, 6);
     });
   });
-  describe("members", () => {
+  describe("solutions", () => {
     it("returns the only member of a constant Arbitrary", () => {
       const one = new Arbitrary(() => 1);
-      assertEquals(Array.from(one.members), [1]);
+      assertEquals(Array.from(one.solutions), [1]);
     });
     it("returns each example from a boolean", () => {
-      const members = Array.from(arb.boolean().members);
+      const members = Array.from(arb.boolean().solutions);
       assertEquals(members, [false, true]);
     });
     it("handles a mapped Arbitrary", () => {
       const bit = arb.boolean().map((b) => b ? 1 : 0);
-      const members = Array.from(bit.members);
+      const members = Array.from(bit.solutions);
       assertEquals(members, [0, 1]);
     });
     it("handles a filtered Arbitrary", () => {
       const justFalse = arb.boolean().filter((b) => !b);
-      assertEquals(Array.from(justFalse.members), [false]);
+      assertEquals(Array.from(justFalse.solutions), [false]);
     });
     it("handles a chained Arbitrary", () => {
       const len = arb.int(0, 1);
       const string = len.chain((len) =>
         arb.array(arb.example(["hi", "there"]), { min: len, max: len })
       );
-      assertEquals(Array.from(string.members), [[], ["hi"], ["there"]]);
+      assertEquals(Array.from(string.solutions), [[], ["hi"], ["there"]]);
     });
-    it("handles nested filters", () => {
-      repeatTest(arb.int(2, 5), (skip) => {
-        const left = arb.example([1, 2, 3, 4, 5]).filter((n) => n != skip);
-        const right = arb.example([6, 7, 8, 9, 10]);
-        const both = arb.oneOf([left, right]);
-        assertEquals(
-          Array.from(both.members),
-          [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter((n) => n != skip),
-        );
-      });
+    it("can solve a combination lock", () => {
+      const digits = arb.tuple(
+        arb.int(0, 9, { default: 1 }),
+        arb.int(0, 9, { default: 4 }),
+        arb.int(0, 9, { default: 3 }),
+      );
+      const lock = digits.filter(([a, b, c]) =>
+        a == 1 && (b == 2 || b == 4) && c == 3
+      );
+      const solutions = Array.from(lock.solutions);
+      assertEquals(solutions, [
+        [1, 4, 3],
+        [1, 2, 3],
+      ]);
     });
   });
 });
