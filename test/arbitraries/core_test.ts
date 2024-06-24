@@ -1,11 +1,11 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
+import { repeatTest } from "../../src/runner.ts";
 
 import { PickRequest } from "../../src/picks.ts";
-import { NOT_FOUND } from "../../src/solver.ts";
+import { NOT_FOUND, Solution } from "../../src/solver.ts";
 import { Arbitrary } from "../../src/arbitraries.ts";
 import * as arb from "../../src/arbitraries.ts";
-import { repeatTest } from "../../src/runner.ts";
 
 const oneToSix = new PickRequest(1, 6);
 const sixSided = new Arbitrary((pick) => pick(oneToSix));
@@ -38,30 +38,30 @@ describe("Arbitrary", () => {
       assertEquals(mapped.default, 6);
     });
   });
-  describe("solutions", () => {
+  describe("members", () => {
     it("returns the only member of a constant Arbitrary", () => {
       const one = new Arbitrary(() => 1);
-      assertEquals(Array.from(one.solutions), [1]);
+      assertEquals(Array.from(one.members), [1]);
     });
     it("returns each example from a boolean", () => {
-      const members = Array.from(arb.boolean().solutions);
+      const members = Array.from(arb.boolean().members);
       assertEquals(members, [false, true]);
     });
     it("handles a mapped Arbitrary", () => {
       const bit = arb.boolean().map((b) => b ? 1 : 0);
-      const members = Array.from(bit.solutions);
+      const members = Array.from(bit.members);
       assertEquals(members, [0, 1]);
     });
     it("handles a filtered Arbitrary", () => {
       const justFalse = arb.boolean().filter((b) => !b);
-      assertEquals(Array.from(justFalse.solutions), [false]);
+      assertEquals(Array.from(justFalse.members), [false]);
     });
     it("handles a chained Arbitrary", () => {
       const len = arb.int(0, 1);
       const string = len.chain((len) =>
         arb.array(arb.example(["hi", "there"]), { min: len, max: len })
       );
-      assertEquals(Array.from(string.solutions), [[], ["hi"], ["there"]]);
+      assertEquals(Array.from(string.members), [[], ["hi"], ["there"]]);
     });
     it("can solve a combination lock", () => {
       const digits = arb.tuple(
@@ -72,11 +72,28 @@ describe("Arbitrary", () => {
       const lock = digits.filter(([a, b, c]) =>
         a == 1 && (b == 2 || b == 4) && c == 3
       );
-      const solutions = Array.from(lock.solutions);
+      const solutions = Array.from(lock.members);
       assertEquals(solutions, [
         [1, 4, 3],
         [1, 2, 3],
       ]);
+    });
+  });
+  describe("solutions", () => {
+    it("returns the only solution for a constant", () => {
+      const expected: Solution<number>[] = [
+        { val: 1, playout: { picks: [], spanStarts: [], spanEnds: [] } },
+      ];
+      const actual = Array.from(arb.just(1).solutions);
+      assertEquals(actual, expected);
+    });
+    it("returns each solution of a boolean", () => {
+      const expected: Solution<boolean>[] = [
+        { val: false, playout: { picks: [0], spanStarts: [], spanEnds: [] } },
+        { val: true, playout: { picks: [1], spanStarts: [], spanEnds: [] } },
+      ];
+      const actual = Array.from(arb.boolean().solutions);
+      assertEquals(actual, expected);
     });
   });
 });
