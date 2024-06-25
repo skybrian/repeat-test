@@ -59,59 +59,6 @@ export interface PickFunction {
 export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 
 /**
- * Creates a PickFunction that can handle backtracking.
- * @param picker a source of picks and an output for spans.
- * @param maxTries how many times to try to generate a pick from each Arbitrary.
- * (Set it to 1 to disable backtracking.)
- */
-function makePickFunction(
-  picker: SpanPicker,
-  maxTries: number,
-): PickFunction {
-  if (!picker) throw new Error("no integer source given");
-  if (maxTries < 1 || !Number.isSafeInteger(maxTries)) {
-    throw new Error("maxTries must be a positive integer");
-  }
-
-  const doPick: PickFunction = <T>(
-    req: PickRequest | Arbitrary<T>,
-    opts?: PickOptions<T>,
-  ): number | T => {
-    if (req instanceof PickRequest) {
-      return picker.pick(req);
-    }
-    const accept = opts?.accept;
-    if (accept === undefined) {
-      // non-backtracking case
-      const level = picker.startSpan();
-      const val = req.callback(doPick);
-      picker.endSpan(level);
-      return val;
-    }
-
-    // retry when there's a filter
-    for (let tries = 0; tries < maxTries; tries++) {
-      const level = picker.startSpan();
-      const val = req.callback(doPick);
-      if (accept === undefined || accept(val)) {
-        picker.endSpan(level);
-        return val;
-      }
-      if (tries < maxTries - 1) {
-        // Cancel only when we're not out of tries.
-        picker.cancelSpan(level);
-      }
-    }
-    // Give up. This is normal when backtracking is turned off.
-    // Don't cancel so that the picks used in the failed run are available
-    // to the caller.
-    throw PickFailed.create(req, maxTries);
-  };
-
-  return doPick;
-}
-
-/**
  * A set of values that can be randomly picked from. Members are generated as
  * needed.
  */
@@ -129,13 +76,51 @@ export class Arbitrary<T> {
 
   /**
    * Picks an arbitrary member, based on some picks.
-   * @param input
    * @param maxTries how many times to retry filters. Set to 1 to disable backtracking.
    * @throws {@link PickFailed} when it calls `pick()` internally and it fails.
    */
   pick(input: IntPicker, maxTries: number): T {
+    if (maxTries < 1 || !Number.isSafeInteger(maxTries)) {
+      throw new Error("maxTries must be a positive integer");
+    }
+
     return runWithPicks(input, (spanPicker) => {
-      const pick = makePickFunction(spanPicker, maxTries);
+      const pick: PickFunction = <T>(
+        req: PickRequest | Arbitrary<T>,
+        opts?: PickOptions<T>,
+      ): number | T => {
+        if (req instanceof PickRequest) {
+          return input.pick(req);
+        }
+        const accept = opts?.accept;
+
+        // non-backtracking case
+        if (accept === undefined) {
+          const level = spanPicker.startSpan();
+          const val = req.callback(pick);
+          spanPicker.endSpan(level);
+          return val;
+        }
+
+        // retry when there's a filter
+        for (let tries = 0; tries < maxTries; tries++) {
+          const level = spanPicker.startSpan();
+          const val = req.callback(pick);
+          if (accept === undefined || accept(val)) {
+            spanPicker.endSpan(level);
+            return val;
+          }
+          if (tries < maxTries - 1) {
+            // Cancel only when we're not out of tries.
+            spanPicker.cancelSpan(level);
+          }
+        }
+
+        // Give up. This is normal when backtracking is turned off.
+        // Don't cancel so that the picks used in the failed run are available
+        // to the caller.
+        throw PickFailed.create(req, maxTries);
+      };
       return this.callback(pick);
     });
   }
