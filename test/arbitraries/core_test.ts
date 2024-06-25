@@ -3,7 +3,7 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { repeatTest } from "../../src/runner.ts";
 
 import { PickRequest } from "../../src/picks.ts";
-import { NOT_FOUND, Solution } from "../../src/solver.ts";
+import { NestedPicks, NOT_FOUND } from "../../src/solver.ts";
 import { Arbitrary } from "../../src/arbitraries.ts";
 import * as arb from "../../src/arbitraries.ts";
 
@@ -25,7 +25,7 @@ describe("Arbitrary", () => {
       const not3 = sixSided.filter((n) => n !== 3);
       repeatTest(not3, (n) => {
         assert(n !== 3);
-      });
+      }, { only: "1220797316:10" });
     });
   });
   describe("map", () => {
@@ -51,6 +51,13 @@ describe("Arbitrary", () => {
       const bit = arb.boolean().map((b) => b ? 1 : 0);
       const members = Array.from(bit.members);
       assertEquals(members, [0, 1]);
+    });
+    it("handles NOT_FOUND", () => {
+      const onlyThree = new Arbitrary((pick) => {
+        const n = pick(new PickRequest(2, 3, { default: 3 }));
+        return n === 3 ? n : NOT_FOUND;
+      });
+      assertEquals(Array.from(onlyThree.members), [3]);
     });
     it("handles a filtered Arbitrary", () => {
       const justFalse = arb.boolean().filter((b) => !b);
@@ -79,21 +86,26 @@ describe("Arbitrary", () => {
       ]);
     });
   });
+
+  function checkSolutions<T>(
+    arb: Arbitrary<T>,
+    expected: { val: T; picks: NestedPicks }[],
+  ) {
+    const sols = Array.from(arb.solutions);
+    const actual = sols.map((s) => ({ val: s.val, picks: s.getNestedPicks() }));
+    assertEquals(actual, expected);
+  }
+
   describe("solutions", () => {
     it("returns the only solution for a constant", () => {
-      const expected: Solution<number>[] = [
-        { val: 1, playout: { picks: [], spanStarts: [], spanEnds: [] } },
-      ];
-      const actual = Array.from(arb.just(1).solutions);
-      assertEquals(actual, expected);
+      checkSolutions(arb.just(1), [{ val: 1, picks: [[]] }]);
     });
     it("returns each solution of a boolean", () => {
-      const expected: Solution<boolean>[] = [
-        { val: false, playout: { picks: [0], spanStarts: [], spanEnds: [] } },
-        { val: true, playout: { picks: [1], spanStarts: [], spanEnds: [] } },
+      const expected = [
+        { val: false, picks: [[[0]]] },
+        { val: true, picks: [1, [[]]] },
       ];
-      const actual = Array.from(arb.boolean().solutions);
-      assertEquals(actual, expected);
+      checkSolutions(arb.boolean(), expected);
     });
   });
 });

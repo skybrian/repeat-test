@@ -1,12 +1,17 @@
 import {
   alwaysPickDefault,
-  IntPicker,
   ParseFailure,
   ParserInput,
   PickRequest,
 } from "../picks.ts";
 
-import { NOT_FOUND, Solution, walkAllPaths } from "../solver.ts";
+import {
+  NOT_FOUND,
+  runWithPicks,
+  Solution,
+  SpanPicker,
+  walkAllPaths,
+} from "../solver.ts";
 
 import { Success } from "../results.ts";
 
@@ -32,15 +37,15 @@ export interface PickFunction {
 
 /**
  * Creates a PickFunction that can handle backtracking.
- * @param ints a source of integer picks
+ * @param picker a source of picks and an output for spans.
  * @param maxTries how many times to try to generate a pick from each Arbitrary.
  * (Set it to 1 to disable backtracking.)
  */
 export function makePickFunction(
-  ints: IntPicker,
+  picker: SpanPicker,
   maxTries: number,
 ): PickFunction {
-  if (!ints) throw new Error("no integer source given");
+  if (!picker) throw new Error("no integer source given");
   if (maxTries < 1 || !Number.isSafeInteger(maxTries)) {
     throw new Error("maxTries must be a positive integer");
   }
@@ -49,14 +54,18 @@ export function makePickFunction(
     req: PickRequest | Arbitrary<T>,
   ): number | T => {
     if (req instanceof PickRequest) {
-      return ints.pick(req);
+      return picker.pick(req);
     }
     for (let tries = 0; tries < maxTries; tries++) {
+      const level = picker.startSpan();
       const val = req.callback(doPick);
       if (val !== NOT_FOUND) {
+        picker.endSpan(level);
         return val;
       }
+      picker.cancelSpan(level);
     }
+    // Give up. (This is normal when backtracking is turned off.)
     throw PickFailed.create(req, maxTries);
   };
 
@@ -81,11 +90,14 @@ export function makePickFunction(
 export type ParseFunction<T> = (pick: PickFunction) => T | typeof NOT_FOUND;
 
 function calculateDefault<T>(parse: ParseFunction<T>): T {
-  const def = parse(makePickFunction(alwaysPickDefault, 1));
-  if (def === NOT_FOUND) {
-    throw new Error("parse function must return a default value");
-  }
-  return def;
+  return runWithPicks(alwaysPickDefault, (spanPicker) => {
+    const pick = makePickFunction(spanPicker, 1);
+    const val = parse(pick);
+    if (val === NOT_FOUND) {
+      throw new Error("parse function must return a default value");
+    }
+    return val;
+  });
 }
 
 /**
@@ -118,7 +130,7 @@ export class Arbitrary<T> {
    * Uses a depth-first search, starting from the default value.
    */
   get solutions(): IterableIterator<Solution<T>> {
-    const walk = (input: IntPicker): T | typeof NOT_FOUND => {
+    const walk = (input: SpanPicker): T | typeof NOT_FOUND => {
       const pick = makePickFunction(input, 1);
       try {
         return pick(this);
@@ -157,18 +169,20 @@ export class Arbitrary<T> {
    */
   parse(picks: number[]): Success<T> | ParseFailure<T> {
     const input = new ParserInput(picks);
-    const pick = makePickFunction(input, 1);
+    return runWithPicks(input, (spanPicker) => {
+      const pick = makePickFunction(spanPicker, 1);
 
-    try {
-      const val = pick(this);
-      return input.finish(val);
-    } catch (e) {
-      if (e instanceof PickFailed) {
-        return { ok: false, guess: this.default, errorOffset: input.offset };
-      } else {
-        throw e;
+      try {
+        const val = pick(this);
+        return input.finish(val);
+      } catch (e) {
+        if (e instanceof PickFailed) {
+          return { ok: false, guess: this.default, errorOffset: input.offset };
+        } else {
+          throw e;
+        }
       }
-    }
+    });
   }
 
   /**

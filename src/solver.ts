@@ -20,11 +20,11 @@ export interface SpanPicker extends IntPicker {
   startSpan(): number;
 
   /**
-   * Cancels the last open span and restarts it.
+   * Cancels the last open span.
    * The picks since the last span start are discarded.
    * (The level is unchanged.)
    */
-  retrySpan(): void;
+  cancelSpan(level?: number): void;
 
   /**
    * Ends a span.
@@ -34,7 +34,40 @@ export interface SpanPicker extends IntPicker {
    * This should be the number returned by {@link begin}. (Otherwise an
    * exception will be thrown.)
    */
-  endSpan(): void;
+  endSpan(level?: number): void;
+}
+
+/**
+ * Runs a function that requires a SpanPicker, wihtout saving the spans.
+ */
+export function runWithPicks<T>(
+  input: IntPicker,
+  run: (s: SpanPicker) => T,
+): T {
+  let level = 0;
+  const picker = {
+    pick: input.pick.bind(input),
+    freeze: input.freeze.bind(input),
+    startSpan: () => {
+      level++;
+      return level;
+    },
+    cancelSpan: () => {
+      if (level === 0) throw new Error("no open span");
+      level--;
+    },
+    endSpan: (levelToEnd?: number) => {
+      if (levelToEnd !== undefined && levelToEnd !== level) {
+        throw new Error(
+          `invalid span level. Want: ${level}, got: ${levelToEnd}`,
+        );
+      }
+      level--;
+    },
+  };
+  const result = run(picker);
+  if (level !== 0) throw new Error("unclosed span");
+  return result;
 }
 
 export type Playout = {
@@ -76,8 +109,10 @@ export class PickLog {
     return this.reqs.length;
   }
 
-  getPlayout(): Playout | undefined {
-    if (this.level > 0) return undefined;
+  getPlayout(): Playout {
+    if (this.level > 0) {
+      throw new Error("unclosed span");
+    }
 
     return {
       picks: this.picks.slice(),
@@ -144,24 +179,34 @@ export class PickLog {
     return this.spanStarts[this.openSpans[this.openSpans.length - 1]];
   }
 
+  clear() {
+    this.reqs.length = 0;
+    this.picks.length = 0;
+    this.clearSpans();
+  }
+
+  clearSpans() {
+    this.spanStarts.length = 0;
+    this.spanEnds.length = 0;
+    this.openSpans.length = 0;
+  }
+
+  removeLastSpan(): void {
+    const spanIndex = this.openSpans.pop();
+    if (spanIndex === undefined) {
+      throw new Error("no open span");
+    }
+    const start = this.spanStarts[spanIndex];
+    this.reqs.splice(start);
+    this.picks.splice(start);
+    this.spanStarts.splice(spanIndex);
+    this.spanEnds.splice(spanIndex);
+  }
+
   truncate(pickCount: number) {
+    this.clearSpans();
     this.reqs.length = pickCount;
     this.picks.length = pickCount;
-
-    // Find the last span that started before the truncation point.
-    let lastStarted = this.spanStarts.length - 1;
-    while (lastStarted >= 0 && this.spanStarts[lastStarted] >= pickCount) {
-      lastStarted--;
-    }
-
-    // Remove references to open spans that started after the truncation point.
-    let lastOpen = this.openSpans.length - 1;
-    while (lastOpen >= 0 && this.openSpans[lastOpen] > lastStarted) {
-      lastOpen--;
-    }
-
-    this.spanStarts.length = lastStarted + 1;
-    this.spanEnds.length = lastStarted + 1;
   }
 }
 
@@ -221,7 +266,7 @@ export class PickStack {
    * {@link playNext}, or {@link stopRecording}.
    */
   record(): SpanPicker {
-    this.log.truncate(0);
+    this.log.clear();
     this.recordedPicks.length = 0;
     return this.play();
   }
@@ -288,18 +333,19 @@ export class PickStack {
       return this.log.level;
     };
 
-    const retrySpan = () => {
+    const cancelSpan = (level?: number) => {
       checkAlive();
       if (this.playOffset < this.log.length) {
         throw new Error("can't retry span when replaying");
       }
+      if (level !== undefined && level !== this.log.level) {
+        throw new Error(
+          `invalid span level. Want: ${this.log.level}, got: ${level}`,
+        );
+      }
 
-      const start = this.log.getSpanStart();
-      if (start === undefined) throw new Error("no open spans");
-
-      this.log.truncate(start);
-      this.recordedPicks.splice(start);
-      startSpan();
+      this.log.removeLastSpan();
+      this.recordedPicks.splice(this.log.length);
     };
 
     const endSpan = (level?: number) => {
@@ -307,7 +353,7 @@ export class PickStack {
       this.log.endSpan(level);
     };
 
-    return { pick, freeze, startSpan, retrySpan, endSpan };
+    return { pick, freeze, startSpan, cancelSpan, endSpan };
   }
 
   /**
@@ -318,8 +364,9 @@ export class PickStack {
    * value if needed. If all picks have been used, it pops the stack and tries
    * again.
    */
-  playNext(): IntPicker | null {
+  playNext(): SpanPicker | null {
     this.playOffset = 0;
+    this.log.clearSpans();
 
     while (this.log.length > 0) {
       const pick = this.log.rotateLastPick();
@@ -340,12 +387,62 @@ export class PickStack {
    * Invalidates the current picker, so no more picks can be recorded.
    * Returns the playout, unless it's incomplete due to open spans.
    */
-  stopRecording(): Playout | undefined {
+  stopRecording(): Playout {
     this.proxyCount++; // invalidate current proxy
     if (this.playing) {
       throw new Error("can't stop recording while playing");
     }
     return this.log.getPlayout();
+  }
+}
+
+export type NestedPicks = (number | NestedPicks)[];
+
+export class Solution<T> {
+  constructor(readonly val: T, private readonly playout: Playout) {}
+
+  get picks() {
+    return this.playout.picks;
+  }
+
+  getNestedPicks(): NestedPicks {
+    const { picks, spanStarts, spanEnds } = this.playout;
+
+    const root: NestedPicks = [];
+    let current = root;
+    const resultStack = [];
+    const spanEndStack: number[] = [];
+
+    let spanAt = 0;
+    for (let i = 0; i <= picks.length; i++) {
+      while (spanAt < spanStarts.length && spanStarts[spanAt] === i) {
+        // start a new list
+        const nextList: NestedPicks = [];
+        current.push(nextList);
+        resultStack.push(current);
+        current = nextList;
+
+        // remember where to stop
+        spanEndStack.push(spanEnds[spanAt]);
+        spanAt++;
+      }
+
+      if (i < picks.length) {
+        current.push(picks[i]);
+      }
+
+      while (
+        spanEndStack.length > 0 && spanEndStack[spanEndStack.length - 1] === i
+      ) {
+        // end the current list
+        current = resultStack.pop() as NestedPicks;
+        spanEndStack.pop();
+      }
+    }
+    if (spanEndStack.length > 0) {
+      throw new Error("unbalanced spanStarts and spanEnds");
+    }
+    return root;
   }
 }
 
@@ -359,12 +456,7 @@ export const NOT_FOUND = Symbol("not found");
  *
  * Each leaf holds either a value or nothing (a dead end).
  */
-export type WalkFunction<T> = (path: IntPicker) => T | typeof NOT_FOUND;
-
-export type Solution<T> = {
-  val: T;
-  playout: Playout;
-};
+export type WalkFunction<T> = (path: SpanPicker) => T | typeof NOT_FOUND;
 
 /**
  * Visits every leaf in a search tree in order, depth-first. Starts by taking
@@ -374,7 +466,7 @@ export function* walkAllPaths<T>(
   walk: WalkFunction<T>,
 ): Generator<Solution<T>> {
   const stack = new PickStack(alwaysPickDefault);
-  let next: IntPicker | null = stack.record();
+  let next: SpanPicker | null = stack.record();
   while (next !== null) {
     const val = walk(next);
     if (stack.playing) {
@@ -382,10 +474,10 @@ export function* walkAllPaths<T>(
     }
     const playout = stack.stopRecording();
     if (playout === undefined) {
-      throw "didn't close every span";
+      throw new Error("didn't close every span");
     }
     if (val !== NOT_FOUND) {
-      yield { val, playout };
+      yield new Solution(val, playout);
     }
     next = stack.playNext();
   }

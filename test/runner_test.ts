@@ -7,6 +7,7 @@ import { success } from "../src/results.ts";
 import {
   generateReps,
   parseRepKey,
+  Rep,
   repeatTest,
   runRep,
   serializeRepKey,
@@ -55,6 +56,7 @@ describe("generateReps", () => {
       const reps = generateReps(start, zero, test);
       for (let i = 0; i < 10; i++) {
         assertEquals(reps.next().value, {
+          ok: true,
           key: { seed: start.seed, index: start.index + i },
           arg: 0,
           test,
@@ -67,14 +69,24 @@ describe("generateReps", () => {
 describe("runRep", () => {
   it("returns success if the test passes", () => {
     const test = () => {};
-    const rep = { key: { seed: 1, index: 1 }, arg: 1, test };
+    const rep: Rep<number> = {
+      ok: true,
+      key: { seed: 1, index: 1 },
+      arg: 1,
+      test,
+    };
     assertEquals(runRep(rep), success());
   });
   it("returns a failure if the test throws", () => {
     const test = () => {
       throw new Error("test failed");
     };
-    const rep = { key: { seed: 1, index: 1 }, arg: 1, test };
+    const rep: Rep<number> = {
+      ok: true,
+      key: { seed: 1, index: 1 },
+      arg: 1,
+      test,
+    };
     const result = runRep(rep);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);

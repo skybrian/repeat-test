@@ -1,4 +1,6 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
+import { IntPicker } from "./picks.ts";
+import { runWithPicks } from "./solver.ts";
 import { Arbitrary, makePickFunction } from "./arbitraries.ts";
 import { fail, Failure, Success, success } from "./results.ts";
 
@@ -31,10 +33,18 @@ export function serializeRepKey(key: RepKey): string {
 
 /** A generated test, ready to run. */
 export type Rep<T> = {
+  ok: true;
   key: RepKey;
   arg: T;
   test: TestFunction<T>;
 };
+
+export interface TestFailure<T> extends Failure {
+  ok: false;
+  key: RepKey;
+  arg: T;
+  caught: unknown;
+}
 
 const defaultFilterLimit = 1000;
 
@@ -44,7 +54,7 @@ export function* generateReps<T>(
   arb: Arbitrary<T>,
   test: TestFunction<T>,
   opts?: { filterLimit?: number },
-): Generator<Rep<T>> {
+): Generator<Rep<T> | TestFailure<unknown>> {
   const seed = start.seed;
   const skip = start.index;
   const filterLimit = opts?.filterLimit ?? defaultFilterLimit;
@@ -55,7 +65,7 @@ export function* generateReps<T>(
   // Unless skipped, run the first rep using the arb's default value (dry run).
   if (skip === 0) {
     const key = { seed, index };
-    yield { key, arg: arb.default, test };
+    yield { ok: true, key, arg: arb.default, test };
   }
   index++;
 
@@ -67,21 +77,25 @@ export function* generateReps<T>(
 
   // Generate each rep with a different picker.
   while (true) {
-    const picker = pickers.next().value;
-    const pick = makePickFunction(picker, filterLimit);
     const key = { seed, index };
+
+    const picker: IntPicker = pickers.next().value;
+    try {
+      const arg = runWithPicks(picker, (input) => {
+        const pick = makePickFunction(input, filterLimit);
+        return pick(arb);
+      });
+      yield { ok: true, key, arg, test };
+    } catch (e) {
+      yield { ok: false, key, arg: undefined, caught: e };
+      return;
+    }
+
     index++;
-    yield { key, arg: pick(arb), test };
   }
 }
 
-export interface TestFailure<T> extends Failure {
-  key: RepKey;
-  arg: T;
-  caught: unknown;
-}
-
-export function reportFailure<T>(failure: TestFailure<T>): never {
+export function reportFailure(failure: TestFailure<unknown>): never {
   const key = serializeRepKey(failure.key);
   console.error(`attempt ${failure.key.index} FAILED, using:`, failure.arg);
   console.log(`rerun using {only: "${key}"}`);
@@ -104,13 +118,14 @@ export function runRep<T>(rep: Rep<T>): Success<void> | TestFailure<T> {
 }
 
 export function runReps<T>(
-  reps: Iterable<Rep<T>>,
+  reps: Iterable<Rep<T> | TestFailure<unknown>>,
   count: number,
-): Success<void> | TestFailure<T> {
+): Success<void> | TestFailure<unknown> {
   if (count === 0) return success();
 
   let passed = 0;
   for (const rep of reps) {
+    if (!rep.ok) return rep;
     const ran = runRep(rep);
     if (!ran.ok) return ran;
     passed++;
