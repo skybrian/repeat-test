@@ -7,12 +7,13 @@ import {
 } from "./picks.ts";
 
 /**
- * A picker that also groups picks into spans.
+ * Logs events during a playout.
  *
- * A span contains zero or more picks. The spans must nest to form a tree. A
- * span's *level* is the number of spans are still open when it's created.
+ * Picks can be grouped into *spans.* A span can contain zero or more picks. The
+ * spans must nest to form a tree. A span's *level* is the number of spans are
+ * still open when it's created.
  */
-export interface SpanPicker extends IntPicker {
+export interface PlayoutLogger {
   /**
    * Records the start of a span.
    * Returns the level of the new span.
@@ -35,39 +36,41 @@ export interface SpanPicker extends IntPicker {
    * exception will be thrown.)
    */
   endSpan(level?: number): void;
+
+  /**
+   * Called to indicate that the playout finished successfully.
+   */
+  finished(): void;
 }
 
 /**
- * Runs a function that requires a SpanPicker, wihtout saving the spans.
+ * A PlayoutLogger that just checks that it was called correctly.
  */
-export function runWithPicks<T>(
-  input: IntPicker,
-  run: (s: SpanPicker) => T,
-): T {
-  let level = 0;
-  const picker = {
-    pick: input.pick.bind(input),
-    freeze: input.freeze.bind(input),
-    startSpan: () => {
-      level++;
-      return level;
-    },
-    cancelSpan: () => {
-      if (level === 0) throw new Error("no open span");
-      level--;
-    },
-    endSpan: (levelToEnd?: number) => {
-      if (levelToEnd !== undefined && levelToEnd !== level) {
-        throw new Error(
-          `invalid span level. Want: ${level}, got: ${levelToEnd}`,
-        );
-      }
-      level--;
-    },
-  };
-  const result = run(picker);
-  if (level !== 0) throw new Error("unclosed span");
-  return result;
+export class FakePlayoutLogger implements PlayoutLogger {
+  level = 0;
+
+  startSpan() {
+    this.level++;
+    return this.level;
+  }
+
+  cancelSpan() {
+    if (this.level === 0) throw new Error("no open span");
+    this.level--;
+  }
+
+  endSpan(levelToEnd?: number) {
+    if (levelToEnd !== undefined && levelToEnd !== this.level) {
+      throw new Error(
+        `invalid span level. Want: ${this.level}, got: ${levelToEnd}`,
+      );
+    }
+    this.level--;
+  }
+
+  finished(): void {
+    if (this.level !== 0) throw new Error("unclosed span at end of playout");
+  }
 }
 
 export type Playout = {
@@ -253,7 +256,7 @@ export class PickStack {
    * The picker's lifetime is until the next call to {@link record}, {@link play},
    * {@link playNext}, or {@link stopRecording}.
    */
-  record(): SpanPicker {
+  record(): IntPicker & PlayoutLogger {
     this.log.truncate(0);
     this.recordedPicks.length = 0;
     return this.play();
@@ -266,7 +269,7 @@ export class PickStack {
    * The picker's lifetime is until the next call to {@link record}, {@link play},
    * {@link playNext}, or {@link stopRecording}.
    */
-  play(): SpanPicker {
+  play(): IntPicker & PlayoutLogger {
     this.playOffset = 0;
     this.spanLog.clear();
 
@@ -343,7 +346,11 @@ export class PickStack {
       this.spanLog.endSpan(this.playOffset, level);
     };
 
-    return { pick, freeze, startSpan, cancelSpan, endSpan };
+    const finished = () => {
+      checkAlive();
+    };
+
+    return { pick, freeze, startSpan, cancelSpan, endSpan, finished };
   }
 
   /**
@@ -354,7 +361,7 @@ export class PickStack {
    * value if needed. If all picks have been used, it pops the stack and tries
    * again.
    */
-  playNext(): SpanPicker | null {
+  playNext(): IntPicker & PlayoutLogger | null {
     this.playOffset = 0;
     this.spanLog.clear();
 
@@ -449,7 +456,10 @@ export const NOT_FOUND = Symbol("not found");
  *
  * Each leaf holds either a value or nothing (a dead end).
  */
-export type WalkFunction<T> = (path: SpanPicker) => T | typeof NOT_FOUND;
+export type WalkFunction<T> = (
+  picker: IntPicker,
+  log: PlayoutLogger,
+) => T | typeof NOT_FOUND;
 
 /**
  * Visits every leaf in a search tree in order, depth-first. Starts by taking
@@ -459,9 +469,9 @@ export function* walkAllPaths<T>(
   walk: WalkFunction<T>,
 ): Generator<Solution<T>> {
   const stack = new PickStack(alwaysPickDefault);
-  let next: SpanPicker | null = stack.record();
+  let next: IntPicker & PlayoutLogger | null = stack.record();
   while (next !== null) {
-    const val = walk(next);
+    const val = walk(next, next);
     if (stack.playing) {
       throw "didn't read every value";
     }

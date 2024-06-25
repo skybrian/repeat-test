@@ -7,10 +7,10 @@ import {
 } from "../picks.ts";
 
 import {
+  FakePlayoutLogger,
   NOT_FOUND,
-  runWithPicks,
+  PlayoutLogger,
   Solution,
-  SpanPicker,
   walkAllPaths,
 } from "../solver.ts";
 
@@ -26,7 +26,7 @@ export class PickFailed extends Error {
   }
 }
 
-export type PickOptions<T> = {
+export type PickFunctionOptions<T> = {
   /**
    * Filters out values that don't pass the given filter.
    *
@@ -44,7 +44,7 @@ export type PickOptions<T> = {
  */
 export interface PickFunction {
   (req: PickRequest): number;
-  <T>(req: Arbitrary<T>, opts?: PickOptions<T>): T;
+  <T>(req: Arbitrary<T>, opts?: PickFunctionOptions<T>): T;
 }
 
 /**
@@ -57,6 +57,15 @@ export interface PickFunction {
  * this exception, since it's used for backtracking.
  */
 export type ArbitraryCallback<T> = (pick: PickFunction) => T;
+
+export type PickMethodOptions<T> = {
+  /**
+   * How many times to retry filters. Set to 1 to disable backtracking.
+   */
+  maxTries?: number;
+
+  log?: PlayoutLogger;
+};
 
 /**
  * A set of values that can be randomly picked from. Members are generated as
@@ -76,53 +85,56 @@ export class Arbitrary<T> {
 
   /**
    * Picks an arbitrary member, based on some picks.
-   * @param maxTries how many times to retry filters. Set to 1 to disable backtracking.
    * @throws {@link PickFailed} when it calls `pick()` internally and it fails.
    */
-  pick(input: IntPicker, maxTries: number): T {
+  pick(input: IntPicker, opts?: PickMethodOptions<T>): T {
+    const maxTries = opts?.maxTries ?? 1000;
     if (maxTries < 1 || !Number.isSafeInteger(maxTries)) {
       throw new Error("maxTries must be a positive integer");
     }
 
-    return runWithPicks(input, (spanPicker) => {
-      const pick: PickFunction = <T>(
-        req: PickRequest | Arbitrary<T>,
-        opts?: PickOptions<T>,
-      ): number | T => {
-        if (req instanceof PickRequest) {
-          return input.pick(req);
-        }
-        const accept = opts?.accept;
+    const log = opts?.log ?? new FakePlayoutLogger();
 
-        // non-backtracking case
-        if (accept === undefined) {
-          const level = spanPicker.startSpan();
-          const val = req.callback(pick);
-          spanPicker.endSpan(level);
+    const callbackInput: PickFunction = <T>(
+      req: PickRequest | Arbitrary<T>,
+      opts?: PickFunctionOptions<T>,
+    ): number | T => {
+      if (req instanceof PickRequest) {
+        return input.pick(req);
+      }
+      const accept = opts?.accept;
+
+      // non-backtracking case
+      if (accept === undefined) {
+        const level = log.startSpan();
+        const val = req.callback(callbackInput);
+        log.endSpan(level);
+        return val;
+      }
+
+      // retry when there's a filter
+      for (let tries = 0; tries < maxTries; tries++) {
+        const level = log.startSpan();
+        const val = req.callback(callbackInput);
+        if (accept === undefined || accept(val)) {
+          log.endSpan(level);
           return val;
         }
-
-        // retry when there's a filter
-        for (let tries = 0; tries < maxTries; tries++) {
-          const level = spanPicker.startSpan();
-          const val = req.callback(pick);
-          if (accept === undefined || accept(val)) {
-            spanPicker.endSpan(level);
-            return val;
-          }
-          if (tries < maxTries - 1) {
-            // Cancel only when we're not out of tries.
-            spanPicker.cancelSpan(level);
-          }
+        if (tries < maxTries - 1) {
+          // Cancel only when we're not out of tries.
+          log.cancelSpan();
         }
+      }
 
-        // Give up. This is normal when backtracking is turned off.
-        // Don't cancel so that the picks used in the failed run are available
-        // to the caller.
-        throw PickFailed.create(req, maxTries);
-      };
-      return this.callback(pick);
-    });
+      // Give up. This is normal when backtracking is turned off.
+      // Don't cancel so that the picks used in the failed run are available
+      // to the caller.
+      throw PickFailed.create(req, maxTries);
+    };
+
+    const val = this.callback(callbackInput);
+    log.finished();
+    return val;
   }
 
   /**
@@ -136,7 +148,7 @@ export class Arbitrary<T> {
   parse(picks: number[]): Success<T> | ParseFailure<T> {
     const input = new ParserInput(picks);
     try {
-      const val = this.pick(input, 1);
+      const val = this.pick(input, { maxTries: 1 });
       return input.finish(val);
     } catch (e) {
       if (e instanceof PickFailed) {
@@ -149,7 +161,7 @@ export class Arbitrary<T> {
 
   /** The default value of this Arbitrary. */
   get default(): T {
-    return this.pick(alwaysPickDefault, 1); // a clone, in case it's mutable
+    return this.pick(alwaysPickDefault, { maxTries: 1 }); // a clone, in case it's mutable
   }
 
   /**
@@ -158,9 +170,12 @@ export class Arbitrary<T> {
    * Uses a depth-first search, starting from the default value.
    */
   get solutions(): IterableIterator<Solution<T>> {
-    const walk = (input: SpanPicker): T | typeof NOT_FOUND => {
+    const walk = (
+      picker: IntPicker,
+      log: PlayoutLogger,
+    ): T | typeof NOT_FOUND => {
       try {
-        return this.pick(input, 1);
+        return this.pick(picker, { maxTries: 1, log });
       } catch (e) {
         if (e instanceof PickFailed) {
           return NOT_FOUND;

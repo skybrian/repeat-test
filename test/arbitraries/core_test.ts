@@ -103,10 +103,17 @@ describe("Arbitrary", () => {
     it("returns the only solution for a constant", () => {
       checkSolutions(arb.just(1), [{ val: 1, picks: [] }]);
     });
-    it("returns each solution of a boolean", () => {
+    it("returns each solution for an int range", () => {
+      checkSolutions(arb.int(1, 3), [
+        { val: 1, picks: [1] },
+        { val: 2, picks: [2] },
+        { val: 3, picks: [3] },
+      ]);
+    });
+    it("returns each solution for a boolean", () => {
       const expected = [
-        { val: false, picks: [0] },
-        { val: true, picks: [1] },
+        { val: false, picks: [[0]] },
+        { val: true, picks: [[1]] },
       ];
       checkSolutions(arb.boolean(), expected);
     });

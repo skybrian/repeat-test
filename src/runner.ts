@@ -80,7 +80,7 @@ export function* generateReps<T>(
 
     const picker: IntPicker = pickers.next().value;
     try {
-      const arg = arb.pick(picker, filterLimit);
+      const arg = arb.pick(picker, { maxTries: filterLimit });
       yield { ok: true, key, arg, test };
     } catch (e) {
       yield { ok: false, key, arg: undefined, caught: e };
