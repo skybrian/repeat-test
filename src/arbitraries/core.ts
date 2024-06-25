@@ -15,6 +15,7 @@ import {
 
 import { Success } from "../results.ts";
 
+/** Thrown when a pick fails and backtracking is turned off. */
 class PickFailed extends Error {
   private constructor(msg: string) {
     super(msg);
@@ -24,13 +25,21 @@ class PickFailed extends Error {
   }
 }
 
-type PickOptions<T> = { accept?: (val: T) => boolean };
+type PickOptions<T> = {
+  /**
+   * Filters out values that don't pass the given filter.
+   *
+   * @param accept a function that returns true if the picked value
+   * should be accepted. If it returns false, pick() will either retry or throw
+   * {@link PickFailed}.
+   *
+   * It should always return true for an arbitrary's default value.
+   */
+  accept?: (val: T) => boolean;
+};
 
 /**
  * A function that can pick values from integer ranges or arbitraries.
- *
- * @throws PickFailed if a value couldn't be generated due to running out of
- * retries.
  */
 export interface PickFunction {
   (req: PickRequest): number;
@@ -60,20 +69,21 @@ export function makePickFunction(
       return picker.pick(req);
     }
     const accept = opts?.accept;
-    if (accept && !accept(req.default)) {
-      throw new Error(
-        "cannot filter out the default value of an Arbitrary",
-      );
+    if (accept === undefined) {
+      // non-backtracking case
+      const level = picker.startSpan();
+      const val = req.callback(doPick);
+      picker.endSpan(level);
+      return val;
     }
 
+    // retry when there's a filter
     for (let tries = 0; tries < maxTries; tries++) {
       const level = picker.startSpan();
       const val = req.callback(doPick);
-      if (val !== NOT_FOUND) {
-        if (accept === undefined || accept(val)) {
-          picker.endSpan(level);
-          return val;
-        }
+      if (accept === undefined || accept(val)) {
+        picker.endSpan(level);
+        return val;
       }
       if (tries < maxTries - 1) {
         // Cancel only when we're not out of tries.
@@ -90,30 +100,20 @@ export function makePickFunction(
 }
 
 /**
- * A function that attempts to generate one of the values of an Arbitrary, given
- * some picks.
+ * A function that generates a member of an Arbitrary, given some picks.
  *
- * The function may return {@link NOT_FOUND} as a way of backtracking if it's given
- * some picks that can't be used. When that happens, the caller should try again
- * with different picks.
+ * The result should be deterministic, depending only on what `pick()`
+ * returns.
  *
- * (This is a better way than a loop to implement backtracking because the
- * caller can forget about the picks that led to a dead end.)
- *
- * The *default value* of a parser is whatever it returns when its input is all
- * default values. Returning `RETRY` as the default value is a programming
- * error.
+ * @throws PickFailed when it calls `pick()` and it fails. The callback shouldn't catch
+ * this exception, since it's used for backtracking.
  */
-export type ParseFunction<T> = (pick: PickFunction) => T | typeof NOT_FOUND;
+export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 
-function calculateDefault<T>(parse: ParseFunction<T>): T {
+function calculateDefault<T>(callback: ArbitraryCallback<T>): T {
   return runWithPicks(alwaysPickDefault, (spanPicker) => {
     const pick = makePickFunction(spanPicker, 1);
-    const val = parse(pick);
-    if (val === NOT_FOUND) {
-      throw new Error("parse function must return a default value");
-    }
-    return val;
+    return callback(pick);
   });
 }
 
@@ -122,15 +122,15 @@ function calculateDefault<T>(parse: ParseFunction<T>): T {
  * needed.
  */
 export class Arbitrary<T> {
-  readonly callback: ParseFunction<T>;
+  readonly callback: ArbitraryCallback<T>;
 
   /**
    * @param callback reads some picks and either returns a value or RETRY. It
    * should be deterministic and always finish.
    */
-  constructor(callback: ParseFunction<T>) {
+  constructor(callback: ArbitraryCallback<T>) {
     this.callback = callback;
-    calculateDefault(callback); // dry run; throws exception if invalid
+    calculateDefault(callback); // dry run
   }
 
   /**

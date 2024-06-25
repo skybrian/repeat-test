@@ -12,8 +12,11 @@ const sixSided = new Arbitrary((pick) => pick(oneToSix));
 
 describe("Arbitrary", () => {
   describe("constructor", () => {
-    it("disallows parsers that don't have a default", () => {
-      assertThrows(() => new Arbitrary(() => NOT_FOUND));
+    it("checks that the callback doesn't throw when given default picks", () => {
+      const callback = () => {
+        throw "oops";
+      };
+      assertThrows(() => new Arbitrary(callback));
     });
   });
   describe("filter", () => {
