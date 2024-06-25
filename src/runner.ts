@@ -1,7 +1,6 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
 import { IntPicker } from "./picks.ts";
-import { runWithPicks } from "./solver.ts";
-import { Arbitrary, makePickFunction } from "./arbitraries.ts";
+import { Arbitrary } from "./arbitraries.ts";
 import { fail, Failure, Success, success } from "./results.ts";
 
 /** A function that runs a test, using generated input. */
@@ -81,10 +80,7 @@ export function* generateReps<T>(
 
     const picker: IntPicker = pickers.next().value;
     try {
-      const arg = runWithPicks(picker, (input) => {
-        const pick = makePickFunction(input, filterLimit);
-        return pick(arb);
-      });
+      const arg = arb.pick(picker, filterLimit);
       yield { ok: true, key, arg, test };
     } catch (e) {
       yield { ok: false, key, arg: undefined, caught: e };

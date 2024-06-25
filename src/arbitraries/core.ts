@@ -1,5 +1,6 @@
 import {
   alwaysPickDefault,
+  IntPicker,
   ParseFailure,
   ParserInput,
   PickRequest,
@@ -16,7 +17,7 @@ import {
 import { Success } from "../results.ts";
 
 /** Thrown when a pick fails and backtracking is turned off. */
-class PickFailed extends Error {
+export class PickFailed extends Error {
   private constructor(msg: string) {
     super(msg);
   }
@@ -25,7 +26,7 @@ class PickFailed extends Error {
   }
 }
 
-type PickOptions<T> = {
+export type PickOptions<T> = {
   /**
    * Filters out values that don't pass the given filter.
    *
@@ -47,12 +48,23 @@ export interface PickFunction {
 }
 
 /**
+ * A function that generates a member of an Arbitrary, given some picks.
+ *
+ * The result should be deterministic, depending only on what `pick()`
+ * returns.
+ *
+ * @throws PickFailed when it calls `pick()` and it fails. The callback shouldn't catch
+ * this exception, since it's used for backtracking.
+ */
+export type ArbitraryCallback<T> = (pick: PickFunction) => T;
+
+/**
  * Creates a PickFunction that can handle backtracking.
  * @param picker a source of picks and an output for spans.
  * @param maxTries how many times to try to generate a pick from each Arbitrary.
  * (Set it to 1 to disable backtracking.)
  */
-export function makePickFunction(
+function makePickFunction(
   picker: SpanPicker,
   maxTries: number,
 ): PickFunction {
@@ -100,24 +112,6 @@ export function makePickFunction(
 }
 
 /**
- * A function that generates a member of an Arbitrary, given some picks.
- *
- * The result should be deterministic, depending only on what `pick()`
- * returns.
- *
- * @throws PickFailed when it calls `pick()` and it fails. The callback shouldn't catch
- * this exception, since it's used for backtracking.
- */
-export type ArbitraryCallback<T> = (pick: PickFunction) => T;
-
-function calculateDefault<T>(callback: ArbitraryCallback<T>): T {
-  return runWithPicks(alwaysPickDefault, (spanPicker) => {
-    const pick = makePickFunction(spanPicker, 1);
-    return callback(pick);
-  });
-}
-
-/**
  * A set of values that can be randomly picked from. Members are generated as
  * needed.
  */
@@ -130,15 +124,47 @@ export class Arbitrary<T> {
    */
   constructor(callback: ArbitraryCallback<T>) {
     this.callback = callback;
-    calculateDefault(callback); // dry run
+    this.default; // dry run
   }
 
   /**
-   * The default value of this Arbitrary. It's calculated by calling the
-   * {@link callback} with default picks.
+   * Picks an arbitrary member, based on some picks.
+   * @param input
+   * @param maxTries how many times to retry filters. Set to 1 to disable backtracking.
+   * @throws {@link PickFailed} when it calls `pick()` internally and it fails.
    */
+  pick(input: IntPicker, maxTries: number): T {
+    return runWithPicks(input, (spanPicker) => {
+      const pick = makePickFunction(spanPicker, maxTries);
+      return this.callback(pick);
+    });
+  }
+
+  /**
+   * Attempts to pick a value based on a prerecorded list of picks. All filters
+   * must succeed the first time, or the parse fails. (There is no
+   * backtracking.)
+   *
+   * This function can be used to test which picks the Arbitrary accepts as
+   * input.
+   */
+  parse(picks: number[]): Success<T> | ParseFailure<T> {
+    const input = new ParserInput(picks);
+    try {
+      const val = this.pick(input, 1);
+      return input.finish(val);
+    } catch (e) {
+      if (e instanceof PickFailed) {
+        return { ok: false, guess: this.default, errorOffset: input.offset };
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  /** The default value of this Arbitrary. */
   get default(): T {
-    return calculateDefault(this.callback); // a clone, in case it's mutable
+    return this.pick(alwaysPickDefault, 1); // a clone, in case it's mutable
   }
 
   /**
@@ -148,9 +174,8 @@ export class Arbitrary<T> {
    */
   get solutions(): IterableIterator<Solution<T>> {
     const walk = (input: SpanPicker): T | typeof NOT_FOUND => {
-      const pick = makePickFunction(input, 1);
       try {
-        return pick(this);
+        return this.pick(input, 1);
       } catch (e) {
         if (e instanceof PickFailed) {
           return NOT_FOUND;
@@ -174,32 +199,6 @@ export class Arbitrary<T> {
       }
     }
     return membersOf(this);
-  }
-
-  /**
-   * Attempts to pick a value based on a prerecorded list of picks. All filters
-   * must succeed the first time, or the parse fails. (There is no
-   * backtracking.)
-   *
-   * This function can be used to test which picks the Arbitrary accepts as
-   * input.
-   */
-  parse(picks: number[]): Success<T> | ParseFailure<T> {
-    const input = new ParserInput(picks);
-    return runWithPicks(input, (spanPicker) => {
-      const pick = makePickFunction(spanPicker, 1);
-
-      try {
-        const val = pick(this);
-        return input.finish(val);
-      } catch (e) {
-        if (e instanceof PickFailed) {
-          return { ok: false, guess: this.default, errorOffset: input.offset };
-        } else {
-          throw e;
-        }
-      }
-    });
   }
 
   /**
