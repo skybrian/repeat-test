@@ -24,6 +24,8 @@ class PickFailed extends Error {
   }
 }
 
+type PickOptions<T> = { accept?: (val: T) => boolean };
+
 /**
  * A function that can pick values from integer ranges or arbitraries.
  *
@@ -32,7 +34,7 @@ class PickFailed extends Error {
  */
 export interface PickFunction {
   (req: PickRequest): number;
-  <T>(req: Arbitrary<T>): T;
+  <T>(req: Arbitrary<T>, opts?: PickOptions<T>): T;
 }
 
 /**
@@ -52,16 +54,26 @@ export function makePickFunction(
 
   const doPick: PickFunction = <T>(
     req: PickRequest | Arbitrary<T>,
+    opts?: PickOptions<T>,
   ): number | T => {
     if (req instanceof PickRequest) {
       return picker.pick(req);
     }
+    const accept = opts?.accept;
+    if (accept && !accept(req.default)) {
+      throw new Error(
+        "cannot filter out the default value of an Arbitrary",
+      );
+    }
+
     for (let tries = 0; tries < maxTries; tries++) {
       const level = picker.startSpan();
       const val = req.callback(doPick);
       if (val !== NOT_FOUND) {
-        picker.endSpan(level);
-        return val;
+        if (accept === undefined || accept(val)) {
+          picker.endSpan(level);
+          return val;
+        }
       }
       if (tries < maxTries - 1) {
         // Cancel only when we're not out of tries.
@@ -211,11 +223,8 @@ export class Arbitrary<T> {
         "cannot filter out the default value of an Arbitrary",
       );
     }
-
-    return new Arbitrary((it) => {
-      const parsed = this.callback(it);
-      if (parsed === NOT_FOUND) return NOT_FOUND;
-      return accept(parsed) ? parsed : NOT_FOUND;
+    return new Arbitrary((pick) => {
+      return pick(this, { accept });
     });
   }
 
