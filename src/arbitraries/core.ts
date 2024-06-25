@@ -63,9 +63,14 @@ export function makePickFunction(
         picker.endSpan(level);
         return val;
       }
-      picker.cancelSpan(level);
+      if (tries < maxTries - 1) {
+        // Cancel only when we're not out of tries.
+        picker.cancelSpan(level);
+      }
     }
-    // Give up. (This is normal when backtracking is turned off.)
+    // Give up. This is normal when backtracking is turned off.
+    // Don't cancel so that the picks used in the failed run are available
+    // to the caller.
     throw PickFailed.create(req, maxTries);
   };
 

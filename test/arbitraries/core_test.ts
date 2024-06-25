@@ -103,7 +103,7 @@ describe("Arbitrary", () => {
     it("returns each solution of a boolean", () => {
       const expected = [
         { val: false, picks: [[[0]]] },
-        { val: true, picks: [1, [[]]] },
+        { val: true, picks: [[[1]]] },
       ];
       checkSolutions(arb.boolean(), expected);
     });

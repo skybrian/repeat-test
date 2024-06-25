@@ -37,22 +37,7 @@ describe("PickLog", () => {
       const log = new PickLog();
       log.truncate(0);
       assertEquals(log.length, 0);
-      assertEquals(log.getPlayout(), {
-        picks: [],
-        spanStarts: [],
-        spanEnds: [],
-      });
-    });
-    it("can clear a pending span", () => {
-      const log = new PickLog();
-      log.startSpan();
-      log.truncate(0);
-      assertEquals(log.length, 0);
-      assertEquals(log.getPlayout(), {
-        picks: [],
-        spanStarts: [],
-        spanEnds: [],
-      });
+      assertEquals(log.getPicks(), []);
     });
   });
 });
@@ -172,6 +157,30 @@ describe("Solution", () => {
         spanEnds: [0, 0],
       });
       assertEquals(sol.getNestedPicks(), [[[]]]);
+    });
+    it("puts the pick first", () => {
+      const sol = new Solution(123, {
+        picks: [1],
+        spanStarts: [1, 1],
+        spanEnds: [1, 1],
+      });
+      assertEquals(sol.getNestedPicks(), [1, [[]]]);
+    });
+    it("puts the pick in the middle", () => {
+      const sol = new Solution(123, {
+        picks: [1],
+        spanStarts: [0, 0],
+        spanEnds: [1, 1],
+      });
+      assertEquals(sol.getNestedPicks(), [[[1]]]);
+    });
+    it("puts the pick last", () => {
+      const sol = new Solution(123, {
+        picks: [1],
+        spanStarts: [0, 0],
+        spanEnds: [0, 0],
+      });
+      assertEquals(sol.getNestedPicks(), [[[]], 1]);
     });
   });
 });

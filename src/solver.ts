@@ -90,43 +90,18 @@ export class PickLog {
   // (Parallel lists.)
 
   private readonly reqs: PickRequest[] = [];
-
   private readonly picks: number[] = [];
-
-  // Invariant: spanStarts.length == spanEnds.length
-  // (Parallel lists.)
-
-  /** The offset when each span was started */
-  private readonly spanStarts: number[] = [];
-
-  /** The offset when each span ended. Set to NaN for incomplete spans. */
-  private readonly spanEnds: number[] = [];
-
-  /** The offset of each incomplete span, in the order created.  */
-  private readonly openSpans: number[] = [];
 
   get length() {
     return this.reqs.length;
   }
 
-  getPlayout(): Playout {
-    if (this.level > 0) {
-      throw new Error("unclosed span");
-    }
-
-    return {
-      picks: this.picks.slice(),
-      spanStarts: this.spanStarts.slice(),
-      spanEnds: this.spanEnds.slice(),
-    };
-  }
-
-  getPick(index: number) {
-    return { req: this.reqs[index], pick: this.picks[index] };
-  }
-
-  getReplies(): number[] {
+  getPicks(): number[] {
     return this.picks.slice();
+  }
+
+  getEntry(index: number) {
+    return { req: this.reqs[index], pick: this.picks[index] };
   }
 
   pushPick(request: PickRequest, replay: number): void {
@@ -149,18 +124,66 @@ export class PickLog {
     return next;
   }
 
+  truncate(pickCount: number) {
+    this.reqs.length = pickCount;
+    this.picks.length = pickCount;
+  }
+}
+
+export class SpanLog {
+  // Invariant: spanStarts.length == spanEnds.length
+  // (Parallel lists.)
+
+  /** The offset when each span was started */
+  private readonly spanStarts: number[] = [];
+
+  /** The offset when each span ended. Set to NaN for incomplete spans. */
+  private readonly spanEnds: number[] = [];
+
+  /** The offset of each incomplete span, in the order created.  */
+  private readonly openSpans: number[] = [];
+
   get level(): number {
     return this.openSpans.length;
   }
 
-  startSpan(): void {
+  /** Returns the recorded spans unless the playout stopped abruptly. */
+  getSpans() {
+    if (this.level > 0) return undefined;
+
+    return {
+      spanStarts: this.spanStarts.slice(),
+      spanEnds: this.spanEnds.slice(),
+    };
+  }
+
+  clear() {
+    this.spanStarts.length = 0;
+    this.spanEnds.length = 0;
+    this.openSpans.length = 0;
+  }
+
+  startSpan(loc: number): void {
     const spanIndex = this.spanStarts.length;
-    this.spanStarts.push(this.reqs.length);
+    this.spanStarts.push(loc);
     this.spanEnds.push(NaN);
     this.openSpans.push(spanIndex);
   }
 
-  endSpan(level?: number): void {
+  /** Returns the index of the start of the span */
+  removeLastSpan(): number {
+    const spanIndex = this.openSpans.pop();
+    if (spanIndex === undefined) {
+      throw new Error("no open span");
+    }
+    const start = this.spanStarts[spanIndex];
+    this.spanStarts.splice(spanIndex);
+    this.spanEnds.splice(spanIndex);
+    console.log(`removed span ${spanIndex}, start: ${start}`);
+    return start;
+  }
+
+  endSpan(loc: number, level?: number): void {
     const spanIndex = this.openSpans.pop();
     if (spanIndex === undefined) {
       throw new Error("no open span");
@@ -170,43 +193,7 @@ export class PickLog {
         `invalid span level. Want: ${this.openSpans.length + 1}, got: ${level}`,
       );
     }
-    this.spanEnds[spanIndex] = this.reqs.length;
-  }
-
-  /** Returns the index where the most recently opened span started. */
-  getSpanStart(): number | undefined {
-    if (this.openSpans.length === 0) return undefined;
-    return this.spanStarts[this.openSpans[this.openSpans.length - 1]];
-  }
-
-  clear() {
-    this.reqs.length = 0;
-    this.picks.length = 0;
-    this.clearSpans();
-  }
-
-  clearSpans() {
-    this.spanStarts.length = 0;
-    this.spanEnds.length = 0;
-    this.openSpans.length = 0;
-  }
-
-  removeLastSpan(): void {
-    const spanIndex = this.openSpans.pop();
-    if (spanIndex === undefined) {
-      throw new Error("no open span");
-    }
-    const start = this.spanStarts[spanIndex];
-    this.reqs.splice(start);
-    this.picks.splice(start);
-    this.spanStarts.splice(spanIndex);
-    this.spanEnds.splice(spanIndex);
-  }
-
-  truncate(pickCount: number) {
-    this.clearSpans();
-    this.reqs.length = pickCount;
-    this.picks.length = pickCount;
+    this.spanEnds[spanIndex] = loc;
   }
 }
 
@@ -227,6 +214,7 @@ export class PickStack {
   private readonly maxStackSize: number;
 
   private readonly log = new PickLog();
+  private readonly spanLog = new SpanLog();
 
   /** The picks originally recorded. */
   private readonly recordedPicks: number[] = [];
@@ -266,7 +254,7 @@ export class PickStack {
    * {@link playNext}, or {@link stopRecording}.
    */
   record(): SpanPicker {
-    this.log.clear();
+    this.log.truncate(0);
     this.recordedPicks.length = 0;
     return this.play();
   }
@@ -280,6 +268,7 @@ export class PickStack {
    */
   play(): SpanPicker {
     this.playOffset = 0;
+    this.spanLog.clear();
 
     this.proxyCount++;
     const id = this.proxyCount;
@@ -297,7 +286,7 @@ export class PickStack {
 
       if (this.playOffset < this.log.length) {
         // replaying
-        const prev = this.log.getPick(this.playOffset);
+        const prev = this.log.getEntry(this.playOffset);
         if (prev.req.min !== req.min || prev.req.max !== req.max) {
           throw new Error(
             "when replaying, pick() must be called with the same request as before",
@@ -323,14 +312,14 @@ export class PickStack {
     const freeze = (): PickState => {
       checkAlive();
       return {
-        start: () => new ParserInput(this.log.getReplies()),
+        start: () => new ParserInput(this.log.getPicks()),
       };
     };
 
     const startSpan = (): number => {
       checkAlive();
-      this.log.startSpan();
-      return this.log.level;
+      this.spanLog.startSpan(this.playOffset);
+      return this.spanLog.level;
     };
 
     const cancelSpan = (level?: number) => {
@@ -338,19 +327,20 @@ export class PickStack {
       if (this.playOffset < this.log.length) {
         throw new Error("can't retry span when replaying");
       }
-      if (level !== undefined && level !== this.log.level) {
+      if (level !== undefined && level !== this.spanLog.level) {
         throw new Error(
-          `invalid span level. Want: ${this.log.level}, got: ${level}`,
+          `invalid span level. Want: ${this.spanLog.level}, got: ${level}`,
         );
       }
 
-      this.log.removeLastSpan();
-      this.recordedPicks.splice(this.log.length);
+      const start = this.spanLog.removeLastSpan();
+      this.log.truncate(start);
+      this.recordedPicks.splice(start);
     };
 
     const endSpan = (level?: number) => {
       checkAlive();
-      this.log.endSpan(level);
+      this.spanLog.endSpan(this.playOffset, level);
     };
 
     return { pick, freeze, startSpan, cancelSpan, endSpan };
@@ -366,7 +356,7 @@ export class PickStack {
    */
   playNext(): SpanPicker | null {
     this.playOffset = 0;
-    this.log.clearSpans();
+    this.spanLog.clear();
 
     while (this.log.length > 0) {
       const pick = this.log.rotateLastPick();
@@ -384,15 +374,18 @@ export class PickStack {
   }
 
   /**
-   * Invalidates the current picker, so no more picks can be recorded.
-   * Returns the playout, unless it's incomplete due to open spans.
+   * Stops recording and returns the playout if it finished.
+   *
+   * Invalidates the current picker, so no more picks can be recorded. Returns
+   * undefined if the playout ended abruptly (there are open spans).
    */
-  stopRecording(): Playout {
+  stopRecording(): Playout | undefined {
+    if (this.playing) throw new Error("not recording");
     this.proxyCount++; // invalidate current proxy
-    if (this.playing) {
-      throw new Error("can't stop recording while playing");
-    }
-    return this.log.getPlayout();
+    const picks = this.log.getPicks();
+    const spans = this.spanLog.getSpans();
+    if (!spans) return undefined;
+    return { picks, ...spans };
   }
 }
 
@@ -427,16 +420,16 @@ export class Solution<T> {
         spanAt++;
       }
 
-      if (i < picks.length) {
-        current.push(picks[i]);
-      }
-
       while (
         spanEndStack.length > 0 && spanEndStack[spanEndStack.length - 1] === i
       ) {
         // end the current list
         current = resultStack.pop() as NestedPicks;
         spanEndStack.pop();
+      }
+
+      if (i < picks.length) {
+        current.push(picks[i]);
       }
     }
     if (spanEndStack.length > 0) {
@@ -472,11 +465,12 @@ export function* walkAllPaths<T>(
     if (stack.playing) {
       throw "didn't read every value";
     }
-    const playout = stack.stopRecording();
-    if (playout === undefined) {
-      throw new Error("didn't close every span");
-    }
     if (val !== NOT_FOUND) {
+      // reached a solution
+      const playout = stack.stopRecording();
+      if (playout === undefined) {
+        throw new Error("didn't close every span");
+      }
       yield new Solution(val, playout);
     }
     next = stack.playNext();
