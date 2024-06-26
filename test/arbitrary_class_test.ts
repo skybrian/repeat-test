@@ -1,9 +1,9 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
+import { assertSolutions } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { PickRequest } from "../src/picks.ts";
-import { NestedPicks } from "../src/playouts.ts";
 import { PlayoutFailed } from "../src/solver.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 
@@ -101,25 +101,16 @@ describe("Arbitrary", () => {
     });
   });
 
-  function checkSolutions<T>(
-    arb: Arbitrary<T>,
-    expected: { val: T; picks: NestedPicks }[],
-  ) {
-    const sols = Array.from(arb.solutions);
-    const actual = sols.map((s) => ({ val: s.val, picks: s.getNestedPicks() }));
-    assertEquals(actual, expected);
-  }
-
   describe("solutions", () => {
     it("returns the only solution for a constant", () => {
       const one = new Arbitrary(() => 1);
-      checkSolutions(one, [{ val: 1, picks: [] }]);
+      assertSolutions(one, [{ val: 1, picks: [] }]);
     });
     it("returns each solution for an int range", () => {
       const oneTwoThree = new Arbitrary((pick) => {
         return pick(new PickRequest(1, 3));
       });
-      checkSolutions(oneTwoThree, [
+      assertSolutions(oneTwoThree, [
         { val: 1, picks: [1] },
         { val: 2, picks: [2] },
         { val: 3, picks: [3] },
@@ -134,7 +125,7 @@ describe("Arbitrary", () => {
         { val: false, picks: [[0]] },
         { val: true, picks: [[1]] },
       ];
-      checkSolutions(boolean, expected);
+      assertSolutions(boolean, expected);
     });
   });
 });
