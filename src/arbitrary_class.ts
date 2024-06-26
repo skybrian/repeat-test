@@ -63,8 +63,15 @@ export type PickMethodOptions<T> = {
  * needed.
  */
 export default class Arbitrary<T> {
-  readonly callback: ArbitraryCallback<T>;
-  readonly defaultPicks: number[] | undefined;
+  private readonly callback: ArbitraryCallback<T>;
+
+  private readonly defaultPicks: number[] | undefined;
+
+  /**
+   * An upper bound on the number of members in this Arbitrary.
+   * (Only available for some small sets.)
+   */
+  readonly maxSize: number | undefined;
 
   /**
    * Creates an arbitrary from a {@link PickRequest} or {@link ArbitraryCallback}.
@@ -82,17 +89,18 @@ export default class Arbitrary<T> {
       const callback: ArbitraryCallback<number> = (pick) => {
         return pick(arg);
       };
-      return new Arbitrary(callback, opts);
+      return new Arbitrary(callback, { ...opts, maxSize: arg.size });
     }
     return new Arbitrary(arg, opts);
   }
 
   private constructor(
     callback: ArbitraryCallback<T>,
-    opts?: ArbitraryOptions<T>,
+    opts?: ArbitraryOptions<T> & { maxSize?: number },
   ) {
     this.callback = callback;
     this.defaultPicks = opts?.defaultPicks ? [...opts.defaultPicks] : undefined;
+    this.maxSize = opts?.maxSize;
     this.default; // dry run
   }
 
@@ -212,10 +220,11 @@ export default class Arbitrary<T> {
    * mapped.)
    */
   map<U>(convert: (val: T) => U): Arbitrary<U> {
+    const maxSize = this.maxSize;
     return new Arbitrary((pick) => {
       const output = pick(this);
       return convert(output);
-    });
+    }, { maxSize });
   }
 
   /**
@@ -255,9 +264,10 @@ export default class Arbitrary<T> {
       defaultPicks = solve();
     }
 
+    const maxSize = this.maxSize;
     return new Arbitrary((pick) => {
       return pick(this, { accept });
-    }, { defaultPicks });
+    }, { defaultPicks, maxSize });
   }
 
   /**

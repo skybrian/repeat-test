@@ -112,6 +112,10 @@ export class PickRequest {
     this.bias = opts?.bias ?? uniformBias(min, max);
   }
 
+  get size(): number {
+    return this.max - this.min + 1;
+  }
+
   /** Returns true if the given number satisfies this request. */
   inRange(n: number): boolean {
     return inRange(n, this.min, this.max);

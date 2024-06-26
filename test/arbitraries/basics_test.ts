@@ -35,6 +35,9 @@ function itMakesInts(
       assertParseFails(someInt(1, 6), [n]);
     }
   });
+  it("has maxSize set to the size of the range", () => {
+    assertEquals(someInt(1, 6).maxSize, 6);
+  });
 }
 
 describe("uniformInt", () => {
@@ -43,18 +46,6 @@ describe("uniformInt", () => {
 
 describe("int", () => {
   itMakesInts(arb.int);
-});
-
-describe("boolean", () => {
-  it("defaults to false", () => {
-    assertParseFails(arb.boolean(), []);
-  });
-  it("parses a 0 as false", () => {
-    assertParses(arb.boolean(), [0], false);
-  });
-  it("parses a 1 as true", () => {
-    assertParses(arb.boolean(), [1], true);
-  });
 });
 
 describe("example", () => {
@@ -74,6 +65,18 @@ describe("example", () => {
   it("reads a pick to decide which example to pick", () => {
     assertParses(twoWay, [0], 1);
     assertParses(twoWay, [1], 2);
+  });
+});
+
+describe("boolean", () => {
+  it("defaults to false", () => {
+    assertParseFails(arb.boolean(), []);
+  });
+  it("parses a 0 as false", () => {
+    assertParses(arb.boolean(), [0], false);
+  });
+  it("parses a 1 as true", () => {
+    assertParses(arb.boolean(), [1], true);
   });
 });
 

@@ -210,4 +210,25 @@ describe("Arbitrary", () => {
       assertSolutions(boolean, expected);
     });
   });
+
+  describe("maxSize", () => {
+    describe("when the Arbitrary is based on a PickRequest", () => {
+      it("returns the size of of the PickRequest", () => {
+        const oneTwoThree = Arbitrary.from(new PickRequest(1, 3));
+        assertEquals(oneTwoThree.maxSize, 3);
+      });
+      it("returns same size after mapping", () => {
+        const oneTwoThree = Arbitrary.from(new PickRequest(1, 3)).map((n) =>
+          n + 1
+        );
+        assertEquals(oneTwoThree.maxSize, 3);
+      });
+      it("returns same size after filtering", () => {
+        const oneTwoThree = Arbitrary.from(new PickRequest(1, 3)).filter(
+          (n) => n % 2 == 0,
+        );
+        assertEquals(oneTwoThree.maxSize, 3);
+      });
+    });
+  });
 });
