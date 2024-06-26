@@ -13,7 +13,7 @@ import {
 } from "../src/picks.ts";
 import { randomPicker } from "../src/random.ts";
 
-import { PickStack } from "../src/solver.ts";
+import { PlayoutBuffer } from "../src/solver.ts";
 
 export function validRequest(
   opts?: arb.IntRangeOptions,
@@ -31,7 +31,7 @@ export function validRequest(
   });
 }
 
-describe("PickStack", () => {
+describe("PlayoutBuffer", () => {
   const validRequestAndReply = arb.custom((pick) => {
     const req = pick(validRequest());
     const n = pick(req);
@@ -41,7 +41,7 @@ describe("PickStack", () => {
   describe("record", () => {
     it("accepts any pick", () => {
       repeatTest(validRequestAndReply, ({ req, n }) => {
-        const stack = new PickStack(alwaysPick(n));
+        const stack = new PlayoutBuffer(alwaysPick(n));
         assertEquals(stack.length, 0);
         assertEquals(stack.record().pick(req), n);
         assertEquals(stack.length, 1);
@@ -51,7 +51,7 @@ describe("PickStack", () => {
   describe("play", () => {
     it("replays any pick", () => {
       repeatTest(validRequestAndReply, ({ req, n }) => {
-        const stack = new PickStack(alwaysPick(n));
+        const stack = new PlayoutBuffer(alwaysPick(n));
         assertEquals(stack.record().pick(req), n);
         assertEquals(stack.play().pick(req), n);
         assertEquals(stack.length, 1);
@@ -61,7 +61,7 @@ describe("PickStack", () => {
 
   describe("playNext", () => {
     function collectReplays(
-      stack: PickStack,
+      stack: PlayoutBuffer,
       requests: PickRequest[],
     ): Set<string> {
       const result = new Set<string>();
@@ -87,7 +87,7 @@ describe("PickStack", () => {
       const digits = Array(3).fill(digit);
 
       // set to 0, 0, 0
-      const stack = new PickStack(alwaysPickMin);
+      const stack = new PlayoutBuffer(alwaysPickMin);
       const record = stack.record();
       digits.forEach((req) => record.pick(req));
 
@@ -103,7 +103,7 @@ describe("PickStack", () => {
         seed: arb.int32(),
       });
       repeatTest(example, ({ requests, seed }) => {
-        const stack = new PickStack(randomPicker(seed));
+        const stack = new PlayoutBuffer(randomPicker(seed));
 
         // record some random picks
         const recorder = stack.record();

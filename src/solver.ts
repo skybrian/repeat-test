@@ -8,26 +8,27 @@ import {
 } from "./playouts.ts";
 
 /**
- * Records and replays picks made by underlying {@link IntPicker}.
+ * Records and replays the picks made during a playout.
  *
- * When recording, it pushes requests and responses on the stack.
+ * When replaying, it starts by playing back the picks in the buffer, then
+ * switches to recording mode.
  *
- * When replaying, it starts from the bottom of the stack and enforces that
- * requested ranges match. When it reaches the end of the stack, it starts
- * recording again.
- *
- * The stack can also be incremented like an odometer, which can be used for a
- * depth-first search of all possible replies to the recorded pick requests. See
- * {@link playNext}.
+ * The buffered playout can also be incremented like an odometer, which can be
+ * used for a depth-first search of all possible playouts. See {@link playNext}.
  */
-export class PickStack {
-  private readonly maxStackSize: number;
+export class PlayoutBuffer {
+  private readonly maxSize: number;
 
-  private readonly log = new PickLog();
-  private readonly spanLog = new SpanLog();
+  // Invariant: recordedPicks.length === picks.length.
 
-  /** The picks originally recorded. */
+  /** The picks that were originally recorded, as sent by the pick source. */
   private readonly recordedPicks: number[] = [];
+
+  /** The picks to play back. (Possibly modified since they were recorded.) */
+  private readonly picks = new PickLog();
+
+  /** The spans recorded during the current or most-recent playout. */
+  private readonly spans = new SpanLog();
 
   private playOffset = 0;
 
@@ -36,35 +37,34 @@ export class PickStack {
 
   /**
    * Constructs a new, empty log, ready for recording.
-   * @param wrapped the picker to use when recording picks
+   *
+   * @param source provides the picks when recording.
    */
   constructor(
-    private readonly wrapped: IntPicker,
+    private readonly source: IntPicker,
     opts?: { maxLogSize?: number },
   ) {
-    this.maxStackSize = opts?.maxLogSize ?? 1000;
+    this.maxSize = opts?.maxLogSize ?? 1000;
   }
 
-  /** The number of requests that have been recorded. */
+  /** The number of picks that have been recorded. */
   get length() {
-    return this.log.length;
+    return this.picks.length;
   }
 
-  /**
-   * Returns true if there are recorded picks that haven't been replayed.
-   */
+  /** Returns true if there are picks that haven't been replayed. */
   get playing() {
-    return this.playOffset < this.log.length;
+    return this.playOffset < this.picks.length;
   }
 
   /**
    * Clears the log and starts recording. Returns the picker to use.
    *
    * The picker's lifetime is until the next call to {@link record}, {@link play},
-   * {@link playNext}, or {@link stopRecording}.
+   * {@link playNext}, or {@link finishPlayout}.
    */
   record(): IntPicker & PlayoutLogger {
-    this.log.truncate(0);
+    this.picks.truncate(0);
     this.recordedPicks.length = 0;
     return this.play();
   }
@@ -74,29 +74,27 @@ export class PickStack {
    * will start recording again.
    *
    * The picker's lifetime is until the next call to {@link record}, {@link play},
-   * {@link playNext}, or {@link stopRecording}.
+   * {@link playNext}, or {@link finishPlayout}.
    */
   play(): IntPicker & PlayoutLogger {
     this.playOffset = 0;
-    this.spanLog.clear();
+    this.spans.clear();
 
     this.proxyCount++;
     const id = this.proxyCount;
 
     const checkAlive = () => {
       if (id !== this.proxyCount) {
-        throw new Error(
-          "can't use this picker anymore, because record() or replay() were called",
-        );
+        throw new Error("can't use this picker because the playout is over");
       }
     };
 
     const pick = (req: PickRequest): number => {
       checkAlive();
 
-      if (this.playOffset < this.log.length) {
+      if (this.playOffset < this.picks.length) {
         // replaying
-        const prev = this.log.getEntry(this.playOffset);
+        const prev = this.picks.getEntry(this.playOffset);
         if (prev.req.min !== req.min || prev.req.max !== req.max) {
           throw new Error(
             "when replaying, pick() must be called with the same request as before",
@@ -107,13 +105,13 @@ export class PickStack {
       }
 
       // recording
-      if (this.playOffset === this.maxStackSize) {
+      if (this.playOffset === this.maxSize) {
         throw new Error(
-          `pick log is full (max size: ${this.maxStackSize})`,
+          `playout buffer is full (max size: ${this.maxSize})`,
         );
       }
-      const pick = this.wrapped.pick(req);
-      this.log.pushPick(req, pick);
+      const pick = this.source.pick(req);
+      this.picks.pushPick(req, pick);
       this.recordedPicks.push(pick);
       this.playOffset += 1;
       return pick;
@@ -121,33 +119,34 @@ export class PickStack {
 
     const startSpan = (): number => {
       checkAlive();
-      this.spanLog.startSpan(this.playOffset);
-      return this.spanLog.level;
+      this.spans.startSpan(this.playOffset);
+      return this.spans.level;
     };
 
     const cancelSpan = (level?: number) => {
       checkAlive();
-      if (this.playOffset < this.log.length) {
-        throw new Error("can't retry span when replaying");
+      if (this.playOffset < this.picks.length) {
+        throw new Error("can't cancel a span while replaying");
       }
-      if (level !== undefined && level !== this.spanLog.level) {
+      if (level !== undefined && level !== this.spans.level) {
         throw new Error(
-          `invalid span level. Want: ${this.spanLog.level}, got: ${level}`,
+          `invalid span level. Want: ${this.spans.level}, got: ${level}`,
         );
       }
 
-      const start = this.spanLog.removeLastSpan();
-      this.log.truncate(start);
+      const start = this.spans.removeLastSpan();
+      this.picks.truncate(start);
       this.recordedPicks.splice(start);
     };
 
     const endSpan = (level?: number) => {
       checkAlive();
-      this.spanLog.endSpan(this.playOffset, level);
+      this.spans.endSpan(this.playOffset, level);
     };
 
     const finished = () => {
       checkAlive();
+      this.proxyCount++; // invalidate this object
     };
 
     return { pick, startSpan, cancelSpan, endSpan, finished };
@@ -163,16 +162,16 @@ export class PickStack {
    */
   playNext(): IntPicker & PlayoutLogger | null {
     this.playOffset = 0;
-    this.spanLog.clear();
+    this.spans.clear();
 
-    while (this.log.length > 0) {
-      const pick = this.log.rotateLastPick();
-      if (pick !== this.recordedPicks[this.log.length - 1]) {
+    while (this.picks.length > 0) {
+      const pick = this.picks.rotateLastPick();
+      if (pick !== this.recordedPicks[this.picks.length - 1]) {
         return this.play();
       }
 
       // We exhausted all possibilties for the last pick request.
-      this.log.truncate(this.log.length - 1);
+      this.picks.truncate(this.picks.length - 1);
       this.recordedPicks.pop();
     }
 
@@ -186,11 +185,11 @@ export class PickStack {
    * Invalidates the current picker, so no more picks can be recorded. Returns
    * undefined if the playout ended abruptly (there are open spans).
    */
-  stopRecording(): Playout | undefined {
+  finishPlayout(): Playout | undefined {
     if (this.playing) throw new Error("not recording");
     this.proxyCount++; // invalidate current proxy
-    const picks = this.log.getPicks();
-    const spans = this.spanLog.getSpans();
+    const picks = this.picks.getPicks();
+    const spans = this.spans.getSpans();
     if (!spans) return undefined;
     return { picks, ...spans };
   }
@@ -222,16 +221,16 @@ export type WalkFunction<T> = (
 export function* walkAllPaths<T>(
   walk: WalkFunction<T>,
 ): Generator<Solution<T>> {
-  const stack = new PickStack(alwaysPickDefault);
-  let next: IntPicker & PlayoutLogger | null = stack.record();
+  const buffer = new PlayoutBuffer(alwaysPickDefault);
+  let next: IntPicker & PlayoutLogger | null = buffer.record();
   while (next !== null) {
     try {
       const val = walk(next, next);
-      if (stack.playing) {
+      if (buffer.playing) {
         throw "didn't read every value";
       }
       // reached a solution
-      const playout = stack.stopRecording();
+      const playout = buffer.finishPlayout();
       if (playout === undefined) {
         throw new Error("didn't close every span");
       }
@@ -242,6 +241,6 @@ export function* walkAllPaths<T>(
       }
       // backtracked from a dead end; try the next path
     }
-    next = stack.playNext();
+    next = buffer.playNext();
   }
 }
