@@ -15,7 +15,7 @@ describe("shrinkPick", () => {
     });
   });
   it("shrinks a non-default value to a default value", () => {
-    const example = arb.custom((pick) => {
+    const example = arb.from((pick) => {
       const defaultVal = pick(arb.int(1, 6));
       const next = defaultVal % 6 + 1;
       const reply = pick(

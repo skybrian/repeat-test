@@ -12,5 +12,5 @@ type AnyTuple = unknown[];
 export function tuple<T extends AnyTuple>(
   ...items: { [K in keyof T]: Arbitrary<T[K]> }
 ): Arbitrary<T> {
-  return arb.custom((pick) => items.map((item) => pick(item)) as T);
+  return arb.from((pick) => items.map((item) => pick(item)) as T);
 }

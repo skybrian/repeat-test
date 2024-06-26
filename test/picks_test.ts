@@ -11,7 +11,7 @@ export function validRequest(
 ): Arbitrary<PickRequest> {
   const range = arb.intRange(opts);
 
-  return arb.custom((pick) => {
+  return arb.from((pick) => {
     const { min, max } = pick(range);
 
     const opts: PickRequestOptions = {};
@@ -30,7 +30,7 @@ describe("PickRequest", () => {
       });
     });
     it("throws when given an invalid default", () => {
-      const example = arb.custom((pick) => {
+      const example = arb.from((pick) => {
         const { min, max } = pick(arb.intRange());
         const def = pick(
           arb.oneOf([arb.nonInteger(), arb.intOutsideRange(min, max)]),
@@ -58,7 +58,7 @@ describe("PickRequest", () => {
       });
     });
     it("returns the overridden default when given", () => {
-      const example = arb.custom((pick) => {
+      const example = arb.from((pick) => {
         const { min, max } = pick(arb.intRange());
         const def = pick(arb.int(min, max));
         return { min, max, def };

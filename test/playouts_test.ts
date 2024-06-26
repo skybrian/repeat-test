@@ -32,7 +32,7 @@ export function validRequest(
 ): Arbitrary<PickRequest> {
   const range = arb.intRange(opts);
 
-  return arb.custom((pick) => {
+  return arb.from((pick) => {
     const { min, max } = pick(range);
 
     const opts: PickRequestOptions = {};
@@ -44,7 +44,7 @@ export function validRequest(
 }
 
 describe("PlayoutBuffer", () => {
-  const validRequestAndReply = arb.custom((pick) => {
+  const validRequestAndReply = arb.from((pick) => {
     const req = pick(validRequest());
     const n = pick(req);
     return { req, n };

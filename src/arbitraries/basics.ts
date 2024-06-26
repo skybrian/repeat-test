@@ -7,7 +7,7 @@ import { BiasedIntPicker } from "../picks.ts";
  *
  * For more, see {@link ArbitraryCallback}.
  */
-export function custom<T>(callback: ArbitraryCallback<T>): Arbitrary<T> {
+export function from<T>(callback: ArbitraryCallback<T>): Arbitrary<T> {
   return Arbitrary.from(callback);
 }
 
@@ -71,7 +71,7 @@ export function int(
 }
 
 export function just<T>(value: T): Arbitrary<T> {
-  return custom(() => value);
+  return from(() => value);
 }
 
 export function example<T>(values: T[]): Arbitrary<T> {
@@ -114,7 +114,7 @@ export function array<T>(
   // Since we make a pick request for each item, this makes long arrays unlikely
   // but possible, and it should be easier remove items when shrinking.
   // TODO: change the odds; we don't want half of all arrays to be empty.
-  return custom((pick) => {
+  return from((pick) => {
     const result = [];
     // fixed-length portion
     let i = 0;
