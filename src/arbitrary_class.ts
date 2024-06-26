@@ -95,8 +95,14 @@ export default class Arbitrary<T> {
   }
 
   /**
-   * Creates an Arbitrary that contains the given members.
-   * The first one will be the default.
+   * Creates an Arbitrary that returns one of the given items. The first one
+   * will be the default.
+   *
+   * The items are returned as-is, without being cloned. If they are mutable,
+   * this might result in unexpected side effects.
+   *
+   * Consider using {@link from} to generate a new instance of mutable objects
+   * each time.
    */
   static of<T>(...members: T[]): Arbitrary<T> {
     if (members.length === 0) {

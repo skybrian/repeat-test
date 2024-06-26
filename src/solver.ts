@@ -22,7 +22,12 @@ export type PlayoutFunction<T> = (
 export type NestedPicks = (number | NestedPicks)[];
 
 export class Solution<T> {
-  constructor(readonly val: T, private readonly playout: Playout) {}
+  constructor(readonly val: T, private readonly playout: Playout) {
+    const { spanStarts, spanEnds } = this.playout;
+    if (spanStarts.length !== spanEnds.length) {
+      throw new Error("spanStarts and spanEnds must be the same length");
+    }
+  }
 
   get picks() {
     return this.playout.picks;
@@ -33,11 +38,10 @@ export class Solution<T> {
 
     const root: NestedPicks = [];
     let current = root;
-    const resultStack = [];
+    const resultStack: NestedPicks[] = [];
     const spanEndStack: number[] = [];
 
-    let spanAt = 0;
-    for (let i = 0; i <= picks.length; i++) {
+    function startSpans(i: number) {
       while (spanAt < spanStarts.length && spanStarts[spanAt] === i) {
         // start a new list
         const nextList: NestedPicks = [];
@@ -48,8 +52,11 @@ export class Solution<T> {
         // remember where to stop
         spanEndStack.push(spanEnds[spanAt]);
         spanAt++;
+        endSpans(i); // might have just started an empty span
       }
+    }
 
+    function endSpans(i: number) {
       while (
         spanEndStack.length > 0 && spanEndStack[spanEndStack.length - 1] === i
       ) {
@@ -57,7 +64,12 @@ export class Solution<T> {
         current = resultStack.pop() as NestedPicks;
         spanEndStack.pop();
       }
+    }
 
+    let spanAt = 0;
+    for (let i = 0; i <= picks.length; i++) {
+      endSpans(i);
+      startSpans(i);
       if (i < picks.length) {
         current.push(picks[i]);
       }

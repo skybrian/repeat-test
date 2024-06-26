@@ -16,6 +16,10 @@ export function of<T>(...values: T[]): Arbitrary<T> {
   return Arbitrary.of(...values);
 }
 
+export function bit() {
+  return Arbitrary.from(new PickRequest(0, 1));
+}
+
 export function boolean(): Arbitrary<boolean> {
   return Arbitrary.of(false, true);
 }
@@ -105,7 +109,7 @@ export function array<T>(
   // Since we make a pick request for each item, this makes long arrays unlikely
   // but possible, and it should be easier remove items when shrinking.
   // TODO: change the odds; we don't want half of all arrays to be empty.
-  return from((pick) => {
+  return Arbitrary.from((pick) => {
     const result = [];
     // fixed-length portion
     let i = 0;
