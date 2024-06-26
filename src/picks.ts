@@ -130,27 +130,36 @@ export interface IntPicker {
    * {@link PickRequest.inRange}.
    */
   pick(req: PickRequest): number;
+}
 
-  /** Extracts the picker's current state. It can be used to clone it. */
-  freeze(): PickState;
+// TODO: consider removing SaveablePicker.
+// It's not used yet.
+
+/**
+ * A picker that can be cloned.
+ */
+export interface SavablePicker extends IntPicker {
+  /** Makes a copy of the picker's current state. */
+  save(): PickerState;
 }
 
 /**
- * An immutable starting point for creating an {@link IntPicker}.
- * It represents a single state of the picker's state machine.
+ * An immutable starting point for creating identical copies of an
+ * {@link IntPicker}. It represents a single state of the picker's state
+ * machine.
  */
-export interface PickState {
+export interface PickerState {
   start(): IntPicker;
 }
 
-export const alwaysPickDefault: IntPicker = {
+export const alwaysPickDefault: SavablePicker = {
   pick: (req) => req.default,
-  freeze: () => ({ start: () => alwaysPickDefault }),
+  save: () => ({ start: () => alwaysPickDefault }),
 };
 
-export const alwaysPickMin: IntPicker = {
+export const alwaysPickMin: SavablePicker = {
   pick: (req) => req.min,
-  freeze: () => ({ start: () => alwaysPickMin }),
+  save: () => ({ start: () => alwaysPickMin }),
 };
 
 /**
@@ -159,7 +168,7 @@ export const alwaysPickMin: IntPicker = {
  * It will throw an exception if it can't satisfy a request.
  */
 export function alwaysPick(n: number) {
-  const picker: IntPicker = {
+  const picker: SavablePicker = {
     pick: (req) => {
       if (!req.inRange(n)) {
         throw new Error(
@@ -168,7 +177,7 @@ export function alwaysPick(n: number) {
       }
       return n;
     },
-    freeze: () => ({ start: () => picker }),
+    save: () => ({ start: () => picker }),
   };
   return picker;
 }
@@ -215,7 +224,7 @@ export class ParserInput implements IntPicker {
   }
 
   /** Returns the remaining input. */
-  freeze(): PickState {
+  save(): PickerState {
     const picks = this.picks.slice(this.offset);
     return {
       start: () => new ParserInput(picks),

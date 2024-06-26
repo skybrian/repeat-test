@@ -1,10 +1,4 @@
-import {
-  alwaysPickDefault,
-  IntPicker,
-  ParserInput,
-  PickRequest,
-  PickState,
-} from "./picks.ts";
+import { alwaysPickDefault, IntPicker, PickRequest } from "./picks.ts";
 import {
   PickLog,
   Playout,
@@ -125,13 +119,6 @@ export class PickStack {
       return pick;
     };
 
-    const freeze = (): PickState => {
-      checkAlive();
-      return {
-        start: () => new ParserInput(this.log.getPicks()),
-      };
-    };
-
     const startSpan = (): number => {
       checkAlive();
       this.spanLog.startSpan(this.playOffset);
@@ -163,7 +150,7 @@ export class PickStack {
       checkAlive();
     };
 
-    return { pick, freeze, startSpan, cancelSpan, endSpan, finished };
+    return { pick, startSpan, cancelSpan, endSpan, finished };
   }
 
   /**
