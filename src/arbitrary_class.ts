@@ -1,7 +1,7 @@
 import { alwaysPickDefault, IntPicker, PickRequest } from "./picks.ts";
 
-import { FakePlayoutLogger, PlayoutLogger, Solution } from "./playouts.ts";
-import { generateAllSolutions, PlayoutFailed } from "./solver.ts";
+import { FakePlayoutLogger, PlayoutLogger } from "./playouts.ts";
+import { generateAllSolutions, PlayoutFailed, Solution } from "./solver.ts";
 
 export type PickFunctionOptions<T> = {
   /**
