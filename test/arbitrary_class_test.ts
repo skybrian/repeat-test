@@ -16,6 +16,7 @@ describe("Arbitrary", () => {
       assertThrows(() => new Arbitrary(callback));
     });
   });
+
   describe("filter", () => {
     const oneToSix = new PickRequest(1, 6);
     const sixSided = new Arbitrary((pick) => pick(oneToSix));
@@ -31,6 +32,7 @@ describe("Arbitrary", () => {
       });
     });
   });
+
   describe("map", () => {
     it("changes the default", () => {
       const req = new PickRequest(1, 6, { default: 3 });
@@ -41,6 +43,55 @@ describe("Arbitrary", () => {
       assertEquals(mapped.default, 6);
     });
   });
+
+  describe("the pick method created during a parse", () => {
+    const bit = new PickRequest(0, 1);
+
+    function makeMock() {
+      const answers: number[] = [];
+      const exceptions: unknown[] = [];
+      const mock = new Arbitrary((pick) => {
+        try {
+          answers.push(pick(bit));
+        } catch (e) {
+          exceptions.push(e);
+        }
+        return 123;
+      });
+      // clear anything that happened during the constructor
+      answers.length = 0;
+      exceptions.length = 0;
+      return { mock, answers, exceptions };
+    }
+
+    describe("when there is no input", () => {
+      it("it throws PlayoutFailed", () => {
+        const { mock, answers, exceptions } = makeMock();
+        mock.parse([]);
+        assertEquals(answers, []);
+        assertEquals(exceptions.length, 1);
+        assert(exceptions[0] instanceof PlayoutFailed);
+      });
+    });
+    describe("when the input is in range", () => {
+      it("returns the next pick", () => {
+        const { mock, answers, exceptions } = makeMock();
+        mock.parse([1]);
+        assertEquals(answers, [1]);
+        assertEquals(exceptions.length, 0);
+      });
+    });
+    describe("when the input is out of range", () => {
+      it("throws PlayoutFailed", () => {
+        const { mock, answers, exceptions } = makeMock();
+        mock.parse([2]);
+        assertEquals(answers, []);
+        assertEquals(exceptions.length, 1);
+        assert(exceptions[0] instanceof PlayoutFailed);
+      });
+    });
+  });
+
   describe("members", () => {
     it("returns the only value of a constant", () => {
       const one = new Arbitrary(() => 1);
@@ -83,6 +134,7 @@ describe("Arbitrary", () => {
       });
       assertEquals(Array.from(hello.members), ["hi", "there"]);
     });
+
     it("can solve a combination lock", () => {
       const digits = new Arbitrary((pick) => {
         const a = pick(new PickRequest(0, 9, { default: 1 }));
@@ -106,6 +158,7 @@ describe("Arbitrary", () => {
       const one = new Arbitrary(() => 1);
       assertSolutions(one, [{ val: 1, picks: [] }]);
     });
+
     it("returns each solution for an int range", () => {
       const oneTwoThree = new Arbitrary((pick) => {
         return pick(new PickRequest(1, 3));
@@ -116,6 +169,7 @@ describe("Arbitrary", () => {
         { val: 3, picks: [3] },
       ]);
     });
+
     it("returns each solution for a boolean", () => {
       const bit = new Arbitrary((pick) => {
         return pick(new PickRequest(0, 1));

@@ -23,7 +23,7 @@ describe("record", () => {
       a: arb.uniformInt(1, 2),
     });
     it("defaults to using the default value of the field", () => {
-      assertParseFails(oneField, [], { a: 1 }, 0);
+      assertParseFails(oneField, []);
     });
   });
   describe("for a record that requires multiple decisions", () => {

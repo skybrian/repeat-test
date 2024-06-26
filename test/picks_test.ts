@@ -4,7 +4,7 @@ import * as arb from "../src/arbitraries.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import { ParserInput, PickRequest, PickRequestOptions } from "../src/picks.ts";
+import { PickRequest, PickRequestOptions } from "../src/picks.ts";
 
 export function validRequest(
   opts?: arb.IntRangeOptions,
@@ -66,53 +66,6 @@ describe("PickRequest", () => {
       repeatTest(example, ({ min, max, def }) => {
         const request = new PickRequest(min, max, { default: def });
         assertEquals(request.default, def);
-      });
-    });
-  });
-});
-
-describe("ParserInput", () => {
-  describe("pick", () => {
-    describe("when there is no input", () => {
-      const stream = new ParserInput([]);
-      it("chooses the request's default and fails", () => {
-        repeatTest(validRequest(), (req) => {
-          assertEquals(stream.pick(req), req.default);
-          assertEquals(stream.errorOffset, 0);
-          assertEquals(stream.finish(null).ok, false);
-        });
-      });
-    });
-    describe("when the pick is valid", () => {
-      it("returns it", () => {
-        const example = arb.custom((pick) => {
-          const req = pick(validRequest());
-          const n = pick(arb.int(req.min, req.max));
-          const stream = new ParserInput([n]);
-          return { req, n, stream };
-        });
-        repeatTest(example, ({ req, n, stream }) => {
-          assertEquals(stream.pick(req), n);
-          assertEquals(stream.offset, 1);
-          assertEquals(stream.errorOffset, null);
-          assertEquals(stream.finish(null).ok, true);
-        });
-      });
-    });
-
-    describe("when the pick is invalid", () => {
-      it("chooses the request's default and fails", () => {
-        const example = arb.custom((pick) => {
-          const req = pick(validRequest());
-          const n = pick(arb.intOutsideRange(req.min, req.max));
-          const stream = new ParserInput([n]);
-          return { req, stream };
-        });
-        repeatTest(example, ({ req, stream }) => {
-          assertEquals(stream.pick(req), req.default);
-          assertEquals(stream.errorOffset, 0);
-          assertEquals(stream.finish(null).ok, false);
-        });
       });
     });
   });

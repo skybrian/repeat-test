@@ -1,15 +1,7 @@
-import {
-  alwaysPickDefault,
-  IntPicker,
-  ParseFailure,
-  ParserInput,
-  PickRequest,
-} from "./picks.ts";
+import { alwaysPickDefault, IntPicker, PickRequest } from "./picks.ts";
 
 import { FakePlayoutLogger, PlayoutLogger, Solution } from "./playouts.ts";
 import { PlayoutFailed, walkAllPaths } from "./solver.ts";
-
-import { Success } from "./results.ts";
 
 export type PickFunctionOptions<T> = {
   /**
@@ -125,25 +117,39 @@ export default class Arbitrary<T> {
   }
 
   /**
-   * Attempts to pick a value based on a prerecorded list of picks. All filters
-   * must succeed the first time, or the parse fails. (There is no
-   * backtracking.)
+   * Attempts to pick a value based on a prerecorded list of picks.
+   *
+   * Throws {@link PlayoutFailed} if any internal filters didn't accept a pick.
+   * (There is no backtracking.)
    *
    * This function can be used to test which picks the Arbitrary accepts as
    * input.
    */
-  parse(picks: number[]): Success<T> | ParseFailure<T> {
-    const input = new ParserInput(picks);
-    try {
-      const val = this.pick(input, { maxTries: 1 });
-      return input.finish(val);
-    } catch (e) {
-      if (e instanceof PlayoutFailed) {
-        return { ok: false, guess: this.default, errorOffset: input.offset };
-      } else {
-        throw e;
-      }
+  parse(picks: number[]): T {
+    let offset = 0;
+
+    const input = {
+      pick(req: PickRequest): number {
+        if (offset >= picks.length) {
+          throw new PlayoutFailed("ran out of picks");
+        }
+        const pick = picks[offset++];
+        if (!req.inRange(pick)) {
+          throw new PlayoutFailed(
+            `Pick ${offset - 1} (${pick}) is out of range for ${req}`,
+          );
+        }
+        return pick;
+      },
+    };
+
+    const val = this.pick(input, { maxTries: 1 });
+    if (offset !== picks.length) {
+      throw new PlayoutFailed(
+        `Picks ${offset} to ${picks.length} were unused`,
+      );
     }
+    return val;
   }
 
   /** The default value of this Arbitrary. */

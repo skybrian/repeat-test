@@ -1,5 +1,5 @@
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals, fail } from "@std/assert";
+import { assertEquals } from "@std/assert";
 import { assertParses } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 import { isWellFormed } from "../../src/workarounds.ts";
@@ -12,12 +12,9 @@ describe("char16", () => {
   });
   it("parses a pick as as a code point", () => {
     for (let i = 0; i < 0xFFFF; i++) {
-      const parsed = arb.char16().parse([i]);
-      if (!parsed.ok) {
-        fail(`Failed to parse ${i}`);
-      }
-      assertEquals(parsed.val.length, 1);
-      assertEquals(parsed.val, String.fromCodePoint(i));
+      const val = arb.char16().parse([i]);
+      assertEquals(val.length, 1);
+      assertEquals(val, String.fromCodePoint(i));
     }
   });
 });

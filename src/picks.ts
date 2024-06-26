@@ -1,5 +1,3 @@
-import { Failure, Success, success } from "./results.ts";
-
 /**
  * Randomly picks an integer from a uniform distribution.
  *
@@ -180,66 +178,4 @@ export function alwaysPick(n: number) {
     save: () => ({ start: () => picker }),
   };
   return picker;
-}
-
-export interface ParseFailure<T> extends Failure {
-  guess: T;
-  errorOffset: number;
-}
-
-/**
- * Input to a parser that converts picks into a value.
- *
- * For a successful parse, the parser must take each pick given in the constructor.
- *
- * As a form of error recovery, invalid picks are skipped. If more picks are needed
- * after the input runs out, a request's default value will be returned.
- *
- * To check for a parse error after parsing is done, use {@link finish}.
- */
-export class ParserInput implements IntPicker {
-  offset: number = 0;
-  errorOffset: number | null = null;
-
-  constructor(private picks: number[]) {}
-
-  pick(req: PickRequest): number {
-    while (this.offset < this.picks.length) {
-      const offset = this.offset++;
-      const pick = this.picks[offset];
-      if (req.inRange(pick)) {
-        return pick;
-      }
-      if (this.errorOffset === null) {
-        this.errorOffset = offset;
-      }
-      // retry with next value.
-    }
-
-    // ran off the end, so use the default value.
-    if (this.errorOffset === null) {
-      this.errorOffset = this.picks.length;
-    }
-    return req.default;
-  }
-
-  /** Returns the remaining input. */
-  save(): PickerState {
-    const picks = this.picks.slice(this.offset);
-    return {
-      start: () => new ParserInput(picks),
-    };
-  }
-
-  finish<T>(val: T): Success<T> | ParseFailure<T> {
-    if (!this.errorOffset && this.offset !== this.picks.length) {
-      this.errorOffset = this.offset;
-    }
-
-    if (this.errorOffset !== null) {
-      return { ok: false, guess: val, errorOffset: this.errorOffset };
-    }
-
-    return success(val);
-  }
 }

@@ -32,7 +32,7 @@ function itMakesInts(
   });
   it("rejects numbers out of range", () => {
     for (const n of [-1, 0, 7]) {
-      assertParseFails(someInt(1, 6), [n], 1, 0);
+      assertParseFails(someInt(1, 6), [n]);
     }
   });
 }
@@ -47,7 +47,7 @@ describe("int", () => {
 
 describe("boolean", () => {
   it("defaults to false", () => {
-    assertParseFails(arb.boolean(), [], false, 0);
+    assertParseFails(arb.boolean(), []);
   });
   it("parses a 0 as false", () => {
     assertParses(arb.boolean(), [0], false);
@@ -69,7 +69,7 @@ describe("example", () => {
   });
   const twoWay = arb.example([1, 2]);
   it("defaults to the first example", () => {
-    assertParseFails(twoWay, [], 1, 0);
+    assertParseFails(twoWay, []);
   });
   it("reads a pick to decide which example to pick", () => {
     assertParses(twoWay, [0], 1);
