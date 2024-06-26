@@ -1,6 +1,7 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import Arbitrary from "./arbitrary_class.ts";
-import { NestedPicks, PlayoutFailed } from "./solver.ts";
+import { PlayoutFailed } from "./playouts.ts";
+import { NestedPicks } from "./solver.ts";
 
 export function assertParses<T>(
   arb: Arbitrary<T>,

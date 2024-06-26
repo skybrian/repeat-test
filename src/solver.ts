@@ -1,14 +1,10 @@
 import { alwaysPickDefault, IntPicker } from "./picks.ts";
-import { Playout, PlayoutBuffer, PlayoutLogger } from "./playouts.ts";
-
-/**
- * Thrown to indicate that a playout didn't find a solution.
- */
-export class PlayoutFailed extends Error {
-  constructor(msg: string) {
-    super(msg);
-  }
-}
+import {
+  Playout,
+  PlayoutBuffer,
+  PlayoutFailed,
+  PlayoutLogger,
+} from "./playouts.ts";
 
 /**
  * Walks a search tree and returns whatever is found at a leaf.

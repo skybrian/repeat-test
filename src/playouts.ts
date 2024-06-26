@@ -181,6 +181,38 @@ export class SpanLog {
   }
 }
 
+/**
+ * Thrown to indicate that a playout didn't find a solution.
+ */
+export class PlayoutFailed extends Error {
+  constructor(msg: string) {
+    super(msg);
+  }
+}
+
+export class StrictPicker implements IntPicker {
+  offset = 0;
+
+  constructor(private readonly picks: number[]) {}
+
+  pick(req: PickRequest): number {
+    if (this.offset >= this.picks.length) {
+      throw new PlayoutFailed("ran out of picks");
+    }
+    const pick = this.picks[this.offset++];
+    if (!req.inRange(pick)) {
+      throw new PlayoutFailed(
+        `Pick ${this.offset - 1} (${pick}) is out of range for ${req}`,
+      );
+    }
+    return pick;
+  }
+
+  get finished(): boolean {
+    return this.offset === this.picks.length;
+  }
+}
+
 export type Playout = {
   /** The picks made to generate the value. */
   picks: number[];

@@ -2,12 +2,8 @@ import { describe, it } from "@std/testing/bdd";
 import { assertEquals } from "@std/assert";
 
 import { IntPicker, PickRequest } from "../src/picks.ts";
-import {
-  generateAllSolutions,
-  NestedPicks,
-  PlayoutFailed,
-  Solution,
-} from "../src/solver.ts";
+import { PlayoutFailed } from "../src/playouts.ts";
+import { generateAllSolutions, NestedPicks, Solution } from "../src/solver.ts";
 
 describe("Solution", () => {
   describe("nestedPicks", () => {

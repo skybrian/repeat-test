@@ -1,7 +1,12 @@
 import { alwaysPickDefault, IntPicker, PickRequest } from "./picks.ts";
 
-import { FakePlayoutLogger, PlayoutLogger } from "./playouts.ts";
-import { generateAllSolutions, PlayoutFailed, Solution } from "./solver.ts";
+import {
+  FakePlayoutLogger,
+  PlayoutFailed,
+  PlayoutLogger,
+  StrictPicker,
+} from "./playouts.ts";
+import { generateAllSolutions, Solution } from "./solver.ts";
 
 export type PickFunctionOptions<T> = {
   /**
@@ -35,6 +40,15 @@ export interface PickFunction {
  */
 export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 
+export type ArbitraryOptions<T> = {
+  /**
+   * Picks that parse to the default value of this arbitrary.
+   *
+   * If not set, {@link alwaysPickDefault} will be used.
+   */
+  defaultPicks?: number[];
+};
+
 export type PickMethodOptions<T> = {
   /**
    * How many times to retry filters. Set to 1 to disable backtracking.
@@ -50,13 +64,15 @@ export type PickMethodOptions<T> = {
  */
 export default class Arbitrary<T> {
   readonly callback: ArbitraryCallback<T>;
+  readonly defaultPicks: number[] | undefined;
 
   /**
    * @param callback reads some picks and either returns a value or RETRY. It
    * should be deterministic and always finish.
    */
-  constructor(callback: ArbitraryCallback<T>) {
+  constructor(callback: ArbitraryCallback<T>, opts?: ArbitraryOptions<T>) {
     this.callback = callback;
+    this.defaultPicks = opts?.defaultPicks ? [...opts.defaultPicks] : undefined;
     this.default; // dry run
   }
 
@@ -126,27 +142,12 @@ export default class Arbitrary<T> {
    * input.
    */
   parse(picks: number[]): T {
-    let offset = 0;
-
-    const input = {
-      pick(req: PickRequest): number {
-        if (offset >= picks.length) {
-          throw new PlayoutFailed("ran out of picks");
-        }
-        const pick = picks[offset++];
-        if (!req.inRange(pick)) {
-          throw new PlayoutFailed(
-            `Pick ${offset - 1} (${pick}) is out of range for ${req}`,
-          );
-        }
-        return pick;
-      },
-    };
+    const input = new StrictPicker(picks);
 
     const val = this.pick(input, { maxTries: 1 });
-    if (offset !== picks.length) {
+    if (!input.finished) {
       throw new PlayoutFailed(
-        `Picks ${offset} to ${picks.length} were unused`,
+        `Picks ${input.offset} to ${picks.length} were unused`,
       );
     }
     return val;
@@ -154,7 +155,11 @@ export default class Arbitrary<T> {
 
   /** The default value of this Arbitrary. */
   get default(): T {
-    return this.pick(alwaysPickDefault, { maxTries: 1 }); // a clone, in case it's mutable
+    // make a clone, in case it's mutable
+    const picker = this.defaultPicks
+      ? new StrictPicker(this.defaultPicks)
+      : alwaysPickDefault;
+    return this.pick(picker, { maxTries: 1 });
   }
 
   /**
@@ -194,18 +199,45 @@ export default class Arbitrary<T> {
   }
 
   /**
-   * Creates a new Arbitrary by removing members. (It must not filter out the
-   * default value.)
+   * Creates a new Arbitrary by filtering out some members.
+   *
+   * @param accept a function that returns true if the value should be kept. It
+   * must allow at least one value through.
+   *
+   * @param opts.maxTries how many times to try to pass the filter.
+   *
+   * @throws if no solution can be found that passes the filter.
    */
-  filter(accept: (val: T) => boolean): Arbitrary<T> {
+  filter(
+    accept: (val: T) => boolean,
+    opts?: { maxTries: number },
+  ): Arbitrary<T> {
+    const maxTries = opts?.maxTries ?? 10;
+
+    const solve = (): number[] | undefined => {
+      let tries = 0;
+      for (const sol of this.solutions) {
+        if (accept(sol.val)) {
+          return sol.picks;
+        }
+        tries++;
+        if (tries >= maxTries) {
+          throw new Error(
+            `couldn't find a solution for this filter in ${maxTries} tries`,
+          );
+        }
+      }
+      throw new Error("filter has no solutions");
+    };
+
+    let defaultPicks = this.defaultPicks;
     if (!accept(this.default)) {
-      throw new Error(
-        "cannot filter out the default value of an Arbitrary",
-      );
+      defaultPicks = solve();
     }
+
     return new Arbitrary((pick) => {
       return pick(this, { accept });
-    });
+    }, { defaultPicks });
   }
 
   /**

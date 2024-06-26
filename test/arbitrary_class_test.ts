@@ -4,7 +4,7 @@ import { assertSolutions } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { PickRequest } from "../src/picks.ts";
-import { PlayoutFailed } from "../src/solver.ts";
+import { PlayoutFailed } from "../src/playouts.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 
 describe("Arbitrary", () => {
@@ -21,9 +21,19 @@ describe("Arbitrary", () => {
     const oneToSix = new PickRequest(1, 6);
     const sixSided = new Arbitrary((pick) => pick(oneToSix));
 
-    it("disallows filters that doesn't accept the default", () => {
+    it("disallows filters that don't allow any solution", () => {
       const rejectEverything = () => false;
       assertThrows(() => sixSided.filter(rejectEverything));
+    });
+    it("keeps the default the same if it works", () => {
+      const keepEverything = () => true;
+      const mapped = sixSided.filter(keepEverything);
+      assertEquals(mapped.default, 1);
+    });
+    it("changes the default to the next value that satisfies the predicate", () => {
+      const keepEvens = (n: number) => n % 2 === 0;
+      const mapped = sixSided.filter(keepEvens);
+      assertEquals(mapped.default, 2);
     });
     it("filters out values that don't satisfy the predicate", () => {
       const not3 = sixSided.filter((n) => n !== 3);
@@ -154,20 +164,22 @@ describe("Arbitrary", () => {
       assertEquals(Array.from(hello.members), ["hi", "there"]);
     });
 
-    it("can solve a combination lock", () => {
+    it("can solve a combination lock if given enough tries", () => {
       const digits = new Arbitrary((pick) => {
-        const a = pick(new PickRequest(0, 9, { default: 1 }));
-        const b = pick(new PickRequest(0, 9, { default: 4 }));
-        const c = pick(new PickRequest(0, 9, { default: 3 }));
+        const a = pick(new PickRequest(0, 9));
+        const b = pick(new PickRequest(0, 9));
+        const c = pick(new PickRequest(0, 9));
         return [a, b, c];
       });
-      const lock = digits.filter(([a, b, c]) =>
-        a == 1 && (b == 2 || b == 4) && c == 3
+      const lock = digits.filter(
+        ([a, b, c]) => a == 1 && (b == 2 || b == 4) && c == 3,
+        { maxTries: 1000 },
       );
+      assertEquals(lock.default, [1, 2, 3]);
       const solutions = Array.from(lock.members);
       assertEquals(solutions, [
-        [1, 4, 3],
         [1, 2, 3],
+        [1, 4, 3],
       ]);
     });
   });
