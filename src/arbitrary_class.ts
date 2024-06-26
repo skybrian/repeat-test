@@ -73,6 +73,8 @@ export default class Arbitrary<T> {
    */
   readonly maxSize: number | undefined;
 
+  private readonly wrapped: PickRequest | undefined;
+
   /**
    * Creates an arbitrary from a {@link PickRequest} or {@link ArbitraryCallback}.
    */
@@ -89,7 +91,11 @@ export default class Arbitrary<T> {
       const callback: ArbitraryCallback<number> = (pick) => {
         return pick(arg);
       };
-      return new Arbitrary(callback, { ...opts, maxSize: arg.size });
+      return new Arbitrary(callback, {
+        ...opts,
+        maxSize: arg.size,
+        wrapped: arg,
+      });
     }
     return new Arbitrary(arg, opts);
   }
@@ -123,10 +129,11 @@ export default class Arbitrary<T> {
 
   private constructor(
     callback: ArbitraryCallback<T>,
-    opts?: ArbitraryOptions<T> & { maxSize?: number },
+    opts?: ArbitraryOptions<T> & { maxSize?: number; wrapped?: PickRequest },
   ) {
     this.callback = callback;
     this.defaultPicks = opts?.defaultPicks ? [...opts.defaultPicks] : undefined;
+    this.wrapped = opts?.wrapped;
     this.maxSize = opts?.maxSize;
     this.default; // dry run
   }
@@ -143,7 +150,7 @@ export default class Arbitrary<T> {
 
     const log = opts?.log ?? new FakePlayoutLogger();
 
-    const callbackInput: PickFunction = <T>(
+    const callbackPick: PickFunction = <T>(
       req: PickRequest | Arbitrary<T>,
       opts?: PickFunctionOptions<T>,
     ): number | T => {
@@ -154,8 +161,11 @@ export default class Arbitrary<T> {
 
       // non-backtracking case
       if (accept === undefined) {
+        if (req.wrapped) {
+          return input.pick(req.wrapped);
+        }
         const level = log.startSpan();
-        const val = req.callback(callbackInput);
+        const val = req.callback(callbackPick);
         log.endSpan(level);
         return val;
       }
@@ -163,8 +173,8 @@ export default class Arbitrary<T> {
       // retry when there's a filter
       for (let tries = 0; tries < maxTries; tries++) {
         const level = log.startSpan();
-        const val = req.callback(callbackInput);
-        if (accept === undefined || accept(val)) {
+        const val = req.callback(callbackPick);
+        if (accept(val)) {
           log.endSpan(level);
           return val;
         }
@@ -182,7 +192,7 @@ export default class Arbitrary<T> {
       );
     };
 
-    const val = this.callback(callbackInput);
+    const val = this.callback(callbackPick);
     log.finished();
     return val;
   }

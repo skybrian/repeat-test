@@ -17,8 +17,8 @@ describe("record", () => {
       assertEquals(empty.default, {});
       assertEquals(empty.maxSize, 2);
       assertSolutions(empty, [
-        { val: {}, picks: [[0]] },
-        { val: Object.create(null), picks: [[1]] },
+        { val: {}, picks: [0] },
+        { val: Object.create(null), picks: [1] },
       ]);
     });
   });
@@ -30,8 +30,8 @@ describe("record", () => {
     it("reads one pick", () => {
       // TODO: fix picks
       assertSolutions(example, [
-        { val: { a: 1, b: 2 }, picks: [[[0]], [], []] },
-        { val: noProto({ a: 1, b: 2 }), picks: [[[1]], [], []] },
+        { val: { a: 1, b: 2 }, picks: [[0], [], []] },
+        { val: noProto({ a: 1, b: 2 }), picks: [[1], [], []] },
       ]);
     });
   });
@@ -50,14 +50,14 @@ describe("record", () => {
     });
     it("reads picks ordered by the keys", () => {
       assertSolutions(example, [
-        { val: { a: 1, b: 3 }, picks: [[[0]], [1], [3]] },
-        { val: { a: 1, b: 4 }, picks: [[[0]], [1], [4]] },
-        { val: { a: 2, b: 3 }, picks: [[[0]], [2], [3]] },
-        { val: { a: 2, b: 4 }, picks: [[[0]], [2], [4]] },
-        { val: noProto({ a: 1, b: 3 }), picks: [[[1]], [1], [3]] },
-        { val: noProto({ a: 1, b: 4 }), picks: [[[1]], [1], [4]] },
-        { val: noProto({ a: 2, b: 3 }), picks: [[[1]], [2], [3]] },
-        { val: noProto({ a: 2, b: 4 }), picks: [[[1]], [2], [4]] },
+        { val: { a: 1, b: 3 }, picks: [[0], 1, 3] },
+        { val: { a: 1, b: 4 }, picks: [[0], 1, 4] },
+        { val: { a: 2, b: 3 }, picks: [[0], 2, 3] },
+        { val: { a: 2, b: 4 }, picks: [[0], 2, 4] },
+        { val: noProto({ a: 1, b: 3 }), picks: [[1], 1, 3] },
+        { val: noProto({ a: 1, b: 4 }), picks: [[1], 1, 4] },
+        { val: noProto({ a: 2, b: 3 }), picks: [[1], 2, 3] },
+        { val: noProto({ a: 2, b: 4 }), picks: [[1], 2, 4] },
       ]);
     });
   });

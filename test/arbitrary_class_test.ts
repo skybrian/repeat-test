@@ -65,7 +65,7 @@ describe("Arbitrary", () => {
     it("filters out values that don't satisfy the predicate", () => {
       const not3 = sixSided.filter((n) => n !== 3);
       repeatTest(not3, (n) => {
-        assert(n !== 3);
+        assert(n !== 3, `want: not 3, got ${n}`);
       });
     });
   });
@@ -227,8 +227,8 @@ describe("Arbitrary", () => {
     it("returns each solution for a boolean", () => {
       const boolean = Arbitrary.from(new PickRequest(0, 1)).map((b) => b == 1);
       const expected = [
-        { val: false, picks: [[0]] },
-        { val: true, picks: [[1]] },
+        { val: false, picks: [0] },
+        { val: true, picks: [1] },
       ];
       assertSolutions(boolean, expected);
     });
