@@ -51,7 +51,7 @@ describe("parseRepKey", () => {
 describe("generateReps", () => {
   it("generates reps with the right keys", () => {
     repeatTest(anyKey, (start) => {
-      const zero = new Arbitrary(() => 0);
+      const zero = Arbitrary.from(() => 0);
       const test = () => {};
       const reps = generateReps(start, zero, test);
       for (let i = 0; i < 10; i++) {
@@ -105,7 +105,7 @@ describe("repeatTest", () => {
       const increment = () => {
         actual++;
       };
-      const zero = new Arbitrary(() => 0);
+      const zero = Arbitrary.from(() => 0);
       repeatTest(zero, increment, { reps: expected });
       assertEquals(actual, expected);
     }
@@ -115,7 +115,7 @@ describe("repeatTest", () => {
     const increment = () => {
       actual++;
     };
-    const zero = new Arbitrary(() => 0);
+    const zero = Arbitrary.from(() => 0);
     repeatTest(zero, increment, { reps: 100, only: "123:456" });
     assertEquals(actual, 1);
   });

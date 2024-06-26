@@ -67,10 +67,30 @@ export default class Arbitrary<T> {
   readonly defaultPicks: number[] | undefined;
 
   /**
-   * @param callback reads some picks and either returns a value or RETRY. It
-   * should be deterministic and always finish.
+   * Creates an arbitrary from a {@link PickRequest} or {@link ArbitraryCallback}.
    */
-  constructor(callback: ArbitraryCallback<T>, opts?: ArbitraryOptions<T>) {
+  static from<T>(
+    callback: ArbitraryCallback<T>,
+    opts?: ArbitraryOptions<T>,
+  ): Arbitrary<T>;
+  static from(req: PickRequest): Arbitrary<number>;
+  static from<T>(
+    arg: ArbitraryCallback<T> | PickRequest,
+    opts?: ArbitraryOptions<T>,
+  ): Arbitrary<T> | Arbitrary<number> {
+    if (arg instanceof PickRequest) {
+      const callback: ArbitraryCallback<number> = (pick) => {
+        return pick(arg);
+      };
+      return new Arbitrary(callback, opts);
+    }
+    return new Arbitrary(arg, opts);
+  }
+
+  private constructor(
+    callback: ArbitraryCallback<T>,
+    opts?: ArbitraryOptions<T>,
+  ) {
     this.callback = callback;
     this.defaultPicks = opts?.defaultPicks ? [...opts.defaultPicks] : undefined;
     this.default; // dry run

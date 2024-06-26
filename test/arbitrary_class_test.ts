@@ -8,18 +8,22 @@ import { PlayoutFailed } from "../src/playouts.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 
 describe("Arbitrary", () => {
-  describe("constructor", () => {
+  describe("from", () => {
+    it("accepts a PickRequest", () => {
+      const pick = new PickRequest(1, 2);
+      const arbitrary = Arbitrary.from(pick);
+      assertEquals(Array.from(arbitrary.members), [1, 2]);
+    });
     it("checks that the callback doesn't throw when given default picks", () => {
       const callback = () => {
         throw "oops";
       };
-      assertThrows(() => new Arbitrary(callback));
+      assertThrows(() => Arbitrary.from(callback));
     });
   });
 
   describe("filter", () => {
-    const oneToSix = new PickRequest(1, 6);
-    const sixSided = new Arbitrary((pick) => pick(oneToSix));
+    const sixSided = Arbitrary.from(new PickRequest(1, 6));
 
     it("disallows filters that don't allow any solution", () => {
       const rejectEverything = () => false;
@@ -45,8 +49,7 @@ describe("Arbitrary", () => {
 
   describe("map", () => {
     it("changes the default", () => {
-      const req = new PickRequest(1, 6, { default: 3 });
-      const original = new Arbitrary((pick) => pick(req));
+      const original = Arbitrary.from(new PickRequest(1, 6, { default: 3 }));
       assertEquals(original.default, 3);
 
       const mapped = original.map((n) => n * 2);
@@ -55,8 +58,7 @@ describe("Arbitrary", () => {
   });
 
   describe("parse", () => {
-    const oneToSix = new PickRequest(1, 6);
-    const sixSided = new Arbitrary((pick) => pick(oneToSix));
+    const sixSided = Arbitrary.from(new PickRequest(1, 6));
     it("throws PlayoutFailed when not enough values were supplied", () => {
       assertThrows(() => sixSided.parse([]));
     });
@@ -79,7 +81,7 @@ describe("Arbitrary", () => {
     function makeMock() {
       const answers: number[] = [];
       const exceptions: unknown[] = [];
-      const mock = new Arbitrary((pick) => {
+      const mock = Arbitrary.from((pick) => {
         try {
           answers.push(pick(bit));
         } catch (e) {
@@ -123,11 +125,11 @@ describe("Arbitrary", () => {
 
   describe("members", () => {
     it("returns the only value of a constant", () => {
-      const one = new Arbitrary(() => 1);
+      const one = Arbitrary.from(() => 1);
       assertEquals(Array.from(one.members), [1]);
     });
 
-    const bit = new Arbitrary((pick) => pick(new PickRequest(0, 1)));
+    const bit = Arbitrary.from(new PickRequest(0, 1));
     it("returns each example of a bit", () => {
       const members = Array.from(bit.members);
       assertEquals(members, [0, 1]);
@@ -140,7 +142,7 @@ describe("Arbitrary", () => {
     });
 
     it("handles PlayoutFailed", () => {
-      const onlyThree = new Arbitrary((pick) => {
+      const onlyThree = Arbitrary.from((pick) => {
         const n = pick(new PickRequest(2, 3, { default: 3 }));
         if (n !== 3) throw new PlayoutFailed("not 3");
         return n;
@@ -156,16 +158,16 @@ describe("Arbitrary", () => {
     it("handles a chained Arbitrary", () => {
       const hello = boolean.chain((val) => {
         if (val) {
-          return new Arbitrary(() => "there");
+          return Arbitrary.from(() => "there");
         } else {
-          return new Arbitrary(() => "hi");
+          return Arbitrary.from(() => "hi");
         }
       });
       assertEquals(Array.from(hello.members), ["hi", "there"]);
     });
 
     it("can solve a combination lock if given enough tries", () => {
-      const digits = new Arbitrary((pick) => {
+      const digits = Arbitrary.from((pick) => {
         const a = pick(new PickRequest(0, 9));
         const b = pick(new PickRequest(0, 9));
         const c = pick(new PickRequest(0, 9));
@@ -186,14 +188,12 @@ describe("Arbitrary", () => {
 
   describe("solutions", () => {
     it("returns the only solution for a constant", () => {
-      const one = new Arbitrary(() => 1);
+      const one = Arbitrary.from(() => 1);
       assertSolutions(one, [{ val: 1, picks: [] }]);
     });
 
     it("returns each solution for an int range", () => {
-      const oneTwoThree = new Arbitrary((pick) => {
-        return pick(new PickRequest(1, 3));
-      });
+      const oneTwoThree = Arbitrary.from(new PickRequest(1, 3));
       assertSolutions(oneTwoThree, [
         { val: 1, picks: [1] },
         { val: 2, picks: [2] },
@@ -202,10 +202,7 @@ describe("Arbitrary", () => {
     });
 
     it("returns each solution for a boolean", () => {
-      const bit = new Arbitrary((pick) => {
-        return pick(new PickRequest(0, 1));
-      });
-      const boolean = bit.map((b) => b == 1);
+      const boolean = Arbitrary.from(new PickRequest(0, 1)).map((b) => b == 1);
       const expected = [
         { val: false, picks: [[0]] },
         { val: true, picks: [[1]] },

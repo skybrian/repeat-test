@@ -1,16 +1,14 @@
-import Arbitrary, { PickFunction } from "../arbitrary_class.ts";
+import Arbitrary, { ArbitraryCallback } from "../arbitrary_class.ts";
 import { chooseDefault, PickRequest } from "../picks.ts";
 import { BiasedIntPicker } from "../picks.ts";
 
 /**
- * Defines an arbitrary that's based on a callback function that generates a
- * value from a stream of picks.
+ * An arbitrary based on a callback function.
  *
- * The callback must always succeed, but see {@link Arbitrary.filter} for a way
- * to do backtracking in a subrequest.
+ * For more, see {@link ArbitraryCallback}.
  */
-export function custom<T>(callback: (pick: PickFunction) => T): Arbitrary<T> {
-  return new Arbitrary((pick) => callback(pick));
+export function custom<T>(callback: ArbitraryCallback<T>): Arbitrary<T> {
+  return Arbitrary.from(callback);
 }
 
 /**
@@ -23,8 +21,7 @@ export function uniformInt(
   max: number,
   opts?: { default?: number },
 ): Arbitrary<number> {
-  const req = new PickRequest(min, max, opts);
-  return new Arbitrary((pick) => pick(req));
+  return Arbitrary.from(new PickRequest(min, max, opts));
 }
 
 function specialNumberBias(
@@ -70,7 +67,7 @@ export function int(
   const bias = specialNumberBias(min, max, defaultVal);
   const req = new PickRequest(min, max, { default: defaultVal, bias });
 
-  return new Arbitrary((pick) => pick(req));
+  return Arbitrary.from(req);
 }
 
 export function just<T>(value: T): Arbitrary<T> {
