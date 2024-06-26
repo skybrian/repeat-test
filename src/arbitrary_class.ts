@@ -94,6 +94,27 @@ export default class Arbitrary<T> {
     return new Arbitrary(arg, opts);
   }
 
+  /**
+   * Creates an Arbitrary that contains the given members.
+   * The first one will be the default.
+   */
+  static of<T>(...members: T[]): Arbitrary<T> {
+    if (members.length === 0) {
+      throw new Error("Arbitrary.of() requires at least one argument");
+    } else if (members.length === 1) {
+      const constant = members[0];
+      return new Arbitrary(() => constant, { maxSize: 1 });
+    }
+    const req = new PickRequest(0, members.length - 1);
+    const callback: ArbitraryCallback<T> = (pick) => {
+      return members[pick(req)];
+    };
+    return new Arbitrary(callback, {
+      defaultPicks: [0],
+      maxSize: members.length,
+    });
+  }
+
   private constructor(
     callback: ArbitraryCallback<T>,
     opts?: ArbitraryOptions<T> & { maxSize?: number },

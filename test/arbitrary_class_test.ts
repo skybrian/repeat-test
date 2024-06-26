@@ -22,6 +22,29 @@ describe("Arbitrary", () => {
     });
   });
 
+  describe("of", () => {
+    it("throws if called with no arguments", () => {
+      assertThrows(() => Arbitrary.of());
+    });
+    it("returns a constant Arbitrary if called with one argument", () => {
+      const arb = Arbitrary.of("hi");
+      assertEquals(arb.default, "hi");
+      assertEquals(Array.from(arb.members), ["hi"]);
+      assertSolutions(arb, [{ val: "hi", picks: [] }]);
+      assertEquals(arb.maxSize, 1);
+    });
+    it("creates an Arbitrary with multiple arguments", () => {
+      const arb = Arbitrary.of("hi", "there");
+      assertEquals(arb.default, "hi");
+      assertEquals(Array.from(arb.members), ["hi", "there"]);
+      assertSolutions(arb, [
+        { val: "hi", picks: [0] },
+        { val: "there", picks: [1] },
+      ]);
+      assertEquals(arb.maxSize, 2);
+    });
+  });
+
   describe("filter", () => {
     const sixSided = Arbitrary.from(new PickRequest(1, 6));
 
@@ -228,6 +251,17 @@ describe("Arbitrary", () => {
           (n) => n % 2 == 0,
         );
         assertEquals(oneTwoThree.maxSize, 3);
+      });
+    });
+    describe("when the Arbitrary is based on a constant", () => {
+      it("returns 1", () => {
+        assertEquals(Arbitrary.of("hi").maxSize, 1);
+      });
+      it("returns 1 after mapping", () => {
+        assertEquals(Arbitrary.of("hi").map((s) => s + " there").maxSize, 1);
+      });
+      it("returns 1 after filtering", () => {
+        assertEquals(Arbitrary.of("hi").filter((s) => s == "hi").maxSize, 1);
       });
     });
   });
