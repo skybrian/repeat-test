@@ -5,7 +5,7 @@ import * as arb from "../../src/arbitraries.ts";
 
 import { PickRequest } from "../../src/picks.ts";
 import { NestedPicks } from "../../src/playouts.ts";
-import { NOT_FOUND } from "../../src/solver.ts";
+import { PlayoutFailed } from "../../src/solver.ts";
 import { Arbitrary } from "../../src/arbitraries.ts";
 
 const oneToSix = new PickRequest(1, 6);
@@ -56,10 +56,11 @@ describe("Arbitrary", () => {
       const members = Array.from(bit.members);
       assertEquals(members, [0, 1]);
     });
-    it("handles NOT_FOUND", () => {
+    it("handles PlayoutFailed", () => {
       const onlyThree = new Arbitrary((pick) => {
         const n = pick(new PickRequest(2, 3, { default: 3 }));
-        return n === 3 ? n : NOT_FOUND;
+        if (n !== 3) throw new PlayoutFailed("not 3");
+        return n;
       });
       assertEquals(Array.from(onlyThree.members), [3]);
     });

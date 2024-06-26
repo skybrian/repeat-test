@@ -210,9 +210,13 @@ export class PickStack {
 }
 
 /**
- * Indicates a failed attempt to generate a value.
+ * Thrown to indicate that a playout didn't find a solution.
  */
-export const NOT_FOUND = Symbol("not found");
+export class PlayoutFailed extends Error {
+  constructor(msg: string) {
+    super(msg);
+  }
+}
 
 /**
  * Walks a search tree and returns whatever is found at a leaf.
@@ -222,7 +226,7 @@ export const NOT_FOUND = Symbol("not found");
 export type WalkFunction<T> = (
   picker: IntPicker,
   log: PlayoutLogger,
-) => T | typeof NOT_FOUND;
+) => T;
 
 /**
  * Visits every leaf in a search tree in order, depth-first. Starts by taking
@@ -234,17 +238,22 @@ export function* walkAllPaths<T>(
   const stack = new PickStack(alwaysPickDefault);
   let next: IntPicker & PlayoutLogger | null = stack.record();
   while (next !== null) {
-    const val = walk(next, next);
-    if (stack.playing) {
-      throw "didn't read every value";
-    }
-    if (val !== NOT_FOUND) {
+    try {
+      const val = walk(next, next);
+      if (stack.playing) {
+        throw "didn't read every value";
+      }
       // reached a solution
       const playout = stack.stopRecording();
       if (playout === undefined) {
         throw new Error("didn't close every span");
       }
       yield new Solution(val, playout);
+    } catch (e) {
+      if (!(e instanceof PlayoutFailed)) {
+        throw e;
+      }
+      // backtracked from a dead end; try the next path
     }
     next = stack.playNext();
   }

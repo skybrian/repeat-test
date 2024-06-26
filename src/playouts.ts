@@ -69,21 +69,6 @@ export class FakePlayoutLogger implements PlayoutLogger {
   }
 }
 
-export type Playout = {
-  /** The picks made to generate the value. */
-  picks: number[];
-
-  /**
-   * The starting index of each span, in the order entered.
-   */
-  spanStarts: number[];
-
-  /**
-   * The ending index of each span, in the order entered.
-   */
-  spanEnds: number[];
-};
-
 export class PickLog {
   // Invariant: reqs.length == picks.length
   // (Parallel lists.)
@@ -195,6 +180,21 @@ export class SpanLog {
     this.spanEnds[spanIndex] = loc;
   }
 }
+
+export type Playout = {
+  /** The picks made to generate the value. */
+  picks: number[];
+
+  /**
+   * The starting index of each span, in the order entered.
+   */
+  spanStarts: number[];
+
+  /**
+   * The ending index of each span, in the order entered.
+   */
+  spanEnds: number[];
+};
 
 export type NestedPicks = (number | NestedPicks)[];
 

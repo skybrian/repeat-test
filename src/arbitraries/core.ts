@@ -7,27 +7,16 @@ import {
 } from "../picks.ts";
 
 import { FakePlayoutLogger, PlayoutLogger, Solution } from "../playouts.ts";
-import { NOT_FOUND, walkAllPaths } from "../solver.ts";
+import { PlayoutFailed, walkAllPaths } from "../solver.ts";
 
 import { Success } from "../results.ts";
-
-/** Thrown when a pick fails and backtracking is turned off. */
-export class PickFailed extends Error {
-  private constructor(msg: string) {
-    super(msg);
-  }
-  static create(req: Arbitrary<unknown>, tries: number): PickFailed {
-    return new PickFailed(`Failed to generate ${req} after ${tries} tries`);
-  }
-}
 
 export type PickFunctionOptions<T> = {
   /**
    * Filters out values that don't pass the given filter.
    *
    * @param accept a function that returns true if the picked value
-   * should be accepted. If it returns false, pick() will either retry or throw
-   * {@link PickFailed}.
+   * should be accepted.
    *
    * It should always return true for an arbitrary's default value.
    */
@@ -35,7 +24,9 @@ export type PickFunctionOptions<T> = {
 };
 
 /**
- * A function that can pick values from integer ranges or arbitraries.
+ * Picks a value given either a PickRequest or an Arbitrary.
+ *
+ * Throws {@link PlayoutFailed} if it couldn't find a value.
  */
 export interface PickFunction {
   (req: PickRequest): number;
@@ -45,11 +36,10 @@ export interface PickFunction {
 /**
  * A function that generates a member of an Arbitrary, given some picks.
  *
- * The result should be deterministic, depending only on what `pick()`
- * returns.
+ * The result should be deterministic, depending only on what `pick` returns.
  *
- * @throws PickFailed when it calls `pick()` and it fails. The callback shouldn't catch
- * this exception, since it's used for backtracking.
+ * It may throw {@link PlayoutFailed} to indicate that a sequence of picks didn't
+ * lead to a value.
  */
 export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 
@@ -124,7 +114,9 @@ export class Arbitrary<T> {
       // Give up. This is normal when backtracking is turned off.
       // Don't cancel so that the picks used in the failed run are available
       // to the caller.
-      throw PickFailed.create(req, maxTries);
+      throw new PlayoutFailed(
+        `Failed to generate ${req} after ${maxTries} tries`,
+      );
     };
 
     const val = this.callback(callbackInput);
@@ -146,7 +138,7 @@ export class Arbitrary<T> {
       const val = this.pick(input, { maxTries: 1 });
       return input.finish(val);
     } catch (e) {
-      if (e instanceof PickFailed) {
+      if (e instanceof PlayoutFailed) {
         return { ok: false, guess: this.default, errorOffset: input.offset };
       } else {
         throw e;
@@ -165,21 +157,9 @@ export class Arbitrary<T> {
    * Uses a depth-first search, starting from the default value.
    */
   get solutions(): IterableIterator<Solution<T>> {
-    const walk = (
-      picker: IntPicker,
-      log: PlayoutLogger,
-    ): T | typeof NOT_FOUND => {
-      try {
-        return this.pick(picker, { maxTries: 1, log });
-      } catch (e) {
-        if (e instanceof PickFailed) {
-          return NOT_FOUND;
-        } else {
-          throw e;
-        }
-      }
-    };
-    return walkAllPaths(walk);
+    return walkAllPaths((picker, log): T => {
+      return this.pick(picker, { maxTries: 1, log });
+    });
   }
 
   /**
