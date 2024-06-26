@@ -18,7 +18,7 @@ const badKey = arb.oneOf([
   arb.record({ seed: arb.int32(), index: arb.int(-100, -1) }),
   arb.record({ seed: arb.strangeNumber(), index: arb.int(0, 100) }),
   arb.record({ seed: arb.int32(), index: arb.strangeNumber() }),
-  arb.example([{ seed: Number.MAX_SAFE_INTEGER, index: 0 }]),
+  arb.of({ seed: Number.MAX_SAFE_INTEGER, index: 0 }),
 ]);
 
 describe("parseRepKey", () => {

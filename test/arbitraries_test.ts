@@ -11,8 +11,8 @@ describe("record", () => {
   });
   describe("for a constant record shape", () => {
     const example = arb.record({
-      a: arb.example([1]),
-      b: arb.example([2]),
+      a: arb.of(1),
+      b: arb.of(2),
     });
     it("returns it without needing a decision", () => {
       assertParses(example, [], { a: 1, b: 2 });

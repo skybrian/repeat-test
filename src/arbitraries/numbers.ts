@@ -1,4 +1,4 @@
-import { boolean, example, from, int, oneOf } from "./basics.ts";
+import { boolean, int, oneOf } from "./basics.ts";
 import Arbitrary from "../arbitrary_class.ts";
 
 export function int32(): Arbitrary<number> {
@@ -13,15 +13,15 @@ export function safeInt(): Arbitrary<number> {
 }
 
 export function strangeNumber(): Arbitrary<number> {
-  return example([
+  return Arbitrary.of(
     Number.POSITIVE_INFINITY,
     Number.NEGATIVE_INFINITY,
     Number.NaN,
-  ]);
+  );
 }
 
 export function intOutsideRange(min: number, max: number): Arbitrary<number> {
-  return from((pick): number => {
+  return Arbitrary.from((pick): number => {
     if (pick(boolean())) {
       if (min - 1 < min) return min - 1;
       return min - 2 ** 32;

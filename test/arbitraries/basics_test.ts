@@ -4,7 +4,26 @@ import { assertEquals } from "@std/assert";
 import Arbitrary from "../../src/arbitrary_class.ts";
 import * as arb from "../../src/arbitraries.ts";
 
-import { assertParseFails, assertParses } from "../../src/asserts.ts";
+import {
+  assertParseFails,
+  assertParses,
+  assertSolutions,
+} from "../../src/asserts.ts";
+
+describe("boolean", () => {
+  it("defaults to false", () => {
+    assertParseFails(arb.boolean(), []);
+  });
+  it("has two solutions", () => {
+    assertSolutions(arb.boolean(), [
+      { val: false, picks: [0] },
+      { val: true, picks: [1] },
+    ]);
+  });
+  it("has maxSize set to 2", () => {
+    assertEquals(arb.boolean().maxSize, 2);
+  });
+});
 
 function itMakesInts(
   someInt: (
@@ -46,38 +65,6 @@ describe("uniformInt", () => {
 
 describe("int", () => {
   itMakesInts(arb.int);
-});
-
-describe("example", () => {
-  const oneWay = arb.example([123]);
-  describe("for a single example", () => {
-    it("defaults to the example", () => {
-      assertEquals(oneWay.default, 123);
-    });
-    it("reads no picks when there is no choice to make", () => {
-      assertParses(oneWay, [], 123);
-    });
-  });
-  const twoWay = arb.example([1, 2]);
-  it("defaults to the first example", () => {
-    assertParseFails(twoWay, []);
-  });
-  it("reads a pick to decide which example to pick", () => {
-    assertParses(twoWay, [0], 1);
-    assertParses(twoWay, [1], 2);
-  });
-});
-
-describe("boolean", () => {
-  it("defaults to false", () => {
-    assertParseFails(arb.boolean(), []);
-  });
-  it("parses a 0 as false", () => {
-    assertParses(arb.boolean(), [0], false);
-  });
-  it("parses a 1 as true", () => {
-    assertParses(arb.boolean(), [1], true);
-  });
 });
 
 describe("oneOf", () => {

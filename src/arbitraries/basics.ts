@@ -11,6 +11,15 @@ export function from<T>(callback: ArbitraryCallback<T>): Arbitrary<T> {
   return Arbitrary.from(callback);
 }
 
+/** An arbitrary that returns one of the given arguments. */
+export function of<T>(...values: T[]): Arbitrary<T> {
+  return Arbitrary.of(...values);
+}
+
+export function boolean(): Arbitrary<boolean> {
+  return Arbitrary.of(false, true);
+}
+
 /**
  * An integer range, to be picked from uniformly.
  *
@@ -70,24 +79,6 @@ export function int(
   return Arbitrary.from(req);
 }
 
-export function just<T>(value: T): Arbitrary<T> {
-  return from(() => value);
-}
-
-export function example<T>(values: T[]): Arbitrary<T> {
-  if (values.length === 0) {
-    throw new Error("Can't choose an example from an empty array");
-  }
-  if (values.length === 1) {
-    return just(values[0]);
-  }
-  return int(0, values.length - 1).map((idx) => values[idx]);
-}
-
-export function boolean(): Arbitrary<boolean> {
-  return example([false, true]);
-}
-
 export function oneOf<T>(cases: Arbitrary<T>[]): Arbitrary<T> {
   if (cases.length === 0) {
     throw new Error("oneOf must be called with at least one alternative");
@@ -95,7 +86,7 @@ export function oneOf<T>(cases: Arbitrary<T>[]): Arbitrary<T> {
   if (cases.length === 1) {
     return cases[0];
   }
-  return example(cases).chain((chosen) => chosen);
+  return Arbitrary.of(...cases).chain((chosen) => chosen);
 }
 
 const defaultArrayLimit = 1000;

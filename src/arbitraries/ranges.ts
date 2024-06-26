@@ -1,5 +1,5 @@
 import Arbitrary from "../arbitrary_class.ts";
-import { example, from, int, oneOf } from "./basics.ts";
+import { from, int, oneOf } from "./basics.ts";
 import { nonInteger, safeInt } from "./numbers.ts";
 import { record } from "./records.ts";
 
@@ -19,7 +19,7 @@ export function intRange(opts?: IntRangeOptions): Arbitrary<Range> {
   const maxSize = opts?.maxSize ?? 10;
   if (maxSize < 1) throw new Error("maxSize must be >= 1");
   return oneOf<Range>([
-    example([{ min: 0, max: 0 }]),
+    Arbitrary.of({ min: 0, max: 0 }),
     from((pick) => {
       const size = pick(int(1, maxSize));
       const min = pick(
@@ -37,7 +37,7 @@ export function intRange(opts?: IntRangeOptions): Arbitrary<Range> {
  */
 export function invalidIntRange(): Arbitrary<Range> {
   return oneOf<Range>([
-    example([{ min: 1, max: 0 }]),
+    Arbitrary.of({ min: 1, max: 0 }),
     record({ min: safeInt(), max: nonInteger() }),
     record({ min: nonInteger(), max: safeInt() }),
   ]);
