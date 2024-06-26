@@ -232,6 +232,14 @@ describe("Arbitrary", () => {
       ];
       assertSolutions(boolean, expected);
     });
+
+    it("returns each solution for filtered PickRequest", () => {
+      const bit = Arbitrary.from(new PickRequest(0, 1))
+        .filter((b) => b === 0);
+      assertSolutions(bit, [
+        { val: 0, picks: [0] },
+      ]);
+    });
   });
 
   describe("maxSize", () => {

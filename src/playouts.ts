@@ -1,5 +1,20 @@
 import { IntPicker, PickRequest } from "./picks.ts";
 
+export type EndSpanOptions = {
+  /**
+   * The level of the span to end. This should be the number returned by
+   * {@link begin}. (Otherwise an exception will be thrown.)
+   *
+   * If not set, the level of the last span is used.
+   */
+  level?: number;
+
+  /**
+   * If set, the span will removed, but its contents kept.
+   */
+  unwrap?: boolean;
+};
+
 /**
  * Logs events during a playout.
  *
@@ -29,7 +44,7 @@ export interface PlayoutLogger {
    * This should be the number returned by {@link begin}. (Otherwise an
    * exception will be thrown.)
    */
-  endSpan(level?: number): void;
+  endSpan(opts?: EndSpanOptions): void;
 
   /**
    * Called to indicate that the playout finished successfully.
@@ -53,7 +68,8 @@ export class FakePlayoutLogger implements PlayoutLogger {
     this.level--;
   }
 
-  endSpan(levelToEnd?: number) {
+  endSpan(opts?: EndSpanOptions) {
+    const levelToEnd = opts?.level;
     if (levelToEnd !== undefined && levelToEnd !== this.level) {
       throw new Error(
         `invalid span level. Want: ${this.level}, got: ${levelToEnd}`,
@@ -167,17 +183,23 @@ export class SpanLog {
     return start;
   }
 
-  endSpan(loc: number, level?: number): void {
+  endSpan(loc: number, opts?: EndSpanOptions): void {
     const spanIndex = this.openSpans.pop();
     if (spanIndex === undefined) {
       throw new Error("no open span");
     }
+    const level = opts?.level;
     if (level !== undefined && level !== this.openSpans.length + 1) {
       throw new Error(
         `invalid span level. Want: ${this.openSpans.length + 1}, got: ${level}`,
       );
     }
-    this.ends[spanIndex] = loc;
+    if (opts?.unwrap) {
+      this.starts.splice(spanIndex, 1);
+      this.ends.splice(spanIndex, 1);
+    } else {
+      this.ends[spanIndex] = loc;
+    }
   }
 }
 
@@ -360,9 +382,9 @@ export class PlayoutBuffer {
       this.recordedPicks.splice(start);
     };
 
-    const endSpan = (level?: number) => {
+    const endSpan = (opts?: EndSpanOptions) => {
       checkAlive();
-      this.spans.endSpan(this.playOffset, level);
+      this.spans.endSpan(this.playOffset, opts);
     };
 
     const finished = () => {

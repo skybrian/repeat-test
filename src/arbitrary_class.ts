@@ -166,7 +166,7 @@ export default class Arbitrary<T> {
         }
         const level = log.startSpan();
         const val = req.callback(callbackPick);
-        log.endSpan(level);
+        log.endSpan({ level });
         return val;
       }
 
@@ -175,7 +175,7 @@ export default class Arbitrary<T> {
         const level = log.startSpan();
         const val = req.callback(callbackPick);
         if (accept(val)) {
-          log.endSpan(level);
+          log.endSpan({ level, unwrap: req.wrapped !== undefined });
           return val;
         }
         if (tries < maxTries - 1) {
