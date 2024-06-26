@@ -4,12 +4,12 @@ import {
   ParseFailure,
   ParserInput,
   PickRequest,
-} from "../picks.ts";
+} from "./picks.ts";
 
-import { FakePlayoutLogger, PlayoutLogger, Solution } from "../playouts.ts";
-import { PlayoutFailed, walkAllPaths } from "../solver.ts";
+import { FakePlayoutLogger, PlayoutLogger, Solution } from "./playouts.ts";
+import { PlayoutFailed, walkAllPaths } from "./solver.ts";
 
-import { Success } from "../results.ts";
+import { Success } from "./results.ts";
 
 export type PickFunctionOptions<T> = {
   /**
@@ -56,7 +56,7 @@ export type PickMethodOptions<T> = {
  * A set of values that can be randomly picked from. Members are generated as
  * needed.
  */
-export class Arbitrary<T> {
+export default class Arbitrary<T> {
   readonly callback: ArbitraryCallback<T>;
 
   /**

@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { Arbitrary } from "./arbitraries/core.ts";
+import Arbitrary from "./arbitrary_class.ts";
 
 export function assertParses<T>(
   arb: Arbitrary<T>,

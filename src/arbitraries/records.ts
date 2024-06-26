@@ -1,4 +1,4 @@
-import { Arbitrary } from "./core.ts";
+import Arbitrary from "../arbitrary_class.ts";
 import { custom } from "./basics.ts";
 
 type AnyRecord = Record<string, unknown>;

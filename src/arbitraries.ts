@@ -1,7 +1,6 @@
-import { Arbitrary } from "./arbitraries/core.ts";
+import Arbitrary from "./arbitrary_class.ts";
 import * as arb from "./arbitraries/basics.ts";
 
-export * from "./arbitraries/core.ts";
 export * from "./arbitraries/basics.ts";
 export * from "./arbitraries/numbers.ts";
 export * from "./arbitraries/strings.ts";

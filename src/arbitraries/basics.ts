@@ -1,4 +1,4 @@
-import { Arbitrary, PickFunction } from "./core.ts";
+import Arbitrary, { PickFunction } from "../arbitrary_class.ts";
 import { chooseDefault, PickRequest } from "../picks.ts";
 import { BiasedIntPicker } from "../picks.ts";
 

@@ -1,5 +1,5 @@
 import { boolean, custom, example, int, oneOf } from "./basics.ts";
-import { Arbitrary } from "./core.ts";
+import Arbitrary from "../arbitrary_class.ts";
 
 export function int32(): Arbitrary<number> {
   return int(-(2 ** 31), 2 ** 31 - 1);

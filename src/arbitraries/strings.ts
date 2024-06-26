@@ -1,4 +1,4 @@
-import { Arbitrary } from "./core.ts";
+import Arbitrary from "../arbitrary_class.ts";
 import * as arb from "./basics.ts";
 
 const defaultChar = "x".charCodeAt(0);

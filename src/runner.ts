@@ -1,6 +1,6 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
 import { IntPicker } from "./picks.ts";
-import { Arbitrary } from "./arbitraries.ts";
+import Arbitrary from "./arbitrary_class.ts";
 import { fail, Failure, Success, success } from "./results.ts";
 
 /** A function that runs a test, using generated input. */

@@ -1,7 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse } from "@std/assert";
 import * as arb from "../src/arbitraries.ts";
-import { Arbitrary } from "../src/arbitraries.ts";
+import Arbitrary from "../src/arbitrary_class.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import {

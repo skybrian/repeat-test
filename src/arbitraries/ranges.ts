@@ -1,4 +1,4 @@
-import { Arbitrary } from "./core.ts";
+import Arbitrary from "../arbitrary_class.ts";
 import { custom, example, int, oneOf } from "./basics.ts";
 import { nonInteger, safeInt } from "./numbers.ts";
 import { record } from "./records.ts";

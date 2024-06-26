@@ -6,7 +6,7 @@ import * as arb from "../../src/arbitraries.ts";
 import { PickRequest } from "../../src/picks.ts";
 import { NestedPicks } from "../../src/playouts.ts";
 import { PlayoutFailed } from "../../src/solver.ts";
-import { Arbitrary } from "../../src/arbitraries.ts";
+import Arbitrary from "../../src/arbitrary_class.ts";
 
 const oneToSix = new PickRequest(1, 6);
 const sixSided = new Arbitrary((pick) => pick(oneToSix));

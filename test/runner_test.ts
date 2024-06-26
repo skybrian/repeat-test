@@ -1,6 +1,6 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals, fail } from "@std/assert";
-import { Arbitrary } from "../src/arbitraries.ts";
+import Arbitrary from "../src/arbitrary_class.ts";
 import * as arb from "../src/arbitraries.ts";
 import { success } from "../src/results.ts";
 
