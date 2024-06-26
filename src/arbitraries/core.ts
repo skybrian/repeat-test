@@ -6,13 +6,8 @@ import {
   PickRequest,
 } from "../picks.ts";
 
-import {
-  FakePlayoutLogger,
-  NOT_FOUND,
-  PlayoutLogger,
-  Solution,
-  walkAllPaths,
-} from "../solver.ts";
+import { FakePlayoutLogger, PlayoutLogger, Solution } from "../playouts.ts";
+import { NOT_FOUND, walkAllPaths } from "../solver.ts";
 
 import { Success } from "../results.ts";
 

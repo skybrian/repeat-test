@@ -1,11 +1,12 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { repeatTest } from "../../src/runner.ts";
+import * as arb from "../../src/arbitraries.ts";
 
 import { PickRequest } from "../../src/picks.ts";
-import { NestedPicks, NOT_FOUND } from "../../src/solver.ts";
+import { NestedPicks } from "../../src/playouts.ts";
+import { NOT_FOUND } from "../../src/solver.ts";
 import { Arbitrary } from "../../src/arbitraries.ts";
-import * as arb from "../../src/arbitraries.ts";
 
 const oneToSix = new PickRequest(1, 6);
 const sixSided = new Arbitrary((pick) => pick(oneToSix));
