@@ -14,7 +14,21 @@ import {
 
 import { randomPicker } from "../src/random.ts";
 
-import { PickLog, PlayoutBuffer } from "../src/playouts.ts";
+import { PickLog, PlayoutBuffer, SpanLog } from "../src/playouts.ts";
+
+describe("SpanLog", () => {
+  describe("getSpans", () => {
+    it("returns an empty array when there are no spans", () => {
+      assertEquals(new SpanLog().getSpans(), { starts: [], ends: [] });
+    });
+    it("returns an empty span when there is one", () => {
+      const log = new SpanLog();
+      log.startSpan(0);
+      log.endSpan(0);
+      assertEquals(log.getSpans(), { starts: [0], ends: [0] });
+    });
+  });
+});
 
 describe("PickLog", () => {
   describe("truncate", () => {

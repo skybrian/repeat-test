@@ -115,14 +115,14 @@ export class PickLog {
 }
 
 export class SpanLog {
-  // Invariant: spanStarts.length == spanEnds.length
+  // Invariant: starts.length == ends.length
   // (Parallel lists.)
 
   /** The offset when each span was started */
-  private readonly spanStarts: number[] = [];
+  private readonly starts: number[] = [];
 
   /** The offset when each span ended. Set to NaN for incomplete spans. */
-  private readonly spanEnds: number[] = [];
+  private readonly ends: number[] = [];
 
   /** The offset of each incomplete span, in the order created.  */
   private readonly openSpans: number[] = [];
@@ -136,34 +136,34 @@ export class SpanLog {
     if (this.level > 0) return undefined;
 
     return {
-      spanStarts: this.spanStarts.slice(),
-      spanEnds: this.spanEnds.slice(),
+      starts: this.starts.slice(),
+      ends: this.ends.slice(),
     };
   }
 
   clear() {
-    this.spanStarts.length = 0;
-    this.spanEnds.length = 0;
+    this.starts.length = 0;
+    this.ends.length = 0;
     this.openSpans.length = 0;
   }
 
   startSpan(loc: number): void {
-    const spanIndex = this.spanStarts.length;
-    this.spanStarts.push(loc);
-    this.spanEnds.push(NaN);
+    const spanIndex = this.starts.length;
+    this.starts.push(loc);
+    this.ends.push(NaN);
     this.openSpans.push(spanIndex);
   }
 
   /** Returns the index of the start of the span */
   removeLastSpan(): number {
-    const spanIndex = this.openSpans.pop();
-    if (spanIndex === undefined) {
+    const idx = this.openSpans.pop();
+    if (idx === undefined) {
       throw new Error("no open span");
     }
-    const start = this.spanStarts[spanIndex];
-    this.spanStarts.splice(spanIndex);
-    this.spanEnds.splice(spanIndex);
-    console.log(`removed span ${spanIndex}, start: ${start}`);
+    const start = this.starts[idx];
+    this.starts.splice(idx);
+    this.ends.splice(idx);
+    console.log(`removed span ${idx}, start: ${start}`);
     return start;
   }
 
@@ -177,7 +177,7 @@ export class SpanLog {
         `invalid span level. Want: ${this.openSpans.length + 1}, got: ${level}`,
       );
     }
-    this.spanEnds[spanIndex] = loc;
+    this.ends[spanIndex] = loc;
   }
 }
 
@@ -412,6 +412,7 @@ export class PlayoutBuffer {
     const picks = this.picks.getPicks();
     const spans = this.spans.getSpans();
     if (!spans) return undefined;
-    return { picks, ...spans };
+    const { starts, ends } = spans;
+    return { picks, spanStarts: starts, spanEnds: ends };
   }
 }
