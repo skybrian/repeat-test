@@ -1,7 +1,7 @@
 import { alwaysPickDefault, IntPicker, PickRequest } from "./picks.ts";
 
 import { FakePlayoutLogger, PlayoutLogger, Solution } from "./playouts.ts";
-import { PlayoutFailed, walkAllPaths } from "./solver.ts";
+import { generateAllSolutions, PlayoutFailed } from "./solver.ts";
 
 export type PickFunctionOptions<T> = {
   /**
@@ -163,7 +163,7 @@ export default class Arbitrary<T> {
    * Uses a depth-first search, starting from the default value.
    */
   get solutions(): IterableIterator<Solution<T>> {
-    return walkAllPaths((picker, log): T => {
+    return generateAllSolutions((picker, log): T => {
       return this.pick(picker, { maxTries: 1, log });
     });
   }

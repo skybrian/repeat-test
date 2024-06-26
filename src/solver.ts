@@ -209,30 +209,30 @@ export class PlayoutFailed extends Error {
  *
  * Each leaf holds either a value or nothing (a dead end).
  */
-export type WalkFunction<T> = (
+export type PlayoutFunction<T> = (
   picker: IntPicker,
   log: PlayoutLogger,
 ) => T;
 
 /**
- * Visits every leaf in a search tree in order, depth-first. Starts by taking
- * all default choices.
+ * Visits every leaf in a search tree in order, depth-first. Starts with all
+ * default picks.
  */
-export function* walkAllPaths<T>(
-  walk: WalkFunction<T>,
+export function* generateAllSolutions<T>(
+  runPlayout: PlayoutFunction<T>,
 ): Generator<Solution<T>> {
   const buffer = new PlayoutBuffer(alwaysPickDefault);
   let next: IntPicker & PlayoutLogger | null = buffer.record();
   while (next !== null) {
     try {
-      const val = walk(next, next);
+      const val = runPlayout(next, next);
       if (buffer.playing) {
-        throw "didn't read every value";
+        throw new Error("playout didn't read every value");
       }
       // reached a solution
       const playout = buffer.finishPlayout();
       if (playout === undefined) {
-        throw new Error("didn't close every span");
+        throw new Error("playout didn't close every span");
       }
       yield new Solution(val, playout);
     } catch (e) {
