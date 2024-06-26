@@ -44,6 +44,25 @@ describe("Arbitrary", () => {
     });
   });
 
+  describe("parse", () => {
+    const oneToSix = new PickRequest(1, 6);
+    const sixSided = new Arbitrary((pick) => pick(oneToSix));
+    it("throws PlayoutFailed when not enough values were supplied", () => {
+      assertThrows(() => sixSided.parse([]));
+    });
+    it("throws PlayoutFailed when too many values were supplied", () => {
+      assertThrows(() => sixSided.parse([1, 1]));
+    });
+    it("throws PlayoutFailed for an out-of-range value", () => {
+      assertThrows(() => sixSided.parse([7]));
+    });
+    it("returns the value from a successful parse", () => {
+      for (let i = 1; i < 6; i++) {
+        assertEquals(i, sixSided.parse([i]));
+      }
+    });
+  });
+
   describe("the pick method created during a parse", () => {
     const bit = new PickRequest(0, 1);
 
