@@ -33,6 +33,14 @@ describe("SpanLog", () => {
       log.endSpan(1);
       assertEquals(log.getSpans(), { starts: [], ends: [] });
     });
+    it("ignores a span that contains only a single span", () => {
+      const log = new SpanLog();
+      log.startSpan(0);
+      log.startSpan(0);
+      log.endSpan(2);
+      log.endSpan(2);
+      assertEquals(log.getSpans(), { starts: [0], ends: [2] });
+    });
     it("doesn't add a span when unwrap is set", () => {
       const log = new SpanLog();
       log.startSpan(0);

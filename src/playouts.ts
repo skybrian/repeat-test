@@ -183,7 +183,7 @@ export class SpanLog {
     return start;
   }
 
-  endSpan(loc: number, opts?: EndSpanOptions): void {
+  endSpan(end: number, opts?: EndSpanOptions): void {
     const spanIndex = this.openSpans.pop();
     if (spanIndex === undefined) {
       throw new Error("no open span");
@@ -194,13 +194,20 @@ export class SpanLog {
         `invalid span level. Want: ${this.openSpans.length + 1}, got: ${level}`,
       );
     }
-    const size = loc - this.starts[spanIndex];
-    if (size < 2 || opts?.unwrap) {
+    const start = this.starts[spanIndex];
+    const size = end - start;
+    const firstChild = spanIndex + 1;
+    if (
+      size < 2 || opts?.unwrap ||
+      (firstChild < this.starts.length && start === this.starts[firstChild] &&
+        end === this.ends[firstChild])
+    ) {
+      // don't record this span
       this.starts.splice(spanIndex, 1);
       this.ends.splice(spanIndex, 1);
-    } else {
-      this.ends[spanIndex] = loc;
+      return;
     }
+    this.ends[spanIndex] = end;
   }
 }
 
