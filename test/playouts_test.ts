@@ -19,7 +19,7 @@ import {
   NestedPicks,
   Playout,
   PlayoutBuffer,
-  SpanLog,
+  PlayoutLog,
 } from "../src/playouts.ts";
 
 type NestedPickOpts = {
@@ -125,30 +125,33 @@ describe("Playout", () => {
   });
 });
 
-describe("SpanLog", () => {
-  describe("getSpans", () => {
+describe("PlayoutLog", () => {
+  describe("getPlayout", () => {
     it("returns an empty array when there are no spans", () => {
-      assertEquals(new SpanLog().getSpans(), { starts: [], ends: [] });
+      assertEquals(new PlayoutLog().toPlayout().toNestedPicks(), []);
     });
     it("ignores an empty span", () => {
-      const log = new SpanLog();
+      const log = new PlayoutLog();
       log.startSpan(0);
       log.endSpan(0);
-      assertEquals(log.getSpans(), { starts: [], ends: [] });
+      assertEquals(log.toPlayout().toNestedPicks(), []);
     });
     it("ignores a single-pick span", () => {
-      const log = new SpanLog();
+      const log = new PlayoutLog();
       log.startSpan(0);
       log.endSpan(1);
-      assertEquals(log.getSpans(), { starts: [], ends: [] });
+      assertEquals(log.toPlayout().toNestedPicks(), []);
     });
     it("ignores a span that contains only a single span", () => {
-      const log = new SpanLog();
+      const req = new PickRequest(1, 6);
+      const log = new PlayoutLog();
       log.startSpan(0);
       log.startSpan(0);
+      log.pushPick(req, 1);
+      log.pushPick(req, 2);
       log.endSpan(2);
       log.endSpan(2);
-      assertEquals(log.getSpans(), { starts: [0], ends: [2] });
+      assertEquals(log.toPlayout().toNestedPicks(), [[1, 2]]);
     });
   });
 });
