@@ -21,11 +21,11 @@ describe("SpanLog", () => {
     it("returns an empty array when there are no spans", () => {
       assertEquals(new SpanLog().getSpans(), { starts: [], ends: [] });
     });
-    it("returns an empty span when there is one", () => {
+    it("ignores an empty span", () => {
       const log = new SpanLog();
       log.startSpan(0);
       log.endSpan(0);
-      assertEquals(log.getSpans(), { starts: [0], ends: [0] });
+      assertEquals(log.getSpans(), { starts: [], ends: [] });
     });
     it("doesn't add a span when unwrap is set", () => {
       const log = new SpanLog();

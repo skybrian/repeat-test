@@ -83,6 +83,7 @@ describe("Solution", () => {
     });
     it("interprets empty spans as sequential", () => {
       // This is actually ambigous. Could also be [[]].
+      // But SpanLog shouldn't be emitting empty spans anyway.
       const sol = new Solution(123, {
         picks: [],
         spanStarts: [0, 0],

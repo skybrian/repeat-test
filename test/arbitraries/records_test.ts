@@ -28,10 +28,9 @@ describe("record", () => {
       b: arb.of(2),
     });
     it("reads one pick", () => {
-      // TODO: fix picks
       assertSolutions(example, [
-        { val: { a: 1, b: 2 }, picks: [[0], [], []] },
-        { val: noProto({ a: 1, b: 2 }), picks: [[1], [], []] },
+        { val: { a: 1, b: 2 }, picks: [[0]] },
+        { val: noProto({ a: 1, b: 2 }), picks: [[1]] },
       ]);
     });
   });

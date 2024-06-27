@@ -18,9 +18,10 @@ export type EndSpanOptions = {
 /**
  * Logs events during a playout.
  *
- * Picks can be grouped into *spans.* A span can contain zero or more picks. The
- * spans must nest to form a tree. A span's *level* is the number of spans are
- * still open when it's created.
+ * Picks can be grouped into *spans.* A span can contain zero or more picks, but
+ * zero-length spans aren't normally recorded. The spans must nest to form a
+ * tree. A span's *level* is the number of spans are still open when it's
+ * created.
  */
 export interface PlayoutLogger {
   /**
@@ -39,10 +40,9 @@ export interface PlayoutLogger {
   /**
    * Ends a span.
    *
-   * It optionally takes the level of the span to end.
-   *
-   * This should be the number returned by {@link begin}. (Otherwise an
-   * exception will be thrown.)
+   * To check for unbalanced start and end calls, it optionally takes the level
+   * of the span to end. This should be the number returned by {@link begin}.
+   * (Otherwise an exception will be thrown.)
    */
   endSpan(opts?: EndSpanOptions): void;
 
@@ -194,7 +194,8 @@ export class SpanLog {
         `invalid span level. Want: ${this.openSpans.length + 1}, got: ${level}`,
       );
     }
-    if (opts?.unwrap) {
+    const isEmpty = this.starts[spanIndex] === loc;
+    if (isEmpty || opts?.unwrap) {
       this.starts.splice(spanIndex, 1);
       this.ends.splice(spanIndex, 1);
     } else {

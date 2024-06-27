@@ -215,6 +215,11 @@ describe("Arbitrary", () => {
       assertSolutions(one, [{ val: 1, picks: [] }]);
     });
 
+    it("returns the only solution for a filtered constant", () => {
+      const one = Arbitrary.from(() => 1).filter((val) => val === 1);
+      assertSolutions(one, [{ val: 1, picks: [] }]);
+    });
+
     it("returns each solution for an int range", () => {
       const oneTwoThree = Arbitrary.from(new PickRequest(1, 3));
       assertSolutions(oneTwoThree, [
@@ -225,7 +230,7 @@ describe("Arbitrary", () => {
     });
 
     it("returns each solution for a boolean", () => {
-      const boolean = Arbitrary.from(new PickRequest(0, 1)).map((b) => b == 1);
+      const boolean = Arbitrary.from(new PickRequest(0, 1)).map((b) => b === 1);
       const expected = [
         { val: false, picks: [0] },
         { val: true, picks: [1] },
