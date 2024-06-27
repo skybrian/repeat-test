@@ -6,6 +6,7 @@ import { repeatTest } from "../src/runner.ts";
 
 import {
   alwaysPick,
+  alwaysPickDefault,
   alwaysPickMin,
   IntPicker,
   PickRequest,
@@ -14,56 +15,63 @@ import {
 
 import { randomPicker } from "../src/random.ts";
 
-import { PickLog, Playout, PlayoutBuffer, SpanLog } from "../src/playouts.ts";
+import {
+  NestedPicks,
+  PickLog,
+  Playout,
+  PlayoutBuffer,
+  SpanLog,
+} from "../src/playouts.ts";
 
-function validPlayout(
-  opts?: { maxSpanSize: number; maxDepth: number },
-): Arbitrary<Playout> {
-  const maxSpanSize = opts?.maxSpanSize ?? 3;
-  const maxDepth = (opts?.maxDepth ?? 3) + 1; // Add one for placeholder
-  const maxPicks = maxSpanSize;
-  const maxSpins = maxDepth * maxSpanSize;
+type NestedPickOpts = {
+  minSpanSize?: number;
+  maxSpanSize?: number;
+  maxDepth?: number;
+};
 
-  return arb.from((pick) => {
-    const picks: number[] = [];
+function nestedPicks(opts?: NestedPickOpts): Arbitrary<NestedPicks> {
+  const minSpanSize = opts?.minSpanSize ?? 0;
+  const maxSpanSize = opts?.maxSpanSize ?? 5;
 
-    // Top-level span is a placeholder that will be removed
-    const spanStarts = [0];
-    const spanEnds = [NaN];
-
-    const stack = [{ offset: 0, size: 0 }];
-
-    for (let i = 0; i < maxSpins; i++) {
-      if (stack.length === 0) break;
-      if (!pick(arb.boolean())) {
-        const span = stack.pop();
-        if (span === undefined) break; // shouldn't happen
-        spanEnds[span.offset] = picks.length;
-        continue;
+  function makeSpan(maxDepth: number): Arbitrary<NestedPicks> {
+    return arb.from((pick) => {
+      const result: NestedPicks = [];
+      while (
+        result.length < minSpanSize ||
+        (result.length < maxSpanSize && pick(arb.boolean()))
+      ) {
+        if (maxDepth > 0 && pick(arb.boolean())) {
+          result.push(pick(makeSpan(maxDepth - 1)));
+        } else {
+          result.push(pick(arb.int(1, 6)));
+        }
       }
-      if (stack.length < maxDepth && pick(arb.boolean())) {
-        stack.push({ offset: spanStarts.length, size: 0 });
+      return result;
+    });
+  }
+  return makeSpan(opts?.maxDepth ?? 5);
+}
+
+function picksToPlayout(input: NestedPicks): Playout {
+  const picks: number[] = [];
+  const spanStarts: number[] = [];
+  const spanEnds: number[] = [];
+
+  function walk(input: NestedPicks) {
+    for (const item of input) {
+      if (typeof item === "number") {
+        picks.push(item);
+      } else {
+        const span = spanStarts.length;
         spanStarts.push(picks.length);
         spanEnds.push(NaN);
-      }
-      if (
-        stack[stack.length - 1].size < maxSpanSize &&
-        picks.length < maxPicks &&
-        pick(arb.boolean())
-      ) {
-        stack[stack.length - 1].size++;
-        picks.push(picks.length + 1);
+        walk(item);
+        spanEnds[span] = picks.length;
       }
     }
-    for (let span = stack.pop(); span !== undefined; span = stack.pop()) {
-      spanEnds[span.offset] = picks.length;
-    }
-
-    spanStarts.splice(0, 1);
-    spanEnds.splice(0, 1);
-
-    return new Playout(picks, spanStarts, spanEnds);
-  });
+  }
+  walk(input);
+  return new Playout(picks, spanStarts, spanEnds);
 }
 
 describe("Playout", () => {
@@ -98,9 +106,21 @@ describe("Playout", () => {
       const playout = new Playout([7, 8], [0, 0, 0], [2, 0, 1]);
       assertEquals(playout.getNestedPicks(), [[[], [7], 8]]);
     });
-    it("returns a value for any valid playout", () => {
-      repeatTest(validPlayout(), (p) => {
-        p.getNestedPicks();
+    it("returns a value for any possible playout", () => {
+      repeatTest(nestedPicks(), (p) => {
+        const playout = picksToPlayout(p);
+        try {
+          playout.getNestedPicks();
+        } catch (e) {
+          console.log("playout:", playout);
+          throw e;
+        }
+      });
+    });
+    it("round-trips with picksToPlayout when there are no empty spans", () => {
+      repeatTest(nestedPicks({ minSpanSize: 1 }), (p) => {
+        const playout = picksToPlayout(p);
+        assertEquals(playout.getNestedPicks(), p);
       });
     });
   });
@@ -155,7 +175,7 @@ describe("PickLog", () => {
   });
 });
 
-export function validRequest(
+function validRequest(
   opts?: arb.IntRangeOptions,
 ): Arbitrary<PickRequest> {
   const range = arb.intRange(opts);
@@ -169,6 +189,23 @@ export function validRequest(
     }
     return new PickRequest(min, max, opts);
   });
+}
+
+function recordPicks(out: PlayoutBuffer, input: NestedPicks) {
+  const cursor = out.record();
+  function walk(input: NestedPicks) {
+    for (const item of input) {
+      if (typeof item === "number") {
+        const req = new PickRequest(item, item);
+        cursor.pick(req);
+      } else {
+        cursor.startSpan();
+        walk(item);
+        cursor.endSpan();
+      }
+    }
+  }
+  walk(input);
 }
 
 describe("PlayoutBuffer", () => {
@@ -185,6 +222,15 @@ describe("PlayoutBuffer", () => {
         assertEquals(stack.length, 0);
         assertEquals(stack.record().pick(req), n);
         assertEquals(stack.length, 1);
+      });
+    });
+    it("round trips any nested picks with spans at least 2", () => {
+      repeatTest(nestedPicks({ minSpanSize: 2 }), (input) => {
+        const stack = new PlayoutBuffer(alwaysPickDefault);
+        recordPicks(stack, input);
+        const playout = stack.finishPlayout();
+        assert(playout !== undefined);
+        assertEquals(playout.getNestedPicks(), input);
       });
     });
   });

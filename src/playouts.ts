@@ -2,11 +2,26 @@ import { IntPicker, PickRequest } from "./picks.ts";
 
 export type NestedPicks = (number | NestedPicks)[];
 
+/**
+ * A log of choices made while generating a value using an {@link IntPicker}.
+ *
+ * Picks are grouped into *spans.* Picks within the same span represent a
+ * subtree in the process used to generate a value.
+ *
+ * To avoid clutter, {@link PlayoutBuffer} only records spans with two or more
+ * picks. So, constant subtrees are not represented in the Playout, and any
+ * value that was generated based on a single integer pick is represented as a
+ * single number.
+ */
 export class Playout {
   /**
+   * Constructs a Playout from logged picks and spans.
+   *
    * @param picks The picks made to generate the value.
    * @param spanStarts The starting index of each span, in the order entered.
    * @param spanEnds The ending index of each span, in the order entered.
+   *
+   * (Note that zero-length spans are ambigous in this representation.)
    */
   constructor(
     readonly picks: number[],
@@ -84,10 +99,9 @@ export type EndSpanOptions = {
 /**
  * Logs events during a playout.
  *
- * Picks can be grouped into *spans.* A span can contain zero or more picks, but
- * spans with less than two picks aren't normally recorded. The spans must nest to form a
- * tree. A span's *level* is the number of spans are still open when it's
- * created.
+ * Spans must nest to form a tree. Spans with less than two picks aren't
+ * normally recorded. A span's *level* is the number of spans are still open
+ * when it's created.
  */
 export interface PlayoutLogger {
   /**
@@ -107,8 +121,8 @@ export interface PlayoutLogger {
    * Ends a span.
    *
    * To check for unbalanced start and end calls, it optionally takes the level
-   * of the span to end. This should be the number returned by {@link begin}.
-   * (Otherwise an exception will be thrown.)
+   * of the span to end. This should be the number returned by
+   * {@link startSpan}. (Otherwise an exception will be thrown.)
    */
   endSpan(opts?: EndSpanOptions): void;
 
