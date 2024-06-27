@@ -17,7 +17,6 @@ import { randomPicker } from "../src/random.ts";
 
 import {
   NestedPicks,
-  PickLog,
   Playout,
   PlayoutBuffer,
   SpanLog,
@@ -75,42 +74,42 @@ function picksToPlayout(input: NestedPicks): Playout {
 }
 
 describe("Playout", () => {
-  describe("getNestedPicks", () => {
+  describe("toNestedPicks", () => {
     it("returns an empty list when there are no picks or spans", () => {
       const playout = new Playout([], [], []);
-      assertEquals(playout.getNestedPicks(), []);
+      assertEquals(playout.toNestedPicks(), []);
     });
     it("returns a list of picks when there are only picks", () => {
       const playout = new Playout([1, 2, 3], [], []);
-      assertEquals(playout.getNestedPicks(), [1, 2, 3]);
+      assertEquals(playout.toNestedPicks(), [1, 2, 3]);
     });
     it("interprets empty spans as sequential", () => {
       // This is actually ambigous. Could also be [[]].
       // But SpanLog shouldn't be emitting empty spans anyway.
       const playout = new Playout([], [0, 0], [0, 0]);
-      assertEquals(playout.getNestedPicks(), [[], []]);
+      assertEquals(playout.toNestedPicks(), [[], []]);
     });
     it("puts the pick first", () => {
       const playout = new Playout([123], [1, 1], [1, 1]);
-      assertEquals(playout.getNestedPicks(), [123, [], []]);
+      assertEquals(playout.toNestedPicks(), [123, [], []]);
     });
     it("puts the pick in the middle", () => {
       const playout = new Playout([123], [0, 0], [1, 1]);
-      assertEquals(playout.getNestedPicks(), [[[123]]]);
+      assertEquals(playout.toNestedPicks(), [[[123]]]);
     });
     it("puts the pick last", () => {
       const playout = new Playout([123], [0, 0], [0, 0]);
-      assertEquals(playout.getNestedPicks(), [[], [], 123]);
+      assertEquals(playout.toNestedPicks(), [[], [], 123]);
     });
     it("handles empty spans anywhere", () => {
       const playout = new Playout([7, 8], [0, 0, 0], [2, 0, 1]);
-      assertEquals(playout.getNestedPicks(), [[[], [7], 8]]);
+      assertEquals(playout.toNestedPicks(), [[[], [7], 8]]);
     });
     it("returns a value for any possible playout", () => {
       repeatTest(nestedPicks(), (p) => {
         const playout = picksToPlayout(p);
         try {
-          playout.getNestedPicks();
+          playout.toNestedPicks();
         } catch (e) {
           console.log("playout:", playout);
           throw e;
@@ -120,7 +119,7 @@ describe("Playout", () => {
     it("round-trips with picksToPlayout when there are no empty spans", () => {
       repeatTest(nestedPicks({ minSpanSize: 1 }), (p) => {
         const playout = picksToPlayout(p);
-        assertEquals(playout.getNestedPicks(), p);
+        assertEquals(playout.toNestedPicks(), p);
       });
     });
   });
@@ -150,17 +149,6 @@ describe("SpanLog", () => {
       log.endSpan(2);
       log.endSpan(2);
       assertEquals(log.getSpans(), { starts: [0], ends: [2] });
-    });
-  });
-});
-
-describe("PickLog", () => {
-  describe("truncate", () => {
-    it("does nothing when clearing an empty log", () => {
-      const log = new PickLog();
-      log.truncate(0);
-      assertEquals(log.length, 0);
-      assertEquals(log.getPicks(), []);
     });
   });
 });
@@ -214,16 +202,18 @@ describe("PlayoutBuffer", () => {
         assertEquals(stack.length, 1);
       });
     });
+
     it("round trips any nested picks with spans at least 2", () => {
       repeatTest(nestedPicks({ minSpanSize: 2 }), (input) => {
         const stack = new PlayoutBuffer(alwaysPickDefault);
         recordPicks(stack, input);
         const playout = stack.finishPlayout();
         assert(playout !== undefined);
-        assertEquals(playout.getNestedPicks(), input);
+        assertEquals(playout.toNestedPicks(), input);
       });
     });
   });
+
   describe("play", () => {
     it("replays any pick", () => {
       repeatTest(validRequestAndReply, ({ req, n }) => {

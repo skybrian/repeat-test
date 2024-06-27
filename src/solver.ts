@@ -3,7 +3,7 @@ import {
   Playout,
   PlayoutBuffer,
   PlayoutFailed,
-  PlayoutLogger,
+  PlayoutWriter,
 } from "./playouts.ts";
 
 /**
@@ -16,7 +16,7 @@ import {
  */
 export type PlayoutFunction<T> = (
   picker: IntPicker,
-  log: PlayoutLogger,
+  log: PlayoutWriter,
 ) => T;
 
 export type Solution<T> = {
@@ -32,7 +32,7 @@ export function* generateAllSolutions<T>(
   runPlayout: PlayoutFunction<T>,
 ): Generator<Solution<T>> {
   const buffer = new PlayoutBuffer(alwaysPickDefault);
-  let next: IntPicker & PlayoutLogger | null = buffer.record();
+  let next: IntPicker & PlayoutWriter | null = buffer.record();
   while (next !== null) {
     try {
       const val = runPlayout(next, next);

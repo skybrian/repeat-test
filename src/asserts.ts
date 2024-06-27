@@ -24,7 +24,7 @@ export function assertSolutions<T>(
   const sols = Array.from(arb.solutions);
   const actual = sols.map((s) => ({
     val: s.val,
-    picks: s.playout.getNestedPicks(),
+    picks: s.playout.toNestedPicks(),
   }));
   assertEquals(actual, expected);
 }

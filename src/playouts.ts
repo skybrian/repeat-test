@@ -33,7 +33,7 @@ export class Playout {
     }
   }
 
-  getNestedPicks(): NestedPicks {
+  toNestedPicks(): NestedPicks {
     const { picks, spanStarts, spanEnds } = this;
 
     const root: NestedPicks = [];
@@ -84,7 +84,7 @@ export class Playout {
 export type EndSpanOptions = {
   /**
    * The level of the span to end. This should be the number returned by
-   * {@link begin}. (Otherwise an exception will be thrown.)
+   * {@link PlayoutWriter.startSpan}. (Otherwise an exception will be thrown.)
    *
    * If not set, the level of the last span is used.
    */
@@ -98,7 +98,7 @@ export type EndSpanOptions = {
  * normally recorded. A span's *level* is the number of spans are still open
  * when it's created.
  */
-export interface PlayoutLogger {
+export interface PlayoutWriter {
   /**
    * Records the start of a span.
    * Returns the level of the new span.
@@ -128,9 +128,11 @@ export interface PlayoutLogger {
 }
 
 /**
- * A PlayoutLogger that just checks that it was called correctly.
+ * A {@link PlayoutWriter} that doesn't record anything.
+ *
+ * It just checks that it was called correctly.
  */
-export class FakePlayoutLogger implements PlayoutLogger {
+export class NullPlayoutWriter implements PlayoutWriter {
   level = 0;
 
   startSpan() {
@@ -160,7 +162,7 @@ export class FakePlayoutLogger implements PlayoutLogger {
   }
 }
 
-export class PickLog {
+class PickLog {
   // Invariant: reqs.length == picks.length
   // (Parallel lists.)
 
@@ -177,6 +179,11 @@ export class PickLog {
 
   getEntry(index: number) {
     return { req: this.reqs[index], pick: this.picks[index] };
+  }
+
+  truncate(pickCount: number) {
+    this.reqs.length = pickCount;
+    this.picks.length = pickCount;
   }
 
   pushPick(request: PickRequest, replay: number): void {
@@ -197,11 +204,6 @@ export class PickLog {
     const next = (pick === req.max) ? req.min : pick + 1;
     this.picks[this.picks.length - 1] = next;
     return next;
-  }
-
-  truncate(pickCount: number) {
-    this.reqs.length = pickCount;
-    this.picks.length = pickCount;
   }
 }
 
@@ -238,9 +240,9 @@ export class SpanLog {
     this.openSpans.length = 0;
   }
 
-  startSpan(loc: number): void {
+  startSpan(offset: number): void {
     const spanIndex = this.starts.length;
-    this.starts.push(loc);
+    this.starts.push(offset);
     this.ends.push(NaN);
     this.openSpans.push(spanIndex);
   }
@@ -374,7 +376,7 @@ export class PlayoutBuffer {
    * The picker's lifetime is until the next call to {@link record}, {@link play},
    * {@link playNext}, or {@link finishPlayout}.
    */
-  record(): IntPicker & PlayoutLogger {
+  record(): IntPicker & PlayoutWriter {
     this.picks.truncate(0);
     this.recordedPicks.length = 0;
     return this.play();
@@ -387,7 +389,7 @@ export class PlayoutBuffer {
    * The picker's lifetime is until the next call to {@link record}, {@link play},
    * {@link playNext}, or {@link finishPlayout}.
    */
-  play(): IntPicker & PlayoutLogger {
+  play(): IntPicker & PlayoutWriter {
     this.playOffset = 0;
     this.spans.clear();
 
@@ -471,7 +473,7 @@ export class PlayoutBuffer {
    * value if needed. If all picks have been used, it pops the stack and tries
    * again.
    */
-  playNext(): IntPicker & PlayoutLogger | null {
+  playNext(): IntPicker & PlayoutWriter | null {
     this.playOffset = 0;
     this.spans.clear();
 

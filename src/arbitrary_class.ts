@@ -1,9 +1,9 @@
 import { alwaysPickDefault, IntPicker, PickRequest } from "./picks.ts";
 
 import {
-  FakePlayoutLogger,
+  NullPlayoutWriter,
   PlayoutFailed,
-  PlayoutLogger,
+  PlayoutWriter,
   StrictPicker,
 } from "./playouts.ts";
 import { generateAllSolutions, Solution } from "./solver.ts";
@@ -68,7 +68,7 @@ export type PickMethodOptions<T> = {
    */
   maxTries?: number;
 
-  log?: PlayoutLogger;
+  log?: PlayoutWriter;
 };
 
 /**
@@ -170,7 +170,7 @@ export default class Arbitrary<T> {
       throw new Error("maxTries must be a positive integer");
     }
 
-    const log = opts?.log ?? new FakePlayoutLogger();
+    const log = opts?.log ?? new NullPlayoutWriter();
 
     // These inner functions are mutually recursive and depend on the passed-in
     // picker. They unwind the arbitraries depth-first to get each pick and then
