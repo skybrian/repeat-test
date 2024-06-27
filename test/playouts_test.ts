@@ -14,7 +14,97 @@ import {
 
 import { randomPicker } from "../src/random.ts";
 
-import { PickLog, PlayoutBuffer, SpanLog } from "../src/playouts.ts";
+import { PickLog, Playout, PlayoutBuffer, SpanLog } from "../src/playouts.ts";
+
+function validPlayout(
+  opts?: { maxSpanSize: number; maxDepth: number },
+): Arbitrary<Playout> {
+  const maxSpanSize = opts?.maxSpanSize ?? 3;
+  const maxDepth = (opts?.maxDepth ?? 3) + 1; // Add one for placeholder
+  const maxPicks = maxSpanSize;
+  const maxSpins = maxDepth * maxSpanSize;
+
+  return arb.from((pick) => {
+    const picks: number[] = [];
+
+    // Top-level span is a placeholder that will be removed
+    const spanStarts = [0];
+    const spanEnds = [NaN];
+
+    const stack = [{ offset: 0, size: 0 }];
+
+    for (let i = 0; i < maxSpins; i++) {
+      if (stack.length === 0) break;
+      if (!pick(arb.boolean())) {
+        const span = stack.pop();
+        if (span === undefined) break; // shouldn't happen
+        spanEnds[span.offset] = picks.length;
+        continue;
+      }
+      if (stack.length < maxDepth && pick(arb.boolean())) {
+        stack.push({ offset: spanStarts.length, size: 0 });
+        spanStarts.push(picks.length);
+        spanEnds.push(NaN);
+      }
+      if (
+        stack[stack.length - 1].size < maxSpanSize &&
+        picks.length < maxPicks &&
+        pick(arb.boolean())
+      ) {
+        stack[stack.length - 1].size++;
+        picks.push(picks.length + 1);
+      }
+    }
+    for (let span = stack.pop(); span !== undefined; span = stack.pop()) {
+      spanEnds[span.offset] = picks.length;
+    }
+
+    spanStarts.splice(0, 1);
+    spanEnds.splice(0, 1);
+
+    return new Playout(picks, spanStarts, spanEnds);
+  });
+}
+
+describe("Playout", () => {
+  describe("getNestedPicks", () => {
+    it("returns an empty list when there are no picks or spans", () => {
+      const playout = new Playout([], [], []);
+      assertEquals(playout.getNestedPicks(), []);
+    });
+    it("returns a list of picks when there are only picks", () => {
+      const playout = new Playout([1, 2, 3], [], []);
+      assertEquals(playout.getNestedPicks(), [1, 2, 3]);
+    });
+    it("interprets empty spans as sequential", () => {
+      // This is actually ambigous. Could also be [[]].
+      // But SpanLog shouldn't be emitting empty spans anyway.
+      const playout = new Playout([], [0, 0], [0, 0]);
+      assertEquals(playout.getNestedPicks(), [[], []]);
+    });
+    it("puts the pick first", () => {
+      const playout = new Playout([123], [1, 1], [1, 1]);
+      assertEquals(playout.getNestedPicks(), [123, [], []]);
+    });
+    it("puts the pick in the middle", () => {
+      const playout = new Playout([123], [0, 0], [1, 1]);
+      assertEquals(playout.getNestedPicks(), [[[123]]]);
+    });
+    it("puts the pick last", () => {
+      const playout = new Playout([123], [0, 0], [0, 0]);
+      assertEquals(playout.getNestedPicks(), [[], [], 123]);
+    });
+    it("handles empty spans anywhere", () => {
+      const playout = new Playout([7, 8], [0, 0, 0], [2, 0, 1]);
+      assertEquals(playout.getNestedPicks(), [[[], [7], 8]]);
+    });
+    it("returns a value for any valid playout", () => {
+      repeatTest(validPlayout(), (p) => {
+        p.getNestedPicks();
+      });
+    });
+  });
+});
 
 describe("SpanLog", () => {
   describe("getSpans", () => {
