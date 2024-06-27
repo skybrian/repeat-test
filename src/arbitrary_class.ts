@@ -86,8 +86,6 @@ export default class Arbitrary<T> {
    */
   readonly maxSize: number | undefined;
 
-  private readonly wrapped: PickRequest | undefined;
-
   /**
    * Creates an arbitrary from a {@link PickRequest}, {@link ArbitraryCallback}, or {@link RecordShape}.
    */
@@ -109,11 +107,7 @@ export default class Arbitrary<T> {
       const callback: ArbitraryCallback<number> = (pick) => {
         return pick(arg);
       };
-      return new Arbitrary(callback, {
-        ...opts,
-        maxSize: arg.size,
-        wrapped: arg,
-      });
+      return new Arbitrary(callback, { ...opts, maxSize: arg.size });
     } else {
       let maxSize: number | undefined = 1;
       const keys = Object.keys(arg) as (keyof T)[];
@@ -158,11 +152,10 @@ export default class Arbitrary<T> {
 
   private constructor(
     callback: ArbitraryCallback<T>,
-    opts?: ArbitraryOptions<T> & { maxSize?: number; wrapped?: PickRequest },
+    opts?: ArbitraryOptions<T> & { maxSize?: number },
   ) {
     this.callback = callback;
     this.defaultPicks = opts?.defaultPicks ? [...opts.defaultPicks] : undefined;
-    this.wrapped = opts?.wrapped;
     this.maxSize = opts?.maxSize;
     this.default; // dry run
   }
