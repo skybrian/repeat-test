@@ -3,7 +3,7 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { assertSolutions } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import { PickRequest } from "../src/picks.ts";
+import { alwaysPickDefault, PickRequest } from "../src/picks.ts";
 import { PlayoutFailed } from "../src/playouts.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 
@@ -19,6 +19,11 @@ describe("Arbitrary", () => {
         throw "oops";
       };
       assertThrows(() => Arbitrary.from(callback));
+    });
+    it("accepts a constant record shape", () => {
+      const arb = Arbitrary.from({ a: Arbitrary.of(1), b: Arbitrary.of(2) });
+      assertEquals(arb.default, { a: 1, b: 2 });
+      assertEquals(arb.maxSize, 1);
     });
   });
 
@@ -42,6 +47,29 @@ describe("Arbitrary", () => {
         { val: "there", picks: [1] },
       ]);
       assertEquals(arb.maxSize, 2);
+    });
+  });
+
+  describe("pick", () => {
+    describe("the pick function (during a pick)", () => {
+      it("accepts a PickRequest", () => {
+        const req = new PickRequest(1, 2);
+        const arb = Arbitrary.from((pick) => pick(req));
+        assertEquals(arb.pick(alwaysPickDefault), 1);
+      });
+      it("accepts an Arbitrary", () => {
+        const req = Arbitrary.of("hi", "there");
+        const arb = Arbitrary.from((pick) => pick(req));
+        assertEquals(arb.pick(alwaysPickDefault), "hi");
+      });
+      it("accepts a record shape", () => {
+        const req = {
+          a: Arbitrary.of("hi", "there"),
+          b: Arbitrary.of(1, 2),
+        };
+        const arb = Arbitrary.from((pick) => pick(req));
+        assertEquals(arb.pick(alwaysPickDefault), { a: "hi", b: 1 });
+      });
     });
   });
 
@@ -96,52 +124,52 @@ describe("Arbitrary", () => {
         assertEquals(i, sixSided.parse([i]));
       }
     });
-  });
 
-  describe("the pick method created during a parse", () => {
-    const bit = new PickRequest(0, 1);
+    describe("the pick function (during a parse)", () => {
+      const bit = new PickRequest(0, 1);
 
-    function makeMock() {
-      const answers: number[] = [];
-      const exceptions: unknown[] = [];
-      const mock = Arbitrary.from((pick) => {
-        try {
-          answers.push(pick(bit));
-        } catch (e) {
-          exceptions.push(e);
-        }
-        return 123;
-      });
-      // clear anything that happened during the constructor
-      answers.length = 0;
-      exceptions.length = 0;
-      return { mock, answers, exceptions };
-    }
+      function makeMock() {
+        const answers: number[] = [];
+        const exceptions: unknown[] = [];
+        const mock = Arbitrary.from((pick) => {
+          try {
+            answers.push(pick(bit));
+          } catch (e) {
+            exceptions.push(e);
+          }
+          return 123;
+        });
+        // clear anything that happened during the constructor
+        answers.length = 0;
+        exceptions.length = 0;
+        return { mock, answers, exceptions };
+      }
 
-    describe("when there is no input", () => {
-      it("it throws PlayoutFailed", () => {
-        const { mock, answers, exceptions } = makeMock();
-        mock.parse([]);
-        assertEquals(answers, []);
-        assertEquals(exceptions.length, 1);
-        assert(exceptions[0] instanceof PlayoutFailed);
+      describe("when there is no input", () => {
+        it("it throws PlayoutFailed", () => {
+          const { mock, answers, exceptions } = makeMock();
+          mock.parse([]);
+          assertEquals(answers, []);
+          assertEquals(exceptions.length, 1);
+          assert(exceptions[0] instanceof PlayoutFailed);
+        });
       });
-    });
-    describe("when the input is in range", () => {
-      it("returns the next pick", () => {
-        const { mock, answers, exceptions } = makeMock();
-        mock.parse([1]);
-        assertEquals(answers, [1]);
-        assertEquals(exceptions.length, 0);
+      describe("when the input is in range", () => {
+        it("returns the next pick", () => {
+          const { mock, answers, exceptions } = makeMock();
+          mock.parse([1]);
+          assertEquals(answers, [1]);
+          assertEquals(exceptions.length, 0);
+        });
       });
-    });
-    describe("when the input is out of range", () => {
-      it("throws PlayoutFailed", () => {
-        const { mock, answers, exceptions } = makeMock();
-        mock.parse([2]);
-        assertEquals(answers, []);
-        assertEquals(exceptions.length, 1);
-        assert(exceptions[0] instanceof PlayoutFailed);
+      describe("when the input is out of range", () => {
+        it("throws PlayoutFailed", () => {
+          const { mock, answers, exceptions } = makeMock();
+          mock.parse([2]);
+          assertEquals(answers, []);
+          assertEquals(exceptions.length, 1);
+          assert(exceptions[0] instanceof PlayoutFailed);
+        });
       });
     });
   });

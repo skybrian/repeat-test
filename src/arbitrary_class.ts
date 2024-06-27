@@ -20,14 +20,27 @@ export type PickFunctionOptions<T> = {
   accept?: (val: T) => boolean;
 };
 
+export type AnyRecord = Record<string, unknown>;
+
 /**
- * Picks a value given either a PickRequest or an Arbitrary.
+ * Specifies a record to be generated.
+ *
+ * Each field will be independently generated from a different Arbitrary.
+ */
+export type RecordShape<T> = {
+  [K in keyof T]: Arbitrary<T[K]>;
+};
+
+/**
+ * Picks a value given a PickRequest, an Arbitrary, or a record shape containing
+ * multiple Arbitraries.
  *
  * Throws {@link PlayoutFailed} if it couldn't find a value.
  */
 export interface PickFunction {
   (req: PickRequest): number;
   <T>(req: Arbitrary<T>, opts?: PickFunctionOptions<T>): T;
+  <T extends AnyRecord>(reqs: RecordShape<T>, opts?: PickFunctionOptions<T>): T;
 }
 
 /**
@@ -76,18 +89,23 @@ export default class Arbitrary<T> {
   private readonly wrapped: PickRequest | undefined;
 
   /**
-   * Creates an arbitrary from a {@link PickRequest} or {@link ArbitraryCallback}.
+   * Creates an arbitrary from a {@link PickRequest}, {@link ArbitraryCallback}, or {@link RecordShape}.
    */
+  static from(req: PickRequest): Arbitrary<number>;
   static from<T>(
     callback: ArbitraryCallback<T>,
     opts?: ArbitraryOptions<T>,
   ): Arbitrary<T>;
-  static from(req: PickRequest): Arbitrary<number>;
+  static from<T extends AnyRecord>(
+    reqs: RecordShape<T>,
+  ): Arbitrary<T>;
   static from<T>(
-    arg: ArbitraryCallback<T> | PickRequest,
+    arg: PickRequest | ArbitraryCallback<T> | RecordShape<T>,
     opts?: ArbitraryOptions<T>,
   ): Arbitrary<T> | Arbitrary<number> {
-    if (arg instanceof PickRequest) {
+    if (typeof arg === "function") {
+      return new Arbitrary(arg, opts);
+    } else if (arg instanceof PickRequest) {
       const callback: ArbitraryCallback<number> = (pick) => {
         return pick(arg);
       };
@@ -96,8 +114,19 @@ export default class Arbitrary<T> {
         maxSize: arg.size,
         wrapped: arg,
       });
+    } else {
+      let maxSize: number | undefined = 1;
+      const keys = Object.keys(arg) as (keyof T)[];
+      for (const key of keys) {
+        const size = arg[key].maxSize;
+        if (size === undefined) {
+          maxSize = undefined;
+          break;
+        }
+        maxSize *= size;
+      }
+      return new Arbitrary((pick) => pick(arg) as T, { maxSize });
     }
-    return new Arbitrary(arg, opts);
   }
 
   /**
@@ -150,22 +179,20 @@ export default class Arbitrary<T> {
 
     const log = opts?.log ?? new FakePlayoutLogger();
 
-    const callbackPick: PickFunction = <T>(
-      req: PickRequest | Arbitrary<T>,
+    // These inner functions are mutually recursive and depend on the passed-in
+    // picker. They unwind the arbitraries depth-first to get each pick and then
+    // build up a value based on it.
+
+    const pickFromArbitrary = <T>(
+      req: Arbitrary<T>,
       opts?: PickFunctionOptions<T>,
-    ): number | T => {
-      if (req instanceof PickRequest) {
-        return input.pick(req);
-      }
+    ): T => {
       const accept = opts?.accept;
 
       // non-backtracking case
       if (accept === undefined) {
-        if (req.wrapped) {
-          return input.pick(req.wrapped);
-        }
         const level = log.startSpan();
-        const val = req.callback(callbackPick);
+        const val = req.callback(dispatch);
         log.endSpan({ level });
         return val;
       }
@@ -173,7 +200,7 @@ export default class Arbitrary<T> {
       // retry when there's a filter
       for (let tries = 0; tries < maxTries; tries++) {
         const level = log.startSpan();
-        const val = req.callback(callbackPick);
+        const val = req.callback(dispatch);
         if (accept(val)) {
           log.endSpan({ level, unwrap: req.wrapped !== undefined });
           return val;
@@ -192,7 +219,32 @@ export default class Arbitrary<T> {
       );
     };
 
-    const val = this.callback(callbackPick);
+    const pickRecord = <T>(req: RecordShape<T>): T => {
+      const keys = Object.keys(req) as (keyof T)[];
+      if (keys.length === 0) {
+        return {} as T;
+      }
+      const result = {} as Partial<T>;
+      for (const key of keys) {
+        result[key] = pickFromArbitrary(req[key]);
+      }
+      return result as T;
+    };
+
+    const dispatch: PickFunction = <T>(
+      req: PickRequest | Arbitrary<T> | RecordShape<T>,
+      opts?: PickFunctionOptions<T>,
+    ): number | T => {
+      if (req instanceof PickRequest) {
+        return input.pick(req);
+      } else if (req instanceof Arbitrary) {
+        return pickFromArbitrary(req, opts);
+      } else {
+        return pickRecord(req);
+      }
+    };
+
+    const val = this.callback(dispatch);
     log.finished();
     return val;
   }
