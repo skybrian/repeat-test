@@ -1,7 +1,6 @@
 import Arbitrary from "../arbitrary_class.ts";
-import { from, int, oneOf } from "./basics.ts";
+import { from, int, oneOf, record } from "./basics.ts";
 import { nonInteger, safeInt } from "./numbers.ts";
-import { record } from "./records.ts";
 
 export type Range = { min: number; max: number };
 

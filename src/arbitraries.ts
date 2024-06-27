@@ -4,7 +4,6 @@ import * as arb from "./arbitraries/basics.ts";
 export * from "./arbitraries/basics.ts";
 export * from "./arbitraries/numbers.ts";
 export * from "./arbitraries/strings.ts";
-export * from "./arbitraries/records.ts";
 export * from "./arbitraries/ranges.ts";
 
 type AnyTuple = unknown[];

@@ -1,4 +1,8 @@
-import Arbitrary, { ArbitraryCallback } from "../arbitrary_class.ts";
+import Arbitrary, {
+  AnyRecord,
+  ArbitraryCallback,
+  RecordShape,
+} from "../arbitrary_class.ts";
 import { chooseDefault, PickRequest } from "../picks.ts";
 import { BiasedIntPicker } from "../picks.ts";
 
@@ -81,6 +85,15 @@ export function int(
   const req = new PickRequest(min, max, { default: defaultVal, bias });
 
   return Arbitrary.from(req);
+}
+
+/**
+ * Creates an Arbitrary for a record with the given shape.
+ */
+export function record<T extends AnyRecord>(
+  shape: RecordShape<T>,
+): Arbitrary<T> {
+  return Arbitrary.from(shape);
 }
 
 export function oneOf<T>(cases: Arbitrary<T>[]): Arbitrary<T> {
