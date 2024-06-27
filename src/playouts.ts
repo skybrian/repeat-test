@@ -19,7 +19,7 @@ export type EndSpanOptions = {
  * Logs events during a playout.
  *
  * Picks can be grouped into *spans.* A span can contain zero or more picks, but
- * zero-length spans aren't normally recorded. The spans must nest to form a
+ * spans with less than two picks aren't normally recorded. The spans must nest to form a
  * tree. A span's *level* is the number of spans are still open when it's
  * created.
  */
@@ -194,8 +194,8 @@ export class SpanLog {
         `invalid span level. Want: ${this.openSpans.length + 1}, got: ${level}`,
       );
     }
-    const isEmpty = this.starts[spanIndex] === loc;
-    if (isEmpty || opts?.unwrap) {
+    const size = loc - this.starts[spanIndex];
+    if (size < 2 || opts?.unwrap) {
       this.starts.splice(spanIndex, 1);
       this.ends.splice(spanIndex, 1);
     } else {
