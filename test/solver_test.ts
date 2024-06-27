@@ -11,7 +11,7 @@ function assertSolutions<T>(
 ) {
   const actual = Array.from(sols).map((s) => ({
     val: s.val,
-    picks: s.getNestedPicks(),
+    picks: s.playout.getNestedPicks(),
   }));
   assertEquals(actual, expected);
 }

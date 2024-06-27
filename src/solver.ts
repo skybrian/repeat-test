@@ -19,22 +19,10 @@ export type PlayoutFunction<T> = (
   log: PlayoutLogger,
 ) => T;
 
-export class Solution<T> {
-  constructor(readonly val: T, private readonly playout: Playout) {
-    const { spanStarts, spanEnds } = this.playout;
-    if (spanStarts.length !== spanEnds.length) {
-      throw new Error("spanStarts and spanEnds must be the same length");
-    }
-  }
-
-  get picks() {
-    return this.playout.picks;
-  }
-
-  getNestedPicks() {
-    return this.playout.getNestedPicks();
-  }
-}
+export type Solution<T> = {
+  readonly val: T;
+  readonly playout: Playout;
+};
 
 /**
  * Visits every leaf in a search tree in order, depth-first. Starts with all
@@ -56,7 +44,7 @@ export function* generateAllSolutions<T>(
       if (playout === undefined) {
         throw new Error("playout didn't close every span");
       }
-      yield new Solution(val, playout);
+      yield { val, playout };
     } catch (e) {
       if (!(e instanceof PlayoutFailed)) {
         throw e;

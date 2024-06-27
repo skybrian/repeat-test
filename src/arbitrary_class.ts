@@ -336,7 +336,7 @@ export default class Arbitrary<T> {
       let tries = 0;
       for (const sol of this.solutions) {
         if (accept(sol.val)) {
-          return sol.picks;
+          return sol.playout.picks;
         }
         tries++;
         if (tries >= maxTries) {
