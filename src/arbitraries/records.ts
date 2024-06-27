@@ -4,9 +4,7 @@ import * as arb from "../arbitraries/basics.ts";
 type AnyRecord = Record<string, unknown>;
 type RecordShape<T extends AnyRecord> = { [K in keyof T]: Arbitrary<T[K]> };
 
-const empty: Arbitrary<Record<string, never>> = arb.bit().map((b) =>
-  b === 0 ? {} : Object.create(null)
-);
+const empty = arb.of(0).map(() => ({}));
 
 /**
  * Creates an Arbitrary for a record with the given shape.
@@ -22,7 +20,7 @@ export function record<T extends AnyRecord>(
   }
   const keys = Object.keys(shape) as (keyof T)[];
   return Arbitrary.from((pick) => {
-    const result = pick(empty) as Partial<T>;
+    const result = {} as Partial<T>;
     for (const key of keys) {
       result[key] = pick(shape[key]);
     }
