@@ -151,16 +151,6 @@ describe("SpanLog", () => {
       log.endSpan(2);
       assertEquals(log.getSpans(), { starts: [0], ends: [2] });
     });
-    it("doesn't add a span when unwrap is set", () => {
-      const log = new SpanLog();
-      log.startSpan(0);
-      log.startSpan(1);
-      log.startSpan(2);
-      log.endSpan(4);
-      log.endSpan(5, { unwrap: true });
-      log.endSpan(6);
-      assertEquals(log.getSpans(), { starts: [0, 2], ends: [6, 4] });
-    });
   });
 });
 

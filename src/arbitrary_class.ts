@@ -202,7 +202,7 @@ export default class Arbitrary<T> {
         const level = log.startSpan();
         const val = req.callback(dispatch);
         if (accept(val)) {
-          log.endSpan({ level, unwrap: req.wrapped !== undefined });
+          log.endSpan({ level });
           return val;
         }
         if (tries < maxTries - 1) {

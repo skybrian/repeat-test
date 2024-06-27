@@ -89,11 +89,6 @@ export type EndSpanOptions = {
    * If not set, the level of the last span is used.
    */
   level?: number;
-
-  /**
-   * If set, the span will removed, but its contents kept.
-   */
-  unwrap?: boolean;
 };
 
 /**
@@ -278,7 +273,7 @@ export class SpanLog {
     const size = end - start;
     const firstChild = spanIndex + 1;
     if (
-      size < 2 || opts?.unwrap ||
+      size < 2 ||
       (firstChild < this.starts.length && start === this.starts[firstChild] &&
         end === this.ends[firstChild])
     ) {
