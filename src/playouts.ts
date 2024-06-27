@@ -242,21 +242,67 @@ export class StrictPicker implements IntPicker {
     return this.offset === this.picks.length;
   }
 }
+export type NestedPicks = (number | NestedPicks)[];
 
-export type Playout = {
-  /** The picks made to generate the value. */
-  picks: number[];
-
+export class Playout {
   /**
-   * The starting index of each span, in the order entered.
+   * @param picks The picks made to generate the value.
+   * @param spanStarts The starting index of each span, in the order entered.
+   * @param spanEnds The ending index of each span, in the order entered.
    */
-  spanStarts: number[];
+  constructor(
+    readonly picks: number[],
+    readonly spanStarts: number[],
+    readonly spanEnds: number[],
+  ) {}
 
-  /**
-   * The ending index of each span, in the order entered.
-   */
-  spanEnds: number[];
-};
+  getNestedPicks(): NestedPicks {
+    const { picks, spanStarts, spanEnds } = this;
+
+    const root: NestedPicks = [];
+    let current = root;
+    const resultStack: NestedPicks[] = [];
+    const spanEndStack: number[] = [];
+
+    function startSpans(i: number) {
+      while (spanAt < spanStarts.length && spanStarts[spanAt] === i) {
+        // start a new list
+        const nextList: NestedPicks = [];
+        current.push(nextList);
+        resultStack.push(current);
+        current = nextList;
+
+        // remember where to stop
+        spanEndStack.push(spanEnds[spanAt]);
+        spanAt++;
+        endSpans(i); // might have just started an empty span
+      }
+    }
+
+    function endSpans(i: number) {
+      while (
+        spanEndStack.length > 0 && spanEndStack[spanEndStack.length - 1] === i
+      ) {
+        // end the current list
+        current = resultStack.pop() as NestedPicks;
+        spanEndStack.pop();
+      }
+    }
+
+    let spanAt = 0;
+    for (let i = 0; i <= picks.length; i++) {
+      endSpans(i);
+      startSpans(i);
+      if (i < picks.length) {
+        current.push(picks[i]);
+      }
+    }
+    if (spanEndStack.length > 0) {
+      throw new Error("unbalanced spanStarts and spanEnds");
+    }
+    return root;
+  }
+}
 
 /**
  * Records and replays the picks made during a playout.
@@ -443,6 +489,6 @@ export class PlayoutBuffer {
     const spans = this.spans.getSpans();
     if (!spans) return undefined;
     const { starts, ends } = spans;
-    return { picks, spanStarts: starts, spanEnds: ends };
+    return new Playout(picks, starts, ends);
   }
 }

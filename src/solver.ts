@@ -19,8 +19,6 @@ export type PlayoutFunction<T> = (
   log: PlayoutLogger,
 ) => T;
 
-export type NestedPicks = (number | NestedPicks)[];
-
 export class Solution<T> {
   constructor(readonly val: T, private readonly playout: Playout) {
     const { spanStarts, spanEnds } = this.playout;
@@ -33,51 +31,8 @@ export class Solution<T> {
     return this.playout.picks;
   }
 
-  getNestedPicks(): NestedPicks {
-    const { picks, spanStarts, spanEnds } = this.playout;
-
-    const root: NestedPicks = [];
-    let current = root;
-    const resultStack: NestedPicks[] = [];
-    const spanEndStack: number[] = [];
-
-    function startSpans(i: number) {
-      while (spanAt < spanStarts.length && spanStarts[spanAt] === i) {
-        // start a new list
-        const nextList: NestedPicks = [];
-        current.push(nextList);
-        resultStack.push(current);
-        current = nextList;
-
-        // remember where to stop
-        spanEndStack.push(spanEnds[spanAt]);
-        spanAt++;
-        endSpans(i); // might have just started an empty span
-      }
-    }
-
-    function endSpans(i: number) {
-      while (
-        spanEndStack.length > 0 && spanEndStack[spanEndStack.length - 1] === i
-      ) {
-        // end the current list
-        current = resultStack.pop() as NestedPicks;
-        spanEndStack.pop();
-      }
-    }
-
-    let spanAt = 0;
-    for (let i = 0; i <= picks.length; i++) {
-      endSpans(i);
-      startSpans(i);
-      if (i < picks.length) {
-        current.push(picks[i]);
-      }
-    }
-    if (spanEndStack.length > 0) {
-      throw new Error("unbalanced spanStarts and spanEnds");
-    }
-    return root;
+  getNestedPicks() {
+    return this.playout.getNestedPicks();
   }
 }
 

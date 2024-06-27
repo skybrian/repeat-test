@@ -2,8 +2,8 @@ import { describe, it } from "@std/testing/bdd";
 import { assertEquals } from "@std/assert";
 
 import { IntPicker, PickRequest } from "../src/picks.ts";
-import { PlayoutFailed } from "../src/playouts.ts";
-import { generateAllSolutions, NestedPicks, Solution } from "../src/solver.ts";
+import { NestedPicks, Playout, PlayoutFailed } from "../src/playouts.ts";
+import { generateAllSolutions, Solution } from "../src/solver.ts";
 import * as arb from "../src/arbitraries.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 import { repeatTest } from "../src/runner.ts";
@@ -40,7 +40,8 @@ function validSolution(
       }
       if (
         stack[stack.length - 1].size < maxSpanSize &&
-        picks.length < maxPicks && pick(arb.boolean())
+        picks.length < maxPicks &&
+        pick(arb.boolean())
       ) {
         stack[stack.length - 1].size++;
         picks.push(picks.length + 1);
@@ -54,11 +55,7 @@ function validSolution(
     spanEnds.splice(0, 1);
 
     const val = pick(arb.bit());
-    const playout = {
-      picks,
-      spanStarts,
-      spanEnds,
-    };
+    const playout = new Playout(picks, spanStarts, spanEnds);
     return new Solution(val, playout);
   });
 }
@@ -66,61 +63,33 @@ function validSolution(
 describe("Solution", () => {
   describe("getNestedPicks", () => {
     it("returns an empty list when there are no picks or spans", () => {
-      const sol = new Solution(123, {
-        picks: [],
-        spanStarts: [],
-        spanEnds: [],
-      });
+      const sol = new Solution(123, new Playout([], [], []));
       assertEquals(sol.getNestedPicks(), []);
     });
     it("returns a list of picks when there are only picks", () => {
-      const sol = new Solution(123, {
-        picks: [1, 2, 3],
-        spanStarts: [],
-        spanEnds: [],
-      });
+      const sol = new Solution(123, new Playout([1, 2, 3], [], []));
       assertEquals(sol.getNestedPicks(), [1, 2, 3]);
     });
     it("interprets empty spans as sequential", () => {
       // This is actually ambigous. Could also be [[]].
       // But SpanLog shouldn't be emitting empty spans anyway.
-      const sol = new Solution(123, {
-        picks: [],
-        spanStarts: [0, 0],
-        spanEnds: [0, 0],
-      });
+      const sol = new Solution(123, new Playout([], [0, 0], [0, 0]));
       assertEquals(sol.getNestedPicks(), [[], []]);
     });
     it("puts the pick first", () => {
-      const sol = new Solution(123, {
-        picks: [123],
-        spanStarts: [1, 1],
-        spanEnds: [1, 1],
-      });
+      const sol = new Solution(123, new Playout([123], [1, 1], [1, 1]));
       assertEquals(sol.getNestedPicks(), [123, [], []]);
     });
     it("puts the pick in the middle", () => {
-      const sol = new Solution(123, {
-        picks: [123],
-        spanStarts: [0, 0],
-        spanEnds: [1, 1],
-      });
+      const sol = new Solution(123, new Playout([123], [0, 0], [1, 1]));
       assertEquals(sol.getNestedPicks(), [[[123]]]);
     });
     it("puts the pick last", () => {
-      const sol = new Solution(123, {
-        picks: [123],
-        spanStarts: [0, 0],
-        spanEnds: [0, 0],
-      });
+      const sol = new Solution(123, new Playout([123], [0, 0], [0, 0]));
       assertEquals(sol.getNestedPicks(), [[], [], 123]);
     });
     it("handles empty spans anywhere", () => {
-      const sol = new Solution(123, {
-        picks: [7, 8],
-        spanStarts: [0, 0, 0],
-        spanEnds: [2, 0, 1],
-      });
+      const sol = new Solution(123, new Playout([7, 8], [0, 0, 0], [2, 0, 1]));
       assertEquals(sol.getNestedPicks(), [[[], [7], 8]]);
     });
     it("returns a value for any valid solution", () => {
