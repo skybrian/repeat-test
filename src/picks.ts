@@ -183,3 +183,49 @@ export function alwaysPick(n: number) {
   };
   return picker;
 }
+
+/** A history of pick requests and responses. */
+export class PickLog {
+  // Invariant: reqs.length == picks.length
+  // (Parallel lists.)
+
+  private readonly reqs: PickRequest[] = [];
+  private readonly picks: number[] = [];
+
+  get length() {
+    return this.reqs.length;
+  }
+
+  getPicks(): number[] {
+    return this.picks.slice();
+  }
+
+  getEntry(index: number) {
+    return { req: this.reqs[index], pick: this.picks[index] };
+  }
+
+  truncate(pickCount: number) {
+    this.reqs.length = pickCount;
+    this.picks.length = pickCount;
+  }
+
+  pushPick(request: PickRequest, replay: number): void {
+    this.reqs.push(request);
+    this.picks.push(replay);
+  }
+
+  /**
+   * Increments the last pick, wrapping around to the minimum value if needed.
+   * Returns the new value.
+   */
+  rotateLastPick(): number {
+    if (this.reqs.length === 0) {
+      throw new Error("log is empty");
+    }
+    const req = this.reqs[this.reqs.length - 1];
+    const pick = this.picks[this.picks.length - 1];
+    const next = (pick === req.max) ? req.min : pick + 1;
+    this.picks[this.picks.length - 1] = next;
+    return next;
+  }
+}
