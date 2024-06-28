@@ -362,7 +362,12 @@ export class PlayoutLog implements PlayoutWriter {
 /**
  * The methods available when running a playout.
  */
-export type PlayoutContext = IntPicker & PlayoutWriter;
+export type PlayoutContext = IntPicker & PlayoutWriter & {
+  /**
+   * Ends playout generation and returns the playout.
+   */
+  getPlayout(): Playout;
+};
 
 /**
  * Records and replays the picks made during a playout.
@@ -458,11 +463,14 @@ export class PlayoutRecorder {
 
     const endPlayout = () => {
       checkAlive();
-      this.log.endPlayout();
-      this.playoutCount++; // invalidate this object
+      this.endPlayout();
     };
 
-    return { pick, startSpan, cancelSpan, endSpan, endPlayout };
+    const getPlayout = () => {
+      return this.endPlayout();
+    };
+
+    return { pick, startSpan, cancelSpan, endSpan, endPlayout, getPlayout };
   }
 
   /**
@@ -501,6 +509,28 @@ export class PlayoutRecorder {
     this.playoutCount++; // invalidate current proxy
     this.log.endPlayout();
     return this.log.toPlayout();
+  }
+}
+
+/**
+ * A generator that returns a different sequence of picks each time.
+ *
+ * The sequence stops when all possible paths are exhausted. Uses a depth-first
+ * search.
+ *
+ * This assumes that the PickRequests are made by a deterministic function, so
+ * that if the pick() method returns the same picks, the function will take the
+ * same path.
+ */
+export function* everyPlayout(
+  picker: IntPicker,
+): IterableIterator<PlayoutContext> {
+  const recorder = new PlayoutRecorder(picker);
+  let playout = recorder.startPlayout();
+  yield playout;
+  while (recorder.increment()) {
+    playout = recorder.startPlayout();
+    yield playout;
   }
 }
 

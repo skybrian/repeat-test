@@ -1,9 +1,9 @@
 import { alwaysPickDefault } from "./picks.ts";
 import {
+  everyPlayout,
   Playout,
   PlayoutContext,
   PlayoutFailed,
-  PlayoutRecorder,
 } from "./playouts.ts";
 
 /**
@@ -30,21 +30,16 @@ export type Solution<T> = {
 export function* generateAllSolutions<T>(
   runPlayout: PlayoutFunction<T>,
 ): Generator<Solution<T>> {
-  const rec = new PlayoutRecorder(alwaysPickDefault);
-  while (true) {
+  for (const ctx of everyPlayout(alwaysPickDefault)) {
     try {
-      const val = runPlayout(rec.startPlayout());
-      const playout = rec.endPlayout();
+      const val = runPlayout(ctx);
+      const playout = ctx.getPlayout();
       yield { val, playout };
     } catch (e) {
       if (!(e instanceof PlayoutFailed)) {
         throw e;
       }
       // backtracked from a dead end; try the next path
-    }
-    if (!rec.increment()) {
-      // no more paths to try
-      return;
     }
   }
 }
