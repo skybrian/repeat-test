@@ -378,7 +378,7 @@ export type PlayoutContext = IntPicker & PlayoutWriter & {
  * The buffered playout can also be incremented like an odometer, which can be
  * used for a depth-first search of all possible playouts. See {@link increment}.
  */
-export class PlayoutRecorder {
+class PlayoutRecorder {
   // Invariant: recordedPicks.length === log.length.
 
   /** The picks that were originally recorded, as sent by the pick source. */
@@ -521,6 +521,8 @@ export class PlayoutRecorder {
  * This assumes that the PickRequests are made by a deterministic function, so
  * that if the pick() method returns the same picks, the function will take the
  * same path.
+ *
+ * @picker used to generate the picks through any unexplored subtree.
  */
 export function* everyPlayout(
   picker: IntPicker,
