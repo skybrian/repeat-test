@@ -124,7 +124,7 @@ export interface PlayoutWriter {
   /**
    * Called to indicate that the playout finished successfully.
    */
-  finished(): void;
+  endPlayout(): void;
 }
 
 /**
@@ -155,7 +155,7 @@ export class NullPlayoutWriter implements PlayoutWriter {
     this.level--;
   }
 
-  finished(): void {
+  endPlayout(): void {
     if (this.level !== 0) {
       throw new Error("unclosed span at end of playout");
     }
@@ -207,7 +207,7 @@ class PickLog {
   }
 }
 
-export class PlayoutLog {
+export class PlayoutLog implements PlayoutWriter {
   private readonly picks = new PickLog();
 
   readonly maxSize: number;
@@ -285,17 +285,23 @@ export class PlayoutLog {
     this.picks.truncate(this.picks.length - 1);
   }
 
-  startSpan(): void {
+  startSpan(): number {
     const spanIndex = this.starts.length;
     this.starts.push(this.playOffset);
     this.ends.push(NaN);
     this.openSpans.push(spanIndex);
+    return this.level;
   }
 
   /** Returns the index of the start of the span */
-  removeLastSpan(): number {
+  cancelSpan(level?: number): number {
     if (this.playOffset !== this.length) {
       throw new Error("can only remove a span from the end of a pick log");
+    }
+    if (level !== undefined && level !== this.level) {
+      throw new Error(
+        `invalid span level. Want: ${this.level}, got: ${level}`,
+      );
     }
     const idx = this.openSpans.pop();
     if (idx === undefined) {
@@ -337,44 +343,18 @@ export class PlayoutLog {
     this.ends[spanIndex] = end;
   }
 
+  endPlayout(): void {
+    if (this.level !== 0) {
+      throw new Error("unclosed span at end of playout");
+    }
+  }
+
   toPlayout() {
     if (this.level > 0) throw new Error("playout didn't close every span");
     const picks = this.picks.getPicks();
     const starts = this.starts.slice();
     const ends = this.ends.slice();
     return new Playout(picks, starts, ends);
-  }
-}
-
-/**
- * Thrown to indicate that a playout didn't find a solution.
- */
-export class PlayoutFailed extends Error {
-  constructor(msg: string) {
-    super(msg);
-  }
-}
-
-export class StrictPicker implements IntPicker {
-  offset = 0;
-
-  constructor(private readonly picks: number[]) {}
-
-  pick(req: PickRequest): number {
-    if (this.offset >= this.picks.length) {
-      throw new PlayoutFailed("ran out of picks");
-    }
-    const pick = this.picks[this.offset++];
-    if (!req.inRange(pick)) {
-      throw new PlayoutFailed(
-        `Pick ${this.offset - 1} (${pick}) is out of range for ${req}`,
-      );
-    }
-    return pick;
-  }
-
-  get finished(): boolean {
-    return this.offset === this.picks.length;
   }
 }
 
@@ -476,18 +456,12 @@ export class PlayoutBuffer {
 
     const startSpan = (): number => {
       checkAlive();
-      this.log.startSpan();
-      return this.log.level;
+      return this.log.startSpan();
     };
 
     const cancelSpan = (level?: number) => {
       checkAlive();
-      if (level !== undefined && level !== this.log.level) {
-        throw new Error(
-          `invalid span level. Want: ${this.log.level}, got: ${level}`,
-        );
-      }
-      const start = this.log.removeLastSpan();
+      const start = this.log.cancelSpan(level);
       this.recordedPicks.splice(start);
     };
 
@@ -496,12 +470,13 @@ export class PlayoutBuffer {
       this.log.endSpan(opts);
     };
 
-    const finished = () => {
+    const endPlayout = () => {
       checkAlive();
+      this.log.endPlayout();
       this.proxyCount++; // invalidate this object
     };
 
-    return { pick, startSpan, cancelSpan, endSpan, finished };
+    return { pick, startSpan, cancelSpan, endSpan, endPlayout };
   }
 
   /**
@@ -539,5 +514,37 @@ export class PlayoutBuffer {
     if (this.playing) throw new Error("not recording");
     this.proxyCount++; // invalidate current proxy
     return this.log.toPlayout();
+  }
+}
+
+/**
+ * Thrown to indicate that a playout didn't find a solution.
+ */
+export class PlayoutFailed extends Error {
+  constructor(msg: string) {
+    super(msg);
+  }
+}
+
+export class StrictPicker implements IntPicker {
+  offset = 0;
+
+  constructor(private readonly picks: number[]) {}
+
+  pick(req: PickRequest): number {
+    if (this.offset >= this.picks.length) {
+      throw new PlayoutFailed("ran out of picks");
+    }
+    const pick = this.picks[this.offset++];
+    if (!req.inRange(pick)) {
+      throw new PlayoutFailed(
+        `Pick ${this.offset - 1} (${pick}) is out of range for ${req}`,
+      );
+    }
+    return pick;
+  }
+
+  get finished(): boolean {
+    return this.offset === this.picks.length;
   }
 }

@@ -238,7 +238,7 @@ export default class Arbitrary<T> {
     };
 
     const val = this.callback(dispatch);
-    log.finished();
+    log.endPlayout();
     return val;
   }
 
