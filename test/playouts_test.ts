@@ -127,30 +127,35 @@ describe("Playout", () => {
 
 describe("PlayoutLog", () => {
   describe("getPlayout", () => {
+    const req = new PickRequest(1, 6);
+
     it("returns an empty array when there are no spans", () => {
       assertEquals(new PlayoutLog().toPlayout().toNestedPicks(), []);
     });
+
     it("ignores an empty span", () => {
       const log = new PlayoutLog();
-      log.startSpan(0);
-      log.endSpan(0);
+      log.startSpan();
+      log.endSpan();
       assertEquals(log.toPlayout().toNestedPicks(), []);
     });
+
     it("ignores a single-pick span", () => {
       const log = new PlayoutLog();
-      log.startSpan(0);
-      log.endSpan(1);
-      assertEquals(log.toPlayout().toNestedPicks(), []);
+      log.startSpan();
+      log.pushPick(req, 1);
+      log.endSpan();
+      assertEquals(log.toPlayout().toNestedPicks(), [1]);
     });
+
     it("ignores a span that contains only a single span", () => {
-      const req = new PickRequest(1, 6);
       const log = new PlayoutLog();
-      log.startSpan(0);
-      log.startSpan(0);
+      log.startSpan();
+      log.startSpan();
       log.pushPick(req, 1);
       log.pushPick(req, 2);
-      log.endSpan(2);
-      log.endSpan(2);
+      log.endSpan();
+      log.endSpan();
       assertEquals(log.toPlayout().toNestedPicks(), [[1, 2]]);
     });
   });
@@ -229,6 +234,51 @@ describe("PlayoutBuffer", () => {
   });
 
   describe("playNext", () => {
+    it("returns null when there are no picks", () => {
+      const stack = new PlayoutBuffer(alwaysPickDefault);
+      assertEquals(null, stack.playNext());
+    });
+
+    const one = new PickRequest(1, 1);
+
+    it("returns null when it can't increment a single pick", () => {
+      const stack = new PlayoutBuffer(alwaysPickDefault);
+      assertEquals(stack.record().pick(one), 1);
+      assertEquals(null, stack.playNext());
+    });
+
+    const bit = new PickRequest(0, 1);
+
+    it("increments a single pick", () => {
+      const stack = new PlayoutBuffer(alwaysPickDefault);
+      assertEquals(stack.record().pick(bit), 0);
+      const play = stack.playNext();
+      assert(play !== null);
+      assertEquals(play.pick(bit), 1);
+      assertEquals(null, stack.playNext());
+    });
+
+    it("wraps around for a single pick", () => {
+      const stack = new PlayoutBuffer(alwaysPick(1));
+      assertEquals(stack.record().pick(bit), 1);
+      const play = stack.playNext();
+      assert(play !== null);
+      assertEquals(play.pick(bit), 0);
+      assertEquals(null, stack.playNext());
+    });
+
+    it("pops a pick when it can't increment it", () => {
+      const stack = new PlayoutBuffer(alwaysPickDefault);
+      const record = stack.record();
+      assertEquals(record.pick(bit), 0);
+      assertEquals(record.pick(one), 1);
+      const play = stack.playNext();
+      assert(play !== null);
+      assertEquals(stack.length, 1);
+      assertEquals(play.pick(bit), 1);
+      assertEquals(null, stack.playNext());
+    });
+
     function collectReplays(
       stack: PlayoutBuffer,
       requests: PickRequest[],
@@ -242,7 +292,10 @@ describe("PlayoutBuffer", () => {
           picks.push(replay.pick(req));
         }
         const key = JSON.stringify(picks);
-        assertFalse(result.has(key), `already saw ${key}`);
+        assertFalse(
+          result.has(key),
+          `already saw ${key} (after ${result.size} replays)`,
+        );
         result.add(key);
 
         replay = stack.playNext();

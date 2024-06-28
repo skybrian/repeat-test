@@ -210,6 +210,8 @@ class PickLog {
 export class PlayoutLog {
   private readonly picks = new PickLog();
 
+  readonly maxSize: number;
+
   // Invariant: starts.length == ends.length
   // (Parallel lists.)
 
@@ -222,35 +224,56 @@ export class PlayoutLog {
   /** The offset of each incomplete span, in the order created.  */
   private readonly openSpans: number[] = [];
 
+  private playOffset = 0;
+
+  constructor(opts?: { maxSize?: number }) {
+    this.maxSize = opts?.maxSize || 1000;
+  }
+
   get length() {
     return this.picks.length;
+  }
+
+  get atEnd(): boolean {
+    return this.playOffset === this.picks.length;
   }
 
   get level(): number {
     return this.openSpans.length;
   }
 
-  getEntry(index: number) {
-    return this.picks.getEntry(index);
+  nextPick() {
+    if (this.atEnd) {
+      throw new Error("no more picks");
+    }
+    return this.picks.getEntry(this.playOffset++);
   }
 
   clear() {
     this.picks.truncate(0);
-    this.clearSpans();
+    this.rewind();
   }
 
-  private clearSpans(): void {
+  rewind(): void {
     this.starts.length = 0;
     this.ends.length = 0;
     this.openSpans.length = 0;
+    this.playOffset = 0;
   }
 
   pushPick(request: PickRequest, replay: number): void {
+    if (!this.atEnd) {
+      throw new Error("can't push a pick when not at the end of the log");
+    }
+    if (this.length >= this.maxSize) {
+      throw new Error("pick log is full");
+    }
     this.picks.pushPick(request, replay);
+    this.playOffset++;
   }
 
   rotateLastPick(): number {
-    this.clearSpans();
+    this.rewind();
     return this.picks.rotateLastPick();
   }
 
@@ -258,19 +281,22 @@ export class PlayoutLog {
     if (this.length === 0) {
       throw new Error("log is empty");
     }
-    this.clearSpans();
+    this.rewind();
     this.picks.truncate(this.picks.length - 1);
   }
 
-  startSpan(offset: number): void {
+  startSpan(): void {
     const spanIndex = this.starts.length;
-    this.starts.push(offset);
+    this.starts.push(this.playOffset);
     this.ends.push(NaN);
     this.openSpans.push(spanIndex);
   }
 
   /** Returns the index of the start of the span */
   removeLastSpan(): number {
+    if (this.playOffset !== this.length) {
+      throw new Error("can only remove a span from the end of a pick log");
+    }
     const idx = this.openSpans.pop();
     if (idx === undefined) {
       throw new Error("no open span");
@@ -279,10 +305,12 @@ export class PlayoutLog {
     this.starts.splice(idx);
     this.ends.splice(idx);
     this.picks.truncate(start);
+    this.playOffset = this.length;
     return start;
   }
 
-  endSpan(end: number, opts?: EndSpanOptions): void {
+  endSpan(opts?: EndSpanOptions): void {
+    const end = this.playOffset;
     const spanIndex = this.openSpans.pop();
     if (spanIndex === undefined) {
       throw new Error("no open span");
@@ -360,17 +388,13 @@ export class StrictPicker implements IntPicker {
  * used for a depth-first search of all possible playouts. See {@link playNext}.
  */
 export class PlayoutBuffer {
-  private readonly maxSize: number;
-
-  // Invariant: recordedPicks.length === picks.length.
+  // Invariant: recordedPicks.length === log.length.
 
   /** The picks that were originally recorded, as sent by the pick source. */
   private readonly recordedPicks: number[] = [];
 
   /** The picks and spans recorded during the current or most-recent playout. */
-  private readonly log = new PlayoutLog();
-
-  private playOffset = 0;
+  private readonly log: PlayoutLog;
 
   /** Used to give proxy IntPickers a unique id. */
   private proxyCount = 0;
@@ -384,7 +408,8 @@ export class PlayoutBuffer {
     private readonly source: IntPicker,
     opts?: { maxLogSize?: number },
   ) {
-    this.maxSize = opts?.maxLogSize ?? 1000;
+    const maxSize = opts?.maxLogSize ?? 1000;
+    this.log = new PlayoutLog({ maxSize });
   }
 
   /** The number of picks that have been recorded. */
@@ -394,7 +419,7 @@ export class PlayoutBuffer {
 
   /** Returns true if there are picks that haven't been replayed. */
   get playing() {
-    return this.playOffset < this.log.length;
+    return !this.log.atEnd;
   }
 
   /**
@@ -417,7 +442,7 @@ export class PlayoutBuffer {
    * {@link playNext}, or {@link finishPlayout}.
    */
   play(): IntPicker & PlayoutWriter {
-    this.playOffset = 0;
+    this.log.rewind();
 
     this.proxyCount++;
     const id = this.proxyCount;
@@ -431,55 +456,44 @@ export class PlayoutBuffer {
     const pick = (req: PickRequest): number => {
       checkAlive();
 
-      if (this.playOffset < this.log.length) {
+      if (!this.log.atEnd) {
         // replaying
-        const prev = this.log.getEntry(this.playOffset);
+        const prev = this.log.nextPick();
         if (prev.req.min !== req.min || prev.req.max !== req.max) {
           throw new Error(
             "when replaying, pick() must be called with the same request as before",
           );
         }
-        this.playOffset++;
         return prev.pick;
       }
 
       // recording
-      if (this.playOffset === this.maxSize) {
-        throw new Error(
-          `playout buffer is full (max size: ${this.maxSize})`,
-        );
-      }
       const pick = this.source.pick(req);
       this.log.pushPick(req, pick);
       this.recordedPicks.push(pick);
-      this.playOffset += 1;
       return pick;
     };
 
     const startSpan = (): number => {
       checkAlive();
-      this.log.startSpan(this.playOffset);
+      this.log.startSpan();
       return this.log.level;
     };
 
     const cancelSpan = (level?: number) => {
       checkAlive();
-      if (this.playOffset < this.log.length) {
-        throw new Error("can't cancel a span while replaying");
-      }
       if (level !== undefined && level !== this.log.level) {
         throw new Error(
           `invalid span level. Want: ${this.log.level}, got: ${level}`,
         );
       }
-
       const start = this.log.removeLastSpan();
       this.recordedPicks.splice(start);
     };
 
     const endSpan = (opts?: EndSpanOptions) => {
       checkAlive();
-      this.log.endSpan(this.playOffset, opts);
+      this.log.endSpan(opts);
     };
 
     const finished = () => {
@@ -499,7 +513,7 @@ export class PlayoutBuffer {
    * again.
    */
   playNext(): IntPicker & PlayoutWriter | null {
-    this.playOffset = 0;
+    this.log.rewind();
 
     while (this.log.length > 0) {
       const pick = this.log.rotateLastPick();
