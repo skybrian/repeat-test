@@ -244,7 +244,7 @@ export class PickLog {
 
   /**
    * Increments the last pick, wrapping around to the minimum value if needed.
-   * Returns true if it's changed from the original value.
+   * Returns true if it's different than the original value.
    */
   rotateLast(): boolean {
     if (this.reqs.length === 0) {
@@ -255,5 +255,24 @@ export class PickLog {
     const next = (pick === req.max) ? req.min : pick + 1;
     this.picks[this.picks.length - 1] = next;
     return next !== this.originals[this.originals.length - 1];
+  }
+
+  /**
+   * Mutates the pick log to a new, unseen value.
+   *
+   * Returns false if all possibilities have been tried.
+   *
+   * This can be used to do a depth-first search of all possible pick sequences.
+   */
+  increment(): boolean {
+    while (this.length > 0) {
+      if (this.rotateLast()) {
+        return true;
+      }
+      this.reqs.pop();
+      this.picks.pop();
+      this.originals.pop();
+    }
+    return false;
   }
 }

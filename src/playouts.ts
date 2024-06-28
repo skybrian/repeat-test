@@ -241,6 +241,11 @@ export class PlayoutLog implements PlayoutWriter {
     this.picks.truncate(this.picks.length - 1);
   }
 
+  increment(): boolean {
+    this.rewind();
+    return this.picks.increment();
+  }
+
   startSpan(): number {
     const spanIndex = this.starts.length;
     this.starts.push(this.playOffset);
@@ -430,19 +435,8 @@ class PlayoutRecorder {
    * been removed, so we're back to the initial state.
    */
   increment(): boolean {
-    this.log.rewind();
     this.playoutCount++; // invalidate current context
-
-    while (this.log.length > 0) {
-      const changedFromOriginal = this.log.rotateLastPick();
-      if (changedFromOriginal) return true;
-
-      // We exhausted all possibilties for the last pick request.
-      this.log.popPick();
-    }
-
-    // We exhausted all pick requests on the stack.
-    return false;
+    return this.log.increment();
   }
 
   /**
