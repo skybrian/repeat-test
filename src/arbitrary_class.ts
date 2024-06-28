@@ -278,8 +278,8 @@ export default class Arbitrary<T> {
    * Uses a depth-first search, starting from the default value.
    */
   get solutions(): IterableIterator<Solution<T>> {
-    return generateAllSolutions((picker, log): T => {
-      return this.pick(picker, { maxTries: 1, log });
+    return generateAllSolutions((context): T => {
+      return this.pick(context, { maxTries: 1, log: context });
     });
   }
 

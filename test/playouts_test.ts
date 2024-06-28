@@ -215,7 +215,7 @@ describe("PlayoutBuffer", () => {
       repeatTest(nestedPicks({ minSpanSize: 2 }), (input) => {
         const stack = new PlayoutBuffer(alwaysPickDefault);
         recordPicks(stack, input);
-        const playout = stack.finishPlayout();
+        const playout = stack.endPlayout();
         assert(playout !== undefined);
         assertEquals(playout.toNestedPicks(), input);
       });

@@ -2,8 +2,8 @@ import { alwaysPickDefault, IntPicker } from "./picks.ts";
 import {
   Playout,
   PlayoutBuffer,
+  PlayoutContext,
   PlayoutFailed,
-  PlayoutWriter,
 } from "./playouts.ts";
 
 /**
@@ -15,8 +15,7 @@ import {
  * was found (a dead end).
  */
 export type PlayoutFunction<T> = (
-  picker: IntPicker,
-  log: PlayoutWriter,
+  ctx: PlayoutContext,
 ) => T;
 
 export type Solution<T> = {
@@ -32,15 +31,15 @@ export function* generateAllSolutions<T>(
   runPlayout: PlayoutFunction<T>,
 ): Generator<Solution<T>> {
   const buffer = new PlayoutBuffer(alwaysPickDefault);
-  let next: IntPicker & PlayoutWriter | null = buffer.record();
+  let next: PlayoutContext | null = buffer.record();
   while (next !== null) {
     try {
-      const val = runPlayout(next, next);
+      const val = runPlayout(next);
       if (buffer.playing) {
         throw new Error("playout didn't read every value");
       }
       // reached a solution
-      const playout = buffer.finishPlayout();
+      const playout = buffer.endPlayout();
       if (playout === undefined) {
         throw new Error("playout didn't close every span");
       }

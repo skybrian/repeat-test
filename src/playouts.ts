@@ -359,6 +359,11 @@ export class PlayoutLog implements PlayoutWriter {
 }
 
 /**
+ * The methods available when running a playout.
+ */
+export type PlayoutContext = IntPicker & PlayoutWriter;
+
+/**
  * Records and replays the picks made during a playout.
  *
  * When replaying, it starts by playing back the picks in the buffer, then
@@ -406,9 +411,9 @@ export class PlayoutBuffer {
    * Clears the log and starts recording. Returns the picker to use.
    *
    * The picker's lifetime is until the next call to {@link record}, {@link play},
-   * {@link playNext}, or {@link finishPlayout}.
+   * {@link playNext}, or {@link endPlayout}.
    */
-  record(): IntPicker & PlayoutWriter {
+  record(): PlayoutContext {
     this.log.clear();
     this.recordedPicks.length = 0;
     return this.play();
@@ -419,9 +424,9 @@ export class PlayoutBuffer {
    * will start recording again.
    *
    * The picker's lifetime is until the next call to {@link record}, {@link play},
-   * {@link playNext}, or {@link finishPlayout}.
+   * {@link playNext}, or {@link endPlayout}.
    */
-  play(): IntPicker & PlayoutWriter {
+  play(): PlayoutContext {
     this.log.rewind();
 
     this.proxyCount++;
@@ -487,7 +492,7 @@ export class PlayoutBuffer {
    * value if needed. If all picks have been used, it pops the stack and tries
    * again.
    */
-  playNext(): IntPicker & PlayoutWriter | null {
+  playNext(): PlayoutContext | null {
     this.log.rewind();
 
     while (this.log.length > 0) {
@@ -510,9 +515,10 @@ export class PlayoutBuffer {
    *
    * Invalidates the current picker, so no more picks can be recorded.
    */
-  finishPlayout(): Playout {
+  endPlayout(): Playout {
     if (this.playing) throw new Error("not recording");
     this.proxyCount++; // invalidate current proxy
+    this.log.endPlayout();
     return this.log.toPlayout();
   }
 }
