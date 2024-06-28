@@ -8,7 +8,6 @@ import {
   alwaysPick,
   alwaysPickDefault,
   alwaysPickMin,
-  IntPicker,
   PickRequest,
   PickRequestOptions,
 } from "../src/picks.ts";
@@ -18,8 +17,8 @@ import { randomPicker } from "../src/random.ts";
 import {
   NestedPicks,
   Playout,
-  PlayoutBuffer,
   PlayoutLog,
+  PlayoutRecorder,
 } from "../src/playouts.ts";
 
 type NestedPickOpts = {
@@ -177,8 +176,8 @@ function validRequest(
   });
 }
 
-function recordPicks(out: PlayoutBuffer, input: NestedPicks) {
-  const cursor = out.record();
+function recordPicks(out: PlayoutRecorder, input: NestedPicks) {
+  const cursor = out.startPlayout();
   function walk(input: NestedPicks) {
     for (const item of input) {
       if (typeof item === "number") {
@@ -194,103 +193,106 @@ function recordPicks(out: PlayoutBuffer, input: NestedPicks) {
   walk(input);
 }
 
-describe("PlayoutBuffer", () => {
+describe("PlayoutRecorder", () => {
   const validRequestAndReply = arb.from((pick) => {
     const req = pick(validRequest());
     const n = pick(req);
     return { req, n };
   });
 
-  describe("record", () => {
+  describe("startPlayout", () => {
     it("accepts any pick", () => {
       repeatTest(validRequestAndReply, ({ req, n }) => {
-        const stack = new PlayoutBuffer(alwaysPick(n));
-        assertEquals(stack.length, 0);
-        assertEquals(stack.record().pick(req), n);
-        assertEquals(stack.length, 1);
+        const stack = new PlayoutRecorder(alwaysPick(n));
+        assertEquals(stack.startPlayout().pick(req), n);
+        assertEquals(stack.endPlayout().picks, [n]);
       });
     });
 
     it("round trips any nested picks with spans at least 2", () => {
       repeatTest(nestedPicks({ minSpanSize: 2 }), (input) => {
-        const stack = new PlayoutBuffer(alwaysPickDefault);
+        const stack = new PlayoutRecorder(alwaysPickDefault);
         recordPicks(stack, input);
         const playout = stack.endPlayout();
         assert(playout !== undefined);
         assertEquals(playout.toNestedPicks(), input);
       });
     });
-  });
-
-  describe("play", () => {
-    it("replays any pick", () => {
-      repeatTest(validRequestAndReply, ({ req, n }) => {
-        const stack = new PlayoutBuffer(alwaysPick(n));
-        assertEquals(stack.record().pick(req), n);
-        assertEquals(stack.play().pick(req), n);
-        assertEquals(stack.length, 1);
+    it("replays the previous picks the second time", () => {
+      const example = arb.record({
+        req: validRequest(),
+        seed: arb.int32(),
+      });
+      repeatTest(example, ({ req, seed }) => {
+        const picker = randomPicker(seed);
+        const stack = new PlayoutRecorder(picker);
+        const n = stack.startPlayout().pick(req);
+        assertEquals(stack.endPlayout().picks, [n]);
+        assertEquals(stack.startPlayout().pick(req), n);
       });
     });
   });
 
-  describe("playNext", () => {
-    it("returns null when there are no picks", () => {
-      const stack = new PlayoutBuffer(alwaysPickDefault);
-      assertEquals(null, stack.playNext());
+  describe("increment", () => {
+    it("returns false when the first playout did no picks", () => {
+      const it = new PlayoutRecorder(alwaysPickDefault);
+      it.startPlayout();
+      it.endPlayout();
+      assertFalse(it.increment());
     });
 
     const one = new PickRequest(1, 1);
 
-    it("returns null when it can't increment a single pick", () => {
-      const stack = new PlayoutBuffer(alwaysPickDefault);
-      assertEquals(stack.record().pick(one), 1);
-      assertEquals(null, stack.playNext());
+    it("returns false when the first pick has only one choice", () => {
+      const it = new PlayoutRecorder(alwaysPickDefault);
+      assertEquals(it.startPlayout().pick(one), 1);
+      assertFalse(it.increment());
     });
 
     const bit = new PickRequest(0, 1);
 
     it("increments a single pick", () => {
-      const stack = new PlayoutBuffer(alwaysPickDefault);
-      assertEquals(stack.record().pick(bit), 0);
-      const play = stack.playNext();
-      assert(play !== null);
-      assertEquals(play.pick(bit), 1);
-      assertEquals(null, stack.playNext());
+      const it = new PlayoutRecorder(alwaysPickDefault);
+      assertEquals(it.startPlayout().pick(bit), 0);
+      assert(it.increment());
+      assertEquals(it.startPlayout().pick(bit), 1);
+      assertFalse(it.increment());
     });
 
     it("wraps around for a single pick", () => {
-      const stack = new PlayoutBuffer(alwaysPick(1));
-      assertEquals(stack.record().pick(bit), 1);
-      const play = stack.playNext();
-      assert(play !== null);
-      assertEquals(play.pick(bit), 0);
-      assertEquals(null, stack.playNext());
+      const it = new PlayoutRecorder(alwaysPick(1));
+      assertEquals(it.startPlayout().pick(bit), 1);
+      assert(it.increment());
+      assertEquals(it.startPlayout().pick(bit), 0);
+      assertFalse(it.increment());
     });
 
     it("pops a pick when it can't increment it", () => {
-      const stack = new PlayoutBuffer(alwaysPickDefault);
-      const record = stack.record();
-      assertEquals(record.pick(bit), 0);
-      assertEquals(record.pick(one), 1);
-      const play = stack.playNext();
-      assert(play !== null);
-      assertEquals(stack.length, 1);
-      assertEquals(play.pick(bit), 1);
-      assertEquals(null, stack.playNext());
+      const it = new PlayoutRecorder(alwaysPickDefault);
+      let ctx = it.startPlayout();
+      assertEquals(ctx.pick(bit), 0);
+      assertEquals(ctx.pick(one), 1);
+      assertEquals(it.endPlayout().picks, [0, 1]);
+      assert(it.increment());
+      ctx = it.startPlayout();
+      assertEquals(ctx.pick(bit), 1);
+      assertEquals(it.endPlayout().picks, [1]);
+      assertFalse(it.increment());
     });
 
     function collectReplays(
-      stack: PlayoutBuffer,
+      stack: PlayoutRecorder,
       requests: PickRequest[],
     ): Set<string> {
       const result = new Set<string>();
 
-      let replay: IntPicker | null = stack.play();
-      while (replay != null) {
+      while (true) {
+        const ctx = stack.startPlayout();
         const picks: number[] = [];
         for (const req of requests) {
-          picks.push(replay.pick(req));
+          picks.push(ctx.pick(req));
         }
+        ctx.endPlayout();
         const key = JSON.stringify(picks);
         assertFalse(
           result.has(key),
@@ -298,7 +300,9 @@ describe("PlayoutBuffer", () => {
         );
         result.add(key);
 
-        replay = stack.playNext();
+        if (!stack.increment()) {
+          break;
+        }
       }
 
       return result;
@@ -309,8 +313,8 @@ describe("PlayoutBuffer", () => {
       const digits = Array(3).fill(digit);
 
       // set to 0, 0, 0
-      const stack = new PlayoutBuffer(alwaysPickMin);
-      const record = stack.record();
+      const stack = new PlayoutRecorder(alwaysPickMin);
+      const record = stack.startPlayout();
       digits.forEach((req) => record.pick(req));
 
       const combos = Array.from(collectReplays(stack, digits));
@@ -325,10 +329,10 @@ describe("PlayoutBuffer", () => {
         seed: arb.int32(),
       });
       repeatTest(example, ({ requests, seed }) => {
-        const stack = new PlayoutBuffer(randomPicker(seed));
+        const stack = new PlayoutRecorder(randomPicker(seed));
 
         // record some random picks
-        const recorder = stack.record();
+        const recorder = stack.startPlayout();
         const original: number[] = [];
         for (const req of requests) {
           const n = recorder.pick(req);

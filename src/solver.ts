@@ -1,9 +1,9 @@
-import { alwaysPickDefault, IntPicker } from "./picks.ts";
+import { alwaysPickDefault } from "./picks.ts";
 import {
   Playout,
-  PlayoutBuffer,
   PlayoutContext,
   PlayoutFailed,
+  PlayoutRecorder,
 } from "./playouts.ts";
 
 /**
@@ -30,19 +30,11 @@ export type Solution<T> = {
 export function* generateAllSolutions<T>(
   runPlayout: PlayoutFunction<T>,
 ): Generator<Solution<T>> {
-  const buffer = new PlayoutBuffer(alwaysPickDefault);
-  let next: PlayoutContext | null = buffer.record();
-  while (next !== null) {
+  const rec = new PlayoutRecorder(alwaysPickDefault);
+  while (true) {
     try {
-      const val = runPlayout(next);
-      if (buffer.playing) {
-        throw new Error("playout didn't read every value");
-      }
-      // reached a solution
-      const playout = buffer.endPlayout();
-      if (playout === undefined) {
-        throw new Error("playout didn't close every span");
-      }
+      const val = runPlayout(rec.startPlayout());
+      const playout = rec.endPlayout();
       yield { val, playout };
     } catch (e) {
       if (!(e instanceof PlayoutFailed)) {
@@ -50,6 +42,9 @@ export function* generateAllSolutions<T>(
       }
       // backtracked from a dead end; try the next path
     }
-    next = buffer.playNext();
+    if (!rec.increment()) {
+      // no more paths to try
+      return;
+    }
   }
 }

@@ -8,7 +8,7 @@ export type NestedPicks = (number | NestedPicks)[];
  * Picks are grouped into *spans.* Picks within the same span represent a
  * subtree in the process used to generate a value.
  *
- * To avoid clutter, {@link PlayoutBuffer} only records spans with two or more
+ * To avoid clutter, {@link PlayoutRecorder} only records spans with two or more
  * picks. So, constant subtrees are not represented in the Playout, and any
  * value that was generated based on a single integer pick is represented as a
  * single number.
@@ -230,6 +230,7 @@ export class PlayoutLog implements PlayoutWriter {
     this.maxSize = opts?.maxSize || 1000;
   }
 
+  /** The number of picks that have been recorded. */
   get length() {
     return this.picks.length;
   }
@@ -370,9 +371,9 @@ export type PlayoutContext = IntPicker & PlayoutWriter;
  * switches to recording mode.
  *
  * The buffered playout can also be incremented like an odometer, which can be
- * used for a depth-first search of all possible playouts. See {@link playNext}.
+ * used for a depth-first search of all possible playouts. See {@link increment}.
  */
-export class PlayoutBuffer {
+export class PlayoutRecorder {
   // Invariant: recordedPicks.length === log.length.
 
   /** The picks that were originally recorded, as sent by the pick source. */
@@ -382,7 +383,7 @@ export class PlayoutBuffer {
   private readonly log: PlayoutLog;
 
   /** Used to give proxy IntPickers a unique id. */
-  private proxyCount = 0;
+  private playoutCount = 0;
 
   /**
    * Constructs a new, empty log, ready for recording.
@@ -397,43 +398,23 @@ export class PlayoutBuffer {
     this.log = new PlayoutLog({ maxSize });
   }
 
-  /** The number of picks that have been recorded. */
-  get length() {
-    return this.log.length;
-  }
-
-  /** Returns true if there are picks that haven't been replayed. */
-  get playing() {
-    return !this.log.atEnd;
-  }
-
   /**
-   * Clears the log and starts recording. Returns the picker to use.
+   * Returns the context to use for a new playout.
    *
-   * The picker's lifetime is until the next call to {@link record}, {@link play},
-   * {@link playNext}, or {@link endPlayout}.
-   */
-  record(): PlayoutContext {
-    this.log.clear();
-    this.recordedPicks.length = 0;
-    return this.play();
-  }
-
-  /**
-   * Starts replaying the log, using a new picker. After reaching the end, it
-   * will start recording again.
+   * It will replay any previously recorded picks, and then take picks from the
+   * source provided in the constructor.
    *
-   * The picker's lifetime is until the next call to {@link record}, {@link play},
-   * {@link playNext}, or {@link endPlayout}.
+   * The context's lifetime is until the next call to {@link startPlayout},
+   * {@link increment}, or {@link endPlayout}.
    */
-  play(): PlayoutContext {
+  startPlayout(): PlayoutContext {
     this.log.rewind();
 
-    this.proxyCount++;
-    const id = this.proxyCount;
+    this.playoutCount++;
+    const id = this.playoutCount;
 
     const checkAlive = () => {
-      if (id !== this.proxyCount) {
+      if (id !== this.playoutCount) {
         throw new Error("can't use this picker because the playout is over");
       }
     };
@@ -478,27 +459,27 @@ export class PlayoutBuffer {
     const endPlayout = () => {
       checkAlive();
       this.log.endPlayout();
-      this.proxyCount++; // invalidate this object
+      this.playoutCount++; // invalidate this object
     };
 
     return { pick, startSpan, cancelSpan, endSpan, endPlayout };
   }
 
   /**
-   * Starts a replay using a new combination of picks. Returns null when all
-   * combinations have been tried.
+   * Increments the logged picks so that the next playout won't match any
+   * previous one.
    *
-   * It increments the top pick on the stack, wrapping around to the minimum
-   * value if needed. If all picks have been used, it pops the stack and tries
-   * again.
+   * @returns true if successful. False means that all recorded playouts have
+   * been removed, so we're back to the initial state.
    */
-  playNext(): PlayoutContext | null {
+  increment(): boolean {
     this.log.rewind();
+    this.playoutCount++; // invalidate current context
 
     while (this.log.length > 0) {
       const pick = this.log.rotateLastPick();
       if (pick !== this.recordedPicks[this.log.length - 1]) {
-        return this.play();
+        return true;
       }
 
       // We exhausted all possibilties for the last pick request.
@@ -507,7 +488,7 @@ export class PlayoutBuffer {
     }
 
     // We exhausted all pick requests on the stack.
-    return null;
+    return false;
   }
 
   /**
@@ -516,8 +497,8 @@ export class PlayoutBuffer {
    * Invalidates the current picker, so no more picks can be recorded.
    */
   endPlayout(): Playout {
-    if (this.playing) throw new Error("not recording");
-    this.proxyCount++; // invalidate current proxy
+    if (!this.log.atEnd) throw new Error("playout didn't read every pick");
+    this.playoutCount++; // invalidate current proxy
     this.log.endPlayout();
     return this.log.toPlayout();
   }
