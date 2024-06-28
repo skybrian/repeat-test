@@ -184,41 +184,69 @@ export function alwaysPick(n: number) {
   return picker;
 }
 
-/** A history of pick requests and responses. */
+type PickLogEntry = {
+  req: PickRequest;
+  pick: number;
+};
+
+/**
+ * A history of pick requests and responses.
+ *
+ * The picks in the history can be modified.
+ */
 export class PickLog {
-  // Invariant: reqs.length == picks.length
-  // (Parallel lists.)
+  // Invariant: reqs.length == picks.length == originals.length (Parallel lists.)
 
   private readonly reqs: PickRequest[] = [];
+
+  /** The replies as originally pushed, before modification. */
+  private readonly originals: number[] = [];
+
+  /** The current value of each reply. */
   private readonly picks: number[] = [];
 
   get length() {
     return this.reqs.length;
   }
 
-  getPicks(): number[] {
+  /**
+   * Returns true if any pick was changed.
+   */
+  get changed() {
+    return this.picks.some((pick, i) => pick !== this.originals[i]);
+  }
+
+  get replies(): number[] {
     return this.picks.slice();
   }
 
-  getEntry(index: number) {
-    return { req: this.reqs[index], pick: this.picks[index] };
+  getEntry(index: number): PickLogEntry {
+    return {
+      req: this.reqs[index],
+      pick: this.picks[index],
+    };
   }
 
-  truncate(pickCount: number) {
+  truncate(pickCount: number): void {
+    if (pickCount < 0 || pickCount > this.length) {
+      throw new Error(`new pickCount not in range; got ${pickCount}`);
+    }
     this.reqs.length = pickCount;
     this.picks.length = pickCount;
+    this.originals.length = pickCount;
   }
 
-  pushPick(request: PickRequest, replay: number): void {
+  push(request: PickRequest, response: number): void {
     this.reqs.push(request);
-    this.picks.push(replay);
+    this.picks.push(response);
+    this.originals.push(response);
   }
 
   /**
    * Increments the last pick, wrapping around to the minimum value if needed.
-   * Returns the new value.
+   * Returns true if it's changed from the original value.
    */
-  rotateLastPick(): number {
+  rotateLast(): boolean {
     if (this.reqs.length === 0) {
       throw new Error("log is empty");
     }
@@ -226,6 +254,6 @@ export class PickLog {
     const pick = this.picks[this.picks.length - 1];
     const next = (pick === req.max) ? req.min : pick + 1;
     this.picks[this.picks.length - 1] = next;
-    return next;
+    return next !== this.originals[this.originals.length - 1];
   }
 }

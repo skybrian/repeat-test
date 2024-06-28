@@ -224,13 +224,13 @@ export class PlayoutLog implements PlayoutWriter {
     if (this.length >= this.maxSize) {
       throw new Error("pick log is full");
     }
-    this.picks.pushPick(request, replay);
+    this.picks.push(request, replay);
     this.playOffset++;
   }
 
-  rotateLastPick(): number {
+  rotateLastPick(): boolean {
     this.rewind();
-    return this.picks.rotateLastPick();
+    return this.picks.rotateLast();
   }
 
   popPick() {
@@ -307,10 +307,9 @@ export class PlayoutLog implements PlayoutWriter {
 
   toPlayout() {
     if (this.level > 0) throw new Error("playout didn't close every span");
-    const picks = this.picks.getPicks();
     const starts = this.starts.slice();
     const ends = this.ends.slice();
-    return new Playout(picks, starts, ends);
+    return new Playout(this.picks.replies, starts, ends);
   }
 }
 
@@ -335,9 +334,6 @@ export type PlayoutContext = IntPicker & PlayoutWriter & {
  */
 class PlayoutRecorder {
   // Invariant: recordedPicks.length === log.length.
-
-  /** The picks that were originally recorded, as sent by the pick source. */
-  private readonly recordedPicks: number[] = [];
 
   /** The picks and spans recorded during the current or most-recent playout. */
   private readonly log: PlayoutLog;
@@ -396,7 +392,6 @@ class PlayoutRecorder {
       // recording
       const pick = this.source.pick(req);
       this.log.pushPick(req, pick);
-      this.recordedPicks.push(pick);
       return pick;
     };
 
@@ -407,8 +402,7 @@ class PlayoutRecorder {
 
     const cancelSpan = (level?: number) => {
       checkAlive();
-      const start = this.log.cancelSpan(level);
-      this.recordedPicks.splice(start);
+      this.log.cancelSpan(level);
     };
 
     const endSpan = (opts?: EndSpanOptions) => {
@@ -440,14 +434,11 @@ class PlayoutRecorder {
     this.playoutCount++; // invalidate current context
 
     while (this.log.length > 0) {
-      const pick = this.log.rotateLastPick();
-      if (pick !== this.recordedPicks[this.log.length - 1]) {
-        return true;
-      }
+      const changedFromOriginal = this.log.rotateLastPick();
+      if (changedFromOriginal) return true;
 
       // We exhausted all possibilties for the last pick request.
       this.log.popPick();
-      this.recordedPicks.pop();
     }
 
     // We exhausted all pick requests on the stack.
