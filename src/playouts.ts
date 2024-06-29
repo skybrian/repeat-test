@@ -1,4 +1,4 @@
-import { IntPicker, PickLog, PickRequest } from "./picks.ts";
+import { everyPath, IntPicker, PickPath, PickRequest } from "./picks.ts";
 
 export type NestedPicks = (number | NestedPicks)[];
 
@@ -162,9 +162,10 @@ export class NullPlayoutWriter implements PlayoutWriter {
   }
 }
 
+/**
+ * Logs a single playout.
+ */
 export class PlayoutLog implements PlayoutWriter {
-  private readonly picks = new PickLog();
-
   readonly maxSize: number;
 
   // Invariant: starts.length == ends.length
@@ -181,17 +182,17 @@ export class PlayoutLog implements PlayoutWriter {
 
   private playOffset = 0;
 
-  constructor(opts?: { maxSize?: number }) {
+  constructor(private readonly path: PickPath, opts?: { maxSize?: number }) {
     this.maxSize = opts?.maxSize || 1000;
   }
 
   /** The number of picks that have been recorded. */
   get length() {
-    return this.picks.length;
+    return this.path.depth;
   }
 
   get atEnd(): boolean {
-    return this.playOffset === this.picks.length;
+    return this.playOffset === this.path.depth;
   }
 
   get level(): number {
@@ -202,19 +203,7 @@ export class PlayoutLog implements PlayoutWriter {
     if (this.atEnd) {
       throw new Error("no more picks");
     }
-    return this.picks.getEntry(this.playOffset++);
-  }
-
-  clear() {
-    this.picks.truncate(0);
-    this.rewind();
-  }
-
-  rewind(): void {
-    this.starts.length = 0;
-    this.ends.length = 0;
-    this.openSpans.length = 0;
-    this.playOffset = 0;
+    return this.path.entryAt(this.playOffset++);
   }
 
   pushPick(request: PickRequest, replay: number): void {
@@ -224,26 +213,8 @@ export class PlayoutLog implements PlayoutWriter {
     if (this.length >= this.maxSize) {
       throw new Error("pick log is full");
     }
-    this.picks.push(request, replay);
+    this.path.addChild(request, replay);
     this.playOffset++;
-  }
-
-  rotateLastPick(): boolean {
-    this.rewind();
-    return this.picks.rotateLast();
-  }
-
-  popPick() {
-    if (this.length === 0) {
-      throw new Error("log is empty");
-    }
-    this.rewind();
-    this.picks.truncate(this.picks.length - 1);
-  }
-
-  increment(): boolean {
-    this.rewind();
-    return this.picks.increment();
   }
 
   startSpan(): number {
@@ -271,7 +242,7 @@ export class PlayoutLog implements PlayoutWriter {
     const start = this.starts[idx];
     this.starts.splice(idx);
     this.ends.splice(idx);
-    this.picks.truncate(start);
+    this.path.truncate(start);
     this.playOffset = this.length;
     return start;
   }
@@ -314,7 +285,7 @@ export class PlayoutLog implements PlayoutWriter {
     if (this.level > 0) throw new Error("playout didn't close every span");
     const starts = this.starts.slice();
     const ends = this.ends.slice();
-    return new Playout(this.picks.replies, starts, ends);
+    return new Playout(this.path.replies, starts, ends);
   }
 }
 
@@ -329,22 +300,13 @@ export type PlayoutContext = IntPicker & PlayoutWriter & {
 };
 
 /**
- * Records and replays the picks made during a playout.
+ * Records and replays the picks made during a single playout.
  *
  * When replaying, it starts by playing back the picks in the buffer, then
  * switches to recording mode.
- *
- * The buffered playout can also be incremented like an odometer, which can be
- * used for a depth-first search of all possible playouts. See {@link increment}.
  */
 class PlayoutRecorder {
-  // Invariant: recordedPicks.length === log.length.
-
-  /** The picks and spans recorded during the current or most-recent playout. */
-  private readonly log: PlayoutLog;
-
-  /** Used to give proxy IntPickers a unique id. */
-  private playoutCount = 0;
+  readonly log: PlayoutLog;
 
   /**
    * Constructs a new, empty log, ready for recording.
@@ -352,37 +314,22 @@ class PlayoutRecorder {
    * @param source provides the picks when recording.
    */
   constructor(
+    private readonly path: PickPath,
     private readonly source: IntPicker,
     opts?: { maxLogSize?: number },
   ) {
     const maxSize = opts?.maxLogSize ?? 1000;
-    this.log = new PlayoutLog({ maxSize });
+    this.log = new PlayoutLog(this.path, { maxSize });
   }
 
   /**
-   * Returns the context to use for a new playout.
+   * Returns a context to use for a new playout.
    *
    * It will replay any previously recorded picks, and then take picks from the
    * source provided in the constructor.
-   *
-   * The context's lifetime is until the next call to {@link startPlayout},
-   * {@link increment}, or {@link endPlayout}.
    */
   startPlayout(): PlayoutContext {
-    this.log.rewind();
-
-    this.playoutCount++;
-    const id = this.playoutCount;
-
-    const checkAlive = () => {
-      if (id !== this.playoutCount) {
-        throw new Error("can't use this picker because the playout is over");
-      }
-    };
-
     const pick = (req: PickRequest): number => {
-      checkAlive();
-
       if (!this.log.atEnd) {
         // replaying
         const prev = this.log.nextPick();
@@ -391,7 +338,7 @@ class PlayoutRecorder {
             "when replaying, pick() must be called with the same request as before",
           );
         }
-        return prev.pick;
+        return prev.reply;
       }
 
       // recording
@@ -401,22 +348,18 @@ class PlayoutRecorder {
     };
 
     const startSpan = (): number => {
-      checkAlive();
       return this.log.startSpan();
     };
 
     const cancelSpan = (level?: number) => {
-      checkAlive();
       this.log.cancelSpan(level);
     };
 
     const endSpan = (opts?: EndSpanOptions) => {
-      checkAlive();
       this.log.endSpan(opts);
     };
 
     const endPlayout = () => {
-      checkAlive();
       this.endPlayout();
     };
 
@@ -428,25 +371,12 @@ class PlayoutRecorder {
   }
 
   /**
-   * Increments the logged picks so that the next playout won't match any
-   * previous one.
-   *
-   * @returns true if successful. False means that all recorded playouts have
-   * been removed, so we're back to the initial state.
-   */
-  increment(): boolean {
-    this.playoutCount++; // invalidate current context
-    return this.log.increment();
-  }
-
-  /**
    * Stops recording and returns the playout.
    *
    * Invalidates the current picker, so no more picks can be recorded.
    */
   endPlayout(): Playout {
     if (!this.log.atEnd) throw new Error("playout didn't read every pick");
-    this.playoutCount++; // invalidate current proxy
     this.log.endPlayout();
     return this.log.toPlayout();
   }
@@ -467,12 +397,9 @@ class PlayoutRecorder {
 export function* everyPlayout(
   picker: IntPicker,
 ): IterableIterator<PlayoutContext> {
-  const recorder = new PlayoutRecorder(picker);
-  let playout = recorder.startPlayout();
-  yield playout;
-  while (recorder.increment()) {
-    playout = recorder.startPlayout();
-    yield playout;
+  for (const path of everyPath()) {
+    const recorder = new PlayoutRecorder(path, picker);
+    yield recorder.startPlayout();
   }
 }
 

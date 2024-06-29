@@ -184,46 +184,100 @@ export function alwaysPick(n: number) {
   return picker;
 }
 
-type PickLogEntry = {
+/** A request-reply pair that represents one call to an {@link IntPicker}. */
+export type PickEntry = {
   req: PickRequest;
-  pick: number;
+  reply: number;
 };
 
 /**
- * A history of pick requests and responses.
+ * A sequence of (request, reply) pairs that can be appended to.
  *
- * The picks in the history can be modified.
+ * It represents a path from the root of a search tree to a leaf.
+ */
+export interface PickPath {
+  /**
+   * The current depth in the tree. If depth is zero, the next addChild
+   * call will define the root node.
+   */
+  readonly depth: number;
+
+  /**
+   * The list of ancestor nodes, from the root to the current parent.
+   *
+   * Each entry defines a parent node (including how many children it has) and
+   * the child path that was selected.
+   */
+  readonly ancestors: PickEntry[];
+
+  entryAt(depth: number): PickEntry;
+
+  /**
+   * Requests along the path from the root to the last parent.
+   */
+  readonly requests: PickRequest[];
+
+  /** The child node chosen under each parent. */
+  readonly replies: number[];
+
+  /**
+   * Converts the current node into a parent and takes one of its branches.
+   *
+   * @param req defines the branches for the new parent.
+   * @param pick the branch to take.
+   */
+  addChild(req: PickRequest, pick: number): void;
+
+  /**
+   * Removes children just added.
+   *
+   * The first part of the path is fixed, so the depth can't be less than the
+   * original depth.
+   */
+  truncate(depth: number): void;
+}
+
+/**
+ * A mutable sequence of {@link PickEntries}.
+ *
+ * It represents either a sequence of {@link IntPicker} calls or (to look at
+ * differently) a path in a search tree.
+ *
+ * The replies can be edited, which corresponds to choosing a different branch.
+ * The log keeps track of which picks are different from the original.
  */
 export class PickLog {
   // Invariant: reqs.length == picks.length == originals.length (Parallel lists.)
 
   private readonly reqs: PickRequest[] = [];
 
-  /** The replies as originally pushed, before modification. */
+  /** The replies as originally logged, before modification. */
   private readonly originals: number[] = [];
 
   /** The current value of each reply. */
   private readonly picks: number[] = [];
 
-  get length() {
-    return this.reqs.length;
-  }
+  private currentVersion = 0;
 
   /**
-   * Returns true if any pick was changed.
+   * Returns true if any pick was changed since it was first logged.
    */
-  get changed() {
+  get edited() {
     return this.picks.some((pick, i) => pick !== this.originals[i]);
+  }
+
+  get length() {
+    return this.reqs.length;
   }
 
   get replies(): number[] {
     return this.picks.slice();
   }
 
-  getEntry(index: number): PickLogEntry {
+  getEntry(index: number): PickEntry {
     return {
       req: this.reqs[index],
-      pick: this.picks[index],
+      reply: this.picks[index],
     };
   }
 
@@ -231,22 +285,27 @@ export class PickLog {
     if (pickCount < 0 || pickCount > this.length) {
       throw new Error(`new pickCount not in range; got ${pickCount}`);
     }
+    this.currentVersion++;
     this.reqs.length = pickCount;
     this.picks.length = pickCount;
     this.originals.length = pickCount;
   }
 
-  push(request: PickRequest, response: number): void {
+  push(request: PickRequest, reply: number): void {
+    this.currentVersion++;
     this.reqs.push(request);
-    this.picks.push(response);
-    this.originals.push(response);
+    this.picks.push(reply);
+    this.originals.push(reply);
   }
 
   /**
    * Increments the last pick, wrapping around to the minimum value if needed.
    * Returns true if it's different than the original value.
+   *
+   * From a search tree perspective, this points the log at the next child.
    */
   rotateLast(): boolean {
+    this.currentVersion++;
     if (this.reqs.length === 0) {
       throw new Error("log is empty");
     }
@@ -258,13 +317,17 @@ export class PickLog {
   }
 
   /**
-   * Mutates the pick log to a new, unseen value.
+   * Rotates or removes and rotates the last pick until the last pick hasn't
+   * been seen before.
    *
-   * Returns false if all possibilities have been tried.
+   * Returns false if all possibilities have been tried. (The log will be
+   * empty.)
    *
-   * This can be used to do a depth-first search of all possible pick sequences.
+   * From a search tree perspective, this points the path at a previously
+   * unvisited leaf node.
    */
   increment(): boolean {
+    this.currentVersion++;
     while (this.length > 0) {
       if (this.rotateLast()) {
         return true;
@@ -275,4 +338,109 @@ export class PickLog {
     }
     return false;
   }
+
+  /**
+   * Gets a view of the log as a {@link PickPath}. Any new child nodes added
+   * will be appended to the log.
+   *
+   * Its methods will stop working (throwing an exception) the next time the log
+   * is edited from outside the PickPath, or when another PickPath is created.
+   */
+  getPickPath(): PickPath {
+    this.currentVersion++; // Invalidate any previous appender.
+    const version = this.currentVersion;
+    const startDepth = this.reqs.length;
+
+    const getLog = (): PickLog => {
+      if (this.currentVersion !== version) {
+        throw new Error("logger's lifetime expired");
+      }
+      return this;
+    };
+
+    const view: PickPath = {
+      get depth() {
+        return getLog().reqs.length;
+      },
+      get requests() {
+        return getLog().reqs.slice();
+      },
+      get replies() {
+        return getLog().picks.slice();
+      },
+      get ancestors() {
+        const log = getLog();
+        return log.reqs.map((req, i) => ({
+          req,
+          reply: log.picks[i],
+        }));
+      },
+      entryAt(index: number): PickEntry {
+        return getLog().getEntry(index);
+      },
+      addChild(request: PickRequest, reply: number): void {
+        const log = getLog();
+        // push an entry without updating currentVersion,
+        // so we don't invalidate the current PickPath.
+        log.reqs.push(request);
+        log.picks.push(reply);
+        log.originals.push(reply);
+      },
+      truncate(depth: number): void {
+        const log = getLog();
+        if (depth < startDepth || depth > log.reqs.length) {
+          throw new Error(
+            `new depth not in range; want ${startDepth} <= depth <= ${log.reqs.length}, got ${depth}`,
+          );
+        }
+        log.reqs.length = depth;
+        log.picks.length = depth;
+        log.originals.length = depth;
+      },
+    };
+    return view;
+  }
 }
+
+/**
+ * Iterates over unvisited leaf nodes in a search tree, performing an arbitrary
+ * depth-first search.
+ *
+ * Calling {@link PickPath.addChild} on returned PickPaths defines the search
+ * tree. For example, the first path yielded points to the root node, and the
+ * first call to addChild specifies the root of the tree and the first child of
+ * the root to visit.
+ *
+ * Previously defined tree nodes can't be changed. They will already be added to
+ * the PickPath when it's yielded.
+ *
+ * Children may be added in any order, as long as it's a depth-first traversal.
+ * The caller needs to call addChild until it gets to a leaf before moving to
+ * the next path.
+ */
+export function* everyPath(): IterableIterator<PickPath> {
+  const log = new PickLog();
+  while (true) {
+    yield log.getPickPath();
+    if (!log.increment()) {
+      break;
+    }
+  }
+}
+
+/**
+ * A function defining all possible paths in a search tree.
+ *
+ * The pick requests made by the function determine the structure of the tree.
+ * Each request represents a node in the tree. The request's range determines
+ * how many branches there are at that node.
+ *
+ * A PickTree function may call {@link IntPicker.pick} any number of times
+ * before returning. Each pick represents a node along a path from the root of
+ * the tree to a leaf, which is the last reply to the last pick.
+ *
+ * The function will be called many times to explore different parts of the
+ * tree. To ensure that the search tree doesn't change, the pick requests that
+ * it makes should be entirely determined by previous picks.
+ */
+export type PickTree = (input: IntPicker) => void;

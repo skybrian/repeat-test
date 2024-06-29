@@ -4,7 +4,12 @@ import * as arb from "../src/arbitraries.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import { PickLog, PickRequest, PickRequestOptions } from "../src/picks.ts";
+import {
+  everyPath,
+  PickLog,
+  PickRequest,
+  PickRequestOptions,
+} from "../src/picks.ts";
 
 export function validRequest(
   opts?: arb.IntRangeOptions,
@@ -104,25 +109,25 @@ describe("PickLog", () => {
   describe("changed", () => {
     it("returns false if the log is empty", () => {
       const log = new PickLog();
-      assertFalse(log.changed);
+      assertFalse(log.edited);
     });
     it("returns false if the last pick was unchanged", () => {
       const log = new PickLog();
       log.push(new PickRequest(0, 0), 0);
-      assertFalse(log.changed);
+      assertFalse(log.edited);
     });
     it("returns true if the last pick was changed", () => {
       const log = new PickLog();
       log.push(new PickRequest(0, 1), 0);
       log.rotateLast();
-      assert(log.changed);
+      assert(log.edited);
     });
     it("returns true if a pick was changed, and then another pick added", () => {
       const log = new PickLog();
       log.push(new PickRequest(0, 1), 0);
       log.rotateLast();
       log.push(new PickRequest(0, 0), 0);
-      assert(log.changed);
+      assert(log.edited);
     });
   });
   describe("rotateLast", () => {
@@ -169,5 +174,94 @@ describe("PickLog", () => {
       assertFalse(log.increment());
       assertEquals(log.replies, []);
     });
+  });
+  describe("getPickPath", () => {
+    it("returns the empty path if the log is empty", () => {
+      const log = new PickLog();
+      const path = log.getPickPath();
+      assertEquals(path.depth, 0);
+      assertEquals(path.ancestors, []);
+      assertEquals(path.requests, []);
+      assertEquals(path.replies, []);
+    });
+
+    const digit = new PickRequest(0, 9);
+
+    it("returns the current path if the log is not empty", () => {
+      const log = new PickLog();
+      log.push(digit, 0);
+      const path = log.getPickPath();
+      assertEquals(path.depth, 1);
+      assertEquals(path.ancestors, [{ req: digit, reply: 0 }]);
+      assertEquals(path.requests, [digit]);
+      assertEquals(path.replies, [0]);
+    });
+    it("invalidates the previous PickPath", () => {
+      const log = new PickLog();
+      log.push(digit, 0);
+      const path = log.getPickPath();
+      assertEquals(path.depth, 1);
+      log.getPickPath();
+      assertThrows(() => path.depth);
+      assertThrows(() => path.ancestors);
+      assertThrows(() => path.requests);
+      assertThrows(() => path.replies);
+    });
+
+    describe("addChild", () => {
+      it("appends to the log", () => {
+        const log = new PickLog();
+        log.push(digit, 0);
+        const path = log.getPickPath();
+        assertEquals(path.replies, [0]);
+        path.addChild(digit, 1);
+        assertEquals(log.replies, [0, 1]);
+        assertEquals(path.replies, log.replies);
+        path.addChild(digit, 0);
+        assertEquals(path.replies, [0, 1, 0]);
+        assertEquals(path.replies, log.replies);
+      });
+    });
+  });
+});
+
+describe("everyPath", () => {
+  it("exits after the first visit if no root node is defined", () => {
+    const paths = [];
+    for (const path of everyPath()) {
+      paths.push(path.replies);
+      assertEquals(path.depth, 0);
+      assertEquals(path.ancestors, []);
+      assertEquals(path.requests, []);
+      assertEquals(path.replies, []);
+    }
+    assertEquals(paths, [[]]);
+  });
+  it("visits each other child of a root node", () => {
+    const threeWay = new PickRequest(0, 2);
+    const paths = [];
+    for (const path of everyPath()) {
+      paths.push(path.replies);
+      if (path.depth === 0) {
+        path.addChild(threeWay, 1);
+      }
+    }
+    assertEquals(paths, [[], [2], [0]]);
+  });
+  it("fully explores a combination lock", () => {
+    const digit = new PickRequest(0, 9);
+    const dialCount = 3;
+    const leaves = new Set<string>();
+    for (const path of everyPath()) {
+      while (path.depth < dialCount) {
+        path.addChild(digit, 0);
+      }
+      const leaf = JSON.stringify(path.replies);
+      assertFalse(leaves.has(leaf));
+      leaves.add(leaf);
+    }
+    assertEquals(leaves.size, 1000);
+    assertEquals(Array.from(leaves)[0], "[0,0,0]");
+    assertEquals(Array.from(leaves)[999], "[9,9,9]");
   });
 });

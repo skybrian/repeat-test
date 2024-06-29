@@ -9,6 +9,7 @@ import {
   alwaysPickDefault,
   alwaysPickMin,
   IntPicker,
+  PickLog,
   PickRequest,
   PickRequestOptions,
 } from "../src/picks.ts";
@@ -130,18 +131,21 @@ describe("PlayoutLog", () => {
     const req = new PickRequest(1, 6);
 
     it("returns an empty array when there are no spans", () => {
-      assertEquals(new PlayoutLog().toPlayout().toNestedPicks(), []);
+      const path = new PickLog().getPickPath();
+      assertEquals(new PlayoutLog(path).toPlayout().toNestedPicks(), []);
     });
 
     it("ignores an empty span", () => {
-      const log = new PlayoutLog();
+      const path = new PickLog().getPickPath();
+      const log = new PlayoutLog(path);
       log.startSpan();
       log.endSpan();
       assertEquals(log.toPlayout().toNestedPicks(), []);
     });
 
     it("ignores a single-pick span", () => {
-      const log = new PlayoutLog();
+      const path = new PickLog().getPickPath();
+      const log = new PlayoutLog(path);
       log.startSpan();
       log.pushPick(req, 1);
       log.endSpan();
@@ -149,7 +153,8 @@ describe("PlayoutLog", () => {
     });
 
     it("ignores a span that contains only a single span", () => {
-      const log = new PlayoutLog();
+      const path = new PickLog().getPickPath();
+      const log = new PlayoutLog(path);
       log.startSpan();
       log.startSpan();
       log.pushPick(req, 1);
