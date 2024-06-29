@@ -191,9 +191,10 @@ export type PickEntry = {
 };
 
 /**
- * A sequence of (request, reply) pairs that can be appended to.
+ * A sequence of (request, reply) pairs that can be appended to and truncated.
  *
- * It represents a path from the root of a search tree to a leaf.
+ * It can be thought of as representing a log of {@link IntPicker} calls or a
+ * path in a search tree from the root to a leaf.
  */
 export interface PickPath {
   /**
@@ -229,18 +230,23 @@ export interface PickPath {
    *
    * The first part of the path is fixed, so the depth can't be less than the
    * original depth.
+   *
+   * After truncating, it's up to the caller to take a different path.
    */
   truncate(depth: number): void;
 }
 
 /**
- * A mutable sequence of {@link PickEntries}.
+ * A sequence of (request, reply) pairs that can be appended to, truncated, and
+ * used as an iterator.
  *
- * It represents either a sequence of {@link IntPicker} calls or (to look at
- * differently) a path in a search tree.
+ * It can be thought of as representing a log of {@link IntPicker} calls, a path
+ * in a search tree from the root to a leaf, or as a stack used to iterate over
+ * all possible picks.
  *
- * The replies can be edited, which corresponds to choosing a different branch.
- * The log keeps track of which picks are different from the original.
+ * When the log is iterated, it corresponds to choosing a different branch. The
+ * log keeps track of the first iteration (first child visited) so that we can
+ * stop iterating before a repeat.
  */
 export class PickLog {
   // Invariant: reqs.length == picks.length == originals.length (Parallel lists.)
@@ -292,8 +298,8 @@ export class PickLog {
   }
 
   /**
-   * Rotates or removes and rotates the last pick until the last pick hasn't
-   * been seen before.
+   * Rotates one pick in the log to a value that hasn't been seen before,
+   * after backtracking if necessary.
    *
    * Returns false if all possibilities have been tried. (The log will be
    * empty.)
@@ -301,7 +307,7 @@ export class PickLog {
    * From a search tree perspective, this points the path at a previously
    * unvisited leaf node.
    */
-  increment(): boolean {
+  next(): boolean {
     this.currentVersion++;
     while (this.reqs.length > 0) {
       if (this.rotateLast()) {
@@ -401,7 +407,7 @@ export function* everyPath(): IterableIterator<PickPath> {
   const log = new PickLog();
   while (true) {
     yield log.getPickPath();
-    if (!log.increment()) {
+    if (!log.next()) {
       break;
     }
   }

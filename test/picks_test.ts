@@ -90,47 +90,47 @@ describe("PickLog", () => {
     it("returns true if the last pick was changed", () => {
       const log = new PickLog();
       log.push(new PickRequest(0, 1), 0);
-      log.increment();
+      log.next();
       assert(log.edited);
     });
     it("returns true if a pick was changed, and then another pick added", () => {
       const log = new PickLog();
       log.push(new PickRequest(0, 1), 0);
-      log.increment();
+      log.next();
       log.push(new PickRequest(0, 0), 0);
       assert(log.edited);
     });
   });
-  describe("increment", () => {
+  describe("next", () => {
     it("returns false if the log is empty", () => {
       const log = new PickLog();
-      assertFalse(log.increment());
+      assertFalse(log.next());
       assertEquals(log.replies, []);
     });
     it("removes the last picks if they can't be changed", () => {
       const log = new PickLog();
       log.push(new PickRequest(0, 0), 0);
       log.push(new PickRequest(0, 0), 0);
-      assertFalse(log.increment());
+      assertFalse(log.next());
       assertEquals(log.replies, []);
     });
     it("rotates the last pick if it can be changed", () => {
       const log = new PickLog();
       log.push(new PickRequest(0, 1), 0);
-      assert(log.increment());
+      assert(log.next());
       assertEquals(log.replies, [1]);
     });
     it("wraps around", () => {
       const log = new PickLog();
       log.push(new PickRequest(0, 1), 1);
-      assert(log.increment());
+      assert(log.next());
       assertEquals(log.replies, [0]);
     });
     it("removes the last pick if it rotates back to the original value", () => {
       const log = new PickLog();
       log.push(new PickRequest(0, 1), 0);
-      assert(log.increment());
-      assertFalse(log.increment());
+      assert(log.next());
+      assertFalse(log.next());
       assertEquals(log.replies, []);
     });
   });
