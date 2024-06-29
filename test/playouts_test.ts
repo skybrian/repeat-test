@@ -197,13 +197,13 @@ function collectPaths(
 
     maze(ctx);
 
-    const picks = JSON.stringify(ctx.getPlayout().picks);
+    const picks = JSON.stringify(ctx.toPlayout().picks);
     if (seen.has(picks)) {
       fail(`duplicate playout: ${picks}`);
     }
     seen.add(picks);
 
-    result.push(ctx.getPlayout().toNestedPicks());
+    result.push(ctx.toPlayout().toNestedPicks());
   }
   return result;
 }

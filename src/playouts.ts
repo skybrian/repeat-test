@@ -166,8 +166,6 @@ export class NullPlayoutWriter implements PlayoutWriter {
  * Logs a single playout.
  */
 export class PlayoutLog implements PlayoutWriter {
-  readonly maxSize: number;
-
   // Invariant: starts.length == ends.length
   // (Parallel lists.)
 
@@ -182,9 +180,7 @@ export class PlayoutLog implements PlayoutWriter {
 
   private playOffset = 0;
 
-  constructor(private readonly path: PickPath, opts?: { maxSize?: number }) {
-    this.maxSize = opts?.maxSize || 1000;
-  }
+  constructor(private readonly path: PickPath) {}
 
   get atEnd(): boolean {
     return this.playOffset === this.path.depth;
@@ -204,9 +200,6 @@ export class PlayoutLog implements PlayoutWriter {
   pushPick(request: PickRequest, replay: number): void {
     if (!this.atEnd) {
       throw new Error("can't push a pick when not at the end of the log");
-    }
-    if (this.path.depth >= this.maxSize) {
-      throw new Error("pick log is full");
     }
     this.path.addChild(request, replay);
     this.playOffset++;
@@ -271,13 +264,14 @@ export class PlayoutLog implements PlayoutWriter {
   }
 
   endPlayout(): void {
+    if (!this.atEnd) throw new Error("playout didn't read every pick");
     if (this.level !== 0) {
       throw new Error("unclosed span at end of playout");
     }
   }
 
   toPlayout() {
-    if (this.level > 0) throw new Error("playout didn't close every span");
+    this.endPlayout();
     const starts = this.starts.slice();
     const ends = this.ends.slice();
     return new Playout(this.path.replies, starts, ends);
@@ -291,26 +285,37 @@ export type PlayoutContext = IntPicker & PlayoutWriter & {
   /**
    * Ends playout generation and returns the playout.
    */
-  getPlayout(): Playout;
+  toPlayout(): Playout;
 };
 
 /**
- * A generator that returns a different sequence of picks each time.
+ * Iterates over unvisited leaves in a search tree, by doing picks.
  *
- * The sequence stops when all possible paths are exhausted. Uses a depth-first
- * search.
+ * The search tree is defined by calls to {@link PlayoutContext.pick}. For
+ * example, the argument to the first pick() call on the first iteration defines
+ * the root, and the return value (chosen using the child picker) determines
+ * which child to visit first.
  *
- * This assumes that the PickRequests are made by a deterministic function, so
- * that if the pick() method returns the same picks, the function will take the
- * same path.
+ * On subsequent iterations, the first pick call (for the root) must have the
+ * same range as the previous iteration (since the root has already been
+ * defined). If not, pick() will throw an exception. Similarly for all
+ * subsequent picks up to an unexplored part of the tree.
  *
- * @picker used to generate the picks through any unexplored subtree.
+ * This is typically done using a deterministic function that makes all choices
+ * based on the output of previous pick() calls.
+ *
+ * The sequence stops when there are no unexplored parts of the tree to be
+ * reached by backtracking.
+ *
+ * @param childPicker picks the first child to visit when a new node is added to
+ * the search tree.
  */
 export function* everyPlayout(
-  picker: IntPicker,
+  childPicker: IntPicker,
 ): IterableIterator<PlayoutContext> {
   for (const path of everyPath()) {
     const log = new PlayoutLog(path);
+    const maxDepth = 100;
 
     const pick = (req: PickRequest): number => {
       if (!log.atEnd) {
@@ -325,15 +330,14 @@ export function* everyPlayout(
       }
 
       // recording
-      const pick = picker.pick(req);
+      if (path.depth >= maxDepth) {
+        throw new Error(
+          `max depth of search tree exceeded; want depth <= ${maxDepth}`,
+        );
+      }
+      const pick = childPicker.pick(req);
       log.pushPick(req, pick);
       return pick;
-    };
-
-    const endPlayout = () => {
-      if (!log.atEnd) throw new Error("playout didn't read every pick");
-      log.endPlayout();
-      return log.toPlayout();
     };
 
     const context = {
@@ -341,8 +345,8 @@ export function* everyPlayout(
       startSpan: log.startSpan.bind(log),
       cancelSpan: log.cancelSpan.bind(log),
       endSpan: log.endSpan.bind(log),
-      endPlayout,
-      getPlayout: endPlayout,
+      endPlayout: log.endPlayout.bind(log),
+      toPlayout: log.toPlayout.bind(log),
     };
 
     yield context;

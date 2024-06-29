@@ -7,14 +7,27 @@ import {
 } from "./playouts.ts";
 
 /**
- * Walks a search tree and returns whatever is found at a leaf.
+ * A function defining a search tree that optionally has a value at each leaf.
  *
- * Each time it needs to make a choice, it uses a pick from the provided picker.
+ * On each function call, it walks the search tree from the root to a leaf and
+ * returns whatever value is found there. If there's no value to be returned, it
+ * can throw {@link PlayoutFailed} to indicate a dead end, and the caller will
+ * try again.
  *
- * Return the value found at a leaf, or throws {@link PlayoutFailed} if no value
- * was found (a dead end).
+ * During a function call, calls to {@link PlayoutContext.pick} extend the
+ * search tree. For example, the argument to the first pick() call on the first
+ * iteration defines the root, and the reply tells the function which child to
+ * visit next. Other children may be visited on future calls.
+ *
+ * On subsequent calls, the first pick call (for the root) must have the same
+ * range as the previous iteration (since the root has already been defined). If
+ * not, pick() will throw an exception. Similarly for all subsequent picks up to
+ * an unexplored part of the tree.
+ *
+ * The easiest way to do this is to make the PlayoutTree function deterministic.
+ * Each call to pick() should be determined only be the previous picks.
  */
-export type PlayoutFunction<T> = (
+export type PlayoutTree<T> = (
   ctx: PlayoutContext,
 ) => T;
 
@@ -28,12 +41,12 @@ export type Solution<T> = {
  * default picks.
  */
 export function* generateAllSolutions<T>(
-  runPlayout: PlayoutFunction<T>,
+  runPlayout: PlayoutTree<T>,
 ): Generator<Solution<T>> {
   for (const ctx of everyPlayout(alwaysPickDefault)) {
     try {
       const val = runPlayout(ctx);
-      const playout = ctx.getPlayout();
+      const playout = ctx.toPlayout();
       yield { val, playout };
     } catch (e) {
       if (!(e instanceof PlayoutFailed)) {
