@@ -208,14 +208,10 @@ export interface PickPath {
    * Each entry defines a parent node (including how many children it has) and
    * the child path that was selected.
    */
-  readonly ancestors: PickEntry[];
+  readonly entries: PickEntry[];
 
+  /** Returns the ancestor at the given depth. */
   entryAt(depth: number): PickEntry;
-
-  /**
-   * Requests along the path from the root to the last parent.
-   */
-  readonly requests: PickRequest[];
 
   /** The child node chosen under each parent. */
   readonly replies: number[];
@@ -266,29 +262,8 @@ export class PickLog {
     return this.picks.some((pick, i) => pick !== this.originals[i]);
   }
 
-  get length() {
-    return this.reqs.length;
-  }
-
   get replies(): number[] {
     return this.picks.slice();
-  }
-
-  getEntry(index: number): PickEntry {
-    return {
-      req: this.reqs[index],
-      reply: this.picks[index],
-    };
-  }
-
-  truncate(pickCount: number): void {
-    if (pickCount < 0 || pickCount > this.length) {
-      throw new Error(`new pickCount not in range; got ${pickCount}`);
-    }
-    this.currentVersion++;
-    this.reqs.length = pickCount;
-    this.picks.length = pickCount;
-    this.originals.length = pickCount;
   }
 
   push(request: PickRequest, reply: number): void {
@@ -304,7 +279,7 @@ export class PickLog {
    *
    * From a search tree perspective, this points the log at the next child.
    */
-  rotateLast(): boolean {
+  private rotateLast(): boolean {
     this.currentVersion++;
     if (this.reqs.length === 0) {
       throw new Error("log is empty");
@@ -328,7 +303,7 @@ export class PickLog {
    */
   increment(): boolean {
     this.currentVersion++;
-    while (this.length > 0) {
+    while (this.reqs.length > 0) {
       if (this.rotateLast()) {
         return true;
       }
@@ -362,13 +337,10 @@ export class PickLog {
       get depth() {
         return getLog().reqs.length;
       },
-      get requests() {
-        return getLog().reqs.slice();
-      },
       get replies() {
         return getLog().picks.slice();
       },
-      get ancestors() {
+      get entries() {
         const log = getLog();
         return log.reqs.map((req, i) => ({
           req,
@@ -376,7 +348,11 @@ export class PickLog {
         }));
       },
       entryAt(index: number): PickEntry {
-        return getLog().getEntry(index);
+        const log = getLog();
+        return {
+          req: log.reqs[index],
+          reply: log.picks[index],
+        };
       },
       addChild(request: PickRequest, reply: number): void {
         const log = getLog();

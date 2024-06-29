@@ -77,36 +77,7 @@ describe("PickRequest", () => {
 });
 
 describe("PickLog", () => {
-  describe("truncate", () => {
-    it("throws if given a negative truncation", () => {
-      const log = new PickLog();
-      assertThrows(() => log.truncate(-1));
-    });
-    it("throws if given a truncation larger than the log", () => {
-      const log = new PickLog();
-      log.push(new PickRequest(0, 0), 0);
-      assertThrows(() => log.truncate(2));
-    });
-    it("does nothing if the log is empty", () => {
-      const log = new PickLog();
-      log.truncate(0);
-      assertEquals(log.replies, []);
-    });
-    it("does nothing if there's nothing to remove", () => {
-      const log = new PickLog();
-      log.push(new PickRequest(0, 0), 0);
-      log.truncate(1);
-      assertEquals(log.replies, [0]);
-    });
-    it("removes the last pick", () => {
-      const log = new PickLog();
-      log.push(new PickRequest(0, 0), 0);
-      log.push(new PickRequest(0, 0), 0);
-      log.truncate(1);
-      assertEquals(log.replies, [0]);
-    });
-  });
-  describe("changed", () => {
+  describe("edited", () => {
     it("returns false if the log is empty", () => {
       const log = new PickLog();
       assertFalse(log.edited);
@@ -119,46 +90,15 @@ describe("PickLog", () => {
     it("returns true if the last pick was changed", () => {
       const log = new PickLog();
       log.push(new PickRequest(0, 1), 0);
-      log.rotateLast();
+      log.increment();
       assert(log.edited);
     });
     it("returns true if a pick was changed, and then another pick added", () => {
       const log = new PickLog();
       log.push(new PickRequest(0, 1), 0);
-      log.rotateLast();
+      log.increment();
       log.push(new PickRequest(0, 0), 0);
       assert(log.edited);
-    });
-  });
-  describe("rotateLast", () => {
-    it("throws if the log is empty", () => {
-      const log = new PickLog();
-      assertThrows(() => log.rotateLast());
-    });
-    it("returns false if a pick cannot be changed", () => {
-      const log = new PickLog();
-      log.push(new PickRequest(0, 0), 0);
-      assertFalse(log.rotateLast());
-      assertEquals(log.replies, [0]);
-    });
-    it("returns true if a pick was changed", () => {
-      const log = new PickLog();
-      log.push(new PickRequest(0, 1), 0);
-      assert(log.rotateLast());
-      assertEquals(log.replies, [1]);
-    });
-    it("wraps around", () => {
-      const log = new PickLog();
-      log.push(new PickRequest(0, 1), 1);
-      assert(log.rotateLast());
-      assertEquals(log.replies, [0]);
-    });
-    it("returns false if it's rotated back to the original value", () => {
-      const log = new PickLog();
-      log.push(new PickRequest(0, 1), 0);
-      assert(log.rotateLast());
-      assertFalse(log.rotateLast());
-      assertEquals(log.replies, [0]);
     });
   });
   describe("increment", () => {
@@ -174,14 +114,32 @@ describe("PickLog", () => {
       assertFalse(log.increment());
       assertEquals(log.replies, []);
     });
+    it("rotates the last pick if it can be changed", () => {
+      const log = new PickLog();
+      log.push(new PickRequest(0, 1), 0);
+      assert(log.increment());
+      assertEquals(log.replies, [1]);
+    });
+    it("wraps around", () => {
+      const log = new PickLog();
+      log.push(new PickRequest(0, 1), 1);
+      assert(log.increment());
+      assertEquals(log.replies, [0]);
+    });
+    it("removes the last pick if it rotates back to the original value", () => {
+      const log = new PickLog();
+      log.push(new PickRequest(0, 1), 0);
+      assert(log.increment());
+      assertFalse(log.increment());
+      assertEquals(log.replies, []);
+    });
   });
   describe("getPickPath", () => {
     it("returns the empty path if the log is empty", () => {
       const log = new PickLog();
       const path = log.getPickPath();
       assertEquals(path.depth, 0);
-      assertEquals(path.ancestors, []);
-      assertEquals(path.requests, []);
+      assertEquals(path.entries, []);
       assertEquals(path.replies, []);
     });
 
@@ -192,8 +150,7 @@ describe("PickLog", () => {
       log.push(digit, 0);
       const path = log.getPickPath();
       assertEquals(path.depth, 1);
-      assertEquals(path.ancestors, [{ req: digit, reply: 0 }]);
-      assertEquals(path.requests, [digit]);
+      assertEquals(path.entries, [{ req: digit, reply: 0 }]);
       assertEquals(path.replies, [0]);
     });
     it("invalidates the previous PickPath", () => {
@@ -203,11 +160,41 @@ describe("PickLog", () => {
       assertEquals(path.depth, 1);
       log.getPickPath();
       assertThrows(() => path.depth);
-      assertThrows(() => path.ancestors);
-      assertThrows(() => path.requests);
+      assertThrows(() => path.entries);
       assertThrows(() => path.replies);
     });
 
+    describe("truncate", () => {
+      it("throws if given a negative index", () => {
+        const path = new PickLog().getPickPath();
+        assertThrows(() => path.truncate(-1));
+      });
+      it("throws if given a truncation larger than the log", () => {
+        const log = new PickLog();
+        log.push(new PickRequest(0, 0), 0);
+        const path = log.getPickPath();
+        assertThrows(() => path.truncate(2));
+      });
+      it("does nothing if the log is empty", () => {
+        const path = new PickLog().getPickPath();
+        path.truncate(0);
+        assertEquals(path.replies, []);
+      });
+      it("does nothing if there's nothing to remove", () => {
+        const log = new PickLog();
+        log.push(new PickRequest(0, 0), 0);
+        log.getPickPath().truncate(1);
+        assertEquals(log.replies, [0]);
+      });
+      it("removes the last pick", () => {
+        const log = new PickLog();
+        log.push(new PickRequest(0, 0), 0);
+        const path = log.getPickPath();
+        path.addChild(new PickRequest(0, 0), 0);
+        path.truncate(1);
+        assertEquals(log.replies, [0]);
+      });
+    });
     describe("addChild", () => {
       it("appends to the log", () => {
         const log = new PickLog();
@@ -231,8 +218,7 @@ describe("everyPath", () => {
     for (const path of everyPath()) {
       paths.push(path.replies);
       assertEquals(path.depth, 0);
-      assertEquals(path.ancestors, []);
-      assertEquals(path.requests, []);
+      assertEquals(path.entries, []);
       assertEquals(path.replies, []);
     }
     assertEquals(paths, [[]]);
