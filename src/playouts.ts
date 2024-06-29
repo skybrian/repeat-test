@@ -186,11 +186,6 @@ export class PlayoutLog implements PlayoutWriter {
     this.maxSize = opts?.maxSize || 1000;
   }
 
-  /** The number of picks that have been recorded. */
-  get length() {
-    return this.path.depth;
-  }
-
   get atEnd(): boolean {
     return this.playOffset === this.path.depth;
   }
@@ -210,7 +205,7 @@ export class PlayoutLog implements PlayoutWriter {
     if (!this.atEnd) {
       throw new Error("can't push a pick when not at the end of the log");
     }
-    if (this.length >= this.maxSize) {
+    if (this.path.depth >= this.maxSize) {
       throw new Error("pick log is full");
     }
     this.path.addChild(request, replay);
@@ -227,7 +222,7 @@ export class PlayoutLog implements PlayoutWriter {
 
   /** Returns the index of the start of the span */
   cancelSpan(level?: number): number {
-    if (this.playOffset !== this.length) {
+    if (this.playOffset !== this.path.depth) {
       throw new Error("can only remove a span from the end of a pick log");
     }
     if (level !== undefined && level !== this.level) {
@@ -243,7 +238,7 @@ export class PlayoutLog implements PlayoutWriter {
     this.starts.splice(idx);
     this.ends.splice(idx);
     this.path.truncate(start);
-    this.playOffset = this.length;
+    this.playOffset = this.path.depth;
     return start;
   }
 
