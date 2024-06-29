@@ -300,89 +300,6 @@ export type PlayoutContext = IntPicker & PlayoutWriter & {
 };
 
 /**
- * Records and replays the picks made during a single playout.
- *
- * When replaying, it starts by playing back the picks in the buffer, then
- * switches to recording mode.
- */
-class PlayoutRecorder {
-  readonly log: PlayoutLog;
-
-  /**
-   * Constructs a new, empty log, ready for recording.
-   *
-   * @param source provides the picks when recording.
-   */
-  constructor(
-    private readonly path: PickPath,
-    private readonly source: IntPicker,
-    opts?: { maxLogSize?: number },
-  ) {
-    const maxSize = opts?.maxLogSize ?? 1000;
-    this.log = new PlayoutLog(this.path, { maxSize });
-  }
-
-  /**
-   * Returns a context to use for a new playout.
-   *
-   * It will replay any previously recorded picks, and then take picks from the
-   * source provided in the constructor.
-   */
-  startPlayout(): PlayoutContext {
-    const pick = (req: PickRequest): number => {
-      if (!this.log.atEnd) {
-        // replaying
-        const prev = this.log.nextPick();
-        if (prev.req.min !== req.min || prev.req.max !== req.max) {
-          throw new Error(
-            "when replaying, pick() must be called with the same request as before",
-          );
-        }
-        return prev.reply;
-      }
-
-      // recording
-      const pick = this.source.pick(req);
-      this.log.pushPick(req, pick);
-      return pick;
-    };
-
-    const startSpan = (): number => {
-      return this.log.startSpan();
-    };
-
-    const cancelSpan = (level?: number) => {
-      this.log.cancelSpan(level);
-    };
-
-    const endSpan = (opts?: EndSpanOptions) => {
-      this.log.endSpan(opts);
-    };
-
-    const endPlayout = () => {
-      this.endPlayout();
-    };
-
-    const getPlayout = () => {
-      return this.endPlayout();
-    };
-
-    return { pick, startSpan, cancelSpan, endSpan, endPlayout, getPlayout };
-  }
-
-  /**
-   * Stops recording and returns the playout.
-   *
-   * Invalidates the current picker, so no more picks can be recorded.
-   */
-  endPlayout(): Playout {
-    if (!this.log.atEnd) throw new Error("playout didn't read every pick");
-    this.log.endPlayout();
-    return this.log.toPlayout();
-  }
-}
-
-/**
  * A generator that returns a different sequence of picks each time.
  *
  * The sequence stops when all possible paths are exhausted. Uses a depth-first
@@ -398,8 +315,42 @@ export function* everyPlayout(
   picker: IntPicker,
 ): IterableIterator<PlayoutContext> {
   for (const path of everyPath()) {
-    const recorder = new PlayoutRecorder(path, picker);
-    yield recorder.startPlayout();
+    const log = new PlayoutLog(path);
+
+    const pick = (req: PickRequest): number => {
+      if (!log.atEnd) {
+        // replaying
+        const prev = log.nextPick();
+        if (prev.req.min !== req.min || prev.req.max !== req.max) {
+          throw new Error(
+            "when replaying, pick() must be called with the same request as before",
+          );
+        }
+        return prev.reply;
+      }
+
+      // recording
+      const pick = picker.pick(req);
+      log.pushPick(req, pick);
+      return pick;
+    };
+
+    const endPlayout = () => {
+      if (!log.atEnd) throw new Error("playout didn't read every pick");
+      log.endPlayout();
+      return log.toPlayout();
+    };
+
+    const context = {
+      pick,
+      startSpan: log.startSpan.bind(log),
+      cancelSpan: log.cancelSpan.bind(log),
+      endSpan: log.endSpan.bind(log),
+      endPlayout,
+      getPlayout: endPlayout,
+    };
+
+    yield context;
   }
 }
 
