@@ -208,56 +208,8 @@ export type PickEntry = {
 };
 
 /**
- * A sequence of (request, reply) pairs that can be appended to and truncated.
- *
- * It can be thought of as representing a log of {@link IntPicker} calls or a
- * path in a search tree from the root to a leaf.
- */
-export interface PickPath {
-  /**
-   * The number of picks in the path so far. Also, the current depth in the
-   * search tree.
-   *
-   * If depth is zero, the next addChild call will define the root node.
-   */
-  readonly depth: number;
-
-  /**
-   * The list of ancestor nodes, from the root to the current parent.
-   *
-   * Each entry defines a parent node (including how many children it has) and
-   * the child path that was selected.
-   */
-  readonly entries: PickEntry[];
-
-  /** Returns the ancestor at the given depth. */
-  entryAt(depth: number): PickEntry;
-
-  /** The child node chosen under each parent. */
-  readonly replies: number[];
-
-  /**
-   * Converts the current node into a parent and takes one of its branches.
-   *
-   * @param req defines the branches for the new parent.
-   * @param pick the branch to take.
-   */
-  addChild(req: PickRequest, pick: number): void;
-
-  /**
-   * Removes children just added.
-   *
-   * The first part of the path is fixed, so the depth can't be less than the
-   * original depth.
-   *
-   * After truncating, it's up to the caller to take a different path.
-   */
-  truncate(depth: number): void;
-}
-
-/**
- * A sequence of (request, reply) pairs that can be appended to, truncated, and
- * used as an iterator.
+ * A sequence of (request, reply) pairs that can be appended to and used as an
+ * iterator.
  *
  * It can be thought of as representing a log of {@link IntPicker} calls, a path
  * in a search tree from the root to a leaf, or as a stack used to iterate over
@@ -370,65 +322,6 @@ export class PickLog {
       this.originals.pop();
     }
     return false;
-  }
-
-  /**
-   * Gets a view of the log as a {@link PickPath}. Any new child nodes added
-   * will be appended to the log.
-   *
-   * Its methods will stop working (throwing an exception) the next time the log
-   * is edited from outside the PickPath, or when another PickPath is created.
-   */
-  getPickPath(): PickPath {
-    this.currentVersion++; // Invalidate any previous appender.
-    const version = this.currentVersion;
-    const startDepth = this.reqs.length;
-
-    const getLog = (): PickLog => {
-      if (this.currentVersion !== version) {
-        throw new Error("logger's lifetime expired");
-      }
-      return this;
-    };
-
-    const view: PickPath = {
-      get depth() {
-        return getLog().reqs.length;
-      },
-      get replies() {
-        return getLog().replies;
-      },
-      get entries() {
-        const log = getLog();
-        return log.reqs.map((req, i) => ({
-          req,
-          reply: log.picks[i],
-        }));
-      },
-      entryAt(index: number): PickEntry {
-        return getLog().entryAt(index);
-      },
-      addChild(request: PickRequest, reply: number): void {
-        const log = getLog();
-        // push an entry without updating currentVersion,
-        // so we don't invalidate the current PickPath.
-        log.reqs.push(request);
-        log.picks.push(reply);
-        log.originals.push(reply);
-      },
-      truncate(depth: number): void {
-        const log = getLog();
-        if (depth < startDepth || depth > log.reqs.length) {
-          throw new Error(
-            `new depth not in range; want ${startDepth} <= depth <= ${log.reqs.length}, got ${depth}`,
-          );
-        }
-        log.reqs.length = depth;
-        log.picks.length = depth;
-        log.originals.length = depth;
-      },
-    };
-    return view;
   }
 }
 
