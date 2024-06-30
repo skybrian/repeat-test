@@ -1,11 +1,11 @@
-import { alwaysPickDefault, IntPicker, PickRequest } from "./picks.ts";
-
 import {
-  NullPlayoutWriter,
-  PlayoutFailed,
-  PlayoutWriter,
-  StrictPicker,
-} from "./playouts.ts";
+  alwaysPickDefault,
+  IntPicker,
+  PickFailed,
+  PickRequest,
+} from "./picks.ts";
+
+import { NullPlayoutWriter, PlayoutWriter, StrictPicker } from "./playouts.ts";
 import { generateAllSolutions, Solution } from "./solver.ts";
 
 export type PickFunctionOptions<T> = {
@@ -35,7 +35,7 @@ export type RecordShape<T> = {
  * Picks a value given a PickRequest, an Arbitrary, or a record shape containing
  * multiple Arbitraries.
  *
- * Throws {@link PlayoutFailed} if it couldn't find a value.
+ * Throws {@link PickFailed} if it couldn't choose a value.
  */
 export interface PickFunction {
   (req: PickRequest): number;
@@ -48,8 +48,8 @@ export interface PickFunction {
  *
  * The result should be deterministic, depending only on what `pick` returns.
  *
- * It may throw {@link PlayoutFailed} to indicate that a sequence of picks didn't
- * lead to a value.
+ * It may throw {@link PickFailed} to indicate that no arbitrary could be picked
+ * using the provided pick function.
  */
 export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 
@@ -207,7 +207,7 @@ export default class Arbitrary<T> {
       // Give up. This is normal when backtracking is turned off.
       // Don't cancel so that the picks used in the failed run are available
       // to the caller.
-      throw new PlayoutFailed(
+      throw new PickFailed(
         `Failed to generate ${req} after ${maxTries} tries`,
       );
     };
@@ -245,7 +245,7 @@ export default class Arbitrary<T> {
   /**
    * Attempts to pick a value based on a prerecorded list of picks.
    *
-   * Throws {@link PlayoutFailed} if any internal filters didn't accept a pick.
+   * Throws {@link PickFailed} if any internal filters didn't accept a pick.
    * (There is no backtracking.)
    *
    * This function can be used to test which picks the Arbitrary accepts as
@@ -256,7 +256,7 @@ export default class Arbitrary<T> {
 
     const val = this.pick(input, { maxTries: 1 });
     if (!input.finished) {
-      throw new PlayoutFailed(
+      throw new PickFailed(
         `Picks ${input.offset} to ${picks.length} were unused`,
       );
     }

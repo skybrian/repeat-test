@@ -116,9 +116,26 @@ export class PickRequest {
     return this.max - this.min + 1;
   }
 
+  get range() {
+    return [this.min, this.max];
+  }
+
   /** Returns true if the given number satisfies this request. */
   inRange(n: number): boolean {
     return inRange(n, this.min, this.max);
+  }
+
+  toString() {
+    return `PickRequest(${this.min}, ${this.max})`;
+  }
+}
+
+/**
+ * Indicates that a picker can't provide a pick for some reason.
+ */
+export class PickFailed extends Error {
+  constructor(msg: string) {
+    super(msg);
   }
 }
 
@@ -198,8 +215,10 @@ export type PickEntry = {
  */
 export interface PickPath {
   /**
-   * The current depth in the tree. If depth is zero, the next addChild
-   * call will define the root node.
+   * The number of picks in the path so far. Also, the current depth in the
+   * search tree.
+   *
+   * If depth is zero, the next addChild call will define the root node.
    */
   readonly depth: number;
 
@@ -261,11 +280,44 @@ export class PickLog {
 
   private currentVersion = 0;
 
+  get length(): number {
+    return this.reqs.length;
+  }
+
+  entryAt(index: number): PickEntry {
+    return {
+      req: this.reqs[index],
+      reply: this.picks[index],
+    };
+  }
+
   /**
    * Returns true if any pick was changed since it was first logged.
    */
   get edited() {
     return this.picks.some((pick, i) => pick !== this.originals[i]);
+  }
+
+  /**
+   * Returns true if there are more unvisited children for requests at the given
+   * depth or greater.
+   */
+  morePathsAt(depth: number): boolean {
+    if (depth < 0) {
+      throw new Error(`depth out of range; want depth >= 0, got ${depth}`);
+    }
+    if (depth >= this.reqs.length) {
+      return false;
+    }
+    for (let i = this.reqs.length - 1; i >= depth; i--) {
+      const req = this.reqs[i];
+      const pick = this.picks[i];
+      const next = (pick === req.max) ? req.min : pick + 1;
+      if (next !== this.originals[i]) {
+        return true;
+      }
+    }
+    return false;
   }
 
   get replies(): number[] {
@@ -344,7 +396,7 @@ export class PickLog {
         return getLog().reqs.length;
       },
       get replies() {
-        return getLog().picks.slice();
+        return getLog().replies;
       },
       get entries() {
         const log = getLog();
@@ -354,11 +406,7 @@ export class PickLog {
         }));
       },
       entryAt(index: number): PickEntry {
-        const log = getLog();
-        return {
-          req: log.reqs[index],
-          reply: log.picks[index],
-        };
+        return getLog().entryAt(index);
       },
       addChild(request: PickRequest, reply: number): void {
         const log = getLog();
@@ -410,6 +458,125 @@ export function* everyPath(): IterableIterator<PickPath> {
     if (!log.next()) {
       break;
     }
+  }
+}
+
+/**
+ * A picker that can back up to a previous point in a pick sequence and try a
+ * different path.
+ */
+export interface RetryPicker extends IntPicker {
+  /**
+   * The number of picks so far. Also, the current depth in a search tree.
+   */
+  readonly depth: number;
+
+  /**
+   * Returns the picks made so far.
+   */
+  getPicks(): number[];
+
+  /**
+   * Returns true if the picker is replaying a previously-determined pick
+   * sequence.
+   *
+   * While replay is true, calls to {@link RetryPicker.pick} have to pass in a
+   * request with the same range as last time, or it will throw
+   * {@link PickFailed}.
+   *
+   * (It will diverge before replaying the entire sequence.)
+   */
+  readonly replaying: boolean;
+
+  /**
+   * Returns to a previous point in the pick sequence to try again with a
+   * different pick seqence.
+   *
+   * If successful, the picker might start replaying previous picks. (See
+   * {@link replaying}.)
+   *
+   * Returns false if retrying with different picks isn't possible at the given
+   * depth. This happens when all possibilities have been tried. If `backTo(0)`
+   * returns false, the entire tree has been searched.
+   */
+  backTo(depth: number): boolean;
+}
+
+export type DepthFirstPickerOpts = {
+  /**
+   * Called to pick the reply when a tree node is first visited.
+   * This determines the first child to be visited.
+   */
+  firstChildPicker?: IntPicker;
+
+  /**
+   * Sets the limit for how many times the picker may be called.
+   */
+  maxDepth?: number;
+};
+
+export class DepthFirstPicker implements RetryPicker {
+  private childPicker: IntPicker;
+  private maxDepth: number;
+  private readonly log = new PickLog();
+  private offset = 0;
+
+  constructor(opts?: DepthFirstPickerOpts) {
+    this.childPicker = opts?.firstChildPicker ?? alwaysPickDefault;
+    this.maxDepth = opts?.maxDepth ?? 1000;
+  }
+
+  pick(req: PickRequest): number {
+    if (this.offset < this.log.length) {
+      const next = this.log.entryAt(this.offset);
+      if (req.min !== next.req.min || req.max !== next.req.max) {
+        throw new PickFailed(
+          `unexpected request while replaying: want ${next.req.range}, got ${req.range}`,
+        );
+      }
+      this.offset++;
+      return next.reply;
+    } else if (this.offset >= this.maxDepth) {
+      throw new PickFailed(
+        `max depth reached (want picks <= (${this.maxDepth})`,
+      );
+    }
+    const reply = this.childPicker.pick(req);
+    this.log.push(req, reply);
+    this.offset++;
+    return reply;
+  }
+
+  get depth() {
+    return this.offset;
+  }
+
+  getPicks(): number[] {
+    return this.log.replies;
+  }
+
+  get replaying() {
+    return this.offset < this.log.length;
+  }
+
+  backTo(depth: number): boolean {
+    if (this.offset < this.log.length) {
+      throw new Error(`can't backtrack when not at the end of a path`);
+    }
+    if (depth < 0 || depth > this.offset) {
+      throw new Error(
+        `invalid depth for backTo(): want 0 <= depth <= ${this.offset}, got ${depth}`,
+      );
+    }
+    if (!this.log.morePathsAt(depth)) {
+      return false;
+    }
+    this.log.next();
+    this.offset = depth;
+    if (this.log.length < this.offset) {
+      throw new Error("unexpected end of log; shouldn't happen");
+    }
+    return true;
   }
 }
 

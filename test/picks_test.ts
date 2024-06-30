@@ -5,6 +5,7 @@ import Arbitrary from "../src/arbitrary_class.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import {
+  DepthFirstPicker,
   everyPath,
   PickLog,
   PickRequest,
@@ -249,5 +250,42 @@ describe("everyPath", () => {
     assertEquals(leaves.size, 1000);
     assertEquals(Array.from(leaves)[0], "[0,0,0]");
     assertEquals(Array.from(leaves)[999], "[9,9,9]");
+  });
+});
+
+describe("DepthFirstPicker", () => {
+  describe("backTo", () => {
+    it("returns false if no picks happened", () => {
+      const picker = new DepthFirstPicker();
+      assertFalse(picker.backTo(0));
+    });
+    it("returns false if the root has no other children", () => {
+      const picker = new DepthFirstPicker();
+      assertEquals(picker.pick(new PickRequest(0, 0)), 0);
+      assertFalse(picker.backTo(0));
+    });
+    const bit = new PickRequest(0, 1);
+    it("goes back to a different child", () => {
+      const picker = new DepthFirstPicker();
+      assertEquals(picker.pick(bit), 0);
+      assert(picker.backTo(0));
+      assertEquals(picker.pick(bit), 1);
+      assertFalse(picker.backTo(0));
+    });
+    it("throws if not at the end of a playout", () => {
+      const picker = new DepthFirstPicker();
+      assertEquals(picker.pick(bit), 0);
+      assert(picker.backTo(0));
+      assertThrows(() => picker.backTo(0));
+    });
+    it("goes back to a different child in a subtree", () => {
+      const picker = new DepthFirstPicker();
+      assertEquals(picker.pick(bit), 0);
+      assertEquals(picker.pick(bit), 0);
+      assert(picker.backTo(1));
+      assertEquals(picker.depth, 1);
+      assertEquals(picker.pick(bit), 1);
+      assertFalse(picker.backTo(1));
+    });
   });
 });

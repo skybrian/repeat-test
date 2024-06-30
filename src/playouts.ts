@@ -1,4 +1,10 @@
-import { everyPath, IntPicker, PickPath, PickRequest } from "./picks.ts";
+import {
+  DepthFirstPicker,
+  IntPicker,
+  PickFailed,
+  PickRequest,
+  RetryPicker,
+} from "./picks.ts";
 
 export type NestedPicks = (number | NestedPicks)[];
 
@@ -109,6 +115,8 @@ export interface PlayoutWriter {
    * Cancels the last open span.
    * The picks since the last span start are discarded.
    * (The level is unchanged.)
+   *
+   * @throws PlayoutFailed if no more playouts are available.
    */
   cancelSpan(level?: number): void;
 
@@ -165,7 +173,7 @@ export class NullPlayoutWriter implements PlayoutWriter {
 /**
  * Logs a single playout.
  */
-export class PlayoutLog implements PlayoutWriter {
+export class PlayoutLog implements PlayoutContext {
   // Invariant: starts.length == ends.length
   // (Parallel lists.)
 
@@ -178,46 +186,26 @@ export class PlayoutLog implements PlayoutWriter {
   /** The offset of each incomplete span, in the order created.  */
   private readonly openSpans: number[] = [];
 
-  private playOffset = 0;
-
-  constructor(private readonly path: PickPath) {}
-
-  get atEnd(): boolean {
-    return this.playOffset === this.path.depth;
-  }
+  constructor(private readonly picker: RetryPicker) {}
 
   get level(): number {
     return this.openSpans.length;
   }
 
-  nextPick() {
-    if (this.atEnd) {
-      throw new Error("no more picks");
-    }
-    return this.path.entryAt(this.playOffset++);
-  }
-
-  pushPick(request: PickRequest, replay: number): void {
-    if (!this.atEnd) {
-      throw new Error("can't push a pick when not at the end of the log");
-    }
-    this.path.addChild(request, replay);
-    this.playOffset++;
+  pick(request: PickRequest): number {
+    return this.picker.pick(request);
   }
 
   startSpan(): number {
     const spanIndex = this.starts.length;
-    this.starts.push(this.playOffset);
+    this.starts.push(this.picker.depth);
     this.ends.push(NaN);
     this.openSpans.push(spanIndex);
     return this.level;
   }
 
   /** Returns the index of the start of the span */
-  cancelSpan(level?: number): number {
-    if (this.playOffset !== this.path.depth) {
-      throw new Error("can only remove a span from the end of a pick log");
-    }
+  cancelSpan(level?: number): void {
     if (level !== undefined && level !== this.level) {
       throw new Error(
         `invalid span level. Want: ${this.level}, got: ${level}`,
@@ -228,15 +216,17 @@ export class PlayoutLog implements PlayoutWriter {
       throw new Error("no open span");
     }
     const start = this.starts[idx];
+    if (!this.picker.backTo(start)) {
+      throw new PickFailed(
+        `cancelled the last playout starting at depth ${start}`,
+      );
+    }
     this.starts.splice(idx);
     this.ends.splice(idx);
-    this.path.truncate(start);
-    this.playOffset = this.path.depth;
-    return start;
   }
 
   endSpan(opts?: EndSpanOptions): void {
-    const end = this.playOffset;
+    const end = this.picker.depth;
     const spanIndex = this.openSpans.pop();
     if (spanIndex === undefined) {
       throw new Error("no open span");
@@ -264,7 +254,9 @@ export class PlayoutLog implements PlayoutWriter {
   }
 
   endPlayout(): void {
-    if (!this.atEnd) throw new Error("playout didn't read every pick");
+    if (this.picker.replaying) {
+      throw new Error("playout didn't read every pick");
+    }
     if (this.level !== 0) {
       throw new Error("unclosed span at end of playout");
     }
@@ -274,7 +266,7 @@ export class PlayoutLog implements PlayoutWriter {
     this.endPlayout();
     const starts = this.starts.slice();
     const ends = this.ends.slice();
-    return new Playout(this.path.replies, starts, ends);
+    return new Playout(this.picker.getPicks(), starts, ends);
   }
 }
 
@@ -311,54 +303,14 @@ export type PlayoutContext = IntPicker & PlayoutWriter & {
  * the search tree.
  */
 export function* everyPlayout(
-  childPicker: IntPicker,
+  firstChildPicker: IntPicker,
 ): IterableIterator<PlayoutContext> {
-  for (const path of everyPath()) {
-    const log = new PlayoutLog(path);
-    const maxDepth = 100;
-
-    const pick = (req: PickRequest): number => {
-      if (!log.atEnd) {
-        // replaying
-        const prev = log.nextPick();
-        if (prev.req.min !== req.min || prev.req.max !== req.max) {
-          throw new Error(
-            "when replaying, pick() must be called with the same request as before",
-          );
-        }
-        return prev.reply;
-      }
-
-      // recording
-      if (path.depth >= maxDepth) {
-        throw new Error(
-          `max depth of search tree exceeded; want depth <= ${maxDepth}`,
-        );
-      }
-      const pick = childPicker.pick(req);
-      log.pushPick(req, pick);
-      return pick;
-    };
-
-    const context = {
-      pick,
-      startSpan: log.startSpan.bind(log),
-      cancelSpan: log.cancelSpan.bind(log),
-      endSpan: log.endSpan.bind(log),
-      endPlayout: log.endPlayout.bind(log),
-      toPlayout: log.toPlayout.bind(log),
-    };
-
-    yield context;
-  }
-}
-
-/**
- * Thrown to indicate that a playout didn't find a solution.
- */
-export class PlayoutFailed extends Error {
-  constructor(msg: string) {
-    super(msg);
+  const picker = new DepthFirstPicker({ firstChildPicker, maxDepth: 100 });
+  while (true) {
+    yield new PlayoutLog(picker);
+    if (!picker.backTo(0)) {
+      return;
+    }
   }
 }
 
@@ -369,11 +321,11 @@ export class StrictPicker implements IntPicker {
 
   pick(req: PickRequest): number {
     if (this.offset >= this.picks.length) {
-      throw new PlayoutFailed("ran out of picks");
+      throw new PickFailed("ran out of recorded picks");
     }
     const pick = this.picks[this.offset++];
     if (!req.inRange(pick)) {
-      throw new PlayoutFailed(
+      throw new PickFailed(
         `Pick ${this.offset - 1} (${pick}) is out of range for ${req}`,
       );
     }
