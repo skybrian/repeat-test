@@ -6,7 +6,6 @@ import { repeatTest } from "../src/runner.ts";
 
 import {
   DepthFirstPicker,
-  everyPath,
   PickLog,
   PickRequest,
   PickRequestOptions,
@@ -210,30 +209,6 @@ describe("PickLog", () => {
         assertEquals(path.replies, log.replies);
       });
     });
-  });
-});
-
-describe("everyPath", () => {
-  it("exits after the first visit if no root node is defined", () => {
-    const paths = [];
-    for (const path of everyPath()) {
-      paths.push(path.replies);
-      assertEquals(path.depth, 0);
-      assertEquals(path.entries, []);
-      assertEquals(path.replies, []);
-    }
-    assertEquals(paths, [[]]);
-  });
-  it("visits each other child of a root node", () => {
-    const threeWay = new PickRequest(0, 2);
-    const paths = [];
-    for (const path of everyPath()) {
-      paths.push(path.replies);
-      if (path.depth === 0) {
-        path.addChild(threeWay, 1);
-      }
-    }
-    assertEquals(paths, [[], [2], [0]]);
   });
 });
 

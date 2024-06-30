@@ -433,35 +433,6 @@ export class PickLog {
 }
 
 /**
- * Iterates over unvisited leaves in a search tree, using a {@link PickPath} to
- * extend the path to each leaf.
- *
- * During each iteration, calling {@link PickPath.addChild} extends the search
- * tree. For example, the first addChild() call on the first iteration defines
- * the root and picks the root's first child to visit. All the other children
- * will be visited on future iterations.
- *
- * Previously defined tree nodes can't be changed. They will already be added to
- * the PickPath when it's yielded.
- *
- * The caller needs to call addChild() until it gets to a leaf before moving to
- * the next path. For each new parent, it can choose any child it wants to visit
- * first. The iterator chooses the order of the other children.
- *
- * Iteration stops when there are no unexplored parts of the tree that can be
- * reached by backtracking.
- */
-export function* everyPath(): IterableIterator<PickPath> {
-  const log = new PickLog();
-  while (true) {
-    yield log.getPickPath();
-    if (!log.next()) {
-      break;
-    }
-  }
-}
-
-/**
  * A picker that can back up to a previous point in a pick sequence and try a
  * different path.
  */
