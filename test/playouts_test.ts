@@ -8,8 +8,8 @@ import {
   alwaysPick,
   alwaysPickDefault,
   alwaysPickMin,
+  DepthFirstPicker,
   IntPicker,
-  PickLog,
   PickRequest,
   PickRequestOptions,
 } from "../src/picks.ts";
@@ -127,41 +127,41 @@ describe("Playout", () => {
 });
 
 describe("PlayoutLog", () => {
-  describe("getPlayout", () => {
+  describe("toPlayout", () => {
     const req = new PickRequest(1, 6);
 
     it("returns an empty array when there are no spans", () => {
-      const path = new PickLog().getPickPath();
-      assertEquals(new PlayoutLog(path).toPlayout().toNestedPicks(), []);
+      const picker = new DepthFirstPicker();
+      assertEquals(new PlayoutLog(picker).toPlayout().toNestedPicks(), []);
     });
 
     it("ignores an empty span", () => {
-      const path = new PickLog().getPickPath();
-      const log = new PlayoutLog(path);
+      const picker = new DepthFirstPicker();
+      const log = new PlayoutLog(picker);
       log.startSpan();
       log.endSpan();
       assertEquals(log.toPlayout().toNestedPicks(), []);
     });
 
     it("ignores a single-pick span", () => {
-      const path = new PickLog().getPickPath();
-      const log = new PlayoutLog(path);
+      const picker = new DepthFirstPicker();
+      const log = new PlayoutLog(picker);
       log.startSpan();
-      log.pushPick(req, 1);
+      log.pick(req);
       log.endSpan();
       assertEquals(log.toPlayout().toNestedPicks(), [1]);
     });
 
-    it("ignores a span that contains only a single span", () => {
-      const path = new PickLog().getPickPath();
-      const log = new PlayoutLog(path);
+    it("ignores a span that contains only a single subspan", () => {
+      const picker = new DepthFirstPicker();
+      const log = new PlayoutLog(picker);
       log.startSpan();
       log.startSpan();
-      log.pushPick(req, 1);
-      log.pushPick(req, 2);
+      log.pick(req);
+      log.pick(req);
       log.endSpan();
       log.endSpan();
-      assertEquals(log.toPlayout().toNestedPicks(), [[1, 2]]);
+      assertEquals(log.toPlayout().toNestedPicks(), [[1, 1]]);
     });
   });
 });

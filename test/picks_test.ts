@@ -235,22 +235,6 @@ describe("everyPath", () => {
     }
     assertEquals(paths, [[], [2], [0]]);
   });
-  it("fully explores a combination lock", () => {
-    const digit = new PickRequest(0, 9);
-    const dialCount = 3;
-    const leaves = new Set<string>();
-    for (const path of everyPath()) {
-      while (path.depth < dialCount) {
-        path.addChild(digit, 0);
-      }
-      const leaf = JSON.stringify(path.replies);
-      assertFalse(leaves.has(leaf));
-      leaves.add(leaf);
-    }
-    assertEquals(leaves.size, 1000);
-    assertEquals(Array.from(leaves)[0], "[0,0,0]");
-    assertEquals(Array.from(leaves)[999], "[9,9,9]");
-  });
 });
 
 describe("DepthFirstPicker", () => {
@@ -287,5 +271,25 @@ describe("DepthFirstPicker", () => {
       assertEquals(picker.pick(bit), 1);
       assertFalse(picker.backTo(1));
     });
+  });
+  it("fully explores a combination lock", () => {
+    const digit = new PickRequest(0, 9);
+    const dialCount = 3;
+    const leaves = new Set<string>();
+    const picker = new DepthFirstPicker();
+    while (true) {
+      while (picker.depth < dialCount) {
+        picker.pick(digit);
+      }
+      const leaf = JSON.stringify(picker.getPicks());
+      assertFalse(leaves.has(leaf));
+      leaves.add(leaf);
+      if (!picker.backTo(0)) {
+        break;
+      }
+    }
+    assertEquals(leaves.size, 1000);
+    assertEquals(Array.from(leaves)[0], "[0,0,0]");
+    assertEquals(Array.from(leaves)[999], "[9,9,9]");
   });
 });

@@ -1,8 +1,8 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals } from "@std/assert";
 
-import { IntPicker, PickRequest } from "../src/picks.ts";
-import { NestedPicks, PlayoutFailed } from "../src/playouts.ts";
+import { IntPicker, PickFailed, PickRequest } from "../src/picks.ts";
+import { NestedPicks } from "../src/playouts.ts";
 import { generateAllSolutions, Solution } from "../src/solver.ts";
 
 function assertSolutions<T>(
@@ -19,7 +19,7 @@ function assertSolutions<T>(
 describe("generateAllSolutions", () => {
   it("returns nothing if no playouts succeeded", () => {
     function runPlayout() {
-      throw new PlayoutFailed("nothing here");
+      throw new PickFailed("nothing here");
     }
     const sols = generateAllSolutions(runPlayout);
     assertSolutions(sols, []);
