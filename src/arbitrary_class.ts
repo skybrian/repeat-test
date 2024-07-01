@@ -255,10 +255,16 @@ export default class Arbitrary<T> {
     const input = new StrictPicker(picks);
 
     const val = this.pick(input, { maxTries: 1 });
-    if (!input.finished) {
-      throw new PlayoutFailed(
-        `Picks ${input.offset} to ${picks.length} were unused`,
-      );
+    if (!input.parsed) {
+      if (input.replaying) {
+        throw new PlayoutFailed(
+          `Picks ${input.offset} to ${picks.length} were unused`,
+        );
+      } else {
+        throw new PlayoutFailed(
+          `More than ${picks.length} picks were used`,
+        );
+      }
     }
     return val;
   }

@@ -130,45 +130,33 @@ describe("Arbitrary", () => {
 
       function makeMock() {
         const answers: number[] = [];
-        const exceptions: unknown[] = [];
         const mock = Arbitrary.from((pick) => {
-          try {
-            answers.push(pick(bit));
-          } catch (e) {
-            exceptions.push(e);
-          }
+          answers.push(pick(bit));
           return 123;
         });
         // clear anything that happened during the constructor
         answers.length = 0;
-        exceptions.length = 0;
-        return { mock, answers, exceptions };
+        return { mock, answers };
       }
 
       describe("when there is no input", () => {
         it("it throws PlayoutFailed", () => {
-          const { mock, answers, exceptions } = makeMock();
-          mock.parse([]);
-          assertEquals(answers, []);
-          assertEquals(exceptions.length, 1);
-          assert(exceptions[0] instanceof PlayoutFailed);
+          const { mock } = makeMock();
+          assertThrows(() => mock.parse([]), PlayoutFailed);
         });
       });
       describe("when the input is in range", () => {
         it("returns the next pick", () => {
-          const { mock, answers, exceptions } = makeMock();
+          const { mock, answers } = makeMock();
           mock.parse([1]);
           assertEquals(answers, [1]);
-          assertEquals(exceptions.length, 0);
         });
       });
       describe("when the input is out of range", () => {
         it("throws PlayoutFailed", () => {
-          const { mock, answers, exceptions } = makeMock();
-          mock.parse([2]);
+          const { mock, answers } = makeMock();
+          assertThrows(() => mock.parse([2]), PlayoutFailed);
           assertEquals(answers, []);
-          assertEquals(exceptions.length, 1);
-          assert(exceptions[0] instanceof PlayoutFailed);
         });
       });
     });

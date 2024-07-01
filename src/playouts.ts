@@ -322,14 +322,34 @@ export function* everyPlayout(
   }
 }
 
-export class StrictPicker implements IntPicker {
+/**
+ * A picker that provides a single playout.
+ */
+export class StrictPicker implements RetryPicker {
   offset = 0;
 
   constructor(private readonly picks: number[]) {}
 
+  get depth() {
+    return this.offset;
+  }
+
+  getPicks(): number[] {
+    return this.picks.slice();
+  }
+
+  get replaying(): boolean {
+    return this.offset < this.picks.length;
+  }
+
+  backTo(_depth: number): boolean {
+    return false;
+  }
+
   pick(req: PickRequest): number {
     if (this.offset >= this.picks.length) {
-      throw new PlayoutFailed("ran out of recorded picks");
+      this.offset++;
+      return req.default;
     }
     const pick = this.picks[this.offset++];
     if (!req.inRange(pick)) {
@@ -340,7 +360,7 @@ export class StrictPicker implements IntPicker {
     return pick;
   }
 
-  get finished(): boolean {
+  get parsed(): boolean {
     return this.offset === this.picks.length;
   }
 }
