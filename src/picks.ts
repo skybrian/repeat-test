@@ -142,34 +142,12 @@ export interface IntPicker {
   pick(req: PickRequest): number;
 }
 
-// TODO: consider removing SaveablePicker.
-// It's not used yet.
-
-/**
- * A picker that can be cloned.
- */
-export interface SavablePicker extends IntPicker {
-  /** Makes a copy of the picker's current state. */
-  save(): PickerState;
-}
-
-/**
- * An immutable starting point for creating identical copies of an
- * {@link IntPicker}. It represents a single state of the picker's state
- * machine.
- */
-export interface PickerState {
-  start(): IntPicker;
-}
-
-export const alwaysPickDefault: SavablePicker = {
+export const alwaysPickDefault: IntPicker = {
   pick: (req) => req.default,
-  save: () => ({ start: () => alwaysPickDefault }),
 };
 
-export const alwaysPickMin: SavablePicker = {
+export const alwaysPickMin: IntPicker = {
   pick: (req) => req.min,
-  save: () => ({ start: () => alwaysPickMin }),
 };
 
 /**
@@ -178,7 +156,7 @@ export const alwaysPickMin: SavablePicker = {
  * It will throw an exception if it can't satisfy a request.
  */
 export function alwaysPick(n: number) {
-  const picker: SavablePicker = {
+  const picker: IntPicker = {
     pick: (req) => {
       if (!req.inRange(n)) {
         throw new Error(
@@ -187,7 +165,6 @@ export function alwaysPick(n: number) {
       }
       return n;
     },
-    save: () => ({ start: () => picker }),
   };
   return picker;
 }
