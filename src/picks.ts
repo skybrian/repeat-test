@@ -131,15 +131,6 @@ export class PickRequest {
 }
 
 /**
- * Indicates that a picker can't provide a pick for some reason.
- */
-export class PickFailed extends Error {
-  constructor(msg: string) {
-    super(msg);
-  }
-}
-
-/**
  * A state machine that picks an integer, given a request.
  * (Like an iterator, this is mutable.)
  */
@@ -345,8 +336,7 @@ export interface RetryPicker extends IntPicker {
    * sequence.
    *
    * While replay is true, calls to {@link RetryPicker.pick} have to pass in a
-   * request with the same range as last time, or it will throw
-   * {@link PickFailed}.
+   * request with the same range as last time, or it will throw an Error.
    *
    * (It will diverge before replaying the entire sequence.)
    */
@@ -374,7 +364,9 @@ export type DepthFirstPickerOpts = {
   firstChildPicker?: IntPicker;
 
   /**
-   * Sets the limit for how many times the picker may be called.
+   * Sets a limit for how deep the tree can get. After this point,
+   * the picker will always return the request's default value.
+   * (No new branches.)
    */
   maxDepth?: number;
 };
@@ -394,16 +386,14 @@ export class DepthFirstPicker implements RetryPicker {
     if (this.offset < this.log.length) {
       const next = this.log.entryAt(this.offset);
       if (req.min !== next.req.min || req.max !== next.req.max) {
-        throw new PickFailed(
+        throw new Error(
           `unexpected request while replaying: want ${next.req.range}, got ${req.range}`,
         );
       }
       this.offset++;
       return next.reply;
     } else if (this.offset >= this.maxDepth) {
-      throw new PickFailed(
-        `max depth reached (want picks <= (${this.maxDepth})`,
-      );
+      return req.default;
     }
     const reply = this.childPicker.pick(req);
     this.log.push(req, reply);

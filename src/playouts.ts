@@ -1,7 +1,6 @@
 import {
   DepthFirstPicker,
   IntPicker,
-  PickFailed,
   PickRequest,
   RetryPicker,
 } from "./picks.ts";
@@ -84,6 +83,15 @@ export class Playout {
       throw new Error("unbalanced spanStarts and spanEnds");
     }
     return root;
+  }
+}
+
+/**
+ * Indicates that the current playout won't result in picking a value.
+ */
+export class PlayoutFailed extends Error {
+  constructor(msg: string) {
+    super(msg);
   }
 }
 
@@ -217,7 +225,7 @@ export class PlayoutLog implements PlayoutContext {
     }
     const start = this.starts[idx];
     if (!this.picker.backTo(start)) {
-      throw new PickFailed(
+      throw new PlayoutFailed(
         `cancelled the last playout starting at depth ${start}`,
       );
     }
@@ -321,11 +329,11 @@ export class StrictPicker implements IntPicker {
 
   pick(req: PickRequest): number {
     if (this.offset >= this.picks.length) {
-      throw new PickFailed("ran out of recorded picks");
+      throw new PlayoutFailed("ran out of recorded picks");
     }
     const pick = this.picks[this.offset++];
     if (!req.inRange(pick)) {
-      throw new PickFailed(
+      throw new PlayoutFailed(
         `Pick ${this.offset - 1} (${pick}) is out of range for ${req}`,
       );
     }

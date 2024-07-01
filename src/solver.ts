@@ -1,12 +1,17 @@
-import { alwaysPickDefault, PickFailed } from "./picks.ts";
-import { everyPlayout, Playout, PlayoutContext } from "./playouts.ts";
+import { alwaysPickDefault } from "./picks.ts";
+import {
+  everyPlayout,
+  Playout,
+  PlayoutContext,
+  PlayoutFailed,
+} from "./playouts.ts";
 
 /**
  * A function defining a search tree that optionally has a value at each leaf.
  *
  * On each function call, it walks the search tree from the root to a leaf and
  * returns whatever value is found there. If there's no value to be returned, it
- * can throw {@link PickFailed} to indicate a dead end, and the caller will
+ * can throw {@link PlayoutFailed} to indicate a dead end, and the caller will
  * try again.
  *
  * During a function call, calls to {@link PlayoutContext.pick} extend the
@@ -44,7 +49,7 @@ export function* generateAllSolutions<T>(
       const playout = ctx.toPlayout();
       yield { val, playout };
     } catch (e) {
-      if (!(e instanceof PickFailed)) {
+      if (!(e instanceof PlayoutFailed)) {
         throw e;
       }
       // backtracked from a dead end; try the next path
