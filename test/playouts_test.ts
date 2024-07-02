@@ -1,27 +1,12 @@
 import { describe, it } from "@std/testing/bdd";
-import { assert, assertEquals, fail } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import * as arb from "../src/arbitraries.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import {
-  alwaysPick,
-  alwaysPickDefault,
-  alwaysPickMin,
-  DepthFirstPicker,
-  IntPicker,
-  PickRequest,
-  PickRequestOptions,
-} from "../src/picks.ts";
+import { DepthFirstPicker, PickRequest } from "../src/picks.ts";
 
-import { randomPicker } from "../src/random.ts";
-
-import {
-  everyPlayout,
-  NestedPicks,
-  Playout,
-  PlayoutContext,
-} from "../src/playouts.ts";
+import { NestedPicks, Playout, PlayoutContext } from "../src/playouts.ts";
 
 type NestedPickOpts = {
   minSpanSize?: number;
@@ -127,6 +112,21 @@ describe("Playout", () => {
 });
 
 describe("PlayoutContext", () => {
+  describe("cancelSpan", () => {
+    it("throws an error when there are no spans", () => {
+      const picker = new DepthFirstPicker();
+      const ctx = new PlayoutContext(picker);
+      assertThrows(() => ctx.cancelSpan(0), Error);
+    });
+    it("throws an error when the level doesn't match startSpan", () => {
+      const picker = new DepthFirstPicker();
+      const ctx = new PlayoutContext(picker);
+      ctx.startSpan();
+      ctx.endSpan(1);
+      assertThrows(() => ctx.cancelSpan(0), Error);
+      assertThrows(() => ctx.cancelSpan(2), Error);
+    });
+  });
   describe("toPlayout", () => {
     const req = new PickRequest(1, 6);
 
@@ -147,7 +147,7 @@ describe("PlayoutContext", () => {
       const picker = new DepthFirstPicker();
       const ctx = new PlayoutContext(picker);
       ctx.startSpan();
-      ctx.pick(req);
+      picker.pick(req);
       ctx.endSpan(1);
       assertEquals(ctx.toPlayout().toNestedPicks(), [1]);
     });
@@ -157,136 +157,11 @@ describe("PlayoutContext", () => {
       const ctx = new PlayoutContext(picker);
       ctx.startSpan();
       ctx.startSpan();
-      ctx.pick(req);
-      ctx.pick(req);
+      picker.pick(req);
+      picker.pick(req);
       ctx.endSpan(2);
       ctx.endSpan(1);
       assertEquals(ctx.toPlayout().toNestedPicks(), [[1, 1]]);
-    });
-  });
-});
-
-function validRequest(
-  opts?: arb.IntRangeOptions,
-): Arbitrary<PickRequest> {
-  const range = arb.intRange(opts);
-
-  return arb.from((pick) => {
-    const { min, max } = pick(range);
-
-    const opts: PickRequestOptions = {};
-    if (pick(arb.boolean())) {
-      opts.default = pick(arb.int(min, max));
-    }
-    return new PickRequest(min, max, opts);
-  });
-}
-
-function collectPaths(
-  picker: IntPicker,
-  maze: (picker: IntPicker) => void,
-  expectedCount: number,
-) {
-  const result = [];
-  const seen = new Set();
-
-  for (const ctx of everyPlayout(picker)) {
-    if (result.length > expectedCount) {
-      fail(`wanted ${expectedCount} playouts, got one more`);
-    }
-
-    maze(ctx);
-
-    const picks = JSON.stringify(ctx.toPlayout().picks);
-    if (seen.has(picks)) {
-      fail(`duplicate playout: ${picks}`);
-    }
-    seen.add(picks);
-
-    result.push(ctx.toPlayout().toNestedPicks());
-  }
-  return result;
-}
-
-function checkPaths(
-  maze: (picker: IntPicker) => void,
-  expected: NestedPicks[],
-) {
-  const playouts = collectPaths(alwaysPickDefault, maze, expected.length);
-  assertEquals(playouts, expected);
-}
-
-describe("everyPlayout", () => {
-  it("finds one path when there are choices", () => {
-    checkPaths(() => {}, [[]]);
-  });
-
-  const justOne = new PickRequest(1, 1);
-  it("finds one path for a one-way choice", () => {
-    checkPaths((p) => {
-      p.pick(justOne);
-    }, [[1]]);
-  });
-
-  const bit = new PickRequest(0, 1);
-  it("finds both paths for a two-way choice", () => {
-    checkPaths((p) => {
-      p.pick(bit);
-    }, [[0], [1]]);
-  });
-
-  it("generates all alternatives for any single pick", () => {
-    const validRequestAndReply = arb.from((pick) => {
-      const req = pick(validRequest());
-      const n = pick(req);
-      return { req, n };
-    });
-    repeatTest(validRequestAndReply, ({ req, n }) => {
-      let count = 0;
-      for (const ctx of everyPlayout(alwaysPick(n))) {
-        if (count > req.size) {
-          fail(`wanted ${req.size} playouts, got one more`);
-        }
-        ctx.pick(req);
-        count++;
-      }
-      assertEquals(count, req.size);
-    });
-  });
-
-  it("backtracks to a previous choice", () => {
-    checkPaths((p) => {
-      p.pick(bit);
-      p.pick(justOne);
-    }, [[0, 1], [1, 1]]);
-  });
-
-  it("finds every combination for an odometer", () => {
-    const digit = new PickRequest(0, 9);
-    const digits = Array(3).fill(digit);
-
-    const paths = collectPaths(alwaysPickMin, (p) => {
-      digits.forEach((req) => p.pick(req));
-    }, 1000);
-
-    assertEquals(paths[0], [0, 0, 0]);
-    assertEquals(paths[999], [9, 9, 9]);
-    assertEquals(paths.length, 1000);
-  });
-
-  it("always chooses a path that hasn't been seen", () => {
-    const randomMaze = arb.record({
-      requests: arb.array(validRequest({ maxSize: 3 }), { max: 5 }),
-      seed: arb.int32(),
-    });
-    repeatTest(randomMaze, ({ requests, seed }) => {
-      collectPaths(randomPicker(seed), (p) => {
-        for (const req of requests) {
-          const n = p.pick(req);
-          assert(n >= req.min);
-          assert(n <= req.max);
-        }
-      }, 3 ** requests.length);
     });
   });
 });

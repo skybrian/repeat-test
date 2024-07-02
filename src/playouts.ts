@@ -1,9 +1,4 @@
-import {
-  DepthFirstPicker,
-  IntPicker,
-  PickRequest,
-  RetryPicker,
-} from "./picks.ts";
+import { PickRequest, RetryPicker } from "./picks.ts";
 
 export type NestedPicks = (number | NestedPicks)[];
 
@@ -121,10 +116,6 @@ export class PlayoutContext {
     return this.openSpans.length;
   }
 
-  pick(request: PickRequest): number {
-    return this.picker.pick(request);
-  }
-
   /**
    * Records the start of a span.
    *
@@ -207,40 +198,6 @@ export class PlayoutContext {
     const starts = this.starts.slice();
     const ends = this.ends.slice();
     return new Playout(this.picker.getPicks(), starts, ends);
-  }
-}
-
-/**
- * Iterates over unvisited leaves in a search tree, by doing picks.
- *
- * The search tree is defined by calls to {@link PlayoutContext.pick}. For
- * example, the argument to the first pick() call on the first iteration defines
- * the root, and the return value (chosen using the child picker) determines
- * which child to visit first.
- *
- * On subsequent iterations, the first pick call (for the root) must have the
- * same range as the previous iteration (since the root has already been
- * defined). If not, pick() will throw an exception. Similarly for all
- * subsequent picks up to an unexplored part of the tree.
- *
- * This is typically done using a deterministic function that makes all choices
- * based on the output of previous pick() calls.
- *
- * The sequence stops when there are no unexplored parts of the tree to be
- * reached by backtracking.
- *
- * @param childPicker picks the first child to visit when a new node is added to
- * the search tree.
- */
-export function* everyPlayout(
-  firstChildPicker: IntPicker,
-): IterableIterator<PlayoutContext> {
-  const picker = new DepthFirstPicker({ firstChildPicker, maxDepth: 100 });
-  while (true) {
-    yield new PlayoutContext(picker);
-    if (!picker.backTo(0)) {
-      return;
-    }
   }
 }
 

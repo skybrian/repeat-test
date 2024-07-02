@@ -162,8 +162,8 @@ export default class Arbitrary<T> {
   }
 
   /**
-   * Picks an arbitrary member, based on some picks.
-   * @throws {@link PickFailed} when it calls `pick()` internally and it fails.
+   * Finds a solution by trying playouts one at a time from a source of playouts.
+   * Throws {@link PlayoutFailed} when it couldn't find a playout that leads to a value.
    */
   pick(picker: RetryPicker): Solution<T> {
     const ctx = new PlayoutContext(picker);
@@ -220,7 +220,7 @@ export default class Arbitrary<T> {
       opts?: PickFunctionOptions<T>,
     ): number | T => {
       if (req instanceof PickRequest) {
-        return ctx.pick(req);
+        return picker.pick(req);
       } else if (req instanceof Arbitrary) {
         return pickFromArbitrary(req, opts);
       } else {

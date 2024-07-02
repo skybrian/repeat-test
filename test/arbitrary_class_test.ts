@@ -229,17 +229,17 @@ describe("Arbitrary", () => {
   });
 
   describe("solutions", () => {
-    it("returns the only solution for a constant", () => {
+    it("finds the only solution for a constant", () => {
       const one = Arbitrary.from(() => 1);
       assertSolutions(one, [{ val: 1, picks: [] }]);
     });
 
-    it("returns the only solution for a filtered constant", () => {
+    it("finds the only solution for a filtered constant", () => {
       const one = Arbitrary.from(() => 1).filter((val) => val === 1);
       assertSolutions(one, [{ val: 1, picks: [] }]);
     });
 
-    it("returns each solution for an int range", () => {
+    it("finds each solution for an int range", () => {
       const oneTwoThree = Arbitrary.from(new PickRequest(1, 3));
       assertSolutions(oneTwoThree, [
         { val: 1, picks: [1] },
@@ -248,21 +248,36 @@ describe("Arbitrary", () => {
       ]);
     });
 
-    it("returns each solution for a boolean", () => {
+    it("finds each solution for a boolean", () => {
       const boolean = Arbitrary.from(new PickRequest(0, 1)).map((b) => b === 1);
-      const expected = [
+      assertSolutions(boolean, [
         { val: false, picks: [0] },
         { val: true, picks: [1] },
-      ];
-      assertSolutions(boolean, expected);
+      ]);
     });
 
-    it("returns each solution for filtered PickRequest", () => {
+    it("finds each solution for filtered PickRequest", () => {
       const bit = Arbitrary.from(new PickRequest(0, 1))
         .filter((b) => b === 0);
       assertSolutions(bit, [
         { val: 0, picks: [0] },
       ]);
+    });
+
+    it("finds every combination for an odometer", () => {
+      const digit = new PickRequest(0, 9);
+      const digits = Arbitrary.from((pick) => {
+        const a = pick(digit);
+        const b = pick(digit);
+        const c = pick(digit);
+        return a * 100 + b * 10 + c;
+      });
+
+      const sols = Array.from(digits.solutions);
+      assertEquals(sols[0].val, 0);
+      assertEquals(sols[0].playout.toNestedPicks(), [0, 0, 0]);
+      assertEquals(sols[999].val, 999);
+      assertEquals(sols[999].playout.toNestedPicks(), [9, 9, 9]);
     });
   });
 
