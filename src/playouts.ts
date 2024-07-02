@@ -106,13 +106,13 @@ export type EndSpanOptions = {
 };
 
 /**
- * Logs events during a playout.
+ * The methods available when running a playout.
  *
  * Spans must nest to form a tree. Spans with less than two picks aren't
  * normally recorded. A span's *level* is the number of spans are still open
  * when it's created.
  */
-export interface PlayoutWriter {
+export type PlayoutContext = IntPicker & {
   /**
    * Records the start of a span.
    * Returns the level of the new span.
@@ -141,53 +141,12 @@ export interface PlayoutWriter {
    * Called to indicate that the playout finished successfully.
    */
   endPlayout(): void;
-}
 
-/**
- * The methods available when running a playout.
- */
-export type PlayoutContext = IntPicker & PlayoutWriter & {
   /**
    * Ends playout generation and returns the playout.
    */
   toPlayout(): Playout;
 };
-
-/**
- * A {@link PlayoutWriter} that doesn't record anything.
- *
- * It just checks that it was called correctly.
- */
-export class NullPlayoutWriter implements PlayoutWriter {
-  private level = 0;
-
-  startSpan() {
-    this.level++;
-    return this.level;
-  }
-
-  cancelSpan() {
-    if (this.level === 0) throw new Error("no open span");
-    this.level--;
-    return true;
-  }
-
-  endSpan(opts?: EndSpanOptions) {
-    const levelToEnd = opts?.level;
-    if (levelToEnd !== undefined && levelToEnd !== this.level) {
-      throw new Error(
-        `invalid span level. Want: ${this.level}, got: ${levelToEnd}`,
-      );
-    }
-    this.level--;
-  }
-
-  endPlayout(): void {
-    if (this.level !== 0) {
-      throw new Error("unclosed span at end of playout");
-    }
-  }
-}
 
 /**
  * Logs a single playout.
