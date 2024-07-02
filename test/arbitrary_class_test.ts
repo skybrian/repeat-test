@@ -157,9 +157,8 @@ describe("Arbitrary", () => {
       });
       describe("when the input is out of range", () => {
         it("throws PlayoutFailed", () => {
-          const { mock, answers } = makeMock();
+          const { mock } = makeMock();
           assertThrows(() => mock.parse([2]), PlayoutFailed);
-          assertEquals(answers, []);
         });
       });
     });

@@ -4,14 +4,10 @@ import {
   PickRequest,
   RetryPicker,
   retryPicker,
+  StrictPicker,
 } from "./picks.ts";
 
-import {
-  Playout,
-  PlayoutContext,
-  PlayoutFailed,
-  StrictPicker,
-} from "./playouts.ts";
+import { Playout, PlayoutContext, PlayoutFailed } from "./playouts.ts";
 
 export type PickFunctionOptions<T> = {
   /**

@@ -1,4 +1,4 @@
-import { PickRequest, RetryPicker } from "./picks.ts";
+import { RetryPicker } from "./picks.ts";
 
 export type NestedPicks = (number | NestedPicks)[];
 
@@ -198,48 +198,5 @@ export class PlayoutContext {
     const starts = this.starts.slice();
     const ends = this.ends.slice();
     return new Playout(this.picker.getPicks(), starts, ends);
-  }
-}
-
-/**
- * A picker that provides a single playout.
- */
-export class StrictPicker implements RetryPicker {
-  offset = 0;
-
-  constructor(private readonly picks: number[]) {}
-
-  get depth() {
-    return this.offset;
-  }
-
-  getPicks(): number[] {
-    return this.picks.slice();
-  }
-
-  get replaying(): boolean {
-    return this.offset < this.picks.length;
-  }
-
-  backTo(_depth: number): boolean {
-    return false;
-  }
-
-  pick(req: PickRequest): number {
-    if (this.offset >= this.picks.length) {
-      this.offset++;
-      return req.default;
-    }
-    const pick = this.picks[this.offset++];
-    if (!req.inRange(pick)) {
-      throw new PlayoutFailed(
-        `Pick ${this.offset - 1} (${pick}) is out of range for ${req}`,
-      );
-    }
-    return pick;
-  }
-
-  get parsed(): boolean {
-    return this.offset === this.picks.length;
   }
 }

@@ -210,7 +210,7 @@ export interface RetryPicker extends IntPicker {
 }
 
 /**
- * Convert an IntPicker to a RetryPicker, without backtracking.
+ * Converts an IntPicker to a RetryPicker, without backtracking.
  *
  * It just logs the picks.
  */
@@ -234,6 +234,49 @@ export function retryPicker(picker: IntPicker, maxTries: number): RetryPicker {
       return tries < maxTries;
     },
   };
+}
+
+/**
+ * A picker that provides a single playout.
+ */
+export class StrictPicker implements RetryPicker {
+  offset = 0;
+  failed = false;
+
+  constructor(private readonly picks: number[]) {}
+
+  get depth() {
+    return this.offset;
+  }
+
+  getPicks(): number[] {
+    return this.picks.slice();
+  }
+
+  get replaying(): boolean {
+    return this.offset < this.picks.length;
+  }
+
+  backTo(_depth: number): boolean {
+    return false;
+  }
+
+  pick(req: PickRequest): number {
+    if (this.offset >= this.picks.length) {
+      this.failed = true;
+      return req.default;
+    }
+    const pick = this.picks[this.offset++];
+    if (!req.inRange(pick)) {
+      this.failed = true;
+      return req.default;
+    }
+    return pick;
+  }
+
+  get parsed(): boolean {
+    return !this.failed && this.offset === this.picks.length;
+  }
 }
 
 /** A request-reply pair that represents one call to an {@link IntPicker}. */
