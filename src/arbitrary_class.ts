@@ -5,8 +5,12 @@ import {
   retryPicker,
 } from "./picks.ts";
 
-import { PlayoutContext, PlayoutFailed, StrictPicker } from "./playouts.ts";
-import { Solution } from "./solver.ts";
+import {
+  Playout,
+  PlayoutContext,
+  PlayoutFailed,
+  StrictPicker,
+} from "./playouts.ts";
 
 export type PickFunctionOptions<T> = {
   /**
@@ -60,6 +64,11 @@ export type ArbitraryOptions<T> = {
    * If not set, {@link alwaysPickDefault} will be used.
    */
   defaultPicks?: number[];
+};
+
+export type Solution<T> = {
+  readonly val: T;
+  readonly playout: Playout;
 };
 
 /**
