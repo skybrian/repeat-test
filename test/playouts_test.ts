@@ -137,31 +137,31 @@ describe("PlayoutContext", () => {
 
     it("ignores an empty span", () => {
       const picker = new DepthFirstPicker();
-      const log = new PlayoutContext(picker);
-      log.startSpan();
-      log.endSpan(1);
-      assertEquals(log.toPlayout().toNestedPicks(), []);
+      const ctx = new PlayoutContext(picker);
+      ctx.startSpan();
+      ctx.endSpan(1);
+      assertEquals(ctx.toPlayout().toNestedPicks(), []);
     });
 
     it("ignores a single-pick span", () => {
       const picker = new DepthFirstPicker();
-      const log = new PlayoutContext(picker);
-      log.startSpan();
-      log.pick(req);
-      log.endSpan(1);
-      assertEquals(log.toPlayout().toNestedPicks(), [1]);
+      const ctx = new PlayoutContext(picker);
+      ctx.startSpan();
+      ctx.pick(req);
+      ctx.endSpan(1);
+      assertEquals(ctx.toPlayout().toNestedPicks(), [1]);
     });
 
     it("ignores a span that contains only a single subspan", () => {
       const picker = new DepthFirstPicker();
-      const log = new PlayoutContext(picker);
-      log.startSpan();
-      log.startSpan();
-      log.pick(req);
-      log.pick(req);
-      log.endSpan(2);
-      log.endSpan(1);
-      assertEquals(log.toPlayout().toNestedPicks(), [[1, 1]]);
+      const ctx = new PlayoutContext(picker);
+      ctx.startSpan();
+      ctx.startSpan();
+      ctx.pick(req);
+      ctx.pick(req);
+      ctx.endSpan(2);
+      ctx.endSpan(1);
+      assertEquals(ctx.toPlayout().toNestedPicks(), [[1, 1]]);
     });
   });
 });

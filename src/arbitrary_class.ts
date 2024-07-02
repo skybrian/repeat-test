@@ -2,6 +2,7 @@ import {
   alwaysPickDefault,
   DepthFirstPicker,
   PickRequest,
+  RetryPicker,
   retryPicker,
 } from "./picks.ts";
 
@@ -164,7 +165,9 @@ export default class Arbitrary<T> {
    * Picks an arbitrary member, based on some picks.
    * @throws {@link PickFailed} when it calls `pick()` internally and it fails.
    */
-  pick(ctx: PlayoutContext): Solution<T> {
+  pick(picker: RetryPicker): Solution<T> {
+    const ctx = new PlayoutContext(picker);
+
     // These inner functions are mutually recursive and depend on the passed-in
     // picker. They unwind the arbitraries depth-first to get each pick and then
     // build up a value based on it.
@@ -240,9 +243,8 @@ export default class Arbitrary<T> {
    */
   parse(picks: number[]): T {
     const picker = new StrictPicker(picks);
-    const ctx = new PlayoutContext(picker);
 
-    const sol = this.pick(ctx);
+    const sol = this.pick(picker);
     if (!picker.parsed) {
       if (picker.replaying) {
         throw new PlayoutFailed(
@@ -263,8 +265,7 @@ export default class Arbitrary<T> {
     const picker = this.defaultPicks
       ? new StrictPicker(this.defaultPicks)
       : retryPicker(alwaysPickDefault, 1);
-    const ctx = new PlayoutContext(picker);
-    return this.pick(ctx).val;
+    return this.pick(picker).val;
   }
 
   /**
@@ -281,9 +282,8 @@ export default class Arbitrary<T> {
 
     function* generate() {
       while (true) {
-        const ctx = new PlayoutContext(picker);
         try {
-          yield pick(ctx);
+          yield pick(picker);
         } catch (e) {
           if (!(e instanceof PlayoutFailed)) {
             throw e;

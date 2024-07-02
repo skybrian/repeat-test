@@ -4,7 +4,7 @@ import { assertSolutions } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPickDefault, PickRequest, retryPicker } from "../src/picks.ts";
-import { PlayoutContext, PlayoutFailed } from "../src/playouts.ts";
+import { PlayoutFailed } from "../src/playouts.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 
 describe("Arbitrary", () => {
@@ -56,15 +56,13 @@ describe("Arbitrary", () => {
         const req = new PickRequest(1, 2);
         const arb = Arbitrary.from((pick) => pick(req));
         const picker = retryPicker(alwaysPickDefault, 1);
-        const ctx = new PlayoutContext(picker);
-        assertEquals(arb.pick(ctx).val, 1);
+        assertEquals(arb.pick(picker).val, 1);
       });
       it("accepts an Arbitrary", () => {
         const req = Arbitrary.of("hi", "there");
         const arb = Arbitrary.from((pick) => pick(req));
         const picker = retryPicker(alwaysPickDefault, 1);
-        const ctx = new PlayoutContext(picker);
-        assertEquals(arb.pick(ctx).val, "hi");
+        assertEquals(arb.pick(picker).val, "hi");
       });
       it("accepts a record shape", () => {
         const req = {
@@ -73,8 +71,7 @@ describe("Arbitrary", () => {
         };
         const arb = Arbitrary.from((pick) => pick(req));
         const picker = retryPicker(alwaysPickDefault, 1);
-        const ctx = new PlayoutContext(picker);
-        assertEquals(arb.pick(ctx).val, { a: "hi", b: 1 });
+        assertEquals(arb.pick(picker).val, { a: "hi", b: 1 });
       });
     });
   });

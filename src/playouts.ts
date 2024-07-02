@@ -198,22 +198,12 @@ export class PlayoutContext {
   }
 
   /**
-   * Called to indicate that the playout finished successfully.
-   */
-  endPlayout(): void {
-    if (this.picker.replaying) {
-      throw new Error("playout didn't read every pick");
-    }
-    if (this.level !== 0) {
-      throw new Error("unclosed span at end of playout");
-    }
-  }
-
-  /**
    * Ends playout generation and returns the playout.
    */
   toPlayout() {
-    this.endPlayout();
+    if (this.level !== 0) {
+      throw new Error("unclosed span at end of playout");
+    }
     const starts = this.starts.slice();
     const ends = this.ends.slice();
     return new Playout(this.picker.getPicks(), starts, ends);

@@ -1,6 +1,5 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
 import { retryPicker } from "./picks.ts";
-import { PlayoutContext } from "./playouts.ts";
 import Arbitrary from "./arbitrary_class.ts";
 import { fail, Failure, Success, success } from "./results.ts";
 
@@ -80,9 +79,8 @@ export function* generateReps<T>(
     const key = { seed, index };
 
     const picker = retryPicker(pickers.next().value, filterLimit);
-    const ctx = new PlayoutContext(picker);
     try {
-      const arg = arb.pick(ctx).val;
+      const arg = arb.pick(picker).val;
       yield { ok: true, key, arg, test };
     } catch (e) {
       yield { ok: false, key, arg: undefined, caught: e };
