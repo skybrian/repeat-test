@@ -4,8 +4,7 @@ import { assertSolutions } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPickDefault, PickRequest, retryPicker } from "../src/picks.ts";
-import { PlayoutFailed } from "../src/playouts.ts";
-import Arbitrary from "../src/arbitrary_class.ts";
+import Arbitrary, { PickFailed } from "../src/arbitrary_class.ts";
 
 describe("Arbitrary", () => {
   describe("from", () => {
@@ -145,7 +144,7 @@ describe("Arbitrary", () => {
       describe("when there is no input", () => {
         it("it throws PlayoutFailed", () => {
           const { mock } = makeMock();
-          assertThrows(() => mock.parse([]), PlayoutFailed);
+          assertThrows(() => mock.parse([]), PickFailed);
         });
       });
       describe("when the input is in range", () => {
@@ -158,7 +157,7 @@ describe("Arbitrary", () => {
       describe("when the input is out of range", () => {
         it("throws PlayoutFailed", () => {
           const { mock } = makeMock();
-          assertThrows(() => mock.parse([2]), PlayoutFailed);
+          assertThrows(() => mock.parse([2]), PickFailed);
         });
       });
     });
@@ -185,7 +184,7 @@ describe("Arbitrary", () => {
     it("handles PickFailed", () => {
       const onlyThree = Arbitrary.from((pick) => {
         const n = pick(new PickRequest(2, 3, { default: 3 }));
-        if (n !== 3) throw new PlayoutFailed("not 3");
+        if (n !== 3) throw new PickFailed("not 3");
         return n;
       });
       assertEquals(Array.from(onlyThree.members), [3]);

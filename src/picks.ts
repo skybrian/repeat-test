@@ -237,24 +237,24 @@ export function retryPicker(picker: IntPicker, maxTries: number): RetryPicker {
 }
 
 /**
- * A picker that provides a single playout.
+ * A picker that provides a single playout and checks for mismatches.
  */
 export class StrictPicker implements RetryPicker {
-  offset = 0;
-  failed = false;
+  private actual: number[] = [];
+  private rangeError?: string = undefined;
 
-  constructor(private readonly picks: number[]) {}
+  constructor(private readonly expected: number[]) {}
 
   get depth() {
-    return this.offset;
+    return this.actual.length;
   }
 
   getPicks(): number[] {
-    return this.picks.slice();
+    return this.actual.slice();
   }
 
   get replaying(): boolean {
-    return this.offset < this.picks.length;
+    return this.actual.length < this.expected.length;
   }
 
   backTo(_depth: number): boolean {
@@ -262,20 +262,27 @@ export class StrictPicker implements RetryPicker {
   }
 
   pick(req: PickRequest): number {
-    if (this.offset >= this.picks.length) {
-      this.failed = true;
+    if (this.actual.length >= this.expected.length) {
+      this.actual.push(req.default);
       return req.default;
     }
-    const pick = this.picks[this.offset++];
-    if (!req.inRange(pick)) {
-      this.failed = true;
+    const pick = this.expected[this.actual.length];
+    if (!req.inRange(pick) && this.rangeError === undefined) {
+      this.rangeError =
+        `pick at offset ${this.actual.length} is not in requested range. Want: (${req.min}, ${req.max}). Got: ${pick}`;
+      this.actual.push(req.default);
       return req.default;
     }
+    this.actual.push(pick);
     return pick;
   }
 
-  get parsed(): boolean {
-    return !this.failed && this.offset === this.picks.length;
+  get error(): string | undefined {
+    if (this.rangeError) return this.rangeError;
+    if (this.actual.length !== this.expected.length) {
+      return `expected ${this.expected.length} picks; got ${this.actual.length}`;
+    }
+    return undefined;
   }
 }
 

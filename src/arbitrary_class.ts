@@ -7,7 +7,7 @@ import {
   StrictPicker,
 } from "./picks.ts";
 
-import { Playout, PlayoutContext, PlayoutFailed } from "./playouts.ts";
+import { Playout, PlayoutContext } from "./playouts.ts";
 
 export type PickFunctionOptions<T> = {
   /**
@@ -33,10 +33,19 @@ export type RecordShape<T> = {
 };
 
 /**
+ * Indicates that picks couldn't be found for generating a value.
+ */
+export class PickFailed extends Error {
+  constructor(msg: string) {
+    super(msg);
+  }
+}
+
+/**
  * Picks a value given a PickRequest, an Arbitrary, or a record shape containing
  * multiple Arbitraries.
  *
- * Throws {@link PlayoutFailed} if it couldn't choose a value.
+ * Throws {@link PickFailed} if it couldn't choose a value.
  */
 export interface PickFunction {
   (req: PickRequest): number;
@@ -49,7 +58,7 @@ export interface PickFunction {
  *
  * The result should be deterministic, depending only on what `pick` returns.
  *
- * It may throw {@link PlayoutFailed} to indicate that no arbitrary could be picked
+ * It may throw {@link PickFailed} to indicate that no arbitrary could be picked
  * using the provided pick function.
  */
 export type ArbitraryCallback<T> = (pick: PickFunction) => T;
@@ -159,7 +168,7 @@ export default class Arbitrary<T> {
 
   /**
    * Finds a solution by trying playouts one at a time from a source of playouts.
-   * Throws {@link PlayoutFailed} when it couldn't find a playout that leads to a value.
+   * Throws {@link PickFailed} when it couldn't find a playout that leads to a value.
    */
   pick(picker: RetryPicker): Solution<T> {
     const ctx = new PlayoutContext(picker);
@@ -192,7 +201,7 @@ export default class Arbitrary<T> {
         }
         if (!ctx.cancelSpan(level)) {
           // return default?
-          throw new PlayoutFailed(
+          throw new PickFailed(
             `Couldn't find a playout that generates ${req}`,
           );
         }
@@ -231,7 +240,7 @@ export default class Arbitrary<T> {
   /**
    * Attempts to pick a value based on a prerecorded list of picks.
    *
-   * Throws {@link PlayoutFailed} if any internal filters didn't accept a pick.
+   * Throws {@link PickFailed} if any internal filters didn't accept a pick.
    * (There is no backtracking.)
    *
    * This function can be used to test which picks the Arbitrary accepts as
@@ -239,18 +248,9 @@ export default class Arbitrary<T> {
    */
   parse(picks: number[]): T {
     const picker = new StrictPicker(picks);
-
     const sol = this.pick(picker);
-    if (!picker.parsed) {
-      if (picker.replaying) {
-        throw new PlayoutFailed(
-          `Picks ${picker.offset} to ${picks.length} were unused`,
-        );
-      } else {
-        throw new PlayoutFailed(
-          `More than ${picks.length} picks were used`,
-        );
-      }
+    if (picker.error) {
+      throw new PickFailed(picker.error);
     }
     return sol.val;
   }
@@ -281,7 +281,7 @@ export default class Arbitrary<T> {
         try {
           yield pick(picker);
         } catch (e) {
-          if (!(e instanceof PlayoutFailed)) {
+          if (!(e instanceof PickFailed)) {
             throw e;
           }
           // backtracking from dead end, so no value to yield

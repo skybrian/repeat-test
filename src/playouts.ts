@@ -82,15 +82,6 @@ export class Playout {
 }
 
 /**
- * Indicates that the current playout won't result in picking a value.
- */
-export class PlayoutFailed extends Error {
-  constructor(msg: string) {
-    super(msg);
-  }
-}
-
-/**
  * The methods available when running a playout.
  *
  * Spans must nest to form a tree. Spans with less than two picks aren't
