@@ -169,6 +169,73 @@ export function alwaysPick(n: number) {
   return picker;
 }
 
+/**
+ * A picker that can back up to a previous point in a pick sequence and try a
+ * different path.
+ */
+export interface RetryPicker extends IntPicker {
+  /**
+   * The number of picks so far. Also, the current depth in a search tree.
+   */
+  readonly depth: number;
+
+  /**
+   * Returns the picks made so far.
+   */
+  getPicks(): number[];
+
+  /**
+   * Returns true if the picker is replaying a previously-determined pick
+   * sequence.
+   *
+   * While replay is true, calls to {@link RetryPicker.pick} have to pass in a
+   * request with the same range as last time, or it will throw an Error.
+   *
+   * (It will diverge before replaying the entire sequence.)
+   */
+  readonly replaying: boolean;
+
+  /**
+   * Returns to a previous point in the pick sequence to try again with a
+   * different pick seqence.
+   *
+   * If successful, the picker might start replaying previous picks. (See
+   * {@link replaying}.)
+   *
+   * Returns false if retrying with different picks isn't possible at the given
+   * depth. This happens when all possibilities have been tried. If `backTo(0)`
+   * returns false, the entire tree has been searched.
+   */
+  backTo(depth: number): boolean;
+}
+
+/**
+ * Convert an IntPicker to a RetryPicker, without backtracking.
+ *
+ * It just logs the picks.
+ */
+export function retryPicker(picker: IntPicker, maxTries: number): RetryPicker {
+  const picks: number[] = [];
+  let tries = 0;
+
+  return {
+    pick(req) {
+      const pick = picker.pick(req);
+      picks.push(pick);
+      return pick;
+    },
+    depth: picks.length,
+    getPicks: function (): number[] {
+      return picks.slice();
+    },
+    replaying: false,
+    backTo: function (): boolean {
+      tries += 1;
+      return tries < maxTries;
+    },
+  };
+}
+
 /** A request-reply pair that represents one call to an {@link IntPicker}. */
 export type PickEntry = {
   req: PickRequest;
@@ -291,46 +358,6 @@ export class PickLog {
     }
     return false;
   }
-}
-
-/**
- * A picker that can back up to a previous point in a pick sequence and try a
- * different path.
- */
-export interface RetryPicker extends IntPicker {
-  /**
-   * The number of picks so far. Also, the current depth in a search tree.
-   */
-  readonly depth: number;
-
-  /**
-   * Returns the picks made so far.
-   */
-  getPicks(): number[];
-
-  /**
-   * Returns true if the picker is replaying a previously-determined pick
-   * sequence.
-   *
-   * While replay is true, calls to {@link RetryPicker.pick} have to pass in a
-   * request with the same range as last time, or it will throw an Error.
-   *
-   * (It will diverge before replaying the entire sequence.)
-   */
-  readonly replaying: boolean;
-
-  /**
-   * Returns to a previous point in the pick sequence to try again with a
-   * different pick seqence.
-   *
-   * If successful, the picker might start replaying previous picks. (See
-   * {@link replaying}.)
-   *
-   * Returns false if retrying with different picks isn't possible at the given
-   * depth. This happens when all possibilities have been tried. If `backTo(0)`
-   * returns false, the entire tree has been searched.
-   */
-  backTo(depth: number): boolean;
 }
 
 export type DepthFirstPickerOpts = {

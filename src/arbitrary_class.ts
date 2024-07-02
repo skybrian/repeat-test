@@ -1,9 +1,9 @@
-import { alwaysPickDefault, IntPicker, PickRequest } from "./picks.ts";
+import { alwaysPickDefault, PickRequest, retryPicker } from "./picks.ts";
 
 import {
-  NullPlayoutWriter,
+  PlayoutContext,
   PlayoutFailed,
-  PlayoutWriter,
+  PlayoutLog,
   StrictPicker,
 } from "./playouts.ts";
 import { generateAllSolutions, Solution } from "./solver.ts";
@@ -60,15 +60,6 @@ export type ArbitraryOptions<T> = {
    * If not set, {@link alwaysPickDefault} will be used.
    */
   defaultPicks?: number[];
-};
-
-export type PickMethodOptions<T> = {
-  /**
-   * How many times to retry filters. Set to 1 to disable backtracking.
-   */
-  maxTries?: number;
-
-  log?: PlayoutWriter;
 };
 
 /**
@@ -164,14 +155,7 @@ export default class Arbitrary<T> {
    * Picks an arbitrary member, based on some picks.
    * @throws {@link PickFailed} when it calls `pick()` internally and it fails.
    */
-  pick(input: IntPicker, opts?: PickMethodOptions<T>): T {
-    const maxTries = opts?.maxTries ?? 1000;
-    if (maxTries < 1 || !Number.isSafeInteger(maxTries)) {
-      throw new Error("maxTries must be a positive integer");
-    }
-
-    const log = opts?.log ?? new NullPlayoutWriter();
-
+  pick(ctx: PlayoutContext): T {
     // These inner functions are mutually recursive and depend on the passed-in
     // picker. They unwind the arbitraries depth-first to get each pick and then
     // build up a value based on it.
@@ -184,32 +168,27 @@ export default class Arbitrary<T> {
 
       // non-backtracking case
       if (accept === undefined) {
-        const level = log.startSpan();
+        const level = ctx.startSpan();
         const val = req.callback(dispatch);
-        log.endSpan({ level });
+        ctx.endSpan({ level });
         return val;
       }
 
       // retry when there's a filter
-      for (let tries = 0; tries < maxTries; tries++) {
-        const level = log.startSpan();
+      while (true) {
+        const level = ctx.startSpan();
         const val = req.callback(dispatch);
         if (accept(val)) {
-          log.endSpan({ level });
+          ctx.endSpan({ level });
           return val;
         }
-        if (tries < maxTries - 1) {
-          // Cancel only when we're not out of tries.
-          log.cancelSpan();
+        if (!ctx.cancelSpan(level)) {
+          // return default?
+          throw new PlayoutFailed(
+            `Couldn't find a playout that generates ${req}`,
+          );
         }
       }
-
-      // Give up. This is normal when backtracking is turned off.
-      // Don't cancel so that the picks used in the failed run are available
-      // to the caller.
-      throw new PlayoutFailed(
-        `Failed to generate ${req} after ${maxTries} tries`,
-      );
     };
 
     const pickRecord = <T>(req: RecordShape<T>): T => {
@@ -229,7 +208,7 @@ export default class Arbitrary<T> {
       opts?: PickFunctionOptions<T>,
     ): number | T => {
       if (req instanceof PickRequest) {
-        return input.pick(req);
+        return ctx.pick(req);
       } else if (req instanceof Arbitrary) {
         return pickFromArbitrary(req, opts);
       } else {
@@ -238,7 +217,7 @@ export default class Arbitrary<T> {
     };
 
     const val = this.callback(dispatch);
-    log.endPlayout();
+    ctx.endPlayout();
     return val;
   }
 
@@ -252,13 +231,14 @@ export default class Arbitrary<T> {
    * input.
    */
   parse(picks: number[]): T {
-    const input = new StrictPicker(picks);
+    const picker = new StrictPicker(picks);
+    const ctx = new PlayoutLog(picker);
 
-    const val = this.pick(input, { maxTries: 1 });
-    if (!input.parsed) {
-      if (input.replaying) {
+    const val = this.pick(ctx);
+    if (!picker.parsed) {
+      if (picker.replaying) {
         throw new PlayoutFailed(
-          `Picks ${input.offset} to ${picks.length} were unused`,
+          `Picks ${picker.offset} to ${picks.length} were unused`,
         );
       } else {
         throw new PlayoutFailed(
@@ -274,8 +254,9 @@ export default class Arbitrary<T> {
     // make a clone, in case it's mutable
     const picker = this.defaultPicks
       ? new StrictPicker(this.defaultPicks)
-      : alwaysPickDefault;
-    return this.pick(picker, { maxTries: 1 });
+      : retryPicker(alwaysPickDefault, 1);
+    const ctx = new PlayoutLog(picker);
+    return this.pick(ctx);
   }
 
   /**
@@ -285,7 +266,7 @@ export default class Arbitrary<T> {
    */
   get solutions(): IterableIterator<Solution<T>> {
     return generateAllSolutions((context): T => {
-      return this.pick(context, { maxTries: 1, log: context });
+      return this.pick(context);
     });
   }
 

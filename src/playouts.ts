@@ -124,9 +124,9 @@ export interface PlayoutWriter {
    * The picks since the last span start are discarded.
    * (The level is unchanged.)
    *
-   * @throws PlayoutFailed if no more playouts are available.
+   * Returns true if there is another playout available.
    */
-  cancelSpan(level?: number): void;
+  cancelSpan(level?: number): boolean;
 
   /**
    * Ends a span.
@@ -144,6 +144,16 @@ export interface PlayoutWriter {
 }
 
 /**
+ * The methods available when running a playout.
+ */
+export type PlayoutContext = IntPicker & PlayoutWriter & {
+  /**
+   * Ends playout generation and returns the playout.
+   */
+  toPlayout(): Playout;
+};
+
+/**
  * A {@link PlayoutWriter} that doesn't record anything.
  *
  * It just checks that it was called correctly.
@@ -159,6 +169,7 @@ export class NullPlayoutWriter implements PlayoutWriter {
   cancelSpan() {
     if (this.level === 0) throw new Error("no open span");
     this.level--;
+    return true;
   }
 
   endSpan(opts?: EndSpanOptions) {
@@ -213,8 +224,8 @@ export class PlayoutLog implements PlayoutContext {
   }
 
   /** Returns the index of the start of the span */
-  cancelSpan(level?: number): void {
-    if (level !== undefined && level !== this.level) {
+  cancelSpan(level: number): boolean {
+    if (level !== this.level) {
       throw new Error(
         `invalid span level. Want: ${this.level}, got: ${level}`,
       );
@@ -224,13 +235,10 @@ export class PlayoutLog implements PlayoutContext {
       throw new Error("no open span");
     }
     const start = this.starts[idx];
-    if (!this.picker.backTo(start)) {
-      throw new PlayoutFailed(
-        `cancelled the last playout starting at depth ${start}`,
-      );
-    }
     this.starts.splice(idx);
     this.ends.splice(idx);
+
+    return this.picker.backTo(start);
   }
 
   endSpan(opts?: EndSpanOptions): void {
@@ -277,16 +285,6 @@ export class PlayoutLog implements PlayoutContext {
     return new Playout(this.picker.getPicks(), starts, ends);
   }
 }
-
-/**
- * The methods available when running a playout.
- */
-export type PlayoutContext = IntPicker & PlayoutWriter & {
-  /**
-   * Ends playout generation and returns the playout.
-   */
-  toPlayout(): Playout;
-};
 
 /**
  * Iterates over unvisited leaves in a search tree, by doing picks.

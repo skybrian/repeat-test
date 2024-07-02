@@ -1,5 +1,6 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
-import { IntPicker } from "./picks.ts";
+import { retryPicker } from "./picks.ts";
+import { PlayoutLog } from "./playouts.ts";
 import Arbitrary from "./arbitrary_class.ts";
 import { fail, Failure, Success, success } from "./results.ts";
 
@@ -78,9 +79,10 @@ export function* generateReps<T>(
   while (true) {
     const key = { seed, index };
 
-    const picker: IntPicker = pickers.next().value;
+    const picker = retryPicker(pickers.next().value, filterLimit);
+    const ctx = new PlayoutLog(picker);
     try {
-      const arg = arb.pick(picker, { maxTries: filterLimit });
+      const arg = arb.pick(ctx);
       yield { ok: true, key, arg, test };
     } catch (e) {
       yield { ok: false, key, arg: undefined, caught: e };

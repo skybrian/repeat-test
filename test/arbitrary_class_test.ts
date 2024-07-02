@@ -3,8 +3,8 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { assertSolutions } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import { alwaysPickDefault, PickRequest } from "../src/picks.ts";
-import { PlayoutFailed } from "../src/playouts.ts";
+import { alwaysPickDefault, PickRequest, retryPicker } from "../src/picks.ts";
+import { PlayoutFailed, PlayoutLog } from "../src/playouts.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 
 describe("Arbitrary", () => {
@@ -55,12 +55,16 @@ describe("Arbitrary", () => {
       it("accepts a PickRequest", () => {
         const req = new PickRequest(1, 2);
         const arb = Arbitrary.from((pick) => pick(req));
-        assertEquals(arb.pick(alwaysPickDefault), 1);
+        const picker = retryPicker(alwaysPickDefault, 1);
+        const ctx = new PlayoutLog(picker);
+        assertEquals(arb.pick(ctx), 1);
       });
       it("accepts an Arbitrary", () => {
         const req = Arbitrary.of("hi", "there");
         const arb = Arbitrary.from((pick) => pick(req));
-        assertEquals(arb.pick(alwaysPickDefault), "hi");
+        const picker = retryPicker(alwaysPickDefault, 1);
+        const ctx = new PlayoutLog(picker);
+        assertEquals(arb.pick(ctx), "hi");
       });
       it("accepts a record shape", () => {
         const req = {
@@ -68,7 +72,9 @@ describe("Arbitrary", () => {
           b: Arbitrary.of(1, 2),
         };
         const arb = Arbitrary.from((pick) => pick(req));
-        assertEquals(arb.pick(alwaysPickDefault), { a: "hi", b: 1 });
+        const picker = retryPicker(alwaysPickDefault, 1);
+        const ctx = new PlayoutLog(picker);
+        assertEquals(arb.pick(ctx), { a: "hi", b: 1 });
       });
     });
   });
