@@ -57,14 +57,14 @@ describe("Arbitrary", () => {
         const arb = Arbitrary.from((pick) => pick(req));
         const picker = retryPicker(alwaysPickDefault, 1);
         const ctx = new PlayoutContext(picker);
-        assertEquals(arb.pick(ctx), 1);
+        assertEquals(arb.pick(ctx).val, 1);
       });
       it("accepts an Arbitrary", () => {
         const req = Arbitrary.of("hi", "there");
         const arb = Arbitrary.from((pick) => pick(req));
         const picker = retryPicker(alwaysPickDefault, 1);
         const ctx = new PlayoutContext(picker);
-        assertEquals(arb.pick(ctx), "hi");
+        assertEquals(arb.pick(ctx).val, "hi");
       });
       it("accepts a record shape", () => {
         const req = {
@@ -74,7 +74,7 @@ describe("Arbitrary", () => {
         const arb = Arbitrary.from((pick) => pick(req));
         const picker = retryPicker(alwaysPickDefault, 1);
         const ctx = new PlayoutContext(picker);
-        assertEquals(arb.pick(ctx), { a: "hi", b: 1 });
+        assertEquals(arb.pick(ctx).val, { a: "hi", b: 1 });
       });
     });
   });

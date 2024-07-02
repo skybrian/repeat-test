@@ -1,7 +1,12 @@
-import { alwaysPickDefault, PickRequest, retryPicker } from "./picks.ts";
+import {
+  alwaysPickDefault,
+  DepthFirstPicker,
+  PickRequest,
+  retryPicker,
+} from "./picks.ts";
 
 import { PlayoutContext, PlayoutFailed, StrictPicker } from "./playouts.ts";
-import { generateAllSolutions, Solution } from "./solver.ts";
+import { Solution } from "./solver.ts";
 
 export type PickFunctionOptions<T> = {
   /**
@@ -150,7 +155,7 @@ export default class Arbitrary<T> {
    * Picks an arbitrary member, based on some picks.
    * @throws {@link PickFailed} when it calls `pick()` internally and it fails.
    */
-  pick(ctx: PlayoutContext): T {
+  pick(ctx: PlayoutContext): Solution<T> {
     // These inner functions are mutually recursive and depend on the passed-in
     // picker. They unwind the arbitraries depth-first to get each pick and then
     // build up a value based on it.
@@ -212,8 +217,7 @@ export default class Arbitrary<T> {
     };
 
     const val = this.callback(dispatch);
-    ctx.endPlayout();
-    return val;
+    return { val, playout: ctx.toPlayout() };
   }
 
   /**
@@ -229,7 +233,7 @@ export default class Arbitrary<T> {
     const picker = new StrictPicker(picks);
     const ctx = new PlayoutContext(picker);
 
-    const val = this.pick(ctx);
+    const sol = this.pick(ctx);
     if (!picker.parsed) {
       if (picker.replaying) {
         throw new PlayoutFailed(
@@ -241,7 +245,7 @@ export default class Arbitrary<T> {
         );
       }
     }
-    return val;
+    return sol.val;
   }
 
   /** The default value of this Arbitrary. */
@@ -251,7 +255,7 @@ export default class Arbitrary<T> {
       ? new StrictPicker(this.defaultPicks)
       : retryPicker(alwaysPickDefault, 1);
     const ctx = new PlayoutContext(picker);
-    return this.pick(ctx);
+    return this.pick(ctx).val;
   }
 
   /**
@@ -260,9 +264,30 @@ export default class Arbitrary<T> {
    * Uses a depth-first search, starting from the default value.
    */
   get solutions(): IterableIterator<Solution<T>> {
-    return generateAllSolutions((context): T => {
-      return this.pick(context);
+    const picker = new DepthFirstPicker({
+      firstChildPicker: alwaysPickDefault,
+      maxDepth: 100,
     });
+    const pick = this.pick.bind(this);
+
+    function* generate() {
+      while (true) {
+        const ctx = new PlayoutContext(picker);
+        try {
+          yield pick(ctx);
+        } catch (e) {
+          if (!(e instanceof PlayoutFailed)) {
+            throw e;
+          }
+          // backtracking from dead end, so no value to yield
+        }
+        if (!picker.backTo(0)) {
+          return; // no more solutions
+        }
+      }
+    }
+
+    return generate();
   }
 
   /**

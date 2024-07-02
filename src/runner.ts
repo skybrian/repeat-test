@@ -82,7 +82,7 @@ export function* generateReps<T>(
     const picker = retryPicker(pickers.next().value, filterLimit);
     const ctx = new PlayoutContext(picker);
     try {
-      const arg = arb.pick(ctx);
+      const arg = arb.pick(ctx).val;
       yield { ok: true, key, arg, test };
     } catch (e) {
       yield { ok: false, key, arg: undefined, caught: e };
