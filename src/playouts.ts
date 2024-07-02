@@ -102,46 +102,7 @@ export class PlayoutFailed extends Error {
  * normally recorded. A span's *level* is the number of spans are still open
  * when it's created.
  */
-export type PlayoutContext = IntPicker & {
-  /**
-   * Records the start of a span.
-   * Returns the level of the new span.
-   */
-  startSpan(): number;
-
-  /**
-   * Cancels the last open span.
-   * The picks since the last span start are discarded.
-   * (The level is unchanged.)
-   *
-   * Returns true if there is another playout available.
-   */
-  cancelSpan(level: number): boolean;
-
-  /**
-   * Ends a span.
-   *
-   * To check for unbalanced start and end calls, it optionally takes the level
-   * of the span to end. This should be the number returned by
-   * {@link startSpan}. (Otherwise an exception will be thrown.)
-   */
-  endSpan(level: number): void;
-
-  /**
-   * Called to indicate that the playout finished successfully.
-   */
-  endPlayout(): void;
-
-  /**
-   * Ends playout generation and returns the playout.
-   */
-  toPlayout(): Playout;
-};
-
-/**
- * Logs a single playout.
- */
-export class PlayoutLog implements PlayoutContext {
+export class PlayoutContext {
   // Invariant: starts.length == ends.length
   // (Parallel lists.)
 
@@ -164,6 +125,11 @@ export class PlayoutLog implements PlayoutContext {
     return this.picker.pick(request);
   }
 
+  /**
+   * Records the start of a span.
+   *
+   * Returns the level of the new span.
+   */
   startSpan(): number {
     const spanIndex = this.starts.length;
     this.starts.push(this.picker.depth);
@@ -172,7 +138,14 @@ export class PlayoutLog implements PlayoutContext {
     return this.level;
   }
 
-  /** Returns the index of the start of the span */
+  /**
+   * Cancels the last open span.
+   *
+   * The picks since the last span start are discarded.
+   * (The level is unchanged.)
+   *
+   * Returns true if there is another playout available.
+   */
   cancelSpan(level: number): boolean {
     if (level !== this.level) {
       throw new Error(
@@ -190,6 +163,13 @@ export class PlayoutLog implements PlayoutContext {
     return this.picker.backTo(start);
   }
 
+  /**
+   * Ends a span.
+   *
+   * To check for unbalanced start and end calls, it optionally takes the level
+   * of the span to end. This should be the number returned by
+   * {@link startSpan}. (Otherwise an exception will be thrown.)
+   */
   endSpan(level: number): void {
     const end = this.picker.depth;
     const spanIndex = this.openSpans.pop();
@@ -217,6 +197,9 @@ export class PlayoutLog implements PlayoutContext {
     this.ends[spanIndex] = end;
   }
 
+  /**
+   * Called to indicate that the playout finished successfully.
+   */
   endPlayout(): void {
     if (this.picker.replaying) {
       throw new Error("playout didn't read every pick");
@@ -226,6 +209,9 @@ export class PlayoutLog implements PlayoutContext {
     }
   }
 
+  /**
+   * Ends playout generation and returns the playout.
+   */
   toPlayout() {
     this.endPlayout();
     const starts = this.starts.slice();
@@ -261,7 +247,7 @@ export function* everyPlayout(
 ): IterableIterator<PlayoutContext> {
   const picker = new DepthFirstPicker({ firstChildPicker, maxDepth: 100 });
   while (true) {
-    yield new PlayoutLog(picker);
+    yield new PlayoutContext(picker);
     if (!picker.backTo(0)) {
       return;
     }

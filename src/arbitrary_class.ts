@@ -1,11 +1,6 @@
 import { alwaysPickDefault, PickRequest, retryPicker } from "./picks.ts";
 
-import {
-  PlayoutContext,
-  PlayoutFailed,
-  PlayoutLog,
-  StrictPicker,
-} from "./playouts.ts";
+import { PlayoutContext, PlayoutFailed, StrictPicker } from "./playouts.ts";
 import { generateAllSolutions, Solution } from "./solver.ts";
 
 export type PickFunctionOptions<T> = {
@@ -232,7 +227,7 @@ export default class Arbitrary<T> {
    */
   parse(picks: number[]): T {
     const picker = new StrictPicker(picks);
-    const ctx = new PlayoutLog(picker);
+    const ctx = new PlayoutContext(picker);
 
     const val = this.pick(ctx);
     if (!picker.parsed) {
@@ -255,7 +250,7 @@ export default class Arbitrary<T> {
     const picker = this.defaultPicks
       ? new StrictPicker(this.defaultPicks)
       : retryPicker(alwaysPickDefault, 1);
-    const ctx = new PlayoutLog(picker);
+    const ctx = new PlayoutContext(picker);
     return this.pick(ctx);
   }
 

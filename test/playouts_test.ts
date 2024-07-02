@@ -20,7 +20,7 @@ import {
   everyPlayout,
   NestedPicks,
   Playout,
-  PlayoutLog,
+  PlayoutContext,
 } from "../src/playouts.ts";
 
 type NestedPickOpts = {
@@ -126,18 +126,18 @@ describe("Playout", () => {
   });
 });
 
-describe("PlayoutLog", () => {
+describe("PlayoutContext", () => {
   describe("toPlayout", () => {
     const req = new PickRequest(1, 6);
 
     it("returns an empty array when there are no spans", () => {
       const picker = new DepthFirstPicker();
-      assertEquals(new PlayoutLog(picker).toPlayout().toNestedPicks(), []);
+      assertEquals(new PlayoutContext(picker).toPlayout().toNestedPicks(), []);
     });
 
     it("ignores an empty span", () => {
       const picker = new DepthFirstPicker();
-      const log = new PlayoutLog(picker);
+      const log = new PlayoutContext(picker);
       log.startSpan();
       log.endSpan(1);
       assertEquals(log.toPlayout().toNestedPicks(), []);
@@ -145,7 +145,7 @@ describe("PlayoutLog", () => {
 
     it("ignores a single-pick span", () => {
       const picker = new DepthFirstPicker();
-      const log = new PlayoutLog(picker);
+      const log = new PlayoutContext(picker);
       log.startSpan();
       log.pick(req);
       log.endSpan(1);
@@ -154,7 +154,7 @@ describe("PlayoutLog", () => {
 
     it("ignores a span that contains only a single subspan", () => {
       const picker = new DepthFirstPicker();
-      const log = new PlayoutLog(picker);
+      const log = new PlayoutContext(picker);
       log.startSpan();
       log.startSpan();
       log.pick(req);
