@@ -170,7 +170,7 @@ export default class Arbitrary<T> {
       if (accept === undefined) {
         const level = ctx.startSpan();
         const val = req.callback(dispatch);
-        ctx.endSpan({ level });
+        ctx.endSpan(level);
         return val;
       }
 
@@ -179,7 +179,7 @@ export default class Arbitrary<T> {
         const level = ctx.startSpan();
         const val = req.callback(dispatch);
         if (accept(val)) {
-          ctx.endSpan({ level });
+          ctx.endSpan(level);
           return val;
         }
         if (!ctx.cancelSpan(level)) {

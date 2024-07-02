@@ -95,16 +95,6 @@ export class PlayoutFailed extends Error {
   }
 }
 
-export type EndSpanOptions = {
-  /**
-   * The level of the span to end. This should be the number returned by
-   * {@link PlayoutWriter.startSpan}. (Otherwise an exception will be thrown.)
-   *
-   * If not set, the level of the last span is used.
-   */
-  level?: number;
-};
-
 /**
  * The methods available when running a playout.
  *
@@ -126,7 +116,7 @@ export type PlayoutContext = IntPicker & {
    *
    * Returns true if there is another playout available.
    */
-  cancelSpan(level?: number): boolean;
+  cancelSpan(level: number): boolean;
 
   /**
    * Ends a span.
@@ -135,7 +125,7 @@ export type PlayoutContext = IntPicker & {
    * of the span to end. This should be the number returned by
    * {@link startSpan}. (Otherwise an exception will be thrown.)
    */
-  endSpan(opts?: EndSpanOptions): void;
+  endSpan(level: number): void;
 
   /**
    * Called to indicate that the playout finished successfully.
@@ -200,14 +190,13 @@ export class PlayoutLog implements PlayoutContext {
     return this.picker.backTo(start);
   }
 
-  endSpan(opts?: EndSpanOptions): void {
+  endSpan(level: number): void {
     const end = this.picker.depth;
     const spanIndex = this.openSpans.pop();
     if (spanIndex === undefined) {
       throw new Error("no open span");
     }
-    const level = opts?.level;
-    if (level !== undefined && level !== this.openSpans.length + 1) {
+    if (level !== this.openSpans.length + 1) {
       throw new Error(
         `invalid span level. Want: ${this.openSpans.length + 1}, got: ${level}`,
       );

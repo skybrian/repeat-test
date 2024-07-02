@@ -139,7 +139,7 @@ describe("PlayoutLog", () => {
       const picker = new DepthFirstPicker();
       const log = new PlayoutLog(picker);
       log.startSpan();
-      log.endSpan();
+      log.endSpan(1);
       assertEquals(log.toPlayout().toNestedPicks(), []);
     });
 
@@ -148,7 +148,7 @@ describe("PlayoutLog", () => {
       const log = new PlayoutLog(picker);
       log.startSpan();
       log.pick(req);
-      log.endSpan();
+      log.endSpan(1);
       assertEquals(log.toPlayout().toNestedPicks(), [1]);
     });
 
@@ -159,8 +159,8 @@ describe("PlayoutLog", () => {
       log.startSpan();
       log.pick(req);
       log.pick(req);
-      log.endSpan();
-      log.endSpan();
+      log.endSpan(2);
+      log.endSpan(1);
       assertEquals(log.toPlayout().toNestedPicks(), [[1, 1]]);
     });
   });
