@@ -19,8 +19,11 @@ describe("Arbitrary", () => {
       };
       assertThrows(() => Arbitrary.from(callback));
     });
+  });
+
+  describe("record", () => {
     it("accepts a constant record shape", () => {
-      const arb = Arbitrary.from({ a: Arbitrary.of(1), b: Arbitrary.of(2) });
+      const arb = Arbitrary.record({ a: Arbitrary.of(1), b: Arbitrary.of(2) });
       assertEquals(arb.default, { a: 1, b: 2 });
       assertEquals(arb.maxSize, 1);
     });

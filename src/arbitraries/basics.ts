@@ -93,7 +93,7 @@ export function int(
 export function record<T extends AnyRecord>(
   shape: RecordShape<T>,
 ): Arbitrary<T> {
-  return Arbitrary.from(shape);
+  return Arbitrary.record(shape);
 }
 
 export function oneOf<T>(cases: Arbitrary<T>[]): Arbitrary<T> {

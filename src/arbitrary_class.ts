@@ -93,40 +93,54 @@ export default class Arbitrary<T> {
   readonly maxSize: number | undefined;
 
   /**
-   * Creates an arbitrary from a {@link PickRequest}, {@link ArbitraryCallback}, or {@link RecordShape}.
+   * Creates an arbitrary from a {@link PickRequest} or {@link ArbitraryCallback}.
    */
   static from(req: PickRequest): Arbitrary<number>;
   static from<T>(
     callback: ArbitraryCallback<T>,
     opts?: ArbitraryOptions<T>,
   ): Arbitrary<T>;
-  static from<T extends AnyRecord>(
-    reqs: RecordShape<T>,
-  ): Arbitrary<T>;
   static from<T>(
-    arg: PickRequest | ArbitraryCallback<T> | RecordShape<T>,
+    arg: PickRequest | ArbitraryCallback<T>,
     opts?: ArbitraryOptions<T>,
   ): Arbitrary<T> | Arbitrary<number> {
     if (typeof arg === "function") {
       return new Arbitrary(arg, opts);
-    } else if (arg instanceof PickRequest) {
+    } else {
       const callback: ArbitraryCallback<number> = (pick) => {
         return pick(arg);
       };
       return new Arbitrary(callback, { ...opts, maxSize: arg.size });
-    } else {
-      let maxSize: number | undefined = 1;
-      const keys = Object.keys(arg) as (keyof T)[];
-      for (const key of keys) {
-        const size = arg[key].maxSize;
-        if (size === undefined) {
-          maxSize = undefined;
-          break;
-        }
-        maxSize *= size;
-      }
-      return new Arbitrary((pick) => pick(arg) as T, { maxSize });
     }
+  }
+
+  /**
+   * Creates an Arbitrary for a record with the given shape.
+   */
+  static record<T extends AnyRecord>(
+    shape: RecordShape<T>,
+  ): Arbitrary<T> {
+    let maxSize: number | undefined = 1;
+    const keys = Object.keys(shape) as (keyof T)[];
+    for (const key of keys) {
+      const size = shape[key].maxSize;
+      if (size === undefined) {
+        maxSize = undefined;
+        break;
+      }
+      maxSize *= size;
+    }
+    return new Arbitrary((pick) => pick(shape) as T, { maxSize });
+  }
+
+  static oneOf<T>(cases: Arbitrary<T>[]): Arbitrary<T> {
+    if (cases.length === 0) {
+      throw new Error("oneOf must be called with at least one alternative");
+    }
+    if (cases.length === 1) {
+      return cases[0];
+    }
+    return Arbitrary.of(...cases).chain((chosen) => chosen);
   }
 
   /**
