@@ -48,7 +48,7 @@ export interface TestFailure<T> extends Failure {
 const defaultFilterLimit = 1000;
 
 /** Returns a stream of reps, ready to run. */
-export function* generateReps<T>(
+export function* generateRandomReps<T>(
   start: RepKey,
   arb: Arbitrary<T>,
   test: TestFunction<T>,
@@ -87,6 +87,31 @@ export function* generateReps<T>(
       return;
     }
 
+    index++;
+  }
+}
+
+function* generateDepthFirstReps<T>(
+  arb: Arbitrary<T>,
+  test: TestFunction<T>,
+  skip: number,
+): Generator<Rep<T> | TestFailure<unknown>> {
+  let index = 0;
+
+  const picks = arb.members;
+
+  // Skip ahead to the tests we want to run.
+  while (index < skip) {
+    const pick = picks.next();
+    if (pick.done) {
+      throw new Error("generateAllReps: ran out of members");
+    }
+    index++;
+  }
+
+  for (const pick of picks) {
+    const key = { seed: 0, index };
+    yield { ok: true, key, arg: pick, test };
     index++;
   }
 }
@@ -156,7 +181,11 @@ function getStartKey(opts?: RepeatOptions): Success<RepKey> | Failure {
 }
 
 /**
- * Runs a test function repeatedly, using randomly generated input.
+ * Runs a test function repeatedly, using the given arbitrary to generate input.
+ *
+ * If there are fewer test inputs than the number of repetitions wanted, it will
+ * run the test function with every possible input. Otherwise, it will run the
+ * test function with the default value and then randomly generated inputs.
  *
  * @param input An arbitrary used to generate input.
  * @param test A test function that requires input.
@@ -169,10 +198,14 @@ export function repeatTest<T>(
   const start = getStartKey(opts);
   if (!start.ok) throw new Error(start.message ?? "can't get start key");
 
-  const genOpts = { filterLimit: opts?.filterLimit };
-  const reps = generateReps(start.val, input, test, genOpts);
-
   const count = opts?.only ? 1 : opts?.reps ?? defaultReps;
+  const runAll = input.maxSize !== undefined && input.maxSize <= count;
+
+  const genOpts = { filterLimit: opts?.filterLimit };
+  const reps = runAll
+    ? generateDepthFirstReps(input, test, start.val.index)
+    : generateRandomReps(start.val, input, test, genOpts);
+
   const ran = runReps(reps, count);
   if (!ran.ok) reportFailure(ran);
 }

@@ -5,7 +5,7 @@ import * as arb from "../src/arbitraries.ts";
 import { success } from "../src/results.ts";
 
 import {
-  generateReps,
+  generateRandomReps,
   parseRepKey,
   Rep,
   repeatTest,
@@ -48,12 +48,12 @@ describe("parseRepKey", () => {
   });
 });
 
-describe("generateReps", () => {
+describe("generateRandomReps", () => {
   it("generates reps with the right keys", () => {
     repeatTest(anyKey, (start) => {
       const zero = Arbitrary.from(() => 0);
       const test = () => {};
-      const reps = generateReps(start, zero, test);
+      const reps = generateRandomReps(start, zero, test);
       for (let i = 0; i < 10; i++) {
         assertEquals(reps.next().value, {
           ok: true,
@@ -99,6 +99,14 @@ describe("runRep", () => {
 });
 
 describe("repeatTest", () => {
+  it("runs a test function for each of a list of inputs", () => {
+    const inputs: number[] = [];
+    const collect = (val: number) => {
+      inputs.push(val);
+    };
+    repeatTest(Arbitrary.of(1, 2, 3), collect);
+    assertEquals(inputs, [1, 2, 3]);
+  });
   it("runs a test function the specified number of times", () => {
     for (let expected = 0; expected < 100; expected++) {
       let actual = 0;
