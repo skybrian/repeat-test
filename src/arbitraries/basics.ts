@@ -97,13 +97,7 @@ export function record<T extends AnyRecord>(
 }
 
 export function oneOf<T>(cases: Arbitrary<T>[]): Arbitrary<T> {
-  if (cases.length === 0) {
-    throw new Error("oneOf must be called with at least one alternative");
-  }
-  if (cases.length === 1) {
-    return cases[0];
-  }
-  return Arbitrary.of(...cases).chain((chosen) => chosen);
+  return Arbitrary.oneOf(cases);
 }
 
 const defaultArrayLimit = 1000;

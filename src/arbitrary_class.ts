@@ -133,6 +133,9 @@ export default class Arbitrary<T> {
     return new Arbitrary((pick) => pick(shape) as T, { maxSize });
   }
 
+  /**
+   * Creates an arbitrary that picks one of the given arbitaries and then returns it.
+   */
   static oneOf<T>(cases: Arbitrary<T>[]): Arbitrary<T> {
     if (cases.length === 0) {
       throw new Error("oneOf must be called with at least one alternative");
@@ -140,7 +143,21 @@ export default class Arbitrary<T> {
     if (cases.length === 1) {
       return cases[0];
     }
-    return Arbitrary.of(...cases).chain((chosen) => chosen);
+    let maxSize: number | undefined = 0;
+    for (const c of cases) {
+      if (c.maxSize === undefined) {
+        maxSize = undefined;
+        break;
+      }
+      maxSize += c.maxSize;
+    }
+
+    const req = new PickRequest(0, cases.length - 1);
+    const callback: ArbitraryCallback<T> = (pick) => {
+      const c = cases[pick(req)];
+      return pick(c);
+    };
+    return new Arbitrary(callback, { maxSize });
   }
 
   /**

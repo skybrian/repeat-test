@@ -29,6 +29,15 @@ describe("Arbitrary", () => {
     });
   });
 
+  describe("oneOf", () => {
+    it("accepts constant alteratives", () => {
+      const arb = Arbitrary.oneOf([Arbitrary.of(1), Arbitrary.of(2)]);
+      assertEquals(arb.default, 1);
+      assertEquals(Array.from(arb.members), [1, 2]);
+      assertEquals(arb.maxSize, 2);
+    });
+  });
+
   describe("of", () => {
     it("throws if called with no arguments", () => {
       assertThrows(() => Arbitrary.of());
