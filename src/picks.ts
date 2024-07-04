@@ -487,20 +487,3 @@ export class DepthFirstPicker implements RetryPicker {
     return true;
   }
 }
-
-/**
- * A function defining all possible paths in a search tree.
- *
- * The pick requests made by the function determine the structure of the tree.
- * Each request represents a node in the tree. The request's range determines
- * how many branches there are at that node.
- *
- * A PickTree function may call {@link IntPicker.pick} any number of times
- * before returning. Each pick represents a node along a path from the root of
- * the tree to a leaf, which is the last reply to the last pick.
- *
- * The function will be called many times to explore different parts of the
- * tree. To ensure that the search tree doesn't change, the pick requests that
- * it makes should be entirely determined by previous picks.
- */
-export type PickTree = (input: IntPicker) => void;
