@@ -11,7 +11,7 @@ import {
 } from "../src/picks.ts";
 import { randomPicker } from "../src/random.ts";
 
-import { TreeSearchPicker } from "../src/trees.ts";
+import { TreeSearchPicker } from "../src/tree_search_picker.ts";
 
 describe("TreeSearchPicker", () => {
   it("ends the search after one playout for a constant", () => {
