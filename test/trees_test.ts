@@ -1,7 +1,15 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, fail } from "@std/assert";
+import * as arb from "../src/arbitraries.ts";
+import { repeatTest } from "../src/runner.ts";
 
-import { alwaysPickDefault, PickRequest } from "../src/picks.ts";
+import {
+  alwaysPick,
+  alwaysPickDefault,
+  alwaysPickMin,
+  PickRequest,
+} from "../src/picks.ts";
+import { randomPicker } from "../src/random.ts";
 
 import { TreeSearchPicker } from "../src/trees.ts";
 
@@ -31,27 +39,39 @@ describe("TreeSearchPicker", () => {
   });
 
   it("fully explores a combination lock", () => {
-    const digit = new PickRequest(0, 9);
-    const picker = new TreeSearchPicker(alwaysPickDefault, 1000);
+    const picker = arb.of(
+      alwaysPickDefault,
+      alwaysPickMin,
+      alwaysPick(3),
+      randomPicker(123),
+    );
 
-    const seen = new Set<string>();
-    for (let i = 0; i < 1000; i++) {
-      const picks: number[] = [];
-      for (let j = 0; j < 3; j++) {
-        const pick = picker.pick(digit);
-        picks.push(pick);
-      }
-      const key = JSON.stringify(picks);
-      if (seen.has(key)) {
-        fail(`duplicate picks: ${key}`);
-      }
-      seen.add(key);
-      assertEquals(picker.backTo(0), i < 999);
-    }
+    repeatTest(picker, (underlying) => {
+      const digit = new PickRequest(0, 9);
+      const picker = new TreeSearchPicker(underlying, 1000);
 
-    const playouts = Array.from(seen.values());
-    assertEquals(playouts.length, 1000);
-    assertEquals(playouts[0], "[0,0,0]");
-    assertEquals(playouts[999], "[9,9,9]");
+      const seen = new Set<string>();
+      for (let i = 0; i < 1000; i++) {
+        const picks: number[] = [];
+        for (let j = 0; j < 3; j++) {
+          const pick = picker.pick(digit);
+          picks.push(pick);
+        }
+        assert(picker.tracked, "playout wasn't tracked");
+        const key = JSON.stringify(picks);
+        if (seen.has(key)) {
+          fail(`duplicate picks: ${key}`);
+        }
+        seen.add(key);
+        assertEquals(picker.backTo(0), i < 999);
+      }
+
+      const playouts = Array.from(seen.values());
+      assertEquals(playouts.length, 1000);
+      if (underlying === alwaysPickDefault) {
+        assertEquals(playouts[0], "[0,0,0]");
+        assertEquals(playouts[999], "[9,9,9]");
+      }
+    }, { reps: 100 });
   });
 });

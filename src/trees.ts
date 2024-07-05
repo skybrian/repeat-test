@@ -90,6 +90,11 @@ export class TreeSearchPicker implements RetryPicker {
     return this.picks.slice(1);
   }
 
+  /** Returns true if the current playout is tracked so far. */
+  get tracked(): boolean {
+    return this.nodes[this.depth].branches !== undefined;
+  }
+
   get replaying(): boolean {
     return false;
   }
