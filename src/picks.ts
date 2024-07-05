@@ -196,15 +196,16 @@ export interface RetryPicker extends IntPicker {
   readonly replaying: boolean;
 
   /**
-   * Returns to a previous point in the pick sequence to try again with a
-   * different pick seqence.
+   * Attempts to finish the current playout and return to a previous point in
+   * the pick sequence where there is another playout.
    *
    * If successful, the picker might start replaying previous picks. (See
    * {@link replaying}.)
    *
-   * Returns false if retrying with different picks isn't possible at the given
-   * depth. This happens when all possibilities have been tried. If `backTo(0)`
-   * returns false, the entire tree has been searched.
+   * If it fails, there's no next playout at the given depth, and the caller
+   * should try again with a lower depth.
+   *
+   * If `backTo(0)` return false, the entire tree has been searched.
    */
   backTo(depth: number): boolean;
 }

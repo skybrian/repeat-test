@@ -1,60 +1,65 @@
-import { IntPicker, PickRequest } from "./picks.ts";
+import { IntPicker, PickRequest, RetryPicker } from "./picks.ts";
 
-/** Incidates that the subtree rooted at a branch has been fully explored. */
+/** Indicates that the subtree rooted at a branch has been fully explored. */
 const CLOSED = Symbol("closed");
 
 /**
  * The state of a subtree.
  *
- * An undefined branch is not being tracked. It hasn't been visited,
- * or the probability of a duplicate is too low to be worth tracking.
+ * An undefined branch is not being tracked (yet). Either it hasn't been
+ * visited, or the probability of a duplicate is too low to be worth tracking.
  */
 type Branch = undefined | Node | typeof CLOSED;
 
 /**
  * A search tree node for keeping track of which playouts already happened.
  *
- * Invariant: req.size === branches.length.
+ * Invariant: `req.size === branches.length`.
  *
  * Invariant: branchesLeft is the count of branches not set to CLOSED.
+ *
+ * Invariant: `branchesLeft >= 1` for nodes in the tree. (Otherwise, the node
+ * should have been removed.)
  */
 type Node = {
   readonly req: PickRequest;
 
   /**
-   * Given a pick, the index of its branch is pick - req.min.
+   * If present, playouts are being tracked for this node.
+   *
+   * Given a pick, the index of its branch is `pick - req.min`.
    */
-  readonly branches: Branch[];
+  readonly branches?: Branch[];
 
   /**
    * The number of branches that aren't set to CLOSED.
-   *
-   * Invariant: this is at least one for nodes in the tree. (Otherwise the node
-   * should have been removed.)
    */
   branchesLeft: number;
 };
 
 /**
- * A picker than can be closed to mark the end of a playout.
+ * A picker that tries to avoid duplicate playouts.
+ *
+ * A playout is a sequence of picks, ending with a successful call to
+ * {@link backTo}, which starts the next playout.
+ *
+ * Duplicates are only avoided when a playout is tracked to the end. Tracking is
+ * determined by a heuristic that depends on the number of playouts left and the
+ * size of each PickRequest's range being small enough to be worth tracking.
  */
-export interface ClosablePicker extends IntPicker {
-  close(): void;
-}
-
-class Cursor implements ClosablePicker {
+export class TreeSearchPicker implements RetryPicker {
   /**
-   * If parent is undefined, we are no longer tracking this playout.
+   * The nodes visited as part of the current playout. The first node is
+   * a dummy node that points to the root node.
    */
-  private parent?: Node;
-  private branch: number;
+  private readonly nodes: Node[] = [{
+    req: new PickRequest(0, 0),
+    branches: [undefined],
+    branchesLeft: 1, // Ensures that the root gets closed at the end of the search.
+  }];
 
-  /**
-   * The most-recently-seen branch where there was an alternative.
-   *
-   * This is used to prune subtrees with no branches.
-   */
-  private lastDecision: { parent: Node; branch: number };
+  /** Picks made as part of the first playout. (The first one is a dummy.) */
+  private readonly picks = [0];
 
   /**
    * The odds that a playout other than the one we're on would have been picked
@@ -65,26 +70,28 @@ class Cursor implements ClosablePicker {
    * odds are 0:1, or 0%. A value of 1 means the odds are 1:1 or a 50%
    * probability.
    */
-  private notTakenOdds: number;
+  private notTakenOdds = 0;
 
-  constructor(
-    start: Node,
-    private readonly wrapped: IntPicker,
-    private playoutsLeft: number,
-  ) {
-    if (start.branches.length !== 1) {
-      throw new Error("start should have exactly one branch");
-    } else if (start.branches[0] === CLOSED) {
-      throw new Error("root should not be CLOSED");
-    }
-    this.parent = start;
-    this.branch = 0;
+  private playoutsLeft: number;
 
-    // The last decision was to decide to do a playout at all.
-    this.lastDecision = { parent: start, branch: 0 };
+  /**
+   * @param expectedPlayouts the number of playouts that are expected. If set
+   * to zero, playout tracking is turned off.
+   */
+  constructor(private readonly wrapped: IntPicker, expectedPlayouts: number) {
+    this.playoutsLeft = expectedPlayouts;
+  }
 
-    // There's no alternative to visiting the root.
-    this.notTakenOdds = 0;
+  get depth() {
+    return this.nodes.length - 1;
+  }
+
+  getPicks(): number[] {
+    return this.picks.slice(1);
+  }
+
+  get replaying(): boolean {
+    return false;
   }
 
   /**
@@ -96,40 +103,49 @@ class Cursor implements ClosablePicker {
     this.notTakenOdds = this.notTakenOdds * branchCount + (branchCount - 1);
   }
 
-  pick(req: PickRequest): number {
-    if (this.parent === undefined) {
-      // No longer walking the tree, so pass it through.
-      return this.wrapped.pick(req);
+  private recalculateOdds() {
+    this.notTakenOdds = 0;
+    for (const node of this.nodes) {
+      this.updateOdds(node.req.size);
     }
-    let node = this.parent.branches[this.branch];
+  }
+
+  private pickUntracked(req: PickRequest): number {
+    const pick = this.wrapped.pick(req);
+    this.nodes.push({ req, branchesLeft: req.size });
+    this.picks.push(pick);
+    return pick;
+  }
+
+  pick(req: PickRequest): number {
+    const parent = this.nodes[this.nodes.length - 1];
+    if (parent.branches === undefined) {
+      // Not tracking branches, so just record the pick.
+      return this.pickUntracked(req);
+    }
+    const parentPick = this.picks[this.picks.length - 1];
+    let node = parent.branches[parentPick - parent.req.min];
     if (node === CLOSED) {
-      // We already tried all the leaves in this subtree.
-      // (Should this ever happen?)
-      this.parent = undefined;
-      return req.default;
+      throw new Error("internal error: parent picked a closed branch");
     } else if (node === undefined) {
       // See if we should expand the tree
       this.updateOdds(req.size);
       const willReturnProbability = this.playoutsLeft / (1 + this.notTakenOdds);
       if (willReturnProbability < 0.1) {
         // Picking the same playout twice is unlikely, so it's not worth tracking.
-        this.parent = undefined;
-        return this.wrapped.pick(req);
+        return this.pickUntracked(req);
       }
 
-      // Expand the tree and move down.
+      // Expand the tree and push the node.
       const nextPick = this.wrapped.pick(req);
       node = {
         req,
         branches: Array(req.size).fill(undefined),
         branchesLeft: req.size,
       };
-      this.parent.branches[this.branch] = node;
-      this.parent = node;
-      this.branch = nextPick - req.min;
-      if (node.branchesLeft > 1) {
-        this.lastDecision = { parent: this.parent, branch: this.branch };
-      }
+      parent.branches[parentPick - parent.req.min] = node;
+      this.nodes.push(node);
+      this.picks.push(nextPick);
       return nextPick;
     }
 
@@ -138,79 +154,70 @@ class Cursor implements ClosablePicker {
         `pick request size doesn't match a previous visit: saw ${node.req.size} choices, got ${req.size}`,
       );
     }
+    const branches = node.branches;
+    if (branches === undefined) {
+      // We've already visited this node, but it's not tracking branches.
+      return this.pickUntracked(req);
+    }
 
-    // Choose a branch that's not taken
+    // Choose the first branch that's not taken
     const firstChoice = this.wrapped.pick(req) - req.min;
     let candidate = firstChoice;
-    let choice = undefined;
     for (let i = 0; i < req.size; i++) {
-      if (node.branches[candidate] !== CLOSED && choice === undefined) {
-        choice = candidate;
+      if (branches[candidate] !== CLOSED) {
+        const choice = candidate;
+        const pick = choice + req.min;
         // move down
         this.updateOdds(node.branchesLeft);
-        this.parent = node;
-        this.branch = choice;
-        if (node.branchesLeft > 1) {
-          this.lastDecision = { parent: this.parent, branch: this.branch };
-        }
-        return choice + req.min;
+        this.nodes.push(node);
+        this.picks.push(pick);
+        return pick;
       }
       candidate = (candidate + 1) % node.req.size;
     }
-    // Ran out of branches. (Shouldn't happen.)
-    this.parent = undefined;
-    return req.default;
+    throw new Error("internal error: node has no branches left");
   }
 
   /**
-   * Prevents this playout from being visited again if the playout is still
-   * being tracked.
-   */
-  close() {
-    if (this.parent === undefined) {
-      return; // can't prune because we're not tracking this playout
-    }
-    // Mark this path as taken.
-    const { parent, branch } = this.lastDecision;
-    if (parent.branchesLeft <= 1) {
-      throw new Error("lastDecision should only be set if branchesLeft > 1");
-    }
-    parent.branches[branch] = CLOSED;
-    parent.branchesLeft--;
-  }
-}
-
-/**
- * Tracks which subtrees have been exhaustively searched, to avoid duplicate
- * playouts.
- *
- * Duplicates will only be removed when the previous playout was tracked to the
- * end and {@link ClosablePicker.close} was called on it. The heuristic for
- * whether new tracking nodes are added depends on the number of playouts left
- * and the size of each PickRequest during a playout.
- */
-export class SearchTree {
-  private readonly start: Node = {
-    req: new PickRequest(0, 0),
-    branches: [undefined],
-    branchesLeft: 2, // the root, and not doing a playout at all
-  };
-
-  /**
-   * Starts a new playout with the given picker.
+   * Close the current playout if it's at the given depth or deeper.
    *
-   * @param playoutsLeft used to decide whether it's worth tracking this
-   * playout. (Tracking is disabled if set to zero.) The playout will
-   * only be remembered if
+   * If it returns false, no alternative playout is available. (The
+   * last alternative was before the given depth.)
    */
-  startPlayout(
-    picker: IntPicker,
-    playoutsLeft: number,
-  ): ClosablePicker | undefined {
-    if (this.start.branches[0] === CLOSED) {
-      // The search is over; we already tried every possible sequence.
-      return undefined;
+  private closePlayout(depth: number) {
+    for (let i = this.nodes.length - 1; i >= depth; i--) {
+      const node = this.nodes[i];
+      if (node.branches === undefined) {
+        // Wasn't tracked; can't close it.
+        return true;
+      } else if (node.branchesLeft > 1) {
+        // There is an alternate branch at this index.
+        const branch = this.picks[i] - node.req.min;
+        node.branches[branch] = CLOSED;
+        node.branchesLeft--;
+        return true;
+      }
     }
-    return new Cursor(this.start, picker, playoutsLeft);
+    return false;
+  }
+
+  /**
+   * Returns true if there is a playout to try at the given depth. Otherwise,
+   * the caller should backtrack more.
+   */
+  backTo(depth: number): boolean {
+    if (depth < 0 || depth > this.nodes.length - 1) {
+      throw new Error("depth must be between 0 and " + (this.nodes.length - 1));
+    }
+    if (!this.closePlayout(depth)) {
+      return false;
+    }
+    while (this.nodes.length > depth + 1) {
+      this.nodes.pop();
+      this.picks.pop();
+    }
+    this.playoutsLeft--;
+    this.recalculateOdds();
+    return true;
   }
 }
