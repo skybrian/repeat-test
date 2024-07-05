@@ -115,6 +115,10 @@ export class TreeSearchPicker implements RetryPicker {
     }
   }
 
+  private get willReturnProbability() {
+    return this.playoutsLeft / (1 + this.notTakenOdds);
+  }
+
   private pickUntracked(req: PickRequest): number {
     const pick = this.wrapped.pick(req);
     this.nodes.push({ req, branchesLeft: req.size });
@@ -133,11 +137,10 @@ export class TreeSearchPicker implements RetryPicker {
     if (node === CLOSED) {
       throw new Error("internal error: parent picked a closed branch");
     } else if (node === undefined) {
-      // See if we should expand the tree
+      // See if we should expand the tree.
+      // If picking the same playout twice is unlikely, it's not worth tracking.
       this.updateOdds(req.size);
-      const willReturnProbability = this.playoutsLeft / (1 + this.notTakenOdds);
-      if (willReturnProbability < 0.1) {
-        // Picking the same playout twice is unlikely, so it's not worth tracking.
+      if (req.size > 1000 || this.willReturnProbability < 0.5) {
         return this.pickUntracked(req);
       }
 
