@@ -3,11 +3,17 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { assertSolutions } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import { alwaysPickDefault, PickRequest, retryPicker } from "../src/picks.ts";
+import {
+  alwaysPick,
+  alwaysPickDefault,
+  PickRequest,
+  retryPicker,
+} from "../src/picks.ts";
 import Arbitrary, {
   ArbitraryCallback,
   PickFailed,
 } from "../src/arbitrary_class.ts";
+import { DepthFirstPicker } from "../src/picks.ts";
 
 describe("Arbitrary", () => {
   describe("from", () => {
@@ -76,13 +82,17 @@ describe("Arbitrary", () => {
         const req = new PickRequest(1, 2);
         const arb = Arbitrary.from((pick) => pick(req));
         const picker = retryPicker(alwaysPickDefault, 1);
-        assertEquals(arb.pick(picker).val, 1);
+        const sol = arb.pick(picker);
+        assert(sol !== undefined);
+        assertEquals(sol.val, 1);
       });
       it("accepts an Arbitrary", () => {
         const req = Arbitrary.of("hi", "there");
         const arb = Arbitrary.from((pick) => pick(req));
         const picker = retryPicker(alwaysPickDefault, 1);
-        assertEquals(arb.pick(picker).val, "hi");
+        const sol = arb.pick(picker);
+        assert(sol !== undefined);
+        assertEquals(sol.val, "hi");
       });
       it("accepts a record shape", () => {
         const req = {
@@ -91,8 +101,24 @@ describe("Arbitrary", () => {
         };
         const arb = Arbitrary.from((pick) => pick(req));
         const picker = retryPicker(alwaysPickDefault, 1);
-        assertEquals(arb.pick(picker).val, { a: "hi", b: 1 });
+        const sol = arb.pick(picker);
+        assert(sol !== undefined);
+        assertEquals(sol.val, { a: "hi", b: 1 });
       });
+    });
+    it("retries a pick with a different playout", () => {
+      const roll = new PickRequest(1, 6);
+      const arb = Arbitrary.from((pick) => {
+        const n = pick(roll);
+        if (n === 3) {
+          throw new PickFailed("try again");
+        }
+        return n;
+      });
+      const picker = new DepthFirstPicker({ firstChildPicker: alwaysPick(3) });
+      const sol = arb.pick(picker);
+      assert(sol !== undefined);
+      assertEquals(sol.val, 4);
     });
   });
 

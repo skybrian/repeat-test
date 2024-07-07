@@ -201,76 +201,89 @@ export default class Arbitrary<T> {
    * Finds a solution by trying playouts one at a time from a source of
    * playouts.
    *
-   * Throws {@link PickFailed} when the picker didn't return picks that lead to
-   * a value. The caller should retry with different picks.
+   * Returns undefined if the picker ran out of playouts.
+   *
+   * It's the caller's responsibility to call backTo() before trying again.
    */
-  pick(picker: RetryPicker): Solution<T> {
-    const ctx = new PlayoutContext(picker);
+  pick(picker: RetryPicker): Solution<T> | undefined {
+    for (let i = 0; i < 1000; i++) {
+      const ctx = new PlayoutContext(picker);
 
-    // These inner functions are mutually recursive and depend on the passed-in
-    // picker. They unwind the arbitraries depth-first to get each pick and then
-    // build up a value based on it.
+      // These inner functions are mutually recursive and depend on the passed-in
+      // picker. They unwind the arbitraries depth-first to get each pick and then
+      // build up a value based on it.
 
-    const pickFromArbitrary = <T>(
-      req: Arbitrary<T>,
-      opts?: PickFunctionOptions<T>,
-    ): T => {
-      const accept = opts?.accept;
+      const pickFromArbitrary = <T>(
+        req: Arbitrary<T>,
+        opts?: PickFunctionOptions<T>,
+      ): T => {
+        const accept = opts?.accept;
 
-      // non-backtracking case
-      if (accept === undefined) {
-        const level = ctx.startSpan();
-        const val = req.callback(dispatch);
-        ctx.endSpan(level);
-        return val;
-      }
-
-      // retry when there's a filter
-      while (true) {
-        const level = ctx.startSpan();
-        const val = req.callback(dispatch);
-        if (accept(val)) {
+        // non-backtracking case
+        if (accept === undefined) {
+          const level = ctx.startSpan();
+          const val = req.callback(dispatch);
           ctx.endSpan(level);
           return val;
         }
-        if (!ctx.cancelSpan(level)) {
-          // return default?
-          throw new PickFailed(
-            `Couldn't find a playout that generates ${req}`,
-          );
+
+        // retry when there's a filter
+        while (true) {
+          const level = ctx.startSpan();
+          const val = req.callback(dispatch);
+          if (accept(val)) {
+            ctx.endSpan(level);
+            return val;
+          }
+          if (!ctx.cancelSpan(level)) {
+            // return default?
+            throw new PickFailed(
+              `Couldn't find a playout that generates ${req}`,
+            );
+          }
+        }
+      };
+
+      const pickRecord = <T>(req: RecordShape<T>): T => {
+        const keys = Object.keys(req) as (keyof T)[];
+        if (keys.length === 0) {
+          return {} as T;
+        }
+        const result = {} as Partial<T>;
+        for (const key of keys) {
+          result[key] = pickFromArbitrary(req[key]);
+        }
+        return result as T;
+      };
+
+      const dispatch: PickFunction = <T>(
+        req: PickRequest | Arbitrary<T> | RecordShape<T>,
+        opts?: PickFunctionOptions<T>,
+      ): number | T => {
+        if (req instanceof PickRequest) {
+          return picker.pick(req);
+        } else if (req instanceof Arbitrary) {
+          return pickFromArbitrary(req, opts);
+        } else if (typeof req !== "object") {
+          throw new Error("pick called with invalid argument");
+        } else {
+          return pickRecord(req);
+        }
+      };
+
+      try {
+        const val = this.callback(dispatch);
+        return { val, playout: ctx.toPlayout() };
+      } catch (e) {
+        if (!(e instanceof PickFailed)) {
+          throw e;
+        }
+        if (!picker.backTo(0)) {
+          return undefined;
         }
       }
-    };
-
-    const pickRecord = <T>(req: RecordShape<T>): T => {
-      const keys = Object.keys(req) as (keyof T)[];
-      if (keys.length === 0) {
-        return {} as T;
-      }
-      const result = {} as Partial<T>;
-      for (const key of keys) {
-        result[key] = pickFromArbitrary(req[key]);
-      }
-      return result as T;
-    };
-
-    const dispatch: PickFunction = <T>(
-      req: PickRequest | Arbitrary<T> | RecordShape<T>,
-      opts?: PickFunctionOptions<T>,
-    ): number | T => {
-      if (req instanceof PickRequest) {
-        return picker.pick(req);
-      } else if (req instanceof Arbitrary) {
-        return pickFromArbitrary(req, opts);
-      } else if (typeof req !== "object") {
-        throw new Error("pick called with invalid argument");
-      } else {
-        return pickRecord(req);
-      }
-    };
-
-    const val = this.callback(dispatch);
-    return { val, playout: ctx.toPlayout() };
+    }
+    throw new PickFailed(`Couldn't find playout that generates ${this}`);
   }
 
   /**
@@ -288,6 +301,9 @@ export default class Arbitrary<T> {
     if (picker.error) {
       throw new PickFailed(picker.error);
     }
+    if (!sol) {
+      throw new PickFailed("playout not accepted");
+    }
     return sol.val;
   }
 
@@ -301,7 +317,13 @@ export default class Arbitrary<T> {
   get default(): T {
     // make a clone, in case it's mutable
     const picker = this.makeDefaultPicker();
-    return this.pick(picker).val;
+    const sol = this.pick(picker);
+    if (!sol) {
+      throw new Error(
+        "couldn't generate a default value because default picks weren't accepted",
+      );
+    }
+    return sol.val;
   }
 
   /**
@@ -318,14 +340,11 @@ export default class Arbitrary<T> {
 
     function* generate() {
       while (true) {
-        try {
-          yield pick(picker);
-        } catch (e) {
-          if (!(e instanceof PickFailed)) {
-            throw e;
-          }
-          // backtracking from dead end, so no value to yield
+        const sol = pick(picker);
+        if (!sol) {
+          return; // no more solutions
         }
+        yield sol;
         if (!picker.backTo(0)) {
           return; // no more solutions
         }

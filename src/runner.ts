@@ -66,11 +66,17 @@ export function* randomReps<T>(
   const pickers = randomPickers(seed);
   let index = 0;
 
-  // Always do the default pick first:
+  // Make sure that the default picks work.
+  // (And records them in the tree, so we don't test the default again.)
   const picker = tree.makePicker(arb.makeDefaultPicker());
-  const arg = arb.pick(picker).val;
+  const sol = arb.pick(picker);
+  if (!sol) {
+    throw new Error("can't generate default value of supplied arbitrary");
+  }
+  const arg = sol.val;
   picker.backTo(0);
 
+  // The first rep always uses the default.
   const key = { seed, index };
   yield { ok: true, key, arg, test };
   index++;
@@ -82,24 +88,16 @@ export function* randomReps<T>(
     const random = pickers.next().value;
     // const picker = retryPicker(random, filterLimit);
     const picker = tree.makePicker(random);
-    // TODO: move retry loop into Arbitrary.pick?
-    for (let i = 0; i < 10; i++) {
-      try {
-        const arg = arb.pick(picker).val;
-        // console.log(`${index} generated`, arg);
-        yield { ok: true, key, arg, test };
-        picker.backTo(0);
-        break;
-      } catch (e) {
-        if (e instanceof PickFailed) {
-          // re-roll
-          picker.backTo(0);
-          continue;
-        }
-        yield { ok: false, key, arg: undefined, caught: e };
-        return;
+    try {
+      const sol = arb.pick(picker);
+      if (!sol) {
+        return; // No more test args to generate.
       }
+      yield { ok: true, key, arg: sol.val, test };
+    } catch (e) {
+      yield { ok: false, key, arg: undefined, caught: e };
     }
+    picker.backTo(0);
     index++;
   }
 }
