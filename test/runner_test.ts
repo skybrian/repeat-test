@@ -1,12 +1,12 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals, fail } from "@std/assert";
-import Arbitrary from "../src/arbitrary_class.ts";
+import Arbitrary, { PickFailed } from "../src/arbitrary_class.ts";
 import * as arb from "../src/arbitraries.ts";
 import { success } from "../src/results.ts";
 
 import {
-  generateRandomReps,
   parseRepKey,
+  randomReps,
   Rep,
   repeatTest,
   runRep,
@@ -48,17 +48,47 @@ describe("parseRepKey", () => {
   });
 });
 
-describe("generateRandomReps", () => {
+describe("randomReps", () => {
   it("generates reps with the right keys", () => {
     repeatTest(anyKey, (start) => {
       const zero = Arbitrary.from(() => 0);
       const test = () => {};
-      const reps = generateRandomReps(start, zero, test);
+
+      const reps = randomReps(start.seed, zero, test, { expectedPlayouts: 10 });
+
       for (let i = 0; i < 10; i++) {
         assertEquals(reps.next().value, {
           ok: true,
-          key: { seed: start.seed, index: start.index + i },
+          key: { seed: start.seed, index: i },
           arg: 0,
+          test,
+        });
+      }
+    });
+  });
+  it("retries when a pick fails", () => {
+    const diceRoll = arb.int(1, 6, { default: 2 });
+
+    const rerollOnes = Arbitrary.from((pick) => {
+      const roll = pick(diceRoll);
+      if (roll === 1) {
+        throw new PickFailed("oh no, try again");
+      }
+      return "good";
+    });
+
+    const test = () => {};
+
+    repeatTest(arb.int32(), (seed) => {
+      const reps = randomReps(seed, rerollOnes, test, {
+        expectedPlayouts: 0,
+      });
+
+      for (let i = 0; i < 4; i++) {
+        assertEquals(reps.next().value, {
+          ok: true,
+          key: { seed, index: i },
+          arg: "good",
           test,
         });
       }
@@ -99,7 +129,7 @@ describe("runRep", () => {
 });
 
 describe("repeatTest", () => {
-  it("runs a test function for each of a list of inputs", () => {
+  it("runs a test function once for each of a list of inputs", () => {
     const inputs: number[] = [];
     const collect = (val: number) => {
       inputs.push(val);
@@ -107,7 +137,7 @@ describe("repeatTest", () => {
     repeatTest(Arbitrary.of(1, 2, 3), collect);
     assertEquals(inputs, [1, 2, 3]);
   });
-  it("runs a test function the specified number of times", () => {
+  it("stops running the test function after the limit given by `reps`", () => {
     for (let expected = 0; expected < 100; expected++) {
       let actual = 0;
       const increment = () => {
@@ -118,7 +148,18 @@ describe("repeatTest", () => {
       assertEquals(actual, expected);
     }
   });
-  it("runs only once when the 'only' option is set", () => {
+  it("uses a constant only once when given an unbalanced choice of examples", () => {
+    const unbalanced = Arbitrary.oneOf([
+      arb.of(123.4),
+      arb.int32(),
+    ]);
+    const counts = new Map<number, number>();
+    repeatTest(unbalanced, (i) => {
+      counts.set(i, (counts.get(i) || 0) + 1);
+    });
+    assertEquals(counts.get(123.4), 1);
+  });
+  it("runs one rep when the 'only' option is set", () => {
     let actual = 0;
     const increment = () => {
       actual++;
@@ -127,9 +168,22 @@ describe("repeatTest", () => {
     repeatTest(zero, increment, { reps: 100, only: "123:456" });
     assertEquals(actual, 1);
   });
-  it("reproduces a previous test run when the 'only' option is set", () => {
-    repeatTest(arb.int(0, 100), (i) => {
-      assertEquals(i, 42);
-    }, { only: "1866001691:205" });
+  describe("when the 'only' option is set", () => {
+    it("reproduces a previous test run for a small arbitrary", () => {
+      repeatTest(arb.int(0, 100), (i) => {
+        // assert(i != 42);
+        assertEquals(i, 42);
+      }, { only: "0:42" });
+    });
+    it("reproduces a previous test run for a large arbitrary", () => {
+      const example = arb.from((pick) => {
+        return pick(arb.int(1, 500));
+      });
+      assertEquals(example.maxSize, undefined);
+      repeatTest(example, (i) => {
+        // assert(i != 42);
+        assertEquals(i, 42);
+      }, { only: "819765620:120" });
+    });
   });
 });

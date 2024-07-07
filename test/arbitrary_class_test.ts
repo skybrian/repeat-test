@@ -4,7 +4,10 @@ import { assertSolutions } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPickDefault, PickRequest, retryPicker } from "../src/picks.ts";
-import Arbitrary, { PickFailed } from "../src/arbitrary_class.ts";
+import Arbitrary, {
+  ArbitraryCallback,
+  PickFailed,
+} from "../src/arbitrary_class.ts";
 
 describe("Arbitrary", () => {
   describe("from", () => {
@@ -13,11 +16,17 @@ describe("Arbitrary", () => {
       const arbitrary = Arbitrary.from(pick);
       assertEquals(Array.from(arbitrary.members), [1, 2]);
     });
-    it("checks that the callback doesn't throw when given default picks", () => {
+    it("throws if given a callback that throws", () => {
       const callback = () => {
         throw "oops";
       };
       assertThrows(() => Arbitrary.from(callback));
+    });
+    it("throws an Error if given a callback that calls pick incorrectly", () => {
+      function f() {}
+      type Pick = (arg: unknown) => number;
+      const callback = ((pick: Pick) => pick(f)) as ArbitraryCallback<number>;
+      assertThrows(() => Arbitrary.from(callback), Error);
     });
   });
 

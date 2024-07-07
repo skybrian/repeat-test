@@ -1,6 +1,6 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
-import { retryPicker } from "./picks.ts";
-import Arbitrary from "./arbitrary_class.ts";
+import { SearchTree } from "./tree_search_picker.ts";
+import Arbitrary, { PickFailed } from "./arbitrary_class.ts";
 import { fail, Failure, Success, success } from "./results.ts";
 
 /** A function that runs a test, using generated input. */
@@ -45,71 +45,71 @@ export interface TestFailure<T> extends Failure {
   caught: unknown;
 }
 
-const defaultFilterLimit = 1000;
+// const defaultFilterLimit = 1000;
+
+export type RandomRepsOpts = {
+  expectedPlayouts: number;
+  // TODO: reenable, with tests:
+  // filterLimit?: number;
+};
 
 /** Returns a stream of reps, ready to run. */
-export function* generateRandomReps<T>(
-  start: RepKey,
+export function* randomReps<T>(
+  seed: number,
   arb: Arbitrary<T>,
   test: TestFunction<T>,
-  opts?: { filterLimit?: number },
+  opts: RandomRepsOpts,
 ): Generator<Rep<T> | TestFailure<unknown>> {
-  const seed = start.seed;
-  const skip = start.index;
-  const filterLimit = opts?.filterLimit ?? defaultFilterLimit;
+  // TODO: figure out how to skip ahead.
 
-  const pickers = randomPickers(start.seed);
+  const tree = new SearchTree(opts.expectedPlayouts);
+  const pickers = randomPickers(seed);
   let index = 0;
 
-  // Unless skipped, run the first rep using the arb's default value (dry run).
-  if (skip === 0) {
-    const key = { seed, index };
-    yield { ok: true, key, arg: arb.default, test };
-  }
-  index++;
+  // Always do the default pick first:
+  const picker = tree.makePicker(arb.makeDefaultPicker());
+  const arg = arb.pick(picker).val;
+  picker.backTo(0);
 
-  // Skip ahead to the tests we want to run.
-  while (index < skip) {
-    pickers.next();
-    index++;
-  }
+  const key = { seed, index };
+  yield { ok: true, key, arg, test };
+  index++;
 
   // Generate each rep with a different picker.
   while (true) {
     const key = { seed, index };
 
-    const picker = retryPicker(pickers.next().value, filterLimit);
-    try {
-      const arg = arb.pick(picker).val;
-      yield { ok: true, key, arg, test };
-    } catch (e) {
-      yield { ok: false, key, arg: undefined, caught: e };
-      return;
+    const random = pickers.next().value;
+    // const picker = retryPicker(random, filterLimit);
+    const picker = tree.makePicker(random);
+    // TODO: move retry loop into Arbitrary.pick?
+    for (let i = 0; i < 10; i++) {
+      try {
+        const arg = arb.pick(picker).val;
+        // console.log(`${index} generated`, arg);
+        yield { ok: true, key, arg, test };
+        picker.backTo(0);
+        break;
+      } catch (e) {
+        if (e instanceof PickFailed) {
+          // re-roll
+          picker.backTo(0);
+          continue;
+        }
+        yield { ok: false, key, arg: undefined, caught: e };
+        return;
+      }
     }
-
     index++;
   }
 }
 
-function* generateDepthFirstReps<T>(
+function* depthFirstReps<T>(
   arb: Arbitrary<T>,
   test: TestFunction<T>,
-  skip: number,
 ): Generator<Rep<T> | TestFailure<unknown>> {
   let index = 0;
-
-  const picks = arb.members;
-
-  // Skip ahead to the tests we want to run.
-  while (index < skip) {
-    const pick = picks.next();
-    if (pick.done) {
-      throw new Error("generateAllReps: ran out of members");
-    }
-    index++;
-  }
-
-  for (const pick of picks) {
+  for (const pick of arb.members) {
     const key = { seed: 0, index };
     yield { ok: true, key, arg: pick, test };
     index++;
@@ -163,7 +163,8 @@ const defaultReps = 1000;
 export type RepeatOptions = {
   /** The number of times to run the test. If not specified, defaults to 1000. */
   reps?: number;
-  filterLimit?: number;
+  // TODO: reenable filterLimit with tests
+  // filterLimit?: number;
   /** If specified, it will rerun the repetition that failed */
   only?: string;
 };
@@ -197,15 +198,28 @@ export function repeatTest<T>(
 ): void {
   const start = getStartKey(opts);
   if (!start.ok) throw new Error(start.message ?? "can't get start key");
+  const key = start.val;
 
-  const count = opts?.only ? 1 : opts?.reps ?? defaultReps;
-  const runAll = input.maxSize !== undefined && input.maxSize <= count;
+  const expectedPlayouts = opts?.reps ?? defaultReps;
+  const runAll = input.maxSize !== undefined &&
+    input.maxSize <= expectedPlayouts;
 
-  const genOpts = { filterLimit: opts?.filterLimit };
+  const genOpts: RandomRepsOpts = { expectedPlayouts };
+
   const reps = runAll
-    ? generateDepthFirstReps(input, test, start.val.index)
-    : generateRandomReps(start.val, input, test, genOpts);
+    ? depthFirstReps(input, test)
+    : randomReps(key.seed, input, test, genOpts);
 
+  // Skip to the iteration that we want to run.
+  for (let i = 0; i < key.index; i++) {
+    if (reps.next().done) {
+      throw new Error(
+        `tried to skip ${key.index} values but there were only ${i} available`,
+      );
+    }
+  }
+
+  const count = opts?.only ? 1 : expectedPlayouts;
   const ran = runReps(reps, count);
   if (!ran.ok) reportFailure(ran);
 }

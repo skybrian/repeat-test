@@ -198,8 +198,11 @@ export default class Arbitrary<T> {
   }
 
   /**
-   * Finds a solution by trying playouts one at a time from a source of playouts.
-   * Throws {@link PickFailed} when it couldn't find a playout that leads to a value.
+   * Finds a solution by trying playouts one at a time from a source of
+   * playouts.
+   *
+   * Throws {@link PickFailed} when the picker didn't return picks that lead to
+   * a value. The caller should retry with different picks.
    */
   pick(picker: RetryPicker): Solution<T> {
     const ctx = new PlayoutContext(picker);
@@ -259,6 +262,8 @@ export default class Arbitrary<T> {
         return picker.pick(req);
       } else if (req instanceof Arbitrary) {
         return pickFromArbitrary(req, opts);
+      } else if (typeof req !== "object") {
+        throw new Error("pick called with invalid argument");
       } else {
         return pickRecord(req);
       }
@@ -286,12 +291,16 @@ export default class Arbitrary<T> {
     return sol.val;
   }
 
+  makeDefaultPicker() {
+    return this.defaultPicks
+      ? new StrictPicker(this.defaultPicks)
+      : retryPicker(alwaysPickDefault, 1);
+  }
+
   /** The default value of this Arbitrary. */
   get default(): T {
     // make a clone, in case it's mutable
-    const picker = this.defaultPicks
-      ? new StrictPicker(this.defaultPicks)
-      : retryPicker(alwaysPickDefault, 1);
+    const picker = this.makeDefaultPicker();
     return this.pick(picker).val;
   }
 
