@@ -1,6 +1,6 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
 import { SearchTree } from "./tree_search_picker.ts";
-import Arbitrary, { PickFailed } from "./arbitrary_class.ts";
+import Arbitrary from "./arbitrary_class.ts";
 import { fail, Failure, Success, success } from "./results.ts";
 
 /** A function that runs a test, using generated input. */
@@ -68,13 +68,11 @@ export function* randomReps<T>(
 
   // Make sure that the default picks work.
   // (And records them in the tree, so we don't test the default again.)
-  const picker = tree.makePicker(arb.makeDefaultPicker());
-  const sol = arb.pick(picker);
+  const sol = arb.pick(tree.pickers(arb.makeDefaultPicker()));
   if (!sol) {
     throw new Error("can't generate default value of supplied arbitrary");
   }
   const arg = sol.val;
-  picker.backTo(0);
 
   // The first rep always uses the default.
   const key = { seed, index };
@@ -87,9 +85,8 @@ export function* randomReps<T>(
 
     const random = pickers.next().value;
     // const picker = retryPicker(random, filterLimit);
-    const picker = tree.makePicker(random);
     try {
-      const sol = arb.pick(picker);
+      const sol = arb.pick(tree.pickers(random));
       if (!sol) {
         return; // No more test args to generate.
       }
@@ -97,7 +94,6 @@ export function* randomReps<T>(
     } catch (e) {
       yield { ok: false, key, arg: undefined, caught: e };
     }
-    picker.backTo(0);
     index++;
   }
 }

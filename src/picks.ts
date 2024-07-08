@@ -437,6 +437,23 @@ export class DepthFirstPicker implements RetryPicker {
     this.maxDepth = opts?.maxDepth ?? 1000;
   }
 
+  asPickers(): IterableIterator<RetryPicker> {
+    let firstTime = true;
+    const pickers: IterableIterator<RetryPicker> = {
+      [Symbol.iterator]: function (): IterableIterator<RetryPicker> {
+        return pickers;
+      },
+      next: (): IteratorResult<RetryPicker, void> => {
+        if (!firstTime && !this.backTo(0)) {
+          return { done: true, value: undefined };
+        }
+        firstTime = false;
+        return { done: false, value: this };
+      },
+    };
+    return pickers;
+  }
+
   pick(req: PickRequest): number {
     if (this.offset < this.log.length) {
       const next = this.log.entryAt(this.offset);

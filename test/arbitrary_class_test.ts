@@ -81,16 +81,16 @@ describe("Arbitrary", () => {
       it("accepts a PickRequest", () => {
         const req = new PickRequest(1, 2);
         const arb = Arbitrary.from((pick) => pick(req));
-        const picker = retryPicker(alwaysPickDefault, 1);
-        const sol = arb.pick(picker);
+        const pickers = [retryPicker(alwaysPickDefault, 1)].values();
+        const sol = arb.pick(pickers);
         assert(sol !== undefined);
         assertEquals(sol.val, 1);
       });
       it("accepts an Arbitrary", () => {
         const req = Arbitrary.of("hi", "there");
         const arb = Arbitrary.from((pick) => pick(req));
-        const picker = retryPicker(alwaysPickDefault, 1);
-        const sol = arb.pick(picker);
+        const pickers = [retryPicker(alwaysPickDefault, 1)].values();
+        const sol = arb.pick(pickers);
         assert(sol !== undefined);
         assertEquals(sol.val, "hi");
       });
@@ -100,8 +100,8 @@ describe("Arbitrary", () => {
           b: Arbitrary.of(1, 2),
         };
         const arb = Arbitrary.from((pick) => pick(req));
-        const picker = retryPicker(alwaysPickDefault, 1);
-        const sol = arb.pick(picker);
+        const pickers = [retryPicker(alwaysPickDefault, 1)].values();
+        const sol = arb.pick(pickers);
         assert(sol !== undefined);
         assertEquals(sol.val, { a: "hi", b: 1 });
       });
@@ -116,7 +116,7 @@ describe("Arbitrary", () => {
         return n;
       });
       const picker = new DepthFirstPicker({ firstChildPicker: alwaysPick(3) });
-      const sol = arb.pick(picker);
+      const sol = arb.pick(picker.asPickers());
       assert(sol !== undefined);
       assertEquals(sol.val, 4);
     });

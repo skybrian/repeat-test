@@ -205,8 +205,8 @@ export default class Arbitrary<T> {
    *
    * It's the caller's responsibility to call backTo() before trying again.
    */
-  pick(picker: RetryPicker): Solution<T> | undefined {
-    for (let i = 0; i < 1000; i++) {
+  pick(pickers: Iterable<RetryPicker>): Solution<T> | undefined {
+    for (const picker of pickers) {
       const ctx = new PlayoutContext(picker);
 
       // These inner functions are mutually recursive and depend on the passed-in
@@ -278,12 +278,9 @@ export default class Arbitrary<T> {
         if (!(e instanceof PickFailed)) {
           throw e;
         }
-        if (!picker.backTo(0)) {
-          return undefined;
-        }
       }
     }
-    throw new PickFailed(`Couldn't find playout that generates ${this}`);
+    return undefined;
   }
 
   /**
@@ -297,7 +294,7 @@ export default class Arbitrary<T> {
    */
   parse(picks: number[]): T {
     const picker = new StrictPicker(picks);
-    const sol = this.pick(picker);
+    const sol = this.pick([picker].values());
     if (picker.error) {
       throw new PickFailed(picker.error);
     }
@@ -317,7 +314,7 @@ export default class Arbitrary<T> {
   get default(): T {
     // make a clone, in case it's mutable
     const picker = this.makeDefaultPicker();
-    const sol = this.pick(picker);
+    const sol = this.pick([picker].values());
     if (!sol) {
       throw new Error(
         "couldn't generate a default value because default picks weren't accepted",
@@ -332,22 +329,20 @@ export default class Arbitrary<T> {
    * Uses a depth-first search, starting from the default value.
    */
   get solutions(): IterableIterator<Solution<T>> {
-    const picker = new DepthFirstPicker({
+    const pickers = new DepthFirstPicker({
       firstChildPicker: alwaysPickDefault,
       maxDepth: 100,
-    });
+    }).asPickers();
+
     const pick = this.pick.bind(this);
 
     function* generate() {
       while (true) {
-        const sol = pick(picker);
+        const sol = pick(pickers);
         if (!sol) {
           return; // no more solutions
         }
         yield sol;
-        if (!picker.backTo(0)) {
-          return; // no more solutions
-        }
       }
     }
 

@@ -1,5 +1,5 @@
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals, fail } from "@std/assert";
+import { assert, assertEquals, assertFalse, fail } from "@std/assert";
 import Arbitrary, { PickFailed } from "../src/arbitrary_class.ts";
 import * as arb from "../src/arbitraries.ts";
 import { success } from "../src/results.ts";
@@ -51,19 +51,24 @@ describe("parseRepKey", () => {
 describe("randomReps", () => {
   it("generates reps with the right keys", () => {
     repeatTest(anyKey, (start) => {
-      const zero = Arbitrary.from(() => 0);
+      const ten = arb.from((pick) => {
+        return pick(arb.int(1, 10));
+      });
+      assertEquals(ten.maxSize, undefined);
+
       const test = () => {};
 
-      const reps = randomReps(start.seed, zero, test, { expectedPlayouts: 10 });
+      const reps = randomReps(start.seed, ten, test, { expectedPlayouts: 10 });
 
-      for (let i = 0; i < 10; i++) {
-        assertEquals(reps.next().value, {
-          ok: true,
-          key: { seed: start.seed, index: i },
-          arg: 0,
-          test,
-        });
+      const picks = new Set<number>();
+      for (const rep of reps) {
+        assert(rep.ok);
+        assertEquals(rep.key, { seed: start.seed, index: picks.size });
+        assertEquals(rep.test, test);
+        assertFalse(picks.has(rep.arg));
+        picks.add(rep.arg);
       }
+      assertEquals(picks.size, 10);
     });
   });
   it("retries when a pick fails", () => {
@@ -143,8 +148,7 @@ describe("repeatTest", () => {
       const increment = () => {
         actual++;
       };
-      const zero = Arbitrary.from(() => 0);
-      repeatTest(zero, increment, { reps: expected });
+      repeatTest(arb.int32(), increment, { reps: expected });
       assertEquals(actual, expected);
     }
   });
@@ -159,16 +163,15 @@ describe("repeatTest", () => {
     });
     assertEquals(counts.get(123.4), 1);
   });
-  it("runs one rep when the 'only' option is set", () => {
-    let actual = 0;
-    const increment = () => {
-      actual++;
-    };
-    const zero = Arbitrary.from(() => 0);
-    repeatTest(zero, increment, { reps: 100, only: "123:456" });
-    assertEquals(actual, 1);
-  });
   describe("when the 'only' option is set", () => {
+    it("runs one rep", () => {
+      let actual = 0;
+      const increment = () => {
+        actual++;
+      };
+      repeatTest(arb.int32(), increment, { reps: 100, only: "123:456" });
+      assertEquals(actual, 1);
+    });
     it("reproduces a previous test run for a small arbitrary", () => {
       repeatTest(arb.int(0, 100), (i) => {
         // assert(i != 42);

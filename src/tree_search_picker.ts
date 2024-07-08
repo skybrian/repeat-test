@@ -75,6 +75,11 @@ export class SearchTree {
 
   private playoutsLeft: number;
 
+  /** The picker currently being used. */
+  private currentVersion = 0;
+
+  private done = false;
+
   /**
    * @param expectedPlayouts the number of playouts that are expected. If set
    * to zero, playout tracking is turned off.
@@ -141,8 +146,42 @@ export class SearchTree {
     return this.nodes[this.nodes.length - 1].branches !== undefined;
   }
 
-  makePicker(wrapped: IntPicker): RetryPicker {
+  pickers(wrapped: IntPicker): IterableIterator<RetryPicker> {
+    const pickers: IterableIterator<RetryPicker> = {
+      [Symbol.iterator]() {
+        return pickers;
+      },
+      next: (): IteratorResult<RetryPicker, void> => {
+        const value = this.makePicker(wrapped);
+        const done = value === undefined;
+        if (done) {
+          return { done, value: undefined };
+        } else {
+          return { done, value };
+        }
+      },
+    };
+    return pickers;
+  }
+
+  makePicker(wrapped: IntPicker): RetryPicker | undefined {
+    if (this.done) return undefined;
+    this.currentVersion++;
+    const version = this.currentVersion;
+
+    const checkAlive = () => {
+      if (version !== this.currentVersion) {
+        throw new Error("picker accessed after another was made");
+      }
+    };
+
+    const getNodes = () => {
+      checkAlive();
+      return this.nodes;
+    };
+
     const getPicks = (): number[] => {
+      checkAlive();
       return this.picks.slice(1);
     };
 
@@ -154,7 +193,8 @@ export class SearchTree {
     };
 
     const pick = (req: PickRequest): number => {
-      const parent = this.nodes[this.nodes.length - 1];
+      const nodes = getNodes();
+      const parent = nodes[nodes.length - 1];
       if (parent.branches === undefined) {
         // Not tracking branches, so just record the pick.
         return pickUntracked(req);
@@ -179,7 +219,7 @@ export class SearchTree {
           branchesLeft: req.size,
         };
         parent.branches[parentPick - parent.req.min] = node;
-        this.nodes.push(node);
+        nodes.push(node);
         this.picks.push(nextPick);
         return nextPick;
       }
@@ -204,7 +244,7 @@ export class SearchTree {
           const pick = choice + req.min;
           // move down
           this.updateOdds(node.branchesLeft);
-          this.nodes.push(node);
+          nodes.push(node);
           this.picks.push(pick);
           return pick;
         }
@@ -218,19 +258,24 @@ export class SearchTree {
      * the caller should backtrack more.
      */
     const backTo = (depth: number): boolean => {
-      if (depth < 0 || depth > this.nodes.length - 1) {
+      const nodes = getNodes();
+      if (depth < 0 || depth > nodes.length - 1) {
         throw new Error(
-          "depth must be between 0 and " + (this.nodes.length - 1),
+          "depth must be between 0 and " + (nodes.length - 1),
         );
       }
       if (!this.closePlayout(depth)) {
+        if (depth === 0) {
+          // We've tried all playouts.
+          this.done = true;
+        }
         return false;
       }
       if (this.pickedBranchAt(depth) === CLOSED) {
         throw new Error("went back to closed branch");
       }
-      while (this.nodes.length > depth + 1) {
-        this.nodes.pop();
+      while (nodes.length > depth + 1) {
+        nodes.pop();
         this.picks.pop();
       }
       this.playoutsLeft--;
@@ -238,7 +283,9 @@ export class SearchTree {
       return true;
     };
 
-    const getNodes = () => this.nodes;
+    if (version > 1) {
+      if (!backTo(0)) return undefined;
+    }
 
     const picker: RetryPicker = {
       pick,
