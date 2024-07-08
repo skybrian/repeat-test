@@ -17,7 +17,7 @@ import {
 } from "../src/picks.ts";
 import { randomPicker } from "../src/random.ts";
 
-import { SearchTree } from "../src/tree_search_picker.ts";
+import { SearchTree } from "../src/search_tree.ts";
 
 const bit = new PickRequest(0, 1);
 

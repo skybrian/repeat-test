@@ -1,5 +1,5 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
-import { SearchTree } from "./tree_search_picker.ts";
+import { SearchTree } from "./search_tree.ts";
 import Arbitrary from "./arbitrary_class.ts";
 import { fail, Failure, Success, success } from "./results.ts";
 
