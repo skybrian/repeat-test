@@ -102,15 +102,20 @@ describe("Cursor", () => {
       });
     });
 
-    it("never tracks if the search tree is too wide", () => {
-      const examples = arb.of(1001);
-      repeatTest(examples, (playouts) => {
-        const tree = new SearchTree(playouts);
-        const picker = tree.makePicker(alwaysPickDefault);
-        assert(picker !== undefined);
-        picker.pick(new PickRequest(1, playouts));
-        assertFalse(picker.tracked);
-      });
+    it("doesn't normally track a very wide node", () => {
+      const int32 = new PickRequest(-(2 ** 31), 2 ** 31 - 1);
+      assertEquals(int32.size, 2 ** 32);
+
+      repeatTest(
+        arb.of(0, 1, 1000, 10 ** 6, 10 ** 9, 2 ** 30),
+        (playouts) => {
+          const tree = new SearchTree(playouts);
+          const picker = tree.makePicker(alwaysPickDefault);
+          assert(picker !== undefined);
+          picker.pick(int32);
+          assertFalse(picker.tracked);
+        },
+      );
     });
 
     it("doesn't revisit a constant in an unbalanced tree", () => {

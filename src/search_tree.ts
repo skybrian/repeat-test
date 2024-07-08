@@ -86,7 +86,17 @@ interface CursorParent {
 }
 
 export class Cursor implements RetryPicker {
+  /* Invariant: `nodes.length === picks.length` */
+
+  /**
+   * The nodes used in the current playout. The 'start' node is at index 0, and
+   * it points to the root at index 1.
+   */
   private readonly nodes: Node[];
+  /**
+   * The picks made in the current playout. The pick at index 0 is always 0,
+   * pointing to the root node.
+   */
   private readonly picks: number[];
 
   /**
@@ -110,15 +120,8 @@ export class Cursor implements RetryPicker {
     this.picks = [0];
   }
 
-  private checkAlive(version: number) {
-    this.tree.checkAlive(version);
-    if (this.nodes.length === 0) {
-      throw new Error("picker accessed after all playouts were made");
-    }
-  }
-
   getNodes(): Node[] {
-    this.checkAlive(this.version);
+    this.tree.checkAlive(this.version);
     return this.nodes;
   }
 
@@ -136,9 +139,9 @@ export class Cursor implements RetryPicker {
     const nodes = this.getNodes();
     const picks = this.picks;
     for (let i = nodes.length - 1; i > depth; i--) {
-      const node = nodes[i];
-      if (node.branchesLeft > 1) {
-        node.prune(picks[i]);
+      const parent = nodes[i];
+      if (parent.branchesLeft > 1) {
+        parent.prune(picks[i]);
         return true;
       }
     }
@@ -205,7 +208,7 @@ export class Cursor implements RetryPicker {
       // See if we should expand the tree.
       // If picking the same playout twice is unlikely, it's not worth tracking.
       this.updateOdds(req.size);
-      if (req.size > 1000 || this.willReturnProbability < 0.5) {
+      if (this.willReturnProbability < 0.5) {
         return this.pickUntracked(req);
       }
 
