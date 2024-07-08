@@ -14,40 +14,41 @@ type Branch = undefined | Node | typeof PRUNED;
 /**
  * A search tree node for keeping track of which playouts already happened.
  *
- * Invariant: `req.size === branches.length`.
- *
  * Invariant: branchesLeft is the count of branches not set to PRUNED.
  *
  * Invariant: `branchesLeft >= 1` for nodes in the tree. (Otherwise, the node
  * should have been removed.)
  */
 class Node {
-  /**
-   * If present, playouts are being tracked for this node.
-   *
-   * Given a pick, the index of its branch is `pick - req.min`.
-   */
-  #branches?: Branch[];
+  [key: number]: Branch;
 
+  readonly #req: PickRequest;
+
+  #tracked: boolean;
   #branchesLeft: number;
 
-  constructor(readonly req: PickRequest, track: boolean) {
-    this.#branches = track ? Array(req.size).fill(undefined) : undefined;
+  constructor(req: PickRequest, track: boolean) {
+    this.#req = req;
+    this.#tracked = track;
     this.#branchesLeft = req.size;
   }
 
+  get req(): PickRequest {
+    return this.#req;
+  }
+
   get tracked(): boolean {
-    return this.#branches !== undefined;
+    return this.#tracked;
   }
 
   getBranch(pick: number): Branch {
-    if (!this.#branches) return undefined;
-    return this.#branches[pick - this.req.min];
+    if (!this.#tracked) return undefined;
+    return this[pick - this.req.min];
   }
 
   setBranch(pick: number, node: Node): boolean {
-    if (!this.#branches) return false;
-    this.#branches[pick - this.req.min] = node;
+    if (!this.#tracked) return false;
+    this[pick - this.req.min] = node;
     return true;
   }
 
@@ -57,21 +58,21 @@ class Node {
   }
 
   findUnprunedPick(firstChoice: number): number | undefined {
-    const branches = this.#branches;
-    if (!branches) return undefined;
-    const size = branches.length;
-    let idx = firstChoice - this.req.min;
+    if (!this.#tracked) return undefined;
+    const size = this.req.size;
+    let pick = firstChoice;
     for (let i = 0; i < size; i++) {
-      if (branches[idx] !== PRUNED) return idx + this.req.min;
-      idx++;
-      if (idx == size) idx = 0;
+      const branch = this[pick - this.req.min];
+      if (branch !== PRUNED) return pick;
+      pick++;
+      if (pick > this.#req.max) pick = this.#req.min;
     }
     return undefined;
   }
 
   prune(pick: number): boolean {
-    if (!this.#branches) return false;
-    this.#branches[pick - this.req.min] = PRUNED;
+    if (!this.#tracked) return false;
+    this[pick - this.req.min] = PRUNED;
     this.#branchesLeft--;
     return true;
   }
@@ -113,8 +114,6 @@ export class SearchTree {
 
   /** The picker currently being used. */
   private currentVersion = 0;
-
-  private done = false;
 
   /**
    * @param expectedPlayouts the number of playouts that are expected. If set
@@ -190,13 +189,16 @@ export class SearchTree {
   }
 
   makePicker(wrapped: IntPicker): RetryPicker | undefined {
-    if (this.done) return undefined;
+    if (this.nodes.length === 0) return undefined;
     this.currentVersion++;
     const version = this.currentVersion;
 
     const checkAlive = () => {
       if (version !== this.currentVersion) {
         throw new Error("picker accessed after another was made");
+      }
+      if (this.nodes.length === 0) {
+        throw new Error("picker accessed after all playouts were made");
       }
     };
 
@@ -278,7 +280,7 @@ export class SearchTree {
       if (!this.prune(depth)) {
         if (depth === 0) {
           // Prune the root, ending the search.
-          this.done = true;
+          this.nodes.length = 0;
         }
         return false;
       }
