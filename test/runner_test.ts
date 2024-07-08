@@ -88,7 +88,7 @@ describe("randomReps", () => {
         assertFalse(picks.has(rep.arg));
         picks.add(rep.arg);
       }
-      assertEquals(picks.size, 10);
+      assertEquals(picks.size, 10, "didn't generate the right number of reps");
     });
   });
   it("retries when a pick fails", () => {

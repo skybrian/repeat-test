@@ -29,7 +29,7 @@ describe("SearchTree", () => {
       assert(picker !== undefined);
       assertEquals(picker.depth, 0);
       assertEquals(picker.getPicks(), []);
-      assert(tree.tracked);
+      assert(picker.tracked);
     });
   });
 
@@ -53,154 +53,156 @@ describe("SearchTree", () => {
       assertEquals(count, 4);
     });
   });
+});
 
-  describe("using a created picker", () => {
-    describe("pick", () => {
-      it("takes a pick from the underlying picker", () => {
-        const tree = new SearchTree(1);
+describe("Cursor", () => {
+  describe("pick", () => {
+    it("takes a pick from the underlying picker", () => {
+      const tree = new SearchTree(1);
+      const picker = tree.makePicker(alwaysPickDefault);
+      assert(picker !== undefined);
+      assertEquals(picker.pick(bit), 0);
+      assertEquals(picker.depth, 1);
+      assertEquals(picker.getPicks(), [0]);
+      assert(picker.tracked);
+    });
+
+    it("requires the same range as last time", () => {
+      const tree = new SearchTree(1);
+      const picker = tree.makePicker(alwaysPickDefault);
+      assert(picker !== undefined);
+      assertEquals(picker.pick(bit), 0);
+      picker.backTo(0);
+      assertThrows(() => picker.pick(new PickRequest(-1, 0)), Error);
+    });
+
+    it("stops tracking if there aren't enough playouts to get to every branch", () => {
+      const tree = new SearchTree(1);
+      const picker = tree.makePicker(alwaysPickDefault);
+      assert(picker !== undefined);
+      picker.pick(new PickRequest(1, 6));
+      assertFalse(picker.tracked);
+    });
+
+    it("tracks if there are enough playouts to get to every branch", () => {
+      const example = arb.record({
+        "constantPicks": arb.int(0, 10),
+        "playouts": arb.int(1, 1000),
+      });
+      repeatTest(example, ({ playouts, constantPicks }) => {
+        const tree = new SearchTree(playouts);
         const picker = tree.makePicker(alwaysPickDefault);
         assert(picker !== undefined);
-        assertEquals(picker.pick(bit), 0);
-        assertEquals(picker.depth, 1);
-        assertEquals(picker.getPicks(), [0]);
-        assert(tree.tracked);
-      });
-
-      it("requires the same range as last time", () => {
-        const tree = new SearchTree(1);
-        const picker = tree.makePicker(alwaysPickDefault);
-        assert(picker !== undefined);
-        assertEquals(picker.pick(bit), 0);
-        picker.backTo(0);
-        assertThrows(() => picker.pick(new PickRequest(-1, 0)), Error);
-      });
-
-      it("stops tracking if there aren't enough playouts to get to every branch", () => {
-        const tree = new SearchTree(1);
-        const picker = tree.makePicker(alwaysPickDefault);
-        assert(picker !== undefined);
-        picker.pick(new PickRequest(1, 6));
-        assertFalse(tree.tracked);
-      });
-
-      it("tracks if there are enough playouts to get to every branch", () => {
-        const example = arb.record({
-          "constantPicks": arb.int(0, 10),
-          "playouts": arb.int(1, 1000),
-        });
-        repeatTest(example, ({ playouts, constantPicks }) => {
-          const tree = new SearchTree(playouts);
-          const picker = tree.makePicker(alwaysPickDefault);
-          assert(picker !== undefined);
-          const justOne = new PickRequest(1, 1);
-          for (let i = 0; i < constantPicks; i++) {
-            picker.pick(justOne);
-          }
-          picker.pick(new PickRequest(1, playouts));
-          assert(tree.tracked);
-        });
-      });
-
-      it("never tracks if the search tree is too wide", () => {
-        const examples = arb.of(1001);
-        repeatTest(examples, (playouts) => {
-          const tree = new SearchTree(playouts);
-          const picker = tree.makePicker(alwaysPickDefault);
-          assert(picker !== undefined);
-          picker.pick(new PickRequest(1, playouts));
-          assertFalse(tree.tracked);
-        });
-      });
-
-      it("doesn't revisit a constant in an unbalanced tree", () => {
-        const tree = new SearchTree(1000);
-        const picker = tree.makePicker(randomPicker(123));
-        assert(picker !== undefined);
-
-        const counts = {
-          constants: 0,
-          other: 0,
-        };
-        for (let i = 0; i < 1000; i++) {
-          if (picker.pick(bit)) {
-            picker.pick(new PickRequest(1, 2 ** 40));
-            counts.other++;
-          } else {
-            picker.pick(new PickRequest(1, 2));
-            counts.constants++;
-          }
-          picker.backTo(0);
+        const justOne = new PickRequest(1, 1);
+        for (let i = 0; i < constantPicks; i++) {
+          picker.pick(justOne);
         }
-
-        assertEquals(counts, {
-          constants: 2,
-          other: 998,
-        });
+        picker.pick(new PickRequest(1, playouts));
+        assert(picker.tracked);
       });
     });
 
-    describe("backTo", () => {
-      it("ends the search after one playout for a constant", () => {
-        const tree = new SearchTree(1);
+    it("never tracks if the search tree is too wide", () => {
+      const examples = arb.of(1001);
+      repeatTest(examples, (playouts) => {
+        const tree = new SearchTree(playouts);
         const picker = tree.makePicker(alwaysPickDefault);
         assert(picker !== undefined);
-        assertFalse(picker.backTo(0), "Shouldn't be more playouts");
+        picker.pick(new PickRequest(1, playouts));
+        assertFalse(picker.tracked);
       });
+    });
 
-      it("starts a new playout after a pick", () => {
-        const tree = new SearchTree(1);
-        const picker = tree.makePicker(alwaysPickDefault);
-        assert(picker !== undefined);
-        picker.pick(bit);
+    it("doesn't revisit a constant in an unbalanced tree", () => {
+      const tree = new SearchTree(1000);
+      const picker = tree.makePicker(randomPicker(123));
+      assert(picker !== undefined);
 
-        assert(picker.backTo(0));
-        assertEquals(picker.depth, 0);
-        assertEquals(picker.getPicks(), []);
-      });
-
-      it("ends the search after two playouts for a coin flip", () => {
-        const tree = new SearchTree(1);
-        const picker = tree.makePicker(alwaysPickDefault);
-        assert(picker !== undefined);
-        picker.pick(bit);
+      const counts = {
+        constants: 0,
+        other: 0,
+      };
+      for (let i = 0; i < 1000; i++) {
+        if (picker.pick(bit)) {
+          picker.pick(new PickRequest(1, 2 ** 40));
+          counts.other++;
+        } else {
+          picker.pick(new PickRequest(1, 2));
+          counts.constants++;
+        }
         picker.backTo(0);
-        picker.pick(bit);
-        assertFalse(picker.backTo(0));
-      });
+      }
 
-      it("handles going back to a previous level", () => {
-        const tree = new SearchTree(4);
-        const picker = tree.makePicker(alwaysPickDefault);
-        assert(picker !== undefined);
-        picker.pick(bit);
-        assertEquals(picker.depth, 1);
-
-        assertEquals(picker.pick(bit), 0);
-        assertEquals(picker.depth, 2);
-        picker.backTo(1);
-        assertEquals(picker.depth, 1);
-
-        assertEquals(picker.pick(bit), 1);
-        assertFalse(
-          picker.backTo(1),
-          "should fail because picks are exhausted",
-        );
-        assert(picker.backTo(0));
+      assertEquals(counts, {
+        constants: 2,
+        other: 998,
       });
     });
   });
 
-  it("fully explores a combination lock", () => {
-    const examples = arb.of(
-      alwaysPickDefault,
-      alwaysPickMin,
-      alwaysPick(3),
-      randomPicker(123),
-    );
+  describe("backTo", () => {
+    it("ends the search after one playout for a constant", () => {
+      const tree = new SearchTree(1);
+      const picker = tree.makePicker(alwaysPickDefault);
+      assert(picker !== undefined);
+      assertFalse(picker.backTo(0), "Shouldn't be more playouts");
+    });
 
-    repeatTest(examples, (underlying) => {
+    it("starts a new playout after a pick", () => {
+      const tree = new SearchTree(1);
+      const picker = tree.makePicker(alwaysPickDefault);
+      assert(picker !== undefined);
+      picker.pick(bit);
+
+      assert(picker.backTo(0));
+      assertEquals(picker.depth, 0);
+      assertEquals(picker.getPicks(), []);
+    });
+
+    it("ends the search after two playouts for a coin flip", () => {
+      const tree = new SearchTree(1);
+      const picker = tree.makePicker(alwaysPickDefault);
+      assert(picker !== undefined);
+      picker.pick(bit);
+      picker.backTo(0);
+      picker.pick(bit);
+      assertFalse(picker.backTo(0));
+    });
+
+    it("handles going back to a previous level", () => {
+      const tree = new SearchTree(4);
+      const picker = tree.makePicker(alwaysPickDefault);
+      assert(picker !== undefined);
+      picker.pick(bit);
+      assertEquals(picker.depth, 1);
+
+      assertEquals(picker.pick(bit), 0);
+      assertEquals(picker.depth, 2);
+      picker.backTo(1);
+      assertEquals(picker.depth, 1);
+
+      assertEquals(picker.pick(bit), 1);
+      assertFalse(
+        picker.backTo(1),
+        "should fail because picks are exhausted",
+      );
+      assert(picker.backTo(0));
+    });
+  });
+
+  it("fully explores a combination lock", () => {
+    const underlyingPickers = arb.oneOf([
+      arb.of(
+        alwaysPickDefault,
+        alwaysPickMin,
+        alwaysPick(3),
+      ),
+      arb.int32().map((seed) => randomPicker(seed)),
+    ]);
+
+    repeatTest(underlyingPickers, (underlying) => {
       const digit = new PickRequest(0, 9);
-      const tree = new SearchTree(1000);
+      const tree = new SearchTree(2000);
       const picker = tree.makePicker(underlying);
       assert(picker !== undefined);
 
@@ -211,7 +213,7 @@ describe("SearchTree", () => {
           const pick = picker.pick(digit);
           picks.push(pick);
         }
-        assert(tree.tracked, "playout wasn't tracked");
+        assert(picker.tracked, "playout wasn't tracked");
         const key = JSON.stringify(picks);
         if (seen.has(key)) {
           fail(`duplicate picks: ${key}`);
@@ -226,6 +228,6 @@ describe("SearchTree", () => {
         assertEquals(playouts[0], "[0,0,0]");
         assertEquals(playouts[999], "[9,9,9]");
       }
-    });
+    }, { reps: 100 });
   });
 });
