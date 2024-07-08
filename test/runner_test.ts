@@ -5,6 +5,7 @@ import * as arb from "../src/arbitraries.ts";
 import { success } from "../src/results.ts";
 
 import {
+  depthFirstReps,
   parseRepKey,
   randomReps,
   Rep,
@@ -48,9 +49,28 @@ describe("parseRepKey", () => {
   });
 });
 
+describe("depthFirstReps", () => {
+  it("generates reps with the right keys", () => {
+    const test = () => {};
+    const reps = depthFirstReps(arb.int(1, 10), test);
+
+    let index = 0;
+    for (const rep of reps) {
+      assertEquals(rep, {
+        ok: true,
+        key: { seed: 0, index },
+        arg: index + 1,
+        test,
+      });
+      index++;
+    }
+    assertEquals(index, 10);
+  });
+});
+
 describe("randomReps", () => {
   it("generates reps with the right keys", () => {
-    repeatTest(anyKey, (start) => {
+    repeatTest(arb.int32(), (seed) => {
       const ten = arb.from((pick) => {
         return pick(arb.int(1, 10));
       });
@@ -58,12 +78,12 @@ describe("randomReps", () => {
 
       const test = () => {};
 
-      const reps = randomReps(start.seed, ten, test, { expectedPlayouts: 10 });
+      const reps = randomReps(seed, ten, test, { expectedPlayouts: 10 });
 
       const picks = new Set<number>();
       for (const rep of reps) {
         assert(rep.ok);
-        assertEquals(rep.key, { seed: start.seed, index: picks.size });
+        assertEquals(rep.key, { seed, index: picks.size });
         assertEquals(rep.test, test);
         assertFalse(picks.has(rep.arg));
         picks.add(rep.arg);

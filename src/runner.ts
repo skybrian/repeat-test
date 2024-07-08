@@ -98,7 +98,7 @@ export function* randomReps<T>(
   }
 }
 
-function* depthFirstReps<T>(
+export function* depthFirstReps<T>(
   arb: Arbitrary<T>,
   test: TestFunction<T>,
 ): Generator<Rep<T> | TestFailure<unknown>> {
