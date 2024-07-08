@@ -1,7 +1,7 @@
 import { IntPicker, PickRequest, RetryPicker } from "./picks.ts";
 
 /** Indicates that the subtree rooted at a branch has been fully explored. */
-const CLOSED = Symbol("closed");
+const PRUNED = Symbol("pruned");
 
 /**
  * The state of a subtree.
@@ -9,33 +9,73 @@ const CLOSED = Symbol("closed");
  * An undefined branch is not being tracked (yet). Either it hasn't been
  * visited, or the probability of a duplicate is too low to be worth tracking.
  */
-type Branch = undefined | Node | typeof CLOSED;
+type Branch = undefined | Node | typeof PRUNED;
 
 /**
  * A search tree node for keeping track of which playouts already happened.
  *
  * Invariant: `req.size === branches.length`.
  *
- * Invariant: branchesLeft is the count of branches not set to CLOSED.
+ * Invariant: branchesLeft is the count of branches not set to PRUNED.
  *
  * Invariant: `branchesLeft >= 1` for nodes in the tree. (Otherwise, the node
  * should have been removed.)
  */
-type Node = {
-  readonly req: PickRequest;
-
+class Node {
   /**
    * If present, playouts are being tracked for this node.
    *
    * Given a pick, the index of its branch is `pick - req.min`.
    */
-  readonly branches?: Branch[];
+  #branches?: Branch[];
 
-  /**
-   * The number of branches that aren't set to CLOSED.
-   */
-  branchesLeft: number;
-};
+  #branchesLeft: number;
+
+  constructor(readonly req: PickRequest, track: boolean) {
+    this.#branches = track ? Array(req.size).fill(undefined) : undefined;
+    this.#branchesLeft = req.size;
+  }
+
+  get tracked(): boolean {
+    return this.#branches !== undefined;
+  }
+
+  getBranch(pick: number): Branch {
+    if (!this.#branches) return undefined;
+    return this.#branches[pick - this.req.min];
+  }
+
+  setBranch(pick: number, node: Node): boolean {
+    if (!this.#branches) return false;
+    this.#branches[pick - this.req.min] = node;
+    return true;
+  }
+
+  /** The number of unpruned branches. */
+  get branchesLeft(): number {
+    return this.#branchesLeft;
+  }
+
+  findUnprunedPick(firstChoice: number): number | undefined {
+    const branches = this.#branches;
+    if (!branches) return undefined;
+    const size = branches.length;
+    let idx = firstChoice - this.req.min;
+    for (let i = 0; i < size; i++) {
+      if (branches[idx] !== PRUNED) return idx + this.req.min;
+      idx++;
+      if (idx == size) idx = 0;
+    }
+    return undefined;
+  }
+
+  prune(pick: number): boolean {
+    if (!this.#branches) return false;
+    this.#branches[pick - this.req.min] = PRUNED;
+    this.#branchesLeft--;
+    return true;
+  }
+}
 
 /**
  * Creates pickers that avoid duplicate playouts.
@@ -53,11 +93,7 @@ export class SearchTree {
    * The nodes visited as part of the current playout. The first node is
    * a dummy node that points to the root node.
    */
-  private readonly nodes: Node[] = [{
-    req: new PickRequest(0, 0),
-    branches: [undefined],
-    branchesLeft: 1, // Ensures that the root gets closed at the end of the search.
-  }];
+  private readonly nodes: Node[] = [new Node(new PickRequest(0, 0), true)];
 
   /** Picks made as part of the first playout. (The first one is a dummy.) */
   private readonly picks = [0];
@@ -109,41 +145,30 @@ export class SearchTree {
   }
 
   /**
-   * Close the current playout if it's at the given depth or deeper.
+   * Prunes the current playout if the last fork is at the given depth or higher.
    *
-   * If it returns false, no alternative playout is available. (The
-   * last alternative was before the given depth.)
+   * If it returns false, the last fork is at a lower depth.
    */
-  private closePlayout(depth: number) {
+  private prune(depth: number) {
     for (let i = this.nodes.length - 1; i > depth; i--) {
       const node = this.nodes[i];
-      if (node.branches === undefined) {
-        // Wasn't tracked; can't close it.
-        return true;
-      } else if (node.branchesLeft > 1) {
-        // There is an alternate branch at this index.
-        const branch = this.picks[i] - node.req.min;
-        node.branches[branch] = CLOSED;
-        node.branchesLeft--;
-        // console.log(`closed branch ${branch} at depth ${depth}`);
+      if (node.branchesLeft > 1) {
+        node.prune(this.picks[i]);
         return true;
       }
     }
     return false;
   }
 
-  private pickedBranchAt(i: number): Branch {
+  private getPickedBranch(i: number): Branch {
     const parent = this.nodes[i];
-    const branches = parent.branches;
-    if (branches === undefined) return undefined;
-
-    const parentPick = this.picks[this.picks.length - 1];
-    return branches[parentPick - parent.req.min];
+    const pick = this.picks[i];
+    return parent.getBranch(pick);
   }
 
   /** Returns true if the current playout is tracked so far. */
   get tracked(): boolean {
-    return this.nodes[this.nodes.length - 1].branches !== undefined;
+    return this.nodes[this.nodes.length - 1].tracked;
   }
 
   pickers(wrapped: IntPicker): IterableIterator<RetryPicker> {
@@ -187,7 +212,7 @@ export class SearchTree {
 
     const pickUntracked = (req: PickRequest): number => {
       const pick = wrapped.pick(req);
-      this.nodes.push({ req, branchesLeft: req.size });
+      this.nodes.push(new Node(req, false));
       this.picks.push(pick);
       return pick;
     };
@@ -195,14 +220,13 @@ export class SearchTree {
     const pick = (req: PickRequest): number => {
       const nodes = getNodes();
       const parent = nodes[nodes.length - 1];
-      if (parent.branches === undefined) {
-        // Not tracking branches, so just record the pick.
+      if (!parent.tracked) {
         return pickUntracked(req);
       }
       const parentPick = this.picks[this.picks.length - 1];
-      let node = parent.branches[parentPick - parent.req.min];
-      if (node === CLOSED) {
-        throw new Error("internal error: parent picked a closed branch");
+      let node = parent.getBranch(parentPick);
+      if (node === PRUNED) {
+        throw new Error("internal error: parent picked a pruned branch");
       } else if (node === undefined) {
         // See if we should expand the tree.
         // If picking the same playout twice is unlikely, it's not worth tracking.
@@ -213,12 +237,8 @@ export class SearchTree {
 
         // Expand the tree and push the node.
         const nextPick = wrapped.pick(req);
-        node = {
-          req,
-          branches: Array(req.size).fill(undefined),
-          branchesLeft: req.size,
-        };
-        parent.branches[parentPick - parent.req.min] = node;
+        node = new Node(req, true);
+        parent.setBranch(parentPick, node);
         nodes.push(node);
         this.picks.push(nextPick);
         return nextPick;
@@ -229,28 +249,19 @@ export class SearchTree {
           `pick request range doesn't match a previous visit`,
         );
       }
-      const branches = node.branches;
-      if (branches === undefined) {
-        // We've already visited this node, but it's not tracking branches.
+      if (!node.tracked) {
         return pickUntracked(req);
       }
-
-      // Choose the first branch that's not taken
-      const firstChoice = wrapped.pick(req) - req.min;
-      let candidate = firstChoice;
-      for (let i = 0; i < req.size; i++) {
-        if (branches[candidate] !== CLOSED) {
-          const choice = candidate;
-          const pick = choice + req.min;
-          // move down
-          this.updateOdds(node.branchesLeft);
-          nodes.push(node);
-          this.picks.push(pick);
-          return pick;
-        }
-        candidate = (candidate + 1) % node.req.size;
+      const pick = node.findUnprunedPick(wrapped.pick(req));
+      if (pick === undefined) {
+        throw new Error("internal error: node has no unpruned picks");
       }
-      throw new Error("internal error: node has no branches left");
+
+      // move down
+      this.updateOdds(node.branchesLeft);
+      nodes.push(node);
+      this.picks.push(pick);
+      return pick;
     };
 
     /**
@@ -264,15 +275,15 @@ export class SearchTree {
           "depth must be between 0 and " + (nodes.length - 1),
         );
       }
-      if (!this.closePlayout(depth)) {
+      if (!this.prune(depth)) {
         if (depth === 0) {
-          // We've tried all playouts.
+          // Prune the root, ending the search.
           this.done = true;
         }
         return false;
       }
-      if (this.pickedBranchAt(depth) === CLOSED) {
-        throw new Error("went back to closed branch");
+      if (this.getPickedBranch(depth) === PRUNED) {
+        throw new Error("went back to pruned branch");
       }
       while (nodes.length > depth + 1) {
         nodes.pop();
