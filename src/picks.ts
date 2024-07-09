@@ -190,27 +190,13 @@ export interface RetryPicker extends IntPicker {
   get depth(): number;
 
   /**
-   * Returns true if the picker is replaying a previously-determined pick
-   * sequence.
-   *
-   * While replay is true, calls to {@link RetryPicker.pick} have to pass in a
-   * request with the same range as last time, or it will throw an Error.
-   *
-   * (It will diverge before replaying the entire sequence.)
-   */
-  get replaying(): boolean;
-
-  /**
    * Attempts to finish the current playout and return to a previous point in
    * the pick sequence where there is another playout.
-   *
-   * If successful, the picker might start replaying previous picks. (See
-   * {@link replaying}.)
    *
    * If it fails, there's no next playout at the given depth, and the caller
    * should try again with a lower depth.
    *
-   * If `backTo(0)` return false, the entire tree has been searched.
+   * If `backTo(0)` returns false, the entire tree has been searched.
    */
   backTo(depth: number): boolean;
 
@@ -235,9 +221,6 @@ export function retryPicker(picker: IntPicker, maxTries: number): RetryPicker {
     },
     get depth() {
       return picks.length;
-    },
-    get replaying() {
-      return false;
     },
 
     pick(req) {
@@ -277,10 +260,6 @@ export class StrictPicker implements RetryPicker {
 
   getPicks(): number[] {
     return this.actual.slice();
-  }
-
-  get replaying(): boolean {
-    return this.actual.length < this.expected.length;
   }
 
   backTo(_depth: number): boolean {

@@ -182,10 +182,6 @@ export class Cursor implements RetryPicker {
     return this.getNodes().length - 1;
   }
 
-  get replaying(): boolean {
-    return false;
-  }
-
   getPicks(): number[] {
     return this.picks.slice(1);
   }
