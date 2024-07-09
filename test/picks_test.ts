@@ -1,15 +1,10 @@
 import { describe, it } from "@std/testing/bdd";
-import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 import * as arb from "../src/arbitraries.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import {
-  DepthFirstPicker,
-  PickLog,
-  PickRequest,
-  PickRequestOptions,
-} from "../src/picks.ts";
+import { PickRequest, PickRequestOptions } from "../src/picks.ts";
 
 export function validRequest(
   opts?: arb.IntRangeOptions,
@@ -73,122 +68,5 @@ describe("PickRequest", () => {
         assertEquals(request.default, def);
       });
     });
-  });
-});
-
-describe("PickLog", () => {
-  describe("edited", () => {
-    it("returns false if the log is empty", () => {
-      const log = new PickLog();
-      assertFalse(log.edited);
-    });
-    it("returns false if the last pick was unchanged", () => {
-      const log = new PickLog();
-      log.push(new PickRequest(0, 0), 0);
-      assertFalse(log.edited);
-    });
-    it("returns true if the last pick was changed", () => {
-      const log = new PickLog();
-      log.push(new PickRequest(0, 1), 0);
-      log.next();
-      assert(log.edited);
-    });
-    it("returns true if a pick was changed, and then another pick added", () => {
-      const log = new PickLog();
-      log.push(new PickRequest(0, 1), 0);
-      log.next();
-      log.push(new PickRequest(0, 0), 0);
-      assert(log.edited);
-    });
-  });
-  describe("next", () => {
-    it("returns false if the log is empty", () => {
-      const log = new PickLog();
-      assertFalse(log.next());
-      assertEquals(log.replies, []);
-    });
-    it("removes the last picks if they can't be changed", () => {
-      const log = new PickLog();
-      log.push(new PickRequest(0, 0), 0);
-      log.push(new PickRequest(0, 0), 0);
-      assertFalse(log.next());
-      assertEquals(log.replies, []);
-    });
-    it("rotates the last pick if it can be changed", () => {
-      const log = new PickLog();
-      log.push(new PickRequest(0, 1), 0);
-      assert(log.next());
-      assertEquals(log.replies, [1]);
-    });
-    it("wraps around", () => {
-      const log = new PickLog();
-      log.push(new PickRequest(0, 1), 1);
-      assert(log.next());
-      assertEquals(log.replies, [0]);
-    });
-    it("removes the last pick if it rotates back to the original value", () => {
-      const log = new PickLog();
-      log.push(new PickRequest(0, 1), 0);
-      assert(log.next());
-      assertFalse(log.next());
-      assertEquals(log.replies, []);
-    });
-  });
-});
-
-describe("DepthFirstPicker", () => {
-  describe("backTo", () => {
-    it("returns false if no picks happened", () => {
-      const picker = new DepthFirstPicker();
-      assertFalse(picker.backTo(0));
-    });
-    it("returns false if the root has no other children", () => {
-      const picker = new DepthFirstPicker();
-      assertEquals(picker.pick(new PickRequest(0, 0)), 0);
-      assertFalse(picker.backTo(0));
-    });
-    const bit = new PickRequest(0, 1);
-    it("goes back to a different child", () => {
-      const picker = new DepthFirstPicker();
-      assertEquals(picker.pick(bit), 0);
-      assert(picker.backTo(0));
-      assertEquals(picker.pick(bit), 1);
-      assertFalse(picker.backTo(0));
-    });
-    it("throws if not at the end of a playout", () => {
-      const picker = new DepthFirstPicker();
-      assertEquals(picker.pick(bit), 0);
-      assert(picker.backTo(0));
-      assertThrows(() => picker.backTo(0));
-    });
-    it("goes back to a different child in a subtree", () => {
-      const picker = new DepthFirstPicker();
-      assertEquals(picker.pick(bit), 0);
-      assertEquals(picker.pick(bit), 0);
-      assert(picker.backTo(1));
-      assertEquals(picker.depth, 1);
-      assertEquals(picker.pick(bit), 1);
-      assertFalse(picker.backTo(1));
-    });
-  });
-  it("fully explores a combination lock", () => {
-    const digit = new PickRequest(0, 9);
-    const dialCount = 3;
-    const leaves = new Set<string>();
-    const picker = new DepthFirstPicker();
-    while (true) {
-      while (picker.depth < dialCount) {
-        picker.pick(digit);
-      }
-      const leaf = JSON.stringify(picker.getPicks());
-      assertFalse(leaves.has(leaf));
-      leaves.add(leaf);
-      if (!picker.backTo(0)) {
-        break;
-      }
-    }
-    assertEquals(leaves.size, 1000);
-    assertEquals(Array.from(leaves)[0], "[0,0,0]");
-    assertEquals(Array.from(leaves)[999], "[9,9,9]");
   });
 });

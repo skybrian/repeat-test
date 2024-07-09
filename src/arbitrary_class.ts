@@ -1,6 +1,5 @@
 import {
   alwaysPickDefault,
-  DepthFirstPicker,
   PickRequest,
   RetryPicker,
   retryPicker,
@@ -8,6 +7,8 @@ import {
 } from "./picks.ts";
 
 import { Playout, PlayoutContext } from "./playouts.ts";
+
+import { SearchTree } from "./search_tree.ts";
 
 export type PickFunctionOptions<T> = {
   /**
@@ -329,15 +330,12 @@ export default class Arbitrary<T> {
    * Uses a depth-first search, starting from the default value.
    */
   get solutions(): IterableIterator<Solution<T>> {
-    const pickers = new DepthFirstPicker({
-      firstChildPicker: alwaysPickDefault,
-      maxDepth: 100,
-    }).asPickers();
-
+    const tree = new SearchTree(0);
     const pick = this.pick.bind(this);
 
     function* generate() {
-      while (true) {
+      while (!tree.searchDone) {
+        const pickers = tree.pickers(alwaysPickDefault);
         const sol = pick(pickers);
         if (!sol) {
           return; // no more solutions

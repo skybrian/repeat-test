@@ -13,7 +13,7 @@ import Arbitrary, {
   ArbitraryCallback,
   PickFailed,
 } from "../src/arbitrary_class.ts";
-import { DepthFirstPicker } from "../src/picks.ts";
+import { SearchTree } from "../src/search_tree.ts";
 
 describe("Arbitrary", () => {
   describe("from", () => {
@@ -115,8 +115,8 @@ describe("Arbitrary", () => {
         }
         return n;
       });
-      const picker = new DepthFirstPicker({ firstChildPicker: alwaysPick(3) });
-      const sol = arb.pick(picker.asPickers());
+      const tree = new SearchTree(0);
+      const sol = arb.pick(tree.pickers(alwaysPick(3)));
       assert(sol !== undefined);
       assertEquals(sol.val, 4);
     });

@@ -1,12 +1,13 @@
-import { describe, it } from "@std/testing/bdd";
-import { assertEquals, assertThrows } from "@std/assert";
+import { beforeEach, describe, it } from "@std/testing/bdd";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 import * as arb from "../src/arbitraries.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import { DepthFirstPicker, PickRequest } from "../src/picks.ts";
+import { alwaysPickDefault, PickRequest } from "../src/picks.ts";
 
 import { NestedPicks, Playout, PlayoutContext } from "../src/playouts.ts";
+import { SearchTree } from "../src/search_tree.ts";
 
 type NestedPickOpts = {
   minSpanSize?: number;
@@ -112,15 +113,25 @@ describe("Playout", () => {
 });
 
 describe("PlayoutContext", () => {
+  function makePicker() {
+    const tree = new SearchTree(0);
+    const picker = tree.makePicker(alwaysPickDefault);
+    assert(picker !== undefined);
+    return picker;
+  }
+  let picker = makePicker();
+  let ctx = new PlayoutContext(picker);
+
+  beforeEach(() => {
+    picker = makePicker();
+    ctx = new PlayoutContext(picker);
+  });
+
   describe("cancelSpan", () => {
     it("throws an error when there are no spans", () => {
-      const picker = new DepthFirstPicker();
-      const ctx = new PlayoutContext(picker);
       assertThrows(() => ctx.cancelSpan(0), Error);
     });
     it("throws an error when the level doesn't match startSpan", () => {
-      const picker = new DepthFirstPicker();
-      const ctx = new PlayoutContext(picker);
       ctx.startSpan();
       ctx.endSpan(1);
       assertThrows(() => ctx.cancelSpan(0), Error);
@@ -131,21 +142,16 @@ describe("PlayoutContext", () => {
     const req = new PickRequest(1, 6);
 
     it("returns an empty array when there are no spans", () => {
-      const picker = new DepthFirstPicker();
-      assertEquals(new PlayoutContext(picker).toPlayout().toNestedPicks(), []);
+      assertEquals(ctx.toPlayout().toNestedPicks(), []);
     });
 
     it("ignores an empty span", () => {
-      const picker = new DepthFirstPicker();
-      const ctx = new PlayoutContext(picker);
       ctx.startSpan();
       ctx.endSpan(1);
       assertEquals(ctx.toPlayout().toNestedPicks(), []);
     });
 
     it("ignores a single-pick span", () => {
-      const picker = new DepthFirstPicker();
-      const ctx = new PlayoutContext(picker);
       ctx.startSpan();
       picker.pick(req);
       ctx.endSpan(1);
@@ -153,8 +159,6 @@ describe("PlayoutContext", () => {
     });
 
     it("ignores a span that contains only a single subspan", () => {
-      const picker = new DepthFirstPicker();
-      const ctx = new PlayoutContext(picker);
       ctx.startSpan();
       ctx.startSpan();
       picker.pick(req);

@@ -1,4 +1,4 @@
-import { describe, it } from "@std/testing/bdd";
+import { beforeEach, describe, it } from "@std/testing/bdd";
 import {
   assert,
   assertEquals,
@@ -17,7 +17,7 @@ import {
 } from "../src/picks.ts";
 import { randomPicker } from "../src/random.ts";
 
-import { SearchTree } from "../src/search_tree.ts";
+import { Cursor, SearchTree } from "../src/search_tree.ts";
 
 const bit = new PickRequest(0, 1);
 
@@ -159,52 +159,67 @@ describe("Cursor", () => {
   });
 
   describe("backTo", () => {
-    it("ends the search after one playout for a constant", () => {
-      const tree = new SearchTree(1);
-      const picker = tree.makePicker(alwaysPickDefault);
-      assert(picker !== undefined);
-      assertFalse(picker.backTo(0), "Shouldn't be more playouts");
-    });
+    describe("for a depth-first search", () => {
+      function makePicker(): Cursor {
+        const tree = new SearchTree(0);
+        const picker = tree.makePicker(alwaysPickDefault);
+        assert(picker !== undefined);
+        return picker;
+      }
+      let picker = makePicker();
 
-    it("starts a new playout after a pick", () => {
-      const tree = new SearchTree(1);
-      const picker = tree.makePicker(alwaysPickDefault);
-      assert(picker !== undefined);
-      picker.pick(bit);
+      beforeEach(() => {
+        picker = makePicker();
+      });
 
-      assert(picker.backTo(0));
-      assertEquals(picker.depth, 0);
-      assertEquals(picker.getPicks(), []);
-    });
+      it("ends the search if no root was created (for a constant)", () => {
+        assertFalse(picker.backTo(0), "Shouldn't be more playouts");
+      });
 
-    it("ends the search after two playouts for a coin flip", () => {
-      const tree = new SearchTree(1);
-      const picker = tree.makePicker(alwaysPickDefault);
-      assert(picker !== undefined);
-      picker.pick(bit);
-      picker.backTo(0);
-      picker.pick(bit);
-      assertFalse(picker.backTo(0));
-    });
+      it("ends the search if the root has no other children", () => {
+        picker.pick(new PickRequest(0, 0));
+        assertFalse(picker.backTo(0));
+      });
 
-    it("handles going back to a previous level", () => {
-      const tree = new SearchTree(4);
-      const picker = tree.makePicker(alwaysPickDefault);
-      assert(picker !== undefined);
-      picker.pick(bit);
-      assertEquals(picker.depth, 1);
+      it("starts a new playout when there's a fork", () => {
+        picker.pick(bit);
+        assert(picker.backTo(0));
+        assertEquals(picker.depth, 0);
+        assertEquals(picker.getPicks(), []);
+      });
 
-      assertEquals(picker.pick(bit), 0);
-      assertEquals(picker.depth, 2);
-      picker.backTo(1);
-      assertEquals(picker.depth, 1);
+      it("goes to a different child after a fork", () => {
+        picker.pick(bit);
+        picker.backTo(0);
+        assertEquals(picker.pick(bit), 1);
+      });
 
-      assertEquals(picker.pick(bit), 1);
-      assertFalse(
-        picker.backTo(1),
-        "should fail because picks are exhausted",
-      );
-      assert(picker.backTo(0));
+      it("ends the search when both sides of a fork were visited", () => {
+        picker.pick(bit);
+        picker.backTo(0);
+        picker.pick(bit);
+        assertFalse(picker.backTo(0));
+      });
+
+      it("goes back to a non-zero level", () => {
+        picker.pick(bit);
+        picker.pick(bit);
+        picker.backTo(1);
+        assertEquals(picker.depth, 1);
+      });
+
+      it("goes to a different child after going back to a non-zero level", () => {
+        picker.pick(bit);
+        picker.pick(bit);
+        picker.backTo(1);
+
+        assertEquals(picker.pick(bit), 1);
+        assertFalse(
+          picker.backTo(1),
+          "should fail because picks are exhausted",
+        );
+        assert(picker.backTo(0));
+      });
     });
   });
 

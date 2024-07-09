@@ -284,12 +284,13 @@ export class Cursor implements RetryPicker {
  * Creates pickers that avoid duplicate playouts.
  *
  * A playout is a sequence of picks, ending with a successful call to
- * {@link backTo}, which starts the next playout.
+ * {@link backTo}, which starts the next playout, or by creating a new picker.
  *
- * Duplicates are only avoided when a playout is tracked to the end. Tracking is
- * determined by a heuristic that depends on the estimated number of playouts
- * left and the size of each PickRequest's range being small enough to be worth
- * tracking.
+ * Duplicates are only avoided when a playout is tracked to the end. Whether
+ * this happens depends on the picker: For non-random pickers (where
+ * {@link IntPicker.isRandom} is false), tracking is always turned on. Random
+ * pickers will often avoid duplicates on their own, so tracking is turned on
+ * based on a heuristic.
  */
 export class SearchTree {
   private start: Node | undefined = new Node(new PickRequest(0, 0), true);
@@ -301,8 +302,9 @@ export class SearchTree {
   private callbacks: CursorParent;
 
   /**
-   * @param expectedPlayouts the number of playouts that are expected. If set
-   * to zero, playout tracking is turned off.
+   * @param expectedPlayouts the number of playouts that are expected. This is
+   * used for determining whether random playouts will be tracked. If set to
+   * zero, tracking for random pickers is disabled.
    */
   constructor(expectedPlayouts: number) {
     const checkAlive = (version: number) => {
@@ -365,7 +367,9 @@ export class SearchTree {
 
   makePicker(wrapped: IntPicker): Cursor | undefined {
     if (this.cursor) {
-      this.cursor.backTo(0);
+      if (!this.searchDone) {
+        this.cursor.backTo(0);
+      }
       this.cursor = undefined;
     }
 
