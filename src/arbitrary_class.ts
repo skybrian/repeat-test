@@ -8,7 +8,7 @@ import {
 
 import { Playout, PlayoutContext } from "./playouts.ts";
 
-import { SearchTree } from "./search_tree.ts";
+import { depthFirstSearch } from "./search_tree.ts";
 
 export type PickFunctionOptions<T> = {
   /**
@@ -330,21 +330,16 @@ export default class Arbitrary<T> {
    * Uses a depth-first search, starting from the default value.
    */
   get solutions(): IterableIterator<Solution<T>> {
-    const tree = new SearchTree(0);
-    const pick = this.pick.bind(this);
-
-    function* generate() {
-      while (!tree.searchDone) {
-        const pickers = tree.pickers(alwaysPickDefault);
-        const sol = pick(pickers);
-        if (!sol) {
-          return; // no more solutions
-        }
+    function* allPicks(arb: Arbitrary<T>): IterableIterator<Solution<T>> {
+      const pickers = depthFirstSearch();
+      let sol = arb.pick(pickers);
+      while (sol) {
         yield sol;
+        sol = arb.pick(pickers);
       }
     }
 
-    return generate();
+    return allPicks(this);
   }
 
   /**

@@ -1,4 +1,9 @@
-import { IntPicker, PickRequest, RetryPicker } from "./picks.ts";
+import {
+  alwaysPickDefault,
+  IntPicker,
+  PickRequest,
+  RetryPicker,
+} from "./picks.ts";
 
 /** Indicates that the subtree rooted at a branch has been fully explored. */
 const PRUNED = Symbol("pruned");
@@ -377,4 +382,20 @@ export class SearchTree {
     this.cursor = new Cursor(this.callbacks, wrapped, version, start);
     return this.cursor;
   }
+}
+
+/**
+ * Generates every possible playout in depth-first order.
+ *
+ * The caller defines the search tree by calling the {@link RetryPicker.pick}
+ * function. Each pick determins the number of branches at a node. For example,
+ * the first pick in each playout is always the root. The first call to pick
+ * should always be the same (there is only one root), and subsequent picks
+ * should only depend on the reply to the previous pick request.
+ *
+ * The next playout can be started either by calling {@link RetryPicker.backTo}
+ * (if successful) or by taking the next value from the iterator.
+ */
+export function depthFirstSearch(): Iterable<RetryPicker> {
+  return new SearchTree(0).pickers(alwaysPickDefault);
 }
