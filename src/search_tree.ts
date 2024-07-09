@@ -120,6 +120,10 @@ export class Cursor implements RetryPicker {
     this.picks = [0];
   }
 
+  get isRandom(): boolean {
+    return false;
+  }
+
   getNodes(): Node[] {
     this.tree.checkAlive(this.version);
     return this.nodes;

@@ -65,7 +65,11 @@ export function chooseDefault(
 }
 
 /**
- * Requests a integer within a given range, with optional hints to the picker.
+ * Requests a safe integer in a given range, with optional hints to the picker.
+ *
+ * When {@link IntPicker.isRandom} is true and {@link PickRequestOptions.bias}
+ * isn't set, requests that the number should be picked using a uniform
+ * distribution. Otherwise, the reply can be any number within range.
  */
 export class PickRequest {
   /**
@@ -84,9 +88,6 @@ export class PickRequest {
 
   /**
    * Constructs a new request.
-   *
-   * When picking randomly, uses a uniform distribution unless overridden by
-   * {@link PickRequestOptions.bias}.
    *
    * The request's default value will be the number closest to zero that's
    * between min and max, unless overridden by
@@ -136,6 +137,12 @@ export class PickRequest {
  */
 export interface IntPicker {
   /**
+   * True if this picker picks using an approximately uniform random
+   * distribution when {@link PickRequest.bias} is not set.
+   */
+  get isRandom(): boolean;
+
+  /**
    * Transitions to a new state and returns a pick satisfying
    * {@link PickRequest.inRange}.
    */
@@ -143,10 +150,12 @@ export interface IntPicker {
 }
 
 export const alwaysPickDefault: IntPicker = {
+  isRandom: false,
   pick: (req) => req.default,
 };
 
 export const alwaysPickMin: IntPicker = {
+  isRandom: false,
   pick: (req) => req.min,
 };
 
@@ -157,6 +166,7 @@ export const alwaysPickMin: IntPicker = {
  */
 export function alwaysPick(n: number) {
   const picker: IntPicker = {
+    isRandom: false,
     pick: (req) => {
       if (!req.inRange(n)) {
         throw new Error(
@@ -177,12 +187,7 @@ export interface RetryPicker extends IntPicker {
   /**
    * The number of picks so far. Also, the current depth in a search tree.
    */
-  readonly depth: number;
-
-  /**
-   * Returns the picks made so far.
-   */
-  getPicks(): number[];
+  get depth(): number;
 
   /**
    * Returns true if the picker is replaying a previously-determined pick
@@ -193,7 +198,7 @@ export interface RetryPicker extends IntPicker {
    *
    * (It will diverge before replaying the entire sequence.)
    */
-  readonly replaying: boolean;
+  get replaying(): boolean;
 
   /**
    * Attempts to finish the current playout and return to a previous point in
@@ -208,6 +213,11 @@ export interface RetryPicker extends IntPicker {
    * If `backTo(0)` return false, the entire tree has been searched.
    */
   backTo(depth: number): boolean;
+
+  /**
+   * Returns the picks made so far.
+   */
+  getPicks(): number[];
 }
 
 /**
@@ -220,19 +230,30 @@ export function retryPicker(picker: IntPicker, maxTries: number): RetryPicker {
   let tries = 0;
 
   return {
+    get isRandom() {
+      return picker.isRandom;
+    },
+    get depth() {
+      return picks.length;
+    },
+    get replaying() {
+      return false;
+    },
+
     pick(req) {
       const pick = picker.pick(req);
       picks.push(pick);
       return pick;
     },
-    depth: picks.length,
+    backTo: function (depth: number): boolean {
+      tries += 1;
+      if (tries >= maxTries) return false;
+      picks.length = depth;
+      return true;
+    },
+
     getPicks: function (): number[] {
       return picks.slice();
-    },
-    replaying: false,
-    backTo: function (): boolean {
-      tries += 1;
-      return tries < maxTries;
     },
   };
 }
@@ -245,6 +266,10 @@ export class StrictPicker implements RetryPicker {
   private rangeError?: string = undefined;
 
   constructor(private readonly expected: number[]) {}
+
+  get isRandom() {
+    return false;
+  }
 
   get depth() {
     return this.actual.length;
@@ -452,6 +477,10 @@ export class DepthFirstPicker implements RetryPicker {
       },
     };
     return pickers;
+  }
+
+  get isRandom(): boolean {
+    return false;
   }
 
   pick(req: PickRequest): number {
