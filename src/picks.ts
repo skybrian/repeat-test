@@ -207,13 +207,12 @@ export interface RetryPicker extends IntPicker {
 }
 
 /**
- * Converts an IntPicker to a RetryPicker, without backtracking.
+ * Converts an IntPicker to a RetryPicker, without support for backtracking.
  *
  * It just logs the picks.
  */
-export function retryPicker(picker: IntPicker, maxTries: number): RetryPicker {
+export function noRetryPicker(picker: IntPicker): RetryPicker {
   const picks: number[] = [];
-  let tries = 0;
 
   return {
     get isRandom() {
@@ -228,11 +227,8 @@ export function retryPicker(picker: IntPicker, maxTries: number): RetryPicker {
       picks.push(pick);
       return pick;
     },
-    backTo: function (depth: number): boolean {
-      tries += 1;
-      if (tries >= maxTries) return false;
-      picks.length = depth;
-      return true;
+    backTo: function (): boolean {
+      return false;
     },
 
     getPicks: function (): number[] {

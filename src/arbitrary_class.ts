@@ -1,8 +1,8 @@
 import {
   alwaysPickDefault,
+  noRetryPicker,
   PickRequest,
   RetryPicker,
-  retryPicker,
   StrictPicker,
 } from "./picks.ts";
 
@@ -308,7 +308,7 @@ export default class Arbitrary<T> {
   makeDefaultPicker() {
     return this.defaultPicks
       ? new StrictPicker(this.defaultPicks)
-      : retryPicker(alwaysPickDefault, 1);
+      : noRetryPicker(alwaysPickDefault);
   }
 
   /** The default value of this Arbitrary. */
