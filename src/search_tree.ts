@@ -163,19 +163,19 @@ export class Cursor implements RetryPicker {
    * @param branchCount the number of branches that could have been taken.
    */
   private updateOdds(branchCount: number) {
+    if (!this.wrapped.isRandom) return;
+
     if (branchCount < 1) throw new Error("branchCount must be at least 1");
     this.notTakenOdds = this.notTakenOdds * branchCount + (branchCount - 1);
   }
 
   private recalculateOdds() {
+    if (!this.wrapped.isRandom) return;
+
     this.notTakenOdds = 0;
     for (const node of this.getNodes()) {
       this.updateOdds(node.req.size);
     }
-  }
-
-  private get willReturnProbability() {
-    return this.tree.playoutsLeft / (1 + this.notTakenOdds);
   }
 
   get depth(): number {
@@ -211,9 +211,13 @@ export class Cursor implements RetryPicker {
     } else if (node === undefined) {
       // See if we should expand the tree.
       // If picking the same playout twice is unlikely, it's not worth tracking.
-      this.updateOdds(req.size);
-      if (this.willReturnProbability < 0.5) {
-        return this.pickUntracked(req);
+      if (this.wrapped.isRandom) {
+        this.updateOdds(req.size);
+        const willReturnProbability = this.tree.playoutsLeft /
+          (1 + this.notTakenOdds);
+        if (willReturnProbability < 0.5) {
+          return this.pickUntracked(req);
+        }
       }
 
       // Expand the tree and push the node.

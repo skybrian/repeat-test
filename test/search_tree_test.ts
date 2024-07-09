@@ -57,6 +57,8 @@ describe("SearchTree", () => {
 
 describe("Cursor", () => {
   describe("pick", () => {
+    const int32 = new PickRequest(-(2 ** 31), 2 ** 31 - 1);
+
     it("takes a pick from the underlying picker", () => {
       const tree = new SearchTree(1);
       const picker = tree.makePicker(alwaysPickDefault);
@@ -76,71 +78,82 @@ describe("Cursor", () => {
       assertThrows(() => picker.pick(new PickRequest(-1, 0)), Error);
     });
 
-    it("stops tracking if there aren't enough playouts to get to every branch", () => {
-      const tree = new SearchTree(1);
-      const picker = tree.makePicker(alwaysPickDefault);
-      assert(picker !== undefined);
-      picker.pick(new PickRequest(1, 6));
-      assertFalse(picker.tracked);
-    });
-
-    it("tracks if there are enough playouts to get to every branch", () => {
-      const example = arb.record({
-        "constantPicks": arb.int(0, 10),
-        "playouts": arb.int(1, 1000),
-      });
-      repeatTest(example, ({ playouts, constantPicks }) => {
-        const tree = new SearchTree(playouts);
+    describe("when using a non-random underlying picker", () => {
+      it("continues tracking beneath a wide node", () => {
+        const tree = new SearchTree(1);
         const picker = tree.makePicker(alwaysPickDefault);
         assert(picker !== undefined);
-        const justOne = new PickRequest(1, 1);
-        for (let i = 0; i < constantPicks; i++) {
-          picker.pick(justOne);
-        }
-        picker.pick(new PickRequest(1, playouts));
+        picker.pick(int32);
         assert(picker.tracked);
       });
     });
 
-    it("doesn't normally track a very wide node", () => {
-      const int32 = new PickRequest(-(2 ** 31), 2 ** 31 - 1);
-      assertEquals(int32.size, 2 ** 32);
+    describe("when using a random underlying picker", () => {
+      it("stops tracking if there aren't enough playouts to get to every branch", () => {
+        const tree = new SearchTree(1);
+        const picker = tree.makePicker(randomPicker(123));
+        assert(picker !== undefined);
+        picker.pick(new PickRequest(1, 6));
+        assertFalse(picker.tracked);
+      });
 
-      repeatTest(
-        arb.of(0, 1, 1000, 10 ** 6, 10 ** 9, 2 ** 30),
-        (playouts) => {
+      it("tracks if there are enough playouts to get to every branch", () => {
+        const example = arb.record({
+          "constantPicks": arb.int(0, 10),
+          "playouts": arb.int(1, 1000),
+        });
+        repeatTest(example, ({ playouts, constantPicks }) => {
           const tree = new SearchTree(playouts);
-          const picker = tree.makePicker(alwaysPickDefault);
+          const picker = tree.makePicker(randomPicker(123));
           assert(picker !== undefined);
-          picker.pick(int32);
-          assertFalse(picker.tracked);
-        },
-      );
-    });
+          const justOne = new PickRequest(1, 1);
+          for (let i = 0; i < constantPicks; i++) {
+            picker.pick(justOne);
+          }
+          picker.pick(new PickRequest(1, playouts));
+          assert(picker.tracked);
+        });
+      });
 
-    it("doesn't revisit a constant in an unbalanced tree", () => {
-      const tree = new SearchTree(1000);
-      const picker = tree.makePicker(randomPicker(123));
-      assert(picker !== undefined);
+      it("doesn't track a very wide node", () => {
+        assertEquals(int32.size, 2 ** 32);
 
-      const counts = {
-        constants: 0,
-        other: 0,
-      };
-      for (let i = 0; i < 1000; i++) {
-        if (picker.pick(bit)) {
-          picker.pick(new PickRequest(1, 2 ** 40));
-          counts.other++;
-        } else {
-          picker.pick(new PickRequest(1, 2));
-          counts.constants++;
+        repeatTest(
+          arb.of(0, 1, 1000, 10 ** 6, 10 ** 9, 2 ** 30),
+          (playouts) => {
+            const tree = new SearchTree(playouts);
+            const picker = tree.makePicker(randomPicker(123));
+            assert(picker !== undefined);
+            picker.pick(int32);
+            assertFalse(picker.tracked);
+          },
+        );
+      });
+
+      it("doesn't revisit a constant in an unbalanced tree", () => {
+        const tree = new SearchTree(1000);
+        const picker = tree.makePicker(randomPicker(123));
+        assert(picker !== undefined);
+
+        const counts = {
+          constants: 0,
+          other: 0,
+        };
+        for (let i = 0; i < 1000; i++) {
+          if (picker.pick(bit)) {
+            picker.pick(new PickRequest(1, 2 ** 40));
+            counts.other++;
+          } else {
+            picker.pick(new PickRequest(1, 2));
+            counts.constants++;
+          }
+          picker.backTo(0);
         }
-        picker.backTo(0);
-      }
 
-      assertEquals(counts, {
-        constants: 2,
-        other: 998,
+        assertEquals(counts, {
+          constants: 2,
+          other: 998,
+        });
       });
     });
   });
