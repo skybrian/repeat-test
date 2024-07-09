@@ -1,9 +1,10 @@
 import {
   alwaysPickDefault,
-  onePlayoutPicker,
+  IntPicker,
+  onePlayout,
   PickRequest,
+  PlaybackPicker,
   RetryPicker,
-  StrictPicker,
 } from "./picks.ts";
 
 import { Playout, PlayoutContext } from "./playouts.ts";
@@ -294,8 +295,8 @@ export default class Arbitrary<T> {
    * input.
    */
   parse(picks: number[]): T {
-    const picker = new StrictPicker(picks);
-    const sol = this.pick([picker].values());
+    const picker = new PlaybackPicker(picks);
+    const sol = this.pick(onePlayout(picker));
     if (picker.error) {
       throw new PickFailed(picker.error);
     }
@@ -305,17 +306,16 @@ export default class Arbitrary<T> {
     return sol.val;
   }
 
-  makeDefaultPicker() {
+  defaultPicker(): IntPicker {
     return this.defaultPicks
-      ? new StrictPicker(this.defaultPicks)
-      : onePlayoutPicker(alwaysPickDefault);
+      ? new PlaybackPicker(this.defaultPicks)
+      : alwaysPickDefault;
   }
 
   /** The default value of this Arbitrary. */
   get default(): T {
     // make a clone, in case it's mutable
-    const picker = this.makeDefaultPicker();
-    const sol = this.pick([picker].values());
+    const sol = this.pick(onePlayout(this.defaultPicker()));
     if (!sol) {
       throw new Error(
         "couldn't generate a default value because default picks weren't accepted",

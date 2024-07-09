@@ -150,12 +150,16 @@ export interface IntPicker {
 }
 
 export const alwaysPickDefault: IntPicker = {
-  isRandom: false,
+  get isRandom() {
+    return false;
+  },
   pick: (req) => req.default,
 };
 
 export const alwaysPickMin: IntPicker = {
-  isRandom: false,
+  get isRandom() {
+    return false;
+  },
   pick: (req) => req.min,
 };
 
@@ -166,7 +170,9 @@ export const alwaysPickMin: IntPicker = {
  */
 export function alwaysPick(n: number) {
   const picker: IntPicker = {
-    isRandom: false,
+    get isRandom() {
+      return false;
+    },
     pick: (req) => {
       if (!req.inRange(n)) {
         throw new Error(
@@ -177,6 +183,46 @@ export function alwaysPick(n: number) {
     },
   };
   return picker;
+}
+
+/**
+ * A picker that provides a single playout and checks for mismatches.
+ */
+export class PlaybackPicker implements IntPicker {
+  private depth = 0;
+  private rangeError?: string = undefined;
+
+  constructor(private readonly expected: number[]) {}
+
+  get isRandom() {
+    return false;
+  }
+
+  pick(req: PickRequest): number {
+    if (this.depth >= this.expected.length) {
+      this.depth++;
+      return req.default;
+    }
+    let pick = this.expected[this.depth];
+    if (!req.inRange(pick)) {
+      if (this.rangeError === undefined) {
+        this.rangeError =
+          `pick at offset ${this.depth} doesn't satisfy the request.` +
+          ` Want: (${req.min}, ${req.max}). Got: ${pick}`;
+      }
+      pick = req.default;
+    }
+    this.depth++;
+    return pick;
+  }
+
+  get error(): string | undefined {
+    if (this.rangeError) return this.rangeError;
+    if (this.depth !== this.expected.length) {
+      return `expected ${this.expected.length} picks; got ${this.depth}`;
+    }
+    return undefined;
+  }
 }
 
 /**
@@ -237,63 +283,11 @@ export function onePlayoutPicker(picker: IntPicker): RetryPicker {
   };
 }
 
+export function onePlayout(picker: IntPicker): Iterable<RetryPicker> {
+  return [onePlayoutPicker(picker)].values();
+}
+
 /** An iterable that provides one playout that always picks the default. */
 export function defaultPlayout(): Iterable<RetryPicker> {
-  return [onePlayoutPicker(alwaysPickDefault)].values();
+  return onePlayout(alwaysPickDefault);
 }
-
-/**
- * A picker that provides a single playout and checks for mismatches.
- */
-export class StrictPicker implements RetryPicker {
-  private actual: number[] = [];
-  private rangeError?: string = undefined;
-
-  constructor(private readonly expected: number[]) {}
-
-  get isRandom() {
-    return false;
-  }
-
-  get depth() {
-    return this.actual.length;
-  }
-
-  getPicks(): number[] {
-    return this.actual.slice();
-  }
-
-  backTo(_depth: number): boolean {
-    return false;
-  }
-
-  pick(req: PickRequest): number {
-    if (this.actual.length >= this.expected.length) {
-      this.actual.push(req.default);
-      return req.default;
-    }
-    const pick = this.expected[this.actual.length];
-    if (!req.inRange(pick) && this.rangeError === undefined) {
-      this.rangeError =
-        `pick at offset ${this.actual.length} is not in requested range. Want: (${req.min}, ${req.max}). Got: ${pick}`;
-      this.actual.push(req.default);
-      return req.default;
-    }
-    this.actual.push(pick);
-    return pick;
-  }
-
-  get error(): string | undefined {
-    if (this.rangeError) return this.rangeError;
-    if (this.actual.length !== this.expected.length) {
-      return `expected ${this.expected.length} picks; got ${this.actual.length}`;
-    }
-    return undefined;
-  }
-}
-
-/** A request-reply pair that represents one call to an {@link IntPicker}. */
-export type PickEntry = {
-  req: PickRequest;
-  reply: number;
-};

@@ -157,12 +157,6 @@ export class Cursor implements RetryPicker {
     return false;
   }
 
-  getPickedBranch(i: number): Branch {
-    const parent = this.getNodes()[i];
-    const pick = this.getPicks()[i];
-    return parent.getBranch(pick);
-  }
-
   /**
    * Recomputes the odds after taking a branch.
    * @param branchCount the number of branches that could have been taken.
@@ -266,9 +260,6 @@ export class Cursor implements RetryPicker {
         this.tree.endSearch();
       }
       return false;
-    }
-    if (this.getPickedBranch(depth) === PRUNED) {
-      throw new Error("went back to pruned branch");
     }
     const picks = this.picks;
     while (nodes.length > depth + 1) {

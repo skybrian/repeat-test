@@ -123,13 +123,14 @@ describe("Arbitrary", () => {
     });
     it("keeps the default the same if it works", () => {
       const keepEverything = () => true;
-      const mapped = sixSided.filter(keepEverything);
-      assertEquals(mapped.default, 1);
+      const filtered = sixSided.filter(keepEverything);
+      assertEquals(filtered.default, 1);
     });
     it("changes the default to the next value that satisfies the predicate", () => {
       const keepEvens = (n: number) => n % 2 === 0;
-      const mapped = sixSided.filter(keepEvens);
-      assertEquals(mapped.default, 2);
+      const filtered = sixSided.filter(keepEvens);
+      assertEquals(filtered.default, 2);
+      assertEquals(filtered.members.next().value, 2);
     });
     it("filters out values that don't satisfy the predicate", () => {
       const not3 = sixSided.filter((n) => n !== 3);

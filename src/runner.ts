@@ -68,7 +68,7 @@ export function* randomReps<T>(
 
   // Make sure that the default picks work.
   // (And records them in the tree, so we don't test the default again.)
-  const sol = arb.pick(tree.pickers(arb.makeDefaultPicker()));
+  const sol = arb.pick(tree.pickers(arb.defaultPicker()));
   if (!sol) {
     throw new Error("can't generate default value of supplied arbitrary");
   }
