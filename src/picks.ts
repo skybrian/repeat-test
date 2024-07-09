@@ -211,7 +211,7 @@ export interface RetryPicker extends IntPicker {
  *
  * It just logs the picks.
  */
-export function noRetryPicker(picker: IntPicker): RetryPicker {
+export function onePlayoutPicker(picker: IntPicker): RetryPicker {
   const picks: number[] = [];
 
   return {
@@ -235,6 +235,11 @@ export function noRetryPicker(picker: IntPicker): RetryPicker {
       return picks.slice();
     },
   };
+}
+
+/** An iterable that provides one playout that always picks the default. */
+export function defaultPlayout(): Iterable<RetryPicker> {
+  return [onePlayoutPicker(alwaysPickDefault)].values();
 }
 
 /**

@@ -3,12 +3,7 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { assertSolutions } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import {
-  alwaysPick,
-  alwaysPickDefault,
-  noRetryPicker,
-  PickRequest,
-} from "../src/picks.ts";
+import { alwaysPick, defaultPlayout, PickRequest } from "../src/picks.ts";
 import Arbitrary, {
   ArbitraryCallback,
   PickFailed,
@@ -81,16 +76,14 @@ describe("Arbitrary", () => {
       it("accepts a PickRequest", () => {
         const req = new PickRequest(1, 2);
         const arb = Arbitrary.from((pick) => pick(req));
-        const pickers = [noRetryPicker(alwaysPickDefault)].values();
-        const sol = arb.pick(pickers);
+        const sol = arb.pick(defaultPlayout());
         assert(sol !== undefined);
         assertEquals(sol.val, 1);
       });
       it("accepts an Arbitrary", () => {
         const req = Arbitrary.of("hi", "there");
         const arb = Arbitrary.from((pick) => pick(req));
-        const pickers = [noRetryPicker(alwaysPickDefault)].values();
-        const sol = arb.pick(pickers);
+        const sol = arb.pick(defaultPlayout());
         assert(sol !== undefined);
         assertEquals(sol.val, "hi");
       });
@@ -100,8 +93,7 @@ describe("Arbitrary", () => {
           b: Arbitrary.of(1, 2),
         };
         const arb = Arbitrary.from((pick) => pick(req));
-        const pickers = [noRetryPicker(alwaysPickDefault)].values();
-        const sol = arb.pick(pickers);
+        const sol = arb.pick(defaultPlayout());
         assert(sol !== undefined);
         assertEquals(sol.val, { a: "hi", b: 1 });
       });
