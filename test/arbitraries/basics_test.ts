@@ -5,6 +5,7 @@ import Arbitrary from "../../src/arbitrary_class.ts";
 import * as arb from "../../src/arbitraries.ts";
 
 import {
+  assertFirstSolutions,
   assertParseFails,
   assertParses,
   assertSolutions,
@@ -143,18 +144,31 @@ describe("oneOf", () => {
 });
 
 describe("array", () => {
-  describe("with default settings", () => {
+  describe("of booleans", () => {
+    const bools = arb.array(arb.boolean());
     it("defaults to an empty array", () => {
-      assertEquals(arb.array(arb.boolean()).default, []);
+      assertEquals(bools.default, []);
     });
-    it("parses a zero as ending the array", () => {
-      assertParses(arb.array(arb.boolean()), [0], []);
+    describe("parse", () => {
+      it("parses a zero as ending the array", () => {
+        assertParses(bools, [0], []);
+      });
+      it("parses a one as starting an item", () => {
+        assertParses(bools, [1, 0, 0], [false]);
+      });
+      it("parses a two-item array", () => {
+        assertParses(bools, [1, 0, 1, 1, 0], [false, true]);
+      });
     });
-    it("parses a one as starting an item", () => {
-      assertParses(arb.array(arb.boolean()), [1, 0, 0], [false]);
-    });
-    it("parses a two-item array", () => {
-      assertParses(arb.array(arb.boolean()), [1, 0, 1, 1, 0], [false, true]);
+    describe("members", () => {
+      // TODO: breadth-first iteration would be better
+      it("returns lists containing only 'false'", () => {
+        assertFirstSolutions(bools, [
+          { val: [], picks: [0] },
+          { val: [false], picks: [1, 0, 0] },
+          { val: [false, false], picks: [1, 0, 1, 0, 0] },
+        ]);
+      });
     });
   });
   describe("with a fixed-size array", () => {

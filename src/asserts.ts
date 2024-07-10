@@ -17,14 +17,36 @@ export function assertParseFails<T>(
   assertThrows(() => arb.parse(picks), PickFailed);
 }
 
+type NestedSol<T> = { val: T; picks: NestedPicks };
+
+function takeSols<T>(
+  arb: Arbitrary<T>,
+  n: number,
+): NestedSol<T>[] {
+  const nested: NestedSol<T>[] = [];
+  const sols = arb.solutions;
+  for (let i = 0; i < n; i++) {
+    const sol = sols.next();
+    if (sol.done) break;
+    nested.push({
+      val: sol.value.val,
+      picks: sol.value.playout.toNestedPicks(),
+    });
+  }
+  return nested;
+}
+
+export function assertFirstSolutions<T>(
+  arb: Arbitrary<T>,
+  expected: NestedSol<T>[],
+) {
+  assertEquals(takeSols(arb, expected.length), expected);
+}
+
 export function assertSolutions<T>(
   arb: Arbitrary<T>,
-  expected: { val: T; picks: NestedPicks }[],
+  expected: NestedSol<T>[],
 ) {
-  const sols = Array.from(arb.solutions);
-  const actual = sols.map((s) => ({
-    val: s.val,
-    picks: s.playout.toNestedPicks(),
-  }));
+  const actual = takeSols(arb, expected.length + 5);
   assertEquals(actual, expected);
 }
