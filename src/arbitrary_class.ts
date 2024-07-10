@@ -1,9 +1,9 @@
 import {
-  alwaysPickDefault,
-  IntPicker,
+  defaultPlayout,
   onePlayout,
   PickRequest,
   PlaybackPicker,
+  replaceDefaults,
   RetryPicker,
 } from "./picks.ts";
 
@@ -21,6 +21,12 @@ export type PickFunctionOptions<T> = {
    * It should always return true for an arbitrary's default value.
    */
   accept?: (val: T) => boolean;
+
+  /**
+   * If set, default picks in requests will be replaced with the given picks for
+   * requests that follow the given playout.
+   */
+  defaultPlayout?: number[];
 };
 
 export type AnyRecord = Record<string, unknown>;
@@ -65,15 +71,6 @@ export interface PickFunction {
  */
 export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 
-export type ArbitraryOptions<T> = {
-  /**
-   * Picks that parse to the default value of this arbitrary.
-   *
-   * If not set, {@link alwaysPickDefault} will be used.
-   */
-  defaultPicks?: number[];
-};
-
 export type Solution<T> = {
   readonly val: T;
   readonly playout: Playout;
@@ -85,8 +82,6 @@ export type Solution<T> = {
  */
 export default class Arbitrary<T> {
   private readonly callback: ArbitraryCallback<T>;
-
-  private readonly defaultPicks: number[] | undefined;
 
   /**
    * An upper bound on the number of members in this Arbitrary.
@@ -100,19 +95,17 @@ export default class Arbitrary<T> {
   static from(req: PickRequest): Arbitrary<number>;
   static from<T>(
     callback: ArbitraryCallback<T>,
-    opts?: ArbitraryOptions<T>,
   ): Arbitrary<T>;
   static from<T>(
     arg: PickRequest | ArbitraryCallback<T>,
-    opts?: ArbitraryOptions<T>,
   ): Arbitrary<T> | Arbitrary<number> {
     if (typeof arg === "function") {
-      return new Arbitrary(arg, opts);
+      return new Arbitrary(arg);
     } else {
       const callback: ArbitraryCallback<number> = (pick) => {
         return pick(arg);
       };
-      return new Arbitrary(callback, { ...opts, maxSize: arg.size });
+      return new Arbitrary(callback, { maxSize: arg.size });
     }
   }
 
@@ -184,17 +177,15 @@ export default class Arbitrary<T> {
       return members[pick(req)];
     };
     return new Arbitrary(callback, {
-      defaultPicks: [0],
       maxSize: members.length,
     });
   }
 
   private constructor(
     callback: ArbitraryCallback<T>,
-    opts?: ArbitraryOptions<T> & { maxSize?: number },
+    opts?: { maxSize?: number },
   ) {
     this.callback = callback;
-    this.defaultPicks = opts?.defaultPicks ? [...opts.defaultPicks] : undefined;
     this.maxSize = opts?.maxSize;
     this.default; // dry run
   }
@@ -219,12 +210,18 @@ export default class Arbitrary<T> {
         req: Arbitrary<T>,
         opts?: PickFunctionOptions<T>,
       ): T => {
+        let pick = doPick;
+        const newDefaults = opts?.defaultPlayout;
+        if (newDefaults !== undefined) {
+          pick = makePick(replaceDefaults(picker, newDefaults));
+        }
+
         const accept = opts?.accept;
 
         // non-backtracking case
         if (accept === undefined) {
           const level = ctx.startSpan();
-          const val = req.callback(dispatch);
+          const val = req.callback(doPick);
           ctx.endSpan(level);
           return val;
         }
@@ -232,7 +229,7 @@ export default class Arbitrary<T> {
         // retry when there's a filter
         while (true) {
           const level = ctx.startSpan();
-          const val = req.callback(dispatch);
+          const val = req.callback(pick);
           if (accept(val)) {
             ctx.endSpan(level);
             return val;
@@ -258,23 +255,28 @@ export default class Arbitrary<T> {
         return result as T;
       };
 
-      const dispatch: PickFunction = <T>(
-        req: PickRequest | Arbitrary<T> | RecordShape<T>,
-        opts?: PickFunctionOptions<T>,
-      ): number | T => {
-        if (req instanceof PickRequest) {
-          return picker.pick(req);
-        } else if (req instanceof Arbitrary) {
-          return pickFromArbitrary(req, opts);
-        } else if (typeof req !== "object") {
-          throw new Error("pick called with invalid argument");
-        } else {
-          return pickRecord(req);
-        }
+      const makePick = (picker: RetryPicker): PickFunction => {
+        const dispatch = <T>(
+          req: PickRequest | Arbitrary<T> | RecordShape<T>,
+          opts?: PickFunctionOptions<T>,
+        ): number | T => {
+          if (req instanceof PickRequest) {
+            return picker.pick(req);
+          } else if (req instanceof Arbitrary) {
+            return pickFromArbitrary(req, opts);
+          } else if (typeof req !== "object") {
+            throw new Error("pick called with invalid argument");
+          } else {
+            return pickRecord(req);
+          }
+        };
+        return dispatch;
       };
 
+      const doPick = makePick(picker);
+
       try {
-        const val = this.callback(dispatch);
+        const val = this.callback(doPick);
         return { val, playout: ctx.toPlayout() };
       } catch (e) {
         if (!(e instanceof PickFailed)) {
@@ -306,16 +308,10 @@ export default class Arbitrary<T> {
     return sol.val;
   }
 
-  defaultPicker(): IntPicker {
-    return this.defaultPicks
-      ? new PlaybackPicker(this.defaultPicks)
-      : alwaysPickDefault;
-  }
-
   /** The default value of this Arbitrary. */
   get default(): T {
     // make a clone, in case it's mutable
-    const sol = this.pick(onePlayout(this.defaultPicker()));
+    const sol = this.pick(defaultPlayout());
     if (!sol) {
       throw new Error(
         "couldn't generate a default value because default picks weren't accepted",
@@ -400,15 +396,18 @@ export default class Arbitrary<T> {
       throw new Error("filter has no solutions");
     };
 
-    let defaultPicks = this.defaultPicks;
+    const pickOpts: PickFunctionOptions<T> = { accept };
+
     if (!accept(this.default)) {
-      defaultPicks = solve();
+      // Override the default picks when picking from the unfiltered Arbitrary
+      // so that the default will pass the filter.
+      pickOpts.defaultPlayout = solve();
     }
 
     const maxSize = this.maxSize;
     return new Arbitrary((pick) => {
-      return pick(this, { accept });
-    }, { defaultPicks, maxSize });
+      return pick(this, pickOpts);
+    }, { maxSize });
   }
 
   /**

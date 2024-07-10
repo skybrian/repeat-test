@@ -126,6 +126,21 @@ export class PickRequest {
     return inRange(n, this.min, this.max);
   }
 
+  /**
+   * Returns a new request that's the same as this one, but with a new default.
+   */
+  withDefault(defaultOverride: number): PickRequest {
+    if (!inRange(defaultOverride, this.min, this.max)) {
+      throw new Error(
+        `the default must be in the range (${this.min}, ${this.max}); got ${defaultOverride}`,
+      );
+    }
+    return new PickRequest(this.min, this.max, {
+      default: defaultOverride,
+      bias: this.bias,
+    });
+  }
+
   toString() {
     return `PickRequest(${this.min}, ${this.max})`;
   }
@@ -290,4 +305,66 @@ export function onePlayout(picker: IntPicker): Iterable<RetryPicker> {
 /** An iterable that provides one playout that always picks the default. */
 export function defaultPlayout(): Iterable<RetryPicker> {
   return onePlayout(alwaysPickDefault);
+}
+
+/**
+ * A picker that overrides some requests' default values before passing them on.
+ *
+ * Each request will be modified until the underlying picker chooses a
+ * non-default value.
+ */
+export function replaceDefaults(
+  wrapped: RetryPicker,
+  defaultPlayout: number[],
+): RetryPicker {
+  let onDefaultPath = true;
+
+  const picker: RetryPicker = {
+    get isRandom() {
+      return wrapped.isRandom;
+    },
+    get depth() {
+      return wrapped.depth;
+    },
+
+    pick(req) {
+      const depth = wrapped.depth;
+      if (!onDefaultPath || depth >= defaultPlayout.length) {
+        onDefaultPath = false;
+        return wrapped.pick(req);
+      }
+      const modified = req.withDefault(defaultPlayout[depth]);
+      const pick = wrapped.pick(modified);
+      if (pick !== modified.default) {
+        onDefaultPath = false;
+      }
+      return pick;
+    },
+    backTo: function (depth: number): boolean {
+      if (!wrapped.backTo(depth)) {
+        return false;
+      }
+      if (onDefaultPath) {
+        return true; // Unchanged by backtracking.
+      }
+      depth = wrapped.depth;
+      if (depth >= defaultPlayout.length) {
+        return true;
+      }
+      // Check that the picks so far match the new defaults.
+      const picks = wrapped.getPicks();
+      for (let i = 0; i < depth; i++) {
+        if (picks[i] !== defaultPlayout[i]) {
+          return true;
+        }
+      }
+      onDefaultPath = true;
+      return true;
+    },
+
+    getPicks: function (): number[] {
+      return wrapped.getPicks();
+    },
+  };
+  return picker;
 }

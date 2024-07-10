@@ -2,6 +2,7 @@ import { pickRandomSeed, randomPickers } from "./random.ts";
 import { SearchTree } from "./search_tree.ts";
 import Arbitrary from "./arbitrary_class.ts";
 import { fail, Failure, Success, success } from "./results.ts";
+import { alwaysPickDefault } from "./picks.ts";
 
 /** A function that runs a test, using generated input. */
 export type TestFunction<T> = (arg: T) => void;
@@ -68,7 +69,7 @@ export function* randomReps<T>(
 
   // Make sure that the default picks work.
   // (And records them in the tree, so we don't test the default again.)
-  const sol = arb.pick(tree.pickers(arb.defaultPicker()));
+  const sol = arb.pick(tree.pickers(alwaysPickDefault));
   if (!sol) {
     throw new Error("can't generate default value of supplied arbitrary");
   }

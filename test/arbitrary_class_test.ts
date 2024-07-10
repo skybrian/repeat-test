@@ -131,6 +131,9 @@ describe("Arbitrary", () => {
       const filtered = sixSided.filter(keepEvens);
       assertEquals(filtered.default, 2);
       assertEquals(filtered.members.next().value, 2);
+      const sol = filtered.pick(defaultPlayout());
+      assert(sol !== undefined);
+      assertEquals(sol.val, 2);
     });
     it("filters out values that don't satisfy the predicate", () => {
       const not3 = sixSided.filter((n) => n !== 3);
