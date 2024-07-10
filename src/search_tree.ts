@@ -3,6 +3,7 @@ import {
   IntPicker,
   PickRequest,
   RetryPicker,
+  uniformBias,
 } from "./picks.ts";
 
 /** Indicates that the subtree rooted at a branch has been fully explored. */
@@ -88,6 +89,16 @@ interface CursorParent {
   get playoutsLeft(): number;
   endPlayout(): void;
   endSearch(): void;
+}
+
+/**
+ * Restricts the search to a subset of the replies to a request.
+ */
+export interface TreeFilter {
+  /** The number of accepted replies to the given request. */
+  replyCount(depth: number, req: PickRequest): number;
+  /** Returns true if the reply is accepted. */
+  accept(depth: number, req: PickRequest, pick: number): boolean;
 }
 
 export class Cursor implements RetryPicker {
@@ -272,6 +283,26 @@ export class Cursor implements RetryPicker {
   }
 }
 
+export type SearchOpts = {
+  filter?: TreeFilter;
+};
+
+function makeStartRequest(): PickRequest {
+  // A dummy request with one branch is needed for the root, even though
+  // requests normally require two branches.
+  const start = {
+    min: 0,
+    max: 0,
+    bias: uniformBias(0, 0),
+    size: 1,
+    default: 0,
+    range: [0, 0],
+    inRange: (n: number) => n === 0,
+    withDefault: (_n: number) => start,
+  };
+  return start;
+}
+
 /**
  * Creates pickers that avoid duplicate playouts.
  *
@@ -285,7 +316,7 @@ export class Cursor implements RetryPicker {
  * based on a heuristic.
  */
 export class SearchTree {
-  private start: Node | undefined = new Node(new PickRequest(0, 0), true);
+  private start: Node | undefined = new Node(makeStartRequest(), true);
 
   #pickerCount = 0;
 

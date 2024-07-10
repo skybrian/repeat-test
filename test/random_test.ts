@@ -45,7 +45,7 @@ describe("randomPickers", () => {
   it("returns a picker that eventually returns every number within the given range", () => {
     const picker = randomPickers(12345).next().value;
     for (const min of [0, 1, -1, 10, 100]) {
-      for (const max of [min, min + 1, min + 3, min + 10, min + 100]) {
+      for (const max of [min + 1, min + 3, min + 10, min + 100]) {
         checkReturnsAllNumbers(picker, new PickRequest(min, max));
         const bias: BiasedIntPicker = (u) => u(min, max);
         checkReturnsAllNumbers(picker, new PickRequest(min, max, { bias }));

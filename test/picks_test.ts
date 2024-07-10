@@ -1,26 +1,9 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import * as arb from "../src/arbitraries.ts";
-import Arbitrary from "../src/arbitrary_class.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import { PickRequest, PickRequestOptions } from "../src/picks.ts";
-
-export function validRequest(
-  opts?: arb.IntRangeOptions,
-): Arbitrary<PickRequest> {
-  const range = arb.intRange(opts);
-
-  return arb.from((pick) => {
-    const { min, max } = pick(range);
-
-    const opts: PickRequestOptions = {};
-    if (pick(arb.boolean())) {
-      opts.default = pick(arb.int(min, max));
-    }
-    return new PickRequest(min, max, opts);
-  });
-}
+import { PickRequest } from "../src/picks.ts";
 
 describe("PickRequest", () => {
   describe("constructor", () => {
@@ -44,7 +27,7 @@ describe("PickRequest", () => {
   });
   describe("default", () => {
     it("returns the number closest to zero when not overridden", () => {
-      repeatTest(arb.intRange(), ({ min, max }) => {
+      repeatTest(arb.intRange({ minSize: 2 }), ({ min, max }) => {
         const request = new PickRequest(min, max);
         assert(request.default >= min);
         assert(request.default <= max);
@@ -59,7 +42,7 @@ describe("PickRequest", () => {
     });
     it("returns the overridden default when given", () => {
       const example = arb.from((pick) => {
-        const { min, max } = pick(arb.intRange());
+        const { min, max } = pick(arb.intRange({ minSize: 2 }));
         const def = pick(arb.int(min, max));
         return { min, max, def };
       });

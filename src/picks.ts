@@ -89,6 +89,8 @@ export class PickRequest {
   /**
    * Constructs a new request.
    *
+   * The request must have at least two choices to pick from.
+   *
    * The request's default value will be the number closest to zero that's
    * between min and max, unless overridden by
    * {@link PickRequestOptions.default}.
@@ -104,9 +106,9 @@ export class PickRequest {
     if (!Number.isSafeInteger(max)) {
       throw new Error(`max must be a safe integer; got ${max}`);
     }
-    if (min > max) {
+    if (min >= max) {
       throw new Error(
-        `the range (min, max) must not be empty; got ${min} > ${max}`,
+        `the range (min, max) must have at least two choices; got (${min}, ${max})`,
       );
     }
     this.default = chooseDefault(min, max, opts);

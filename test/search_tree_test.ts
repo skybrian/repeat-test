@@ -99,17 +99,12 @@ describe("Cursor", () => {
 
       it("tracks if there are enough playouts to get to every branch", () => {
         const example = arb.record({
-          "constantPicks": arb.int(0, 10),
-          "playouts": arb.int(1, 1000),
+          "playouts": arb.int(2, 1000),
         });
-        repeatTest(example, ({ playouts, constantPicks }) => {
+        repeatTest(example, ({ playouts }) => {
           const tree = new SearchTree(playouts);
           const picker = tree.makePicker(randomPicker(123));
           assert(picker !== undefined);
-          const justOne = new PickRequest(1, 1);
-          for (let i = 0; i < constantPicks; i++) {
-            picker.pick(justOne);
-          }
           picker.pick(new PickRequest(1, playouts));
           assert(picker.tracked);
         });
@@ -176,8 +171,10 @@ describe("Cursor", () => {
         assertFalse(picker.backTo(0), "Shouldn't be more playouts");
       });
 
-      it("ends the search if the root has no other children", () => {
-        picker.pick(new PickRequest(0, 0));
+      it("ends the search when the root has no other children", () => {
+        picker.pick(new PickRequest(0, 1));
+        assert(picker.backTo(0));
+        picker.pick(new PickRequest(0, 1));
         assertFalse(picker.backTo(0));
       });
 
