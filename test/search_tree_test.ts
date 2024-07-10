@@ -17,7 +17,7 @@ import {
 } from "../src/picks.ts";
 import { randomPicker } from "../src/random.ts";
 
-import { Cursor, SearchTree } from "../src/search_tree.ts";
+import { Cursor, defaultOnlyFrom, SearchTree } from "../src/search_tree.ts";
 
 const bit = new PickRequest(0, 1);
 
@@ -150,6 +150,17 @@ describe("Cursor", () => {
           other: 998,
         });
       });
+
+      it("skips a filtered-out branch", () => {
+        const tree = new SearchTree(1000);
+        const picker = tree.makePicker(alwaysPickMin, {
+          filter: defaultOnlyFrom(0),
+        });
+        assert(picker !== undefined);
+
+        assertEquals(picker.pick(new PickRequest(0, 1, { default: 1 })), 1);
+        assertFalse(picker.backTo(0));
+      });
     });
   });
 
@@ -217,6 +228,17 @@ describe("Cursor", () => {
         );
         assert(picker.backTo(0));
       });
+    });
+
+    it("skips a filtered-out branch", () => {
+      const tree = new SearchTree(1000);
+      const picker = tree.makePicker(alwaysPickMin, {
+        filter: defaultOnlyFrom(0),
+      });
+      assert(picker !== undefined);
+
+      assertEquals(picker.pick(new PickRequest(0, 1, { default: 0 })), 0);
+      assertFalse(picker.backTo(0));
     });
   });
 

@@ -33,10 +33,10 @@ class Node {
   #tracked: boolean;
   #branchesLeft: number;
 
-  constructor(req: PickRequest, track: boolean) {
+  constructor(req: PickRequest, track: boolean, branchCount: number) {
     this.#req = req;
     this.#tracked = track;
-    this.#branchesLeft = req.size;
+    this.#branchesLeft = branchCount;
   }
 
   get req(): PickRequest {
@@ -63,13 +63,19 @@ class Node {
     return this.#branchesLeft;
   }
 
-  findUnprunedPick(firstChoice: number): number | undefined {
-    if (!this.#tracked) return undefined;
+  filterPick(
+    firstChoice: number,
+    filter: TreeFilter,
+    depth: number,
+  ): number | undefined {
     const size = this.req.size;
     let pick = firstChoice;
     for (let i = 0; i < size; i++) {
-      const branch = this[pick - this.req.min];
-      if (branch !== PRUNED) return pick;
+      if (
+        filter.accept(depth, this.req, pick) && this.getBranch(pick) !== PRUNED
+      ) {
+        return pick;
+      }
       pick++;
       if (pick > this.#req.max) pick = this.#req.min;
     }
@@ -96,10 +102,31 @@ interface CursorParent {
  */
 export interface TreeFilter {
   /** The number of accepted replies to the given request. */
-  replyCount(depth: number, req: PickRequest): number;
+  branchCount(depth: number, req: PickRequest): number;
   /** Returns true if the reply is accepted. */
   accept(depth: number, req: PickRequest, pick: number): boolean;
 }
+
+export const noFilter: TreeFilter = {
+  branchCount: (_, req: PickRequest) => req.size,
+  accept: () => true,
+};
+
+/**
+ * Allows only the default choice at depths >= the given depth.
+ */
+export function defaultOnlyFrom(maxBranchDepth: number): TreeFilter {
+  return {
+    branchCount: (depth: number, req: PickRequest) =>
+      depth >= maxBranchDepth ? 1 : req.size,
+    accept: (depth: number, req: PickRequest, pick: number) =>
+      depth >= maxBranchDepth ? pick === req.default : true,
+  };
+}
+
+export type SearchOpts = {
+  filter?: TreeFilter;
+};
 
 export class Cursor implements RetryPicker {
   /* Invariant: `nodes.length === picks.length` */
@@ -114,6 +141,8 @@ export class Cursor implements RetryPicker {
    * pointing to the root node.
    */
   private readonly picks: number[];
+
+  private readonly filter: TreeFilter;
 
   /**
    * The odds that a playout other than the one we're on would have been picked
@@ -131,9 +160,11 @@ export class Cursor implements RetryPicker {
     private readonly wrapped: IntPicker,
     private readonly version: number,
     start: Node,
+    opts: SearchOpts = {},
   ) {
     this.nodes = [start];
     this.picks = [0];
+    this.filter = opts.filter ?? noFilter;
   }
 
   get isRandom(): boolean {
@@ -184,7 +215,7 @@ export class Cursor implements RetryPicker {
 
     this.notTakenOdds = 0;
     for (const node of this.getNodes()) {
-      this.updateOdds(node.req.size);
+      this.updateOdds(node.branchesLeft);
     }
   }
 
@@ -196,62 +227,58 @@ export class Cursor implements RetryPicker {
     return this.picks.slice(1);
   }
 
-  private pickUntracked(req: PickRequest): number {
-    const pick = this.wrapped.pick(req);
-    this.getNodes().push(new Node(req, false));
-    this.picks.push(pick);
-    return pick;
-  }
+  private nextNode(req: PickRequest) {
+    const branchCount = this.filter.branchCount(this.depth, req);
 
-  pick(req: PickRequest): number {
     const nodes = this.getNodes();
     const parent = nodes[nodes.length - 1];
     if (!parent.tracked) {
-      return this.pickUntracked(req);
+      return new Node(req, false, branchCount);
     }
     const picks = this.picks;
     const parentPick = picks[picks.length - 1];
     let node = parent.getBranch(parentPick);
+
     if (node === PRUNED) {
       throw new Error("internal error: parent picked a pruned branch");
-    } else if (node === undefined) {
-      // See if we should expand the tree.
-      // If picking the same playout twice is unlikely, it's not worth tracking.
-      if (this.wrapped.isRandom) {
-        this.updateOdds(req.size);
-        const willReturnProbability = this.tree.playoutsLeft /
-          (1 + this.notTakenOdds);
-        if (willReturnProbability < 0.5) {
-          return this.pickUntracked(req);
-        }
+    } else if (node !== undefined) {
+      // Visit existing node.
+      if (node.req.min !== req.min || node.req.max != req.max) {
+        throw new Error(
+          `pick request range doesn't match a previous visit`,
+        );
       }
+      this.updateOdds(node.branchesLeft);
+      return node;
+    } else if (this.wrapped.isRandom) {
+      // See if we should create an untracked node.
+      // (This is pushed to the stack but doesn't get added to the tree.)
+      // If picking the same playout twice is unlikely, it's not worth tracking.
 
-      // Expand the tree and push the node.
-      const nextPick = this.wrapped.pick(req);
-      node = new Node(req, true);
-      parent.setBranch(parentPick, node);
-      nodes.push(node);
-      picks.push(nextPick);
-      return nextPick;
+      this.updateOdds(branchCount);
+      const willReturnProbability = this.tree.playoutsLeft /
+        (1 + this.notTakenOdds);
+      if (willReturnProbability < 0.5) {
+        return new Node(req, false, branchCount);
+      }
     }
 
-    if (node.req.min !== req.min || node.req.max != req.max) {
-      throw new Error(
-        `pick request range doesn't match a previous visit`,
-      );
-    }
-    if (!node.tracked) {
-      return this.pickUntracked(req);
-    }
-    const pick = node.findUnprunedPick(this.wrapped.pick(req));
+    // Add a tracked node to the tree.
+    node = new Node(req, true, branchCount);
+    parent.setBranch(parentPick, node);
+    return node;
+  }
+
+  pick(req: PickRequest): number {
+    const node = this.nextNode(req);
+    const depth = this.depth;
+    const firstChoice = this.wrapped.pick(req);
+    const pick = node.filterPick(firstChoice, this.filter, depth);
     if (pick === undefined) {
       throw new Error("internal error: node has no unpruned picks");
     }
-
-    // move down
-    this.updateOdds(node.branchesLeft);
-    nodes.push(node);
-    picks.push(pick);
+    this.getNodes().push(node);
+    this.picks.push(pick);
     return pick;
   }
 
@@ -283,10 +310,6 @@ export class Cursor implements RetryPicker {
   }
 }
 
-export type SearchOpts = {
-  filter?: TreeFilter;
-};
-
 function makeStartRequest(): PickRequest {
   // A dummy request with one branch is needed for the root, even though
   // requests normally require two branches.
@@ -316,7 +339,7 @@ function makeStartRequest(): PickRequest {
  * based on a heuristic.
  */
 export class SearchTree {
-  private start: Node | undefined = new Node(makeStartRequest(), true);
+  private start: Node | undefined = new Node(makeStartRequest(), true, 1);
 
   #pickerCount = 0;
 
@@ -388,7 +411,7 @@ export class SearchTree {
     return pickers;
   }
 
-  makePicker(wrapped: IntPicker): Cursor | undefined {
+  makePicker(wrapped: IntPicker, opts?: SearchOpts): Cursor | undefined {
     if (this.cursor) {
       if (!this.searchDone) {
         this.cursor.backTo(0);
@@ -401,7 +424,7 @@ export class SearchTree {
 
     const version = ++this.#pickerCount;
 
-    this.cursor = new Cursor(this.callbacks, wrapped, version, start);
+    this.cursor = new Cursor(this.callbacks, wrapped, version, start, opts);
     return this.cursor;
   }
 }
