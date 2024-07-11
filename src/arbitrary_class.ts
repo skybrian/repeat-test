@@ -196,14 +196,14 @@ export default class Arbitrary<T> {
       // picker. They unwind the arbitraries depth-first to get each pick and then
       // build up a value based on it.
 
-      const pickFromArbitrary = <T>(
+      const pickArb = <T>(
         req: Arbitrary<T>,
         opts?: PickFunctionOptions<T>,
       ): T => {
-        let pick = doPick;
+        let pick = pickAny;
         const newDefaults = opts?.defaultPlayout;
         if (newDefaults !== undefined) {
-          pick = makePick(replaceDefaults(picker, newDefaults));
+          pick = makePickAny(replaceDefaults(picker, newDefaults));
         }
 
         const accept = opts?.accept;
@@ -211,7 +211,7 @@ export default class Arbitrary<T> {
         // non-backtracking case
         if (accept === undefined) {
           const level = ctx.startSpan();
-          const val = req.callback(doPick);
+          const val = req.callback(pick);
           ctx.endSpan(level);
           return val;
         }
@@ -240,12 +240,12 @@ export default class Arbitrary<T> {
         }
         const result = {} as Partial<T>;
         for (const key of keys) {
-          result[key] = pickFromArbitrary(req[key]);
+          result[key] = pickArb(req[key]);
         }
         return result as T;
       };
 
-      const makePick = (picker: RetryPicker): PickFunction => {
+      const makePickAny = (picker: RetryPicker): PickFunction => {
         const dispatch = <T>(
           req: PickRequest | Arbitrary<T> | RecordShape<T>,
           opts?: PickFunctionOptions<T>,
@@ -253,7 +253,7 @@ export default class Arbitrary<T> {
           if (req instanceof PickRequest) {
             return picker.maybePick(req);
           } else if (req instanceof Arbitrary) {
-            return pickFromArbitrary(req, opts);
+            return pickArb(req, opts);
           } else if (typeof req !== "object") {
             throw new Error("pick called with invalid argument");
           } else {
@@ -263,10 +263,10 @@ export default class Arbitrary<T> {
         return dispatch;
       };
 
-      const doPick = makePick(picker);
+      const pickAny = makePickAny(picker);
 
       try {
-        const val = this.callback(doPick);
+        const val = this.callback(pickAny);
         return { val, playout: ctx.toPlayout() };
       } catch (e) {
         if (!(e instanceof PlayoutPruned)) {
