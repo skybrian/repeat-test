@@ -42,7 +42,7 @@ describe("SearchTree", () => {
         const pickers = tree.pickers(alwaysPickDefault);
         for (const p of pickers) {
           assertEquals(p.depth, 0);
-          assertEquals(p.pick(new PickRequest(0, 3)), count);
+          assertEquals(p.maybePick(new PickRequest(0, 3)), count);
           assertEquals(p.depth, 1);
           count++;
           if (count % 2 == 0) break;
@@ -63,7 +63,7 @@ describe("Cursor", () => {
       const tree = new SearchTree(1);
       const picker = tree.makePicker(alwaysPickDefault);
       assert(picker !== undefined);
-      assertEquals(picker.pick(bit), 0);
+      assertEquals(picker.maybePick(bit), 0);
       assertEquals(picker.depth, 1);
       assertEquals(picker.getPicks(), [0]);
       assert(picker.tracked);
@@ -73,9 +73,9 @@ describe("Cursor", () => {
       const tree = new SearchTree(1);
       const picker = tree.makePicker(alwaysPickDefault);
       assert(picker !== undefined);
-      assertEquals(picker.pick(bit), 0);
+      assertEquals(picker.maybePick(bit), 0);
       picker.backTo(0);
-      assertThrows(() => picker.pick(new PickRequest(-1, 0)), Error);
+      assertThrows(() => picker.maybePick(new PickRequest(-1, 0)), Error);
     });
 
     describe("when using a non-random underlying picker", () => {
@@ -83,7 +83,7 @@ describe("Cursor", () => {
         const tree = new SearchTree(1);
         const picker = tree.makePicker(alwaysPickDefault);
         assert(picker !== undefined);
-        picker.pick(int32);
+        picker.maybePick(int32);
         assert(picker.tracked);
       });
     });
@@ -93,7 +93,7 @@ describe("Cursor", () => {
         const tree = new SearchTree(1);
         const picker = tree.makePicker(randomPicker(123));
         assert(picker !== undefined);
-        picker.pick(new PickRequest(1, 6));
+        picker.maybePick(new PickRequest(1, 6));
         assertFalse(picker.tracked);
       });
 
@@ -105,7 +105,7 @@ describe("Cursor", () => {
           const tree = new SearchTree(playouts);
           const picker = tree.makePicker(randomPicker(123));
           assert(picker !== undefined);
-          picker.pick(new PickRequest(1, playouts));
+          picker.maybePick(new PickRequest(1, playouts));
           assert(picker.tracked);
         });
       });
@@ -119,7 +119,7 @@ describe("Cursor", () => {
             const tree = new SearchTree(playouts);
             const picker = tree.makePicker(randomPicker(123));
             assert(picker !== undefined);
-            picker.pick(int32);
+            picker.maybePick(int32);
             assertFalse(picker.tracked);
           },
         );
@@ -135,11 +135,11 @@ describe("Cursor", () => {
           other: 0,
         };
         for (let i = 0; i < 1000; i++) {
-          if (picker.pick(bit)) {
-            picker.pick(new PickRequest(1, 2 ** 40));
+          if (picker.maybePick(bit)) {
+            picker.maybePick(new PickRequest(1, 2 ** 40));
             counts.other++;
           } else {
-            picker.pick(new PickRequest(1, 2));
+            picker.maybePick(new PickRequest(1, 2));
             counts.constants++;
           }
           picker.backTo(0);
@@ -158,7 +158,10 @@ describe("Cursor", () => {
         });
         assert(picker !== undefined);
 
-        assertEquals(picker.pick(new PickRequest(0, 1, { default: 1 })), 1);
+        assertEquals(
+          picker.maybePick(new PickRequest(0, 1, { default: 1 })),
+          1,
+        );
         assertFalse(picker.backTo(0));
       });
     });
@@ -183,45 +186,45 @@ describe("Cursor", () => {
       });
 
       it("ends the search when the root has no other children", () => {
-        picker.pick(new PickRequest(0, 1));
+        picker.maybePick(new PickRequest(0, 1));
         assert(picker.backTo(0));
-        picker.pick(new PickRequest(0, 1));
+        picker.maybePick(new PickRequest(0, 1));
         assertFalse(picker.backTo(0));
       });
 
       it("starts a new playout when there's a fork", () => {
-        picker.pick(bit);
+        picker.maybePick(bit);
         assert(picker.backTo(0));
         assertEquals(picker.depth, 0);
         assertEquals(picker.getPicks(), []);
       });
 
       it("goes to a different child after a fork", () => {
-        picker.pick(bit);
+        picker.maybePick(bit);
         picker.backTo(0);
-        assertEquals(picker.pick(bit), 1);
+        assertEquals(picker.maybePick(bit), 1);
       });
 
       it("ends the search when both sides of a fork were visited", () => {
-        picker.pick(bit);
+        picker.maybePick(bit);
         picker.backTo(0);
-        picker.pick(bit);
+        picker.maybePick(bit);
         assertFalse(picker.backTo(0));
       });
 
       it("goes back to a non-zero level", () => {
-        picker.pick(bit);
-        picker.pick(bit);
+        picker.maybePick(bit);
+        picker.maybePick(bit);
         picker.backTo(1);
         assertEquals(picker.depth, 1);
       });
 
       it("goes to a different child after going back to a non-zero level", () => {
-        picker.pick(bit);
-        picker.pick(bit);
+        picker.maybePick(bit);
+        picker.maybePick(bit);
         picker.backTo(1);
 
-        assertEquals(picker.pick(bit), 1);
+        assertEquals(picker.maybePick(bit), 1);
         assertFalse(
           picker.backTo(1),
           "should fail because picks are exhausted",
@@ -237,7 +240,7 @@ describe("Cursor", () => {
       });
       assert(picker !== undefined);
 
-      assertEquals(picker.pick(new PickRequest(0, 1, { default: 0 })), 0);
+      assertEquals(picker.maybePick(new PickRequest(0, 1, { default: 0 })), 0);
       assertFalse(picker.backTo(0));
     });
   });
@@ -262,7 +265,7 @@ describe("Cursor", () => {
       for (let i = 0; i < 1000; i++) {
         const picks: number[] = [];
         for (let j = 0; j < 3; j++) {
-          const pick = picker.pick(digit);
+          const pick = picker.maybePick(digit);
           picks.push(pick);
         }
         assert(picker.tracked, "playout wasn't tracked");

@@ -270,7 +270,7 @@ export class Cursor implements RetryPicker {
     return node;
   }
 
-  pick(req: PickRequest): number {
+  maybePick(req: PickRequest): number {
     const node = this.nextNode(req);
     const depth = this.depth;
     const firstChoice = this.wrapped.pick(req);
@@ -446,7 +446,7 @@ export class SearchTree {
 /**
  * Generates every possible playout in depth-first order.
  *
- * The caller defines the search tree by calling the {@link RetryPicker.pick}
+ * The caller defines the search tree by calling the {@link RetryPicker.maybePick}
  * function. Each pick determins the number of branches at a node. For example,
  * the first pick in each playout is always the root. The first call to pick
  * should always be the same (there is only one root), and subsequent picks

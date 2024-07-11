@@ -3,6 +3,7 @@ import { PickRequest, PlaybackPicker } from "./picks.ts";
 import {
   defaultPlayout,
   onePlayout,
+  PlayoutPruned,
   replaceDefaults,
   RetryPicker,
 } from "./backtracking.ts";
@@ -41,19 +42,10 @@ export type RecordShape<T> = {
 };
 
 /**
- * Indicates that picks couldn't be found for generating a value.
- */
-export class PickFailed extends Error {
-  constructor(msg: string) {
-    super(msg);
-  }
-}
-
-/**
  * Picks a value given a PickRequest, an Arbitrary, or a record shape containing
  * multiple Arbitraries.
  *
- * Throws {@link PickFailed} if it couldn't choose a value.
+ * Throws {@link PlayoutPruned} if the current playout is cancelled.
  */
 export interface PickFunction {
   (req: PickRequest): number;
@@ -66,8 +58,8 @@ export interface PickFunction {
  *
  * The result should be deterministic, depending only on what `pick` returns.
  *
- * It may throw {@link PickFailed} to indicate that no arbitrary could be picked
- * using the provided pick function.
+ * It may throw {@link PlayoutPruned} to indicate that there's no solution using
+ * the current playout. (For example, it was filtered out.)
  */
 export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 
@@ -191,12 +183,10 @@ export default class Arbitrary<T> {
   }
 
   /**
-   * Finds a solution by trying playouts one at a time from a source of
+   * Finds a solution by trying each playout one at a time, given a source of
    * playouts.
    *
-   * Returns undefined if the picker ran out of playouts.
-   *
-   * It's the caller's responsibility to call backTo() before trying again.
+   * Returns undefined if it ran out of playouts without finding a solution.
    */
   pick(pickers: Iterable<RetryPicker>): Solution<T> | undefined {
     for (const picker of pickers) {
@@ -236,7 +226,7 @@ export default class Arbitrary<T> {
           }
           if (!ctx.cancelSpan(level)) {
             // return default?
-            throw new PickFailed(
+            throw new PlayoutPruned(
               `Couldn't find a playout that generates ${req}`,
             );
           }
@@ -261,7 +251,7 @@ export default class Arbitrary<T> {
           opts?: PickFunctionOptions<T>,
         ): number | T => {
           if (req instanceof PickRequest) {
-            return picker.pick(req);
+            return picker.maybePick(req);
           } else if (req instanceof Arbitrary) {
             return pickFromArbitrary(req, opts);
           } else if (typeof req !== "object") {
@@ -279,19 +269,19 @@ export default class Arbitrary<T> {
         const val = this.callback(doPick);
         return { val, playout: ctx.toPlayout() };
       } catch (e) {
-        if (!(e instanceof PickFailed)) {
+        if (!(e instanceof PlayoutPruned)) {
           throw e;
         }
+        // Try again with the next playout.
       }
     }
     return undefined;
   }
 
   /**
-   * Attempts to pick a value based on a prerecorded list of picks.
+   * Returns the value corresponding to the given playout.
    *
-   * Throws {@link PickFailed} if any internal filters didn't accept a pick.
-   * (There is no backtracking.)
+   * Throws {@link PlayoutPruned} if there is no solution for the given playout.
    *
    * This function can be used to test which picks the Arbitrary accepts as
    * input.
@@ -300,10 +290,10 @@ export default class Arbitrary<T> {
     const picker = new PlaybackPicker(picks);
     const sol = this.pick(onePlayout(picker));
     if (picker.error) {
-      throw new PickFailed(picker.error);
+      throw new PlayoutPruned(picker.error);
     }
     if (!sol) {
-      throw new PickFailed("playout not accepted");
+      throw new PlayoutPruned("playout not accepted");
     }
     return sol.val;
   }

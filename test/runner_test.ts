@@ -1,6 +1,8 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, fail } from "@std/assert";
-import Arbitrary, { PickFailed } from "../src/arbitrary_class.ts";
+
+import { PlayoutPruned } from "../src/backtracking.ts";
+import Arbitrary from "../src/arbitrary_class.ts";
 import * as arb from "../src/arbitraries.ts";
 import { success } from "../src/results.ts";
 
@@ -97,7 +99,7 @@ describe("randomReps", () => {
     const rerollOnes = Arbitrary.from((pick) => {
       const roll = pick(diceRoll);
       if (roll === 1) {
-        throw new PickFailed("oh no, try again");
+        throw new PlayoutPruned("oh no, try again");
       }
       return "good";
     });

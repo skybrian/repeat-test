@@ -1,5 +1,6 @@
 import { assertEquals, assertThrows } from "@std/assert";
-import Arbitrary, { PickFailed } from "./arbitrary_class.ts";
+import { PlayoutPruned } from "./backtracking.ts";
+import Arbitrary from "./arbitrary_class.ts";
 import { NestedPicks } from "./playouts.ts";
 
 export function assertParses<T>(
@@ -14,7 +15,7 @@ export function assertParseFails<T>(
   arb: Arbitrary<T>,
   picks: number[],
 ) {
-  assertThrows(() => arb.parse(picks), PickFailed);
+  assertThrows(() => arb.parse(picks), PlayoutPruned);
 }
 
 type NestedSol<T> = { val: T; picks: NestedPicks };

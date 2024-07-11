@@ -153,7 +153,7 @@ describe("PlayoutContext", () => {
 
     it("ignores a single-pick span", () => {
       ctx.startSpan();
-      picker.pick(req);
+      picker.maybePick(req);
       ctx.endSpan(1);
       assertEquals(ctx.toPlayout().toNestedPicks(), [1]);
     });
@@ -161,8 +161,8 @@ describe("PlayoutContext", () => {
     it("ignores a span that contains only a single subspan", () => {
       ctx.startSpan();
       ctx.startSpan();
-      picker.pick(req);
-      picker.pick(req);
+      picker.maybePick(req);
+      picker.maybePick(req);
       ctx.endSpan(2);
       ctx.endSpan(1);
       assertEquals(ctx.toPlayout().toNestedPicks(), [[1, 1]]);

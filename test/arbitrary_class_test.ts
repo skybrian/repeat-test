@@ -1,14 +1,11 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
-import { assertSolutions } from "../src/asserts.ts";
+import { assertParseFails, assertSolutions } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
-import { defaultPlayout } from "../src/backtracking.ts";
-import Arbitrary, {
-  ArbitraryCallback,
-  PickFailed,
-} from "../src/arbitrary_class.ts";
+import { defaultPlayout, PlayoutPruned } from "../src/backtracking.ts";
+import Arbitrary, { ArbitraryCallback } from "../src/arbitrary_class.ts";
 import { SearchTree } from "../src/search_tree.ts";
 
 describe("Arbitrary", () => {
@@ -104,7 +101,7 @@ describe("Arbitrary", () => {
       const arb = Arbitrary.from((pick) => {
         const n = pick(roll);
         if (n === 3) {
-          throw new PickFailed("try again");
+          throw new PlayoutPruned("try again");
         }
         return n;
       });
@@ -156,14 +153,14 @@ describe("Arbitrary", () => {
 
   describe("parse", () => {
     const sixSided = Arbitrary.from(new PickRequest(1, 6));
-    it("throws PlayoutFailed when not enough values were supplied", () => {
-      assertThrows(() => sixSided.parse([]));
+    it("fails when not enough values were supplied", () => {
+      assertParseFails(sixSided, []);
     });
-    it("throws PlayoutFailed when too many values were supplied", () => {
-      assertThrows(() => sixSided.parse([1, 1]));
+    it("fails when too many values were supplied", () => {
+      assertParseFails(sixSided, [1, 1]);
     });
-    it("throws PlayoutFailed for an out-of-range value", () => {
-      assertThrows(() => sixSided.parse([7]));
+    it("fails for an out-of-range value", () => {
+      assertParseFails(sixSided, [7]);
     });
     it("returns the value from a successful parse", () => {
       for (let i = 1; i < 6; i++) {
@@ -185,24 +182,18 @@ describe("Arbitrary", () => {
         return { mock, answers };
       }
 
-      describe("when there is no input", () => {
-        it("it throws PlayoutFailed", () => {
-          const { mock } = makeMock();
-          assertThrows(() => mock.parse([]), PickFailed);
-        });
+      it("fails due to not enough picks", () => {
+        const { mock } = makeMock();
+        assertParseFails(mock, []);
       });
-      describe("when the input is in range", () => {
-        it("returns the next pick", () => {
-          const { mock, answers } = makeMock();
-          mock.parse([1]);
-          assertEquals(answers, [1]);
-        });
+      it("fails due to an out-of-range pick", () => {
+        const { mock } = makeMock();
+        assertParseFails(mock, [2]);
       });
-      describe("when the input is out of range", () => {
-        it("throws PlayoutFailed", () => {
-          const { mock } = makeMock();
-          assertThrows(() => mock.parse([2]), PickFailed);
-        });
+      it("returns the given pick when in range", () => {
+        const { mock, answers } = makeMock();
+        mock.parse([1]);
+        assertEquals(answers, [1]);
       });
     });
   });
@@ -225,10 +216,10 @@ describe("Arbitrary", () => {
       assertEquals(members, [false, true]);
     });
 
-    it("handles PickFailed", () => {
+    it("handles PlayoutPruned", () => {
       const onlyThree = Arbitrary.from((pick) => {
         const n = pick(new PickRequest(2, 3, { default: 3 }));
-        if (n !== 3) throw new PickFailed("not 3");
+        if (n !== 3) throw new PlayoutPruned("not 3");
         return n;
       });
       assertEquals(Array.from(onlyThree.members), [3]);

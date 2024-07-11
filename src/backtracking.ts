@@ -1,16 +1,30 @@
 import { alwaysPickDefault, IntPicker, PickRequest } from "./picks.ts";
 
 /**
+ * This playout was cancelled, perhaps because it was filtered out.
+ *
+ * Typically, the exception will be caught somewhere and then
+ * {@link RetryPicker.backTo} can be called to try again with the next playout.
+ */
+export class PlayoutPruned extends Error {
+  constructor(msg: string) {
+    super(msg);
+  }
+}
+
+/**
  * A picker that can back up to a previous point in a pick sequence and try a
  * different path.
  */
 export interface RetryPicker {
   /**
-   * Returns a pick based on the given request.
+   * Picks an integer within the range of the given request.
    *
-   * The pick is recorded and depth is incremented.
+   * If successful, the pick is recorded and the depth is incremented.
+   *
+   * Throws {@link PlayoutPruned} if the current playout is cancelled.
    */
-  pick(req: PickRequest): number;
+  maybePick(req: PickRequest): number;
 
   /**
    * The number of picks so far. (Corresponds to the current depth in a search
@@ -49,7 +63,7 @@ export function onePlayoutPicker(picker: IntPicker): RetryPicker {
       return picks.length;
     },
 
-    pick(req) {
+    maybePick(req) {
       const pick = picker.pick(req);
       picks.push(pick);
       return pick;
@@ -90,14 +104,14 @@ export function replaceDefaults(
       return wrapped.depth;
     },
 
-    pick(req) {
+    maybePick(req) {
       const depth = wrapped.depth;
       if (!onDefaultPath || depth >= defaultPlayout.length) {
         onDefaultPath = false;
-        return wrapped.pick(req);
+        return wrapped.maybePick(req);
       }
       const modified = req.withDefault(defaultPlayout[depth]);
-      const pick = wrapped.pick(modified);
+      const pick = wrapped.maybePick(modified);
       if (pick !== modified.default) {
         onDefaultPath = false;
       }
