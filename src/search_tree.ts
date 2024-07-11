@@ -93,7 +93,7 @@ class Node {
 interface CursorParent {
   checkAlive(version: number): void;
   get playoutsLeft(): number;
-  endPlayout(): void;
+  endPlayout(depth: number): void;
   endSearch(): void;
 }
 
@@ -287,6 +287,7 @@ export class Cursor implements RetryPicker {
    * the caller should backtrack more.
    */
   backTo(depth: number): boolean {
+    const playoutDepth = this.depth;
     const nodes = this.getNodes();
     if (depth < 0 || depth > nodes.length - 1) {
       throw new Error(
@@ -304,7 +305,7 @@ export class Cursor implements RetryPicker {
       nodes.pop();
       picks.pop();
     }
-    this.tree.endPlayout();
+    this.tree.endPlayout(playoutDepth);
     this.recalculateOdds();
     return true;
   }
@@ -342,6 +343,7 @@ export class SearchTree {
   private start: Node | undefined = new Node(makeStartRequest(), true, 1);
 
   #pickerCount = 0;
+  #longestPlayout = 0;
 
   private cursor: Cursor | undefined;
 
@@ -369,9 +371,12 @@ export class SearchTree {
       get playoutsLeft() {
         return playoutsLeft;
       },
-      endPlayout: () => {
+      endPlayout: (depth: number) => {
         if (playoutsLeft > 0) {
           playoutsLeft--;
+        }
+        if (depth > this.#longestPlayout) {
+          this.#longestPlayout = depth;
         }
       },
       endSearch: () => {
@@ -389,17 +394,25 @@ export class SearchTree {
     return this.#pickerCount;
   }
 
+  /** The length of the longest playout.*/
+  get longestPlayout(): number {
+    return this.#longestPlayout;
+  }
+
   get searchDone(): boolean {
     return this.start === undefined;
   }
 
-  pickers(wrapped: IntPicker): IterableIterator<RetryPicker> {
+  pickers(
+    wrapped: IntPicker,
+    opts?: SearchOpts,
+  ): IterableIterator<RetryPicker> {
     const pickers: IterableIterator<RetryPicker> = {
       [Symbol.iterator]() {
         return pickers;
       },
       next: (): IteratorResult<RetryPicker, void> => {
-        const value = this.makePicker(wrapped);
+        const value = this.makePicker(wrapped, opts);
         const done = value === undefined;
         if (done) {
           return { done, value: undefined };
