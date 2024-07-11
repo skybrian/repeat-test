@@ -145,6 +145,8 @@ export class Cursor implements RetryPicker {
 
   private readonly filter: TreeFilter;
 
+  private done = false;
+
   /**
    * The odds that a playout other than the one we're on would have been picked
    * instead, assuming available branches were picked from a uniform
@@ -166,10 +168,6 @@ export class Cursor implements RetryPicker {
     this.nodes = [start];
     this.picks = [0];
     this.filter = opts.filter ?? noFilter;
-  }
-
-  get isRandom(): boolean {
-    return false;
   }
 
   getNodes(): Node[] {
@@ -220,14 +218,6 @@ export class Cursor implements RetryPicker {
     }
   }
 
-  get depth(): number {
-    return this.getNodes().length - 1;
-  }
-
-  getPicks(): number[] {
-    return this.picks.slice(1);
-  }
-
   private nextNode(req: PickRequest) {
     const branchCount = this.filter.branchCount(this.depth, req);
 
@@ -271,6 +261,7 @@ export class Cursor implements RetryPicker {
   }
 
   maybePick(req: PickRequest): number {
+    if (this.done) throw new Error("cannot pick after finishPlayout");
     const node = this.nextNode(req);
     const depth = this.depth;
     const firstChoice = this.wrapped.pick(req);
@@ -281,6 +272,12 @@ export class Cursor implements RetryPicker {
     this.getNodes().push(node);
     this.picks.push(pick);
     return pick;
+  }
+
+  finishPlayout(): boolean {
+    this.done = true;
+    this.tree.endPlayout(this.depth);
+    return true;
   }
 
   /**
@@ -306,9 +303,19 @@ export class Cursor implements RetryPicker {
       nodes.pop();
       picks.pop();
     }
-    this.tree.endPlayout(playoutDepth);
+    if (!this.done) {
+      this.tree.endPlayout(playoutDepth);
+    }
     this.recalculateOdds();
     return true;
+  }
+
+  get depth(): number {
+    return this.getNodes().length - 1;
+  }
+
+  getPicks(): number[] {
+    return this.picks.slice(1);
   }
 }
 

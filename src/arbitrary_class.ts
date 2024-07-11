@@ -267,7 +267,9 @@ export default class Arbitrary<T> {
 
       try {
         const val = this.callback(pickAny);
-        return { val, playout: ctx.toPlayout() };
+        if (picker.finishPlayout()) {
+          return { val, playout: ctx.toPlayout() };
+        }
       } catch (e) {
         if (!(e instanceof PlayoutPruned)) {
           throw e;

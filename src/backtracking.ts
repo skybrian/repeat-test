@@ -27,15 +27,17 @@ export interface RetryPicker {
   maybePick(req: PickRequest): number;
 
   /**
-   * The number of picks so far. (Corresponds to the current depth in a search
-   * tree.)
+   * Tells the picker that no more picks are needed.
+   *
+   * Returns false if the current playout is cancelled.
+   * It's an error to call {@link maybePick} after finishing the playout.
    */
-  get depth(): number;
+  finishPlayout(): boolean;
 
   /**
    * Returns to a previous point in the pick sequence.
    *
-   * This implicitly finishes the current playout and starts a new playout.
+   * This implicitly cancels the current playout and starts a new playout.
    *
    * If it fails, there's no next playout at the given depth, and the caller
    * should try again with a lower depth.
@@ -43,6 +45,12 @@ export interface RetryPicker {
    * If `backTo(0)` returns false, the entire tree has been searched.
    */
   backTo(depth: number): boolean;
+
+  /**
+   * The number of picks so far. (Corresponds to the current depth in a search
+   * tree.)
+   */
+  get depth(): number;
 
   /**
    * Returns the picks made so far.
@@ -57,6 +65,7 @@ export interface RetryPicker {
  */
 export function onePlayoutPicker(picker: IntPicker): RetryPicker {
   const picks: number[] = [];
+  let done = false;
 
   return {
     get depth() {
@@ -64,9 +73,16 @@ export function onePlayoutPicker(picker: IntPicker): RetryPicker {
     },
 
     maybePick(req) {
+      if (done) {
+        throw new Error("maybePick called after the playout finished");
+      }
       const pick = picker.pick(req);
       picks.push(pick);
       return pick;
+    },
+    finishPlayout: function (): boolean {
+      done = true;
+      return true;
     },
     backTo: function (): boolean {
       return false;
@@ -100,10 +116,6 @@ export function replaceDefaults(
   let onDefaultPath = true;
 
   const picker: RetryPicker = {
-    get depth() {
-      return wrapped.depth;
-    },
-
     maybePick(req) {
       const depth = wrapped.depth;
       if (!onDefaultPath || depth >= defaultPlayout.length) {
@@ -138,7 +150,13 @@ export function replaceDefaults(
       onDefaultPath = true;
       return true;
     },
+    finishPlayout: function (): boolean {
+      return wrapped.finishPlayout();
+    },
 
+    get depth() {
+      return wrapped.depth;
+    },
     getPicks: function (): number[] {
       return wrapped.getPicks();
     },
