@@ -1,11 +1,11 @@
+import { PickRequest, PlaybackPicker } from "./picks.ts";
+
 import {
   defaultPlayout,
   onePlayout,
-  PickRequest,
-  PlaybackPicker,
   replaceDefaults,
   RetryPicker,
-} from "./picks.ts";
+} from "./backtracking.ts";
 
 import { Playout, PlayoutContext } from "./playouts.ts";
 

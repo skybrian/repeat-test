@@ -3,7 +3,8 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { assertSolutions } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import { alwaysPick, defaultPlayout, PickRequest } from "../src/picks.ts";
+import { alwaysPick, PickRequest } from "../src/picks.ts";
+import { defaultPlayout } from "../src/backtracking.ts";
 import Arbitrary, {
   ArbitraryCallback,
   PickFailed,

@@ -2,9 +2,10 @@ import {
   alwaysPickDefault,
   IntPicker,
   PickRequest,
-  RetryPicker,
   uniformBias,
 } from "./picks.ts";
+
+import { RetryPicker } from "./backtracking.ts";
 
 /** Indicates that the subtree rooted at a branch has been fully explored. */
 const PRUNED = Symbol("pruned");

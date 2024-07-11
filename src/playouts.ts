@@ -1,4 +1,4 @@
-import { RetryPicker } from "./picks.ts";
+import { RetryPicker } from "./backtracking.ts";
 
 export type NestedPicks = (number | NestedPicks)[];
 
