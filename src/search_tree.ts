@@ -73,7 +73,8 @@ class Node {
     let pick = firstChoice;
     for (let i = 0; i < size; i++) {
       if (
-        filter.accept(depth, this.req, pick) && this.getBranch(pick) !== PRUNED
+        filter.acceptPick(depth, this.req, pick) &&
+        this.getBranch(pick) !== PRUNED
       ) {
         return pick;
       }
@@ -105,12 +106,15 @@ export interface TreeFilter {
   /** The number of accepted replies to the given request. */
   branchCount(depth: number, req: PickRequest): number;
   /** Returns true if the reply is accepted. */
-  accept(depth: number, req: PickRequest, pick: number): boolean;
+  acceptPick(depth: number, req: PickRequest, pick: number): boolean;
+
+  acceptPlayout(depth: number): boolean;
 }
 
 export const noFilter: TreeFilter = {
   branchCount: (_, req: PickRequest) => req.size,
-  accept: () => true,
+  acceptPick: () => true,
+  acceptPlayout: () => true,
 };
 
 /**
@@ -120,8 +124,9 @@ export function defaultOnlyFrom(maxBranchDepth: number): TreeFilter {
   return {
     branchCount: (depth: number, req: PickRequest) =>
       depth >= maxBranchDepth ? 1 : req.size,
-    accept: (depth: number, req: PickRequest, pick: number) =>
+    acceptPick: (depth: number, req: PickRequest, pick: number) =>
       depth >= maxBranchDepth ? pick === req.default : true,
+    acceptPlayout: () => true,
   };
 }
 
@@ -277,7 +282,7 @@ export class Cursor implements RetryPicker {
   finishPlayout(): boolean {
     this.done = true;
     this.tree.endPlayout(this.depth);
-    return true;
+    return this.filter.acceptPlayout(this.depth);
   }
 
   /**
@@ -462,6 +467,6 @@ export class SearchTree {
  * The next playout can be started either by calling {@link RetryPicker.backTo}
  * (if successful) or by taking the next value from the iterator.
  */
-export function depthFirstSearch(): Iterable<RetryPicker> {
-  return new SearchTree(0).pickers(alwaysPickDefault);
+export function depthFirstSearch(opts?: SearchOpts): Iterable<RetryPicker> {
+  return new SearchTree(0).pickers(alwaysPickDefault, opts);
 }

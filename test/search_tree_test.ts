@@ -15,9 +15,17 @@ import {
   alwaysPickMin,
   PickRequest,
 } from "../src/picks.ts";
+import { RetryPicker } from "../src/backtracking.ts";
 import { randomPicker } from "../src/random.ts";
 
-import { Cursor, defaultOnlyFrom, SearchTree } from "../src/search_tree.ts";
+import {
+  Cursor,
+  defaultOnlyFrom,
+  depthFirstSearch,
+  SearchOpts,
+  SearchTree,
+  TreeFilter,
+} from "../src/search_tree.ts";
 
 const bit = new PickRequest(0, 1);
 
@@ -284,5 +292,61 @@ describe("Cursor", () => {
         assertEquals(playouts[999], "[9,9,9]");
       }
     }, { reps: 100 });
+  });
+});
+
+class Maze {
+  accepted = new Set<string>();
+  rejected = new Set<string>();
+
+  visit(picker: RetryPicker) {
+    if (picker.maybePick(bit) === 1) {
+      picker.maybePick(bit);
+      this.endVisit(picker);
+    } else {
+      this.endVisit(picker);
+    }
+  }
+
+  endVisit(picker: RetryPicker) {
+    if (picker.finishPlayout()) {
+      this.accepted.add(JSON.stringify(picker.getPicks()));
+    } else {
+      this.rejected.add(JSON.stringify(picker.getPicks()));
+    }
+  }
+}
+
+function hasDepth(wantedDepth: number): TreeFilter {
+  return {
+    branchCount(_depth: number, req: PickRequest): number {
+      return req.size;
+    },
+    acceptPick() {
+      return true;
+    },
+    acceptPlayout(depth: number) {
+      return depth === wantedDepth;
+    },
+  };
+}
+
+function searchMaze(opts: SearchOpts) {
+  const maze = new Maze();
+  for (const picker of depthFirstSearch(opts)) {
+    maze.visit(picker);
+  }
+  return maze;
+}
+
+describe("depthFirstSearch", () => {
+  it("filters by depth", () => {
+    const maze = searchMaze({ filter: hasDepth(1) });
+    assertEquals(Array.from(maze.accepted), ["[0]"]);
+    assertEquals(Array.from(maze.rejected), ["[1,0]", "[1,1]"]);
+
+    const maze2 = searchMaze({ filter: hasDepth(2) });
+    assertEquals(Array.from(maze2.accepted), ["[1,0]", "[1,1]"]);
+    assertEquals(Array.from(maze2.rejected), ["[0]"]);
   });
 });
