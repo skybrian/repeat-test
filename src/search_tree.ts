@@ -1,11 +1,6 @@
-import {
-  alwaysPickDefault,
-  IntPicker,
-  PickRequest,
-  uniformBias,
-} from "./picks.ts";
+import { alwaysPickDefault, IntPicker, PickRequest } from "./picks.ts";
 
-import { RetryPicker } from "./backtracking.ts";
+import { PlayoutPruned, RetryPicker } from "./backtracking.ts";
 
 /** Indicates that the subtree rooted at a branch has been fully explored. */
 const PRUNED = Symbol("pruned");
@@ -66,16 +61,11 @@ class Node {
 
   filterPick(
     firstChoice: number,
-    filter: TreeFilter,
-    depth: number,
   ): number | undefined {
     const size = this.req.size;
     let pick = firstChoice;
     for (let i = 0; i < size; i++) {
-      if (
-        filter.acceptPick(depth, this.req, pick) &&
-        this.getBranch(pick) !== PRUNED
-      ) {
+      if (this.getBranch(pick) !== PRUNED) {
         return pick;
       }
       pick++;
@@ -99,39 +89,14 @@ interface CursorParent {
   endSearch(): void;
 }
 
-/**
- * Restricts the search to a subset of the replies to a request.
- */
-export interface TreeFilter {
-  /** The number of accepted replies to the given request. */
-  branchCount(depth: number, req: PickRequest): number;
-  /** Returns true if the reply is accepted. */
-  acceptPick(depth: number, req: PickRequest, pick: number): boolean;
-
-  acceptPlayout(depth: number): boolean;
-}
-
-export const noFilter: TreeFilter = {
-  branchCount: (_, req: PickRequest) => req.size,
-  acceptPick: () => true,
-  acceptPlayout: () => true,
-};
-
-/**
- * Allows only the default choice at depths >= the given depth.
- */
-export function defaultOnlyFrom(maxBranchDepth: number): TreeFilter {
-  return {
-    branchCount: (depth: number, req: PickRequest) =>
-      depth >= maxBranchDepth ? 1 : req.size,
-    acceptPick: (depth: number, req: PickRequest, pick: number) =>
-      depth >= maxBranchDepth ? pick === req.default : true,
-    acceptPlayout: () => true,
-  };
-}
-
 export type SearchOpts = {
-  filter?: TreeFilter;
+  /**
+   * Replaces each incoming pick request with a new one. The new request might
+   * have a narrower range or a different default. If the callback returns
+   * undefined, the playout will be cancelled.
+   */
+  replaceRequest?: (req: PickRequest, depth: number) => PickRequest | undefined;
+  acceptPlayout?: (depth: number) => boolean;
 };
 
 export class Cursor implements RetryPicker {
@@ -148,7 +113,12 @@ export class Cursor implements RetryPicker {
    */
   private readonly picks: number[];
 
-  private readonly filter: TreeFilter;
+  private readonly replaceRequest: (
+    req: PickRequest,
+    depth: number,
+  ) => PickRequest | undefined;
+
+  private readonly acceptPlayout: (depth: number) => boolean;
 
   private done = false;
 
@@ -172,7 +142,8 @@ export class Cursor implements RetryPicker {
   ) {
     this.nodes = [start];
     this.picks = [0];
-    this.filter = opts.filter ?? noFilter;
+    this.replaceRequest = opts.replaceRequest ?? ((req) => req);
+    this.acceptPlayout = opts.acceptPlayout ?? (() => true);
   }
 
   getNodes(): Node[] {
@@ -224,7 +195,7 @@ export class Cursor implements RetryPicker {
   }
 
   private nextNode(req: PickRequest) {
-    const branchCount = this.filter.branchCount(this.depth, req);
+    const branchCount = req.size;
 
     const nodes = this.getNodes();
     const parent = nodes[nodes.length - 1];
@@ -267,10 +238,14 @@ export class Cursor implements RetryPicker {
 
   maybePick(req: PickRequest): number {
     if (this.done) throw new Error("cannot pick after finishPlayout");
+
+    const replacement = this.replaceRequest(req, this.depth);
+    if (!replacement) throw new PlayoutPruned("pruned by replaceRequest");
+    req = replacement;
+
     const node = this.nextNode(req);
-    const depth = this.depth;
     const firstChoice = this.wrapped.pick(req);
-    const pick = node.filterPick(firstChoice, this.filter, depth);
+    const pick = node.filterPick(firstChoice);
     if (pick === undefined) {
       throw new Error("internal error: node has no unpruned picks");
     }
@@ -282,7 +257,7 @@ export class Cursor implements RetryPicker {
   finishPlayout(): boolean {
     this.done = true;
     this.tree.endPlayout(this.depth);
-    return this.filter.acceptPlayout(this.depth);
+    return this.acceptPlayout(this.depth);
   }
 
   /**
@@ -324,22 +299,6 @@ export class Cursor implements RetryPicker {
   }
 }
 
-function makeStartRequest(): PickRequest {
-  // A dummy request with one branch is needed for the root, even though
-  // requests normally require two branches.
-  const start = {
-    min: 0,
-    max: 0,
-    bias: uniformBias(0, 0),
-    size: 1,
-    default: 0,
-    range: [0, 0],
-    inRange: (n: number) => n === 0,
-    withDefault: (_n: number) => start,
-  };
-  return start;
-}
-
 /**
  * Creates pickers that avoid duplicate playouts.
  *
@@ -353,7 +312,7 @@ function makeStartRequest(): PickRequest {
  * based on a heuristic.
  */
 export class SearchTree {
-  private start: Node | undefined = new Node(makeStartRequest(), true, 1);
+  private start: Node | undefined = new Node(new PickRequest(0, 0), true, 1);
 
   #pickerCount = 0;
   #longestPlayout = 0;

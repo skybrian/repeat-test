@@ -89,7 +89,7 @@ export class PickRequest {
   /**
    * Constructs a new request.
    *
-   * The request must have at least two choices to pick from.
+   * The range must have at at least one choice: min <= max.
    *
    * The request's default value will be the number closest to zero that's
    * between min and max, unless overridden by
@@ -106,10 +106,8 @@ export class PickRequest {
     if (!Number.isSafeInteger(max)) {
       throw new Error(`max must be a safe integer; got ${max}`);
     }
-    if (min >= max) {
-      throw new Error(
-        `the range (min, max) must have at least two choices; got (${min}, ${max})`,
-      );
+    if (min > max) {
+      throw new Error(`invalid range: (${min}, ${max})`);
     }
     this.default = chooseDefault(min, max, opts);
     this.bias = opts?.bias ?? uniformBias(min, max);
