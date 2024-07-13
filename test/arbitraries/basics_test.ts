@@ -7,6 +7,7 @@ import * as arb from "../../src/arbitraries.ts";
 import {
   assertFirstMembers,
   assertFirstSolutions,
+  assertMembers,
   assertParseFails,
   assertParses,
   assertSolutions,
@@ -34,30 +35,49 @@ function itMakesInts(
     opts?: { default?: number },
   ) => Arbitrary<number>,
 ) {
-  it("defaults to min for positive numbers", () => {
-    assertEquals(someInt(1, 6).default, 1);
+  describe("members", () => {
+    it("includes each number within range", () => {
+      assertMembers(someInt(1, 6), [1, 2, 3, 4, 5, 6]);
+      assertMembers(someInt(-3, -2), [-2, -3]);
+      assertMembers(someInt(-2, 2), [0, 1, 2, -1, -2]);
+    });
   });
-  it("defaults to max for negative numbers", () => {
-    assertEquals(someInt(-6, -1).default, -1);
+  describe("default", () => {
+    it("defaults to min for positive numbers", () => {
+      assertEquals(someInt(1, 6).default, 1);
+    });
+    it("defaults to max for negative numbers", () => {
+      assertEquals(someInt(-6, -1).default, -1);
+    });
+    it("defaults to 0 for a range that includes 0", () => {
+      assertEquals(someInt(-6, 6).default, 0);
+    });
+    it("defaults to a custom default value", () => {
+      assertEquals(someInt(1, 6, { default: 3 }).default, 3);
+    });
   });
-  it("defaults to 0 for a range that includes 0", () => {
-    assertEquals(someInt(-6, 6).default, 0);
+  describe("parse", () => {
+    it("accepts numbers in range", () => {
+      for (let i = 1; i < 6; i++) {
+        assertParses(someInt(1, 6), [i], i);
+      }
+      for (let i = -1; i < -6; i++) {
+        assertParses(someInt(-6, -1), [i], i);
+      }
+      for (let i = -2; i < -2; i++) {
+        assertParses(someInt(-2, 2), [i], i);
+      }
+    });
+    it("rejects numbers out of range", () => {
+      for (const n of [-1, 0, 7]) {
+        assertParseFails(someInt(1, 6), [n]);
+      }
+    });
   });
-  it("defaults to a custom default value", () => {
-    assertEquals(someInt(1, 6, { default: 3 }).default, 3);
-  });
-  it("accepts numbers in range", () => {
-    for (let i = 1; i < 6; i++) {
-      assertParses(someInt(1, 6), [i], i);
-    }
-  });
-  it("rejects numbers out of range", () => {
-    for (const n of [-1, 0, 7]) {
-      assertParseFails(someInt(1, 6), [n]);
-    }
-  });
-  it("has maxSize set to the size of the range", () => {
-    assertEquals(someInt(1, 6).maxSize, 6);
+  describe("maxSize", () => {
+    it("has maxSize set to the size of the range", () => {
+      assertEquals(someInt(1, 6).maxSize, 6);
+    });
   });
 }
 

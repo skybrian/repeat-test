@@ -18,23 +18,28 @@ export function assertParseFails<T>(
   assertThrows(() => arb.parse(picks), PlayoutPruned);
 }
 
+function take<T>(it: Iterator<T>, n: number): T[] {
+  const result: T[] = [];
+
+  let count = 0;
+  for (let next = it.next(); !next.done && count < n; next = it.next()) {
+    result.push(next.value);
+    count++;
+  }
+
+  return result;
+}
+
 type NestedSol<T> = { val: T; picks: NestedPicks };
 
 function takeSols<T>(
   arb: Arbitrary<T>,
   n: number,
 ): NestedSol<T>[] {
-  const nested: NestedSol<T>[] = [];
-  const sols = arb.solutions;
-  for (let i = 0; i < n; i++) {
-    const sol = sols.next();
-    if (sol.done) break;
-    nested.push({
-      val: sol.value.val,
-      picks: sol.value.playout.toNestedPicks(),
-    });
-  }
-  return nested;
+  return take(arb.solutions, n).map((sol) => ({
+    val: sol.val,
+    picks: sol.playout.toNestedPicks(),
+  }));
 }
 
 export function assertFirstSolutions<T>(
@@ -56,12 +61,14 @@ export function assertFirstMembers<T>(
   arb: Arbitrary<T>,
   expected: T[],
 ) {
-  const members = arb.members;
-  const actual: T[] = [];
-  for (let i = 0; i < expected.length; i++) {
-    const item = members.next();
-    if (item.done) break;
-    actual.push(item.value);
-  }
+  const actual = take(arb.members, expected.length);
+  assertEquals(actual, expected);
+}
+
+export function assertMembers<T>(
+  arb: Arbitrary<T>,
+  expected: T[],
+) {
+  const actual = take(arb.members, expected.length + 5);
   assertEquals(actual, expected);
 }

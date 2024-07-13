@@ -38,7 +38,27 @@ export function uniformInt(
   max: number,
   opts?: { default?: number },
 ): Arbitrary<number> {
-  return Arbitrary.from(new PickRequest(min, max, opts));
+  if (min >= 0) {
+    return Arbitrary.from(new PickRequest(min, max, opts));
+  }
+
+  const def = opts?.default ?? 0;
+  if (max <= 0) {
+    const negOpts = def < 0 ? { default: -def } : undefined;
+    return Arbitrary.from(new PickRequest(-max, -min, negOpts)).map((v) => -v);
+  }
+
+  if (def >= 0) {
+    return Arbitrary.oneOf([
+      uniformInt(0, max, opts),
+      uniformInt(min, -1),
+    ]);
+  } else {
+    return Arbitrary.oneOf([
+      uniformInt(0, max),
+      uniformInt(min, -1, opts),
+    ]);
+  }
 }
 
 function specialNumberBias(
