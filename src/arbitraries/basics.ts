@@ -108,6 +108,7 @@ export function array<T>(
 ): Arbitrary<T[]> {
   const min = opts?.min ?? 0;
   const max = opts?.max ?? defaultArrayLimit;
+  const bit = new PickRequest(0, 1);
 
   // Arrays are represented using a fixed-length part (items only) followed by a
   // variable-length part where each item is preceded by a 1, followed by a 0 to
@@ -125,7 +126,7 @@ export function array<T>(
       i++;
     }
     // variable-length portion
-    while (i < max && pick(boolean())) {
+    while (i < max && pick(bit) === 1) {
       result.push(pick(item));
       i++;
     }

@@ -51,3 +51,17 @@ export function assertSolutions<T>(
   const actual = takeSols(arb, expected.length + 5);
   assertEquals(actual, expected);
 }
+
+export function assertFirstMembers<T>(
+  arb: Arbitrary<T>,
+  expected: T[],
+) {
+  const members = arb.members;
+  const actual: T[] = [];
+  for (let i = 0; i < expected.length; i++) {
+    const item = members.next();
+    if (item.done) break;
+    actual.push(item.value);
+  }
+  assertEquals(actual, expected);
+}

@@ -24,13 +24,15 @@ type Branch = undefined | Node | typeof PRUNED;
 class Node {
   [key: number]: Branch;
 
-  readonly #req: PickRequest;
+  #req: PickRequest;
+  #min: number;
 
   #tracked: boolean;
   #branchesLeft: number;
 
   constructor(req: PickRequest, track: boolean, branchCount: number) {
     this.#req = req;
+    this.#min = req.min;
     this.#tracked = track;
     this.#branchesLeft = branchCount;
   }
@@ -44,13 +46,14 @@ class Node {
   }
 
   getBranch(pick: number): Branch {
+    if (pick < this.#min || pick > this.#req.max) return PRUNED;
     if (!this.#tracked) return undefined;
-    return this[pick - this.req.min];
+    return this[pick];
   }
 
   setBranch(pick: number, node: Node): boolean {
     if (!this.#tracked) return false;
-    this[pick - this.req.min] = node;
+    this[pick] = node;
     return true;
   }
 
@@ -62,23 +65,34 @@ class Node {
   filterPick(
     firstChoice: number,
   ): number | undefined {
-    const size = this.req.size;
     let pick = firstChoice;
+    if (pick < this.#min) pick = this.#min;
+    if (!this.#tracked) return pick;
+    const size = this.#req.max - this.#min + 1;
     for (let i = 0; i < size; i++) {
-      if (this.getBranch(pick) !== PRUNED) {
+      if (this[pick] !== PRUNED) {
         return pick;
       }
       pick++;
-      if (pick > this.#req.max) pick = this.#req.min;
+      if (pick > this.#req.max) pick = this.#min;
     }
     return undefined;
   }
 
   prune(pick: number): boolean {
-    if (!this.#tracked) return false;
-    this[pick - this.req.min] = PRUNED;
-    this.#branchesLeft--;
-    return true;
+    if (pick === this.#min && pick < this.#req.max) {
+      this.#min++;
+      this.#branchesLeft--;
+      delete this[pick];
+      return true;
+    }
+    if (!this.#tracked) {
+      return false;
+    } else {
+      this[pick] = PRUNED;
+      this.#branchesLeft--;
+      return true;
+    }
   }
 }
 

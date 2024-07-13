@@ -5,6 +5,7 @@ import Arbitrary from "../../src/arbitrary_class.ts";
 import * as arb from "../../src/arbitraries.ts";
 
 import {
+  assertFirstMembers,
   assertFirstSolutions,
   assertParseFails,
   assertParses,
@@ -168,6 +169,22 @@ describe("array", () => {
           { val: [true], picks: [1, 1, 0] },
           { val: [false, false], picks: [1, 0, 1, 0, 0] },
           { val: [false, true], picks: [1, 0, 1, 1, 0] },
+        ]);
+      });
+    });
+  });
+  describe("of ints", () => {
+    const ints = arb.array(arb.int(0, 2 ** 16));
+    it("defaults to an empty array", () => {
+      assertEquals(ints.default, []);
+    });
+    describe("members", () => {
+      it("returns lists for each combination", () => {
+        assertFirstMembers(ints, [
+          [],
+          [0],
+          [1],
+          [2],
         ]);
       });
     });
