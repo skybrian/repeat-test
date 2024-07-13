@@ -10,7 +10,7 @@ import {
 
 import { Playout, PlayoutContext } from "./playouts.ts";
 
-import { depthFirstSearch } from "./search_tree.ts";
+import { breadthFirstSearch } from "./search_tree.ts";
 
 export type PickFunctionOptions<T> = {
   /**
@@ -277,7 +277,6 @@ export default class Arbitrary<T> {
         // Try again with the next playout.
       }
     }
-    return undefined;
   }
 
   /**
@@ -319,11 +318,19 @@ export default class Arbitrary<T> {
    */
   get solutions(): IterableIterator<Solution<T>> {
     function* allPicks(arb: Arbitrary<T>): IterableIterator<Solution<T>> {
-      const pickers = depthFirstSearch();
-      let sol = arb.pick(pickers);
+      const it = breadthFirstSearch()[Symbol.iterator]();
+      // Pick will exit early when it finds a solution.
+      // Resume the same iteration after each pick.
+      const resumable: IterableIterator<RetryPicker> = {
+        [Symbol.iterator]: () => resumable,
+        next: function (): IteratorResult<RetryPicker> {
+          return it.next();
+        },
+      };
+      let sol = arb.pick(resumable);
       while (sol) {
         yield sol;
-        sol = arb.pick(pickers);
+        sol = arb.pick(resumable);
       }
     }
 

@@ -85,7 +85,7 @@ class Node {
 interface CursorParent {
   checkAlive(version: number): void;
   get playoutsLeft(): number;
-  endPlayout(depth: number): void;
+  endPlayout(): void;
   endSearch(): void;
 }
 
@@ -256,7 +256,7 @@ export class Cursor implements RetryPicker {
 
   finishPlayout(): boolean {
     this.done = true;
-    this.tree.endPlayout(this.depth);
+    this.tree.endPlayout();
     return this.acceptPlayout(this.depth);
   }
 
@@ -265,7 +265,6 @@ export class Cursor implements RetryPicker {
    * the caller should backtrack more.
    */
   backTo(depth: number): boolean {
-    const playoutDepth = this.depth;
     const nodes = this.getNodes();
     if (depth < 0 || depth > nodes.length - 1) {
       throw new Error(
@@ -284,7 +283,7 @@ export class Cursor implements RetryPicker {
       picks.pop();
     }
     if (!this.done) {
-      this.tree.endPlayout(playoutDepth);
+      this.tree.endPlayout();
     }
     this.recalculateOdds();
     return true;
@@ -315,7 +314,6 @@ export class SearchTree {
   private start: Node | undefined = new Node(new PickRequest(0, 0), true, 1);
 
   #pickerCount = 0;
-  #longestPlayout = 0;
 
   private cursor: Cursor | undefined;
 
@@ -343,12 +341,9 @@ export class SearchTree {
       get playoutsLeft() {
         return playoutsLeft;
       },
-      endPlayout: (depth: number) => {
+      endPlayout: () => {
         if (playoutsLeft > 0) {
           playoutsLeft--;
-        }
-        if (depth > this.#longestPlayout) {
-          this.#longestPlayout = depth;
         }
       },
       endSearch: () => {
@@ -366,15 +361,15 @@ export class SearchTree {
     return this.#pickerCount;
   }
 
-  /** The length of the longest playout.*/
-  get longestPlayout(): number {
-    return this.#longestPlayout;
-  }
-
   get searchDone(): boolean {
     return this.start === undefined;
   }
 
+  /**
+   * Returns a sequence of pickers, each of which will usually pick a different playout.
+   *
+   * (If it's iterated over more than once, it will resume where it left off.)
+   */
   pickers(
     wrapped: IntPicker,
     opts?: SearchOpts,
@@ -428,4 +423,44 @@ export class SearchTree {
  */
 export function depthFirstSearch(opts?: SearchOpts): Iterable<RetryPicker> {
   return new SearchTree(0).pickers(alwaysPickDefault, opts);
+}
+
+/**
+ * Iterates over all playouts in breadth-first order, using iterative deepening.
+ *
+ * (The iterable can only be iterated over once.)
+ */
+export function* breadthFirstSearch(): Iterable<RetryPicker> {
+  let maxDepth = 0;
+  let pruned = true;
+  while (pruned) {
+    pruned = false;
+
+    const replaceRequest = (req: PickRequest, depth: number) => {
+      if (depth > maxDepth) {
+        pruned = true;
+        return undefined;
+      }
+      return req;
+    };
+
+    const acceptPlayout = (depth: number) => {
+      if (depth > maxDepth) {
+        pruned = true;
+        return false;
+      }
+      return depth === maxDepth;
+    };
+
+    const tree = new SearchTree(0);
+    while (true) {
+      const picker = tree.makePicker(alwaysPickDefault, {
+        replaceRequest,
+        acceptPlayout,
+      });
+      if (picker === undefined) break;
+      yield picker;
+    }
+    maxDepth++;
+  }
 }

@@ -19,6 +19,7 @@ import { PlayoutPruned, RetryPicker } from "../src/backtracking.ts";
 import { randomPicker } from "../src/random.ts";
 
 import {
+  breadthFirstSearch,
   Cursor,
   depthFirstSearch,
   SearchOpts,
@@ -351,5 +352,49 @@ describe("depthFirstSearch", () => {
     assertEquals(Array.from(maze2.accepted), ["[1,0]", "[1,1]"]);
     assertEquals(Array.from(maze2.rejected), ["[0]"]);
     assertEquals(maze.pruneCount, 0);
+  });
+});
+
+describe("breadthFirstSearch", () => {
+  it("iterates once when there aren't any branches", () => {
+    let count = 0;
+    for (const picker of breadthFirstSearch()) {
+      assert(picker.finishPlayout());
+      count++;
+    }
+    assertEquals(count, 1);
+  });
+  it("visits each root branch once", () => {
+    const accepted = new Set<string>();
+    for (const picker of breadthFirstSearch()) {
+      picker.maybePick(new PickRequest(0, 2));
+      if (picker.finishPlayout()) {
+        accepted.add(JSON.stringify(picker.getPicks()));
+      }
+    }
+    assertEquals(Array.from(accepted), ["[0]", "[1]", "[2]"]);
+  });
+  it("visits each child branch once", () => {
+    const accepted = new Set<string>();
+    let pruned = 0;
+    for (const picker of breadthFirstSearch()) {
+      try {
+        const pick = picker.maybePick(new PickRequest(0, 2));
+        if (pick === 1) {
+          picker.maybePick(new PickRequest(3, 4));
+        }
+        if (picker.finishPlayout()) {
+          accepted.add(JSON.stringify(picker.getPicks()));
+        }
+      } catch (e) {
+        if (e instanceof PlayoutPruned) {
+          pruned++;
+        } else {
+          throw e;
+        }
+      }
+    }
+    assertEquals(Array.from(accepted), ["[0]", "[2]", "[1,3]", "[1,4]"]);
+    assertEquals(pruned, 1);
   });
 });

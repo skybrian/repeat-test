@@ -161,12 +161,13 @@ describe("array", () => {
       });
     });
     describe("members", () => {
-      // TODO: breadth-first iteration would be better
-      it("returns lists containing only 'false'", () => {
+      it("returns lists for each combination", () => {
         assertFirstSolutions(bools, [
           { val: [], picks: [0] },
           { val: [false], picks: [1, 0, 0] },
+          { val: [true], picks: [1, 1, 0] },
           { val: [false, false], picks: [1, 0, 1, 0, 0] },
+          { val: [false, true], picks: [1, 0, 1, 1, 0] },
         ]);
       });
     });
