@@ -24,21 +24,23 @@ type Branch = undefined | Node | typeof PRUNED;
 class Node {
   [key: number]: Branch;
 
-  #req: PickRequest;
+  #reqMin: number;
   #min: number;
+  #max: number;
 
   #tracked: boolean;
   #branchesLeft: number;
 
   constructor(req: PickRequest, track: boolean, branchCount: number) {
-    this.#req = req;
+    this.#reqMin = req.min;
     this.#min = req.min;
+    this.#max = req.max;
     this.#tracked = track;
     this.#branchesLeft = branchCount;
   }
 
-  get req(): PickRequest {
-    return this.#req;
+  check(req: PickRequest): boolean {
+    return this.#reqMin === req.min && this.#max === req.max;
   }
 
   get tracked(): boolean {
@@ -46,7 +48,7 @@ class Node {
   }
 
   getBranch(pick: number): Branch {
-    if (pick < this.#min || pick > this.#req.max) return PRUNED;
+    if (pick < this.#min || pick > this.#max) return PRUNED;
     if (!this.#tracked) return undefined;
     return this[pick];
   }
@@ -68,19 +70,19 @@ class Node {
     let pick = firstChoice;
     if (pick < this.#min) pick = this.#min;
     if (!this.#tracked) return pick;
-    const size = this.#req.max - this.#min + 1;
+    const size = this.#max - this.#min + 1;
     for (let i = 0; i < size; i++) {
       if (this[pick] !== PRUNED) {
         return pick;
       }
       pick++;
-      if (pick > this.#req.max) pick = this.#min;
+      if (pick > this.#max) pick = this.#min;
     }
     return undefined;
   }
 
   prune(pick: number): boolean {
-    if (pick === this.#min && pick < this.#req.max) {
+    if (pick === this.#min && pick < this.#max) {
       this.#min++;
       this.#branchesLeft--;
       delete this[pick];
@@ -224,7 +226,7 @@ export class Cursor implements RetryPicker {
       throw new Error("internal error: parent picked a pruned branch");
     } else if (node !== undefined) {
       // Visit existing node.
-      if (node.req.min !== req.min || node.req.max != req.max) {
+      if (!node.check(req)) {
         throw new Error(
           `pick request range doesn't match a previous visit`,
         );
