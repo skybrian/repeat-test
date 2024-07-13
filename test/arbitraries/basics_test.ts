@@ -1,7 +1,6 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals } from "@std/assert";
 
-import Arbitrary from "../../src/arbitrary_class.ts";
 import * as arb from "../../src/arbitraries.ts";
 
 import {
@@ -28,65 +27,51 @@ describe("boolean", () => {
   });
 });
 
-function itMakesInts(
-  someInt: (
-    min: number,
-    max: number,
-    opts?: { default?: number },
-  ) => Arbitrary<number>,
-) {
+describe("int", () => {
   describe("members", () => {
     it("includes each number within range", () => {
-      assertMembers(someInt(1, 6), [1, 2, 3, 4, 5, 6]);
-      assertMembers(someInt(-3, -2), [-2, -3]);
-      assertMembers(someInt(-2, 2), [0, 1, 2, -1, -2]);
+      assertMembers(arb.int(1, 6), [1, 2, 3, 4, 5, 6]);
+      assertMembers(arb.int(-3, -2), [-2, -3]);
+      assertMembers(arb.int(-2, 2), [0, 1, 2, -1, -2]);
     });
   });
   describe("default", () => {
     it("defaults to min for positive numbers", () => {
-      assertEquals(someInt(1, 6).default, 1);
+      assertEquals(arb.int(1, 6).default, 1);
     });
     it("defaults to max for negative numbers", () => {
-      assertEquals(someInt(-6, -1).default, -1);
+      assertEquals(arb.int(-6, -1).default, -1);
     });
     it("defaults to 0 for a range that includes 0", () => {
-      assertEquals(someInt(-6, 6).default, 0);
+      assertEquals(arb.int(-6, 6).default, 0);
     });
     it("defaults to a custom default value", () => {
-      assertEquals(someInt(1, 6, { default: 3 }).default, 3);
+      assertEquals(arb.int(1, 6, { default: 3 }).default, 3);
     });
   });
   describe("parse", () => {
     it("accepts numbers in range", () => {
       for (let i = 1; i < 6; i++) {
-        assertParses(someInt(1, 6), [i], i);
+        assertParses(arb.int(1, 6), [i], i);
       }
       for (let i = -1; i < -6; i++) {
-        assertParses(someInt(-6, -1), [i], i);
+        assertParses(arb.int(-6, -1), [i], i);
       }
       for (let i = -2; i < -2; i++) {
-        assertParses(someInt(-2, 2), [i], i);
+        assertParses(arb.int(-2, 2), [i], i);
       }
     });
     it("rejects numbers out of range", () => {
       for (const n of [-1, 0, 7]) {
-        assertParseFails(someInt(1, 6), [n]);
+        assertParseFails(arb.int(1, 6), [n]);
       }
     });
   });
   describe("maxSize", () => {
     it("has maxSize set to the size of the range", () => {
-      assertEquals(someInt(1, 6).maxSize, 6);
+      assertEquals(arb.int(1, 6).maxSize, 6);
     });
   });
-}
-
-describe("uniformInt", () => {
-  itMakesInts(arb.uniformInt);
-});
-
-describe("int", () => {
-  itMakesInts(arb.int);
 });
 
 describe("record", () => {
@@ -113,7 +98,7 @@ describe("record", () => {
   });
   describe("for a record with a single field", () => {
     const oneField = arb.record({
-      a: arb.uniformInt(1, 2),
+      a: arb.int(1, 2),
     });
     it("defaults to the default value of the field", () => {
       assertEquals(oneField.default, { a: 1 });
@@ -127,8 +112,8 @@ describe("record", () => {
   });
   describe("for a record with mutiple fields", () => {
     const example = arb.record({
-      a: arb.uniformInt(1, 2),
-      b: arb.uniformInt(3, 4),
+      a: arb.int(1, 2),
+      b: arb.int(3, 4),
     });
     it("reads picks ordered by the keys", () => {
       assertSolutions(example, [
@@ -143,12 +128,12 @@ describe("record", () => {
 
 describe("oneOf", () => {
   const oneWay = arb.oneOf([
-    arb.uniformInt(1, 2),
+    arb.int(1, 2),
   ]);
   const threeWay = arb.oneOf([
-    arb.uniformInt(1, 2),
-    arb.uniformInt(3, 4),
-    arb.uniformInt(5, 6),
+    arb.int(1, 2),
+    arb.int(3, 4),
+    arb.int(5, 6),
   ]);
   it("defaults to the first branch", () => {
     assertEquals(oneWay.default, 1);

@@ -208,7 +208,7 @@ describe("repeatTest", () => {
       repeatTest(example, (i) => {
         // assert(i != 42);
         assertEquals(i, 42);
-      }, { only: "819765620:120" });
+      }, { only: "-756845603:239" });
     });
   });
 });

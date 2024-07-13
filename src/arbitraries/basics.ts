@@ -3,8 +3,7 @@ import Arbitrary, {
   ArbitraryCallback,
   RecordShape,
 } from "../arbitrary_class.ts";
-import { chooseDefault, PickRequest } from "../picks.ts";
-import { BiasedIntPicker } from "../picks.ts";
+import { PickRequest } from "../picks.ts";
 
 /**
  * An arbitrary based on a callback function.
@@ -29,11 +28,13 @@ export function boolean(): Arbitrary<boolean> {
 }
 
 /**
- * An integer range, to be picked from uniformly.
+ * Chooses a safe integer.
  *
  * Invariant: min <= pick <= max.
+ *
+ * Negative and non-negative numbers are equally likely, so it's a non-uniform distribution.
  */
-export function uniformInt(
+export function int(
   min: number,
   max: number,
   opts?: { default?: number },
@@ -49,62 +50,10 @@ export function uniformInt(
   }
 
   if (def >= 0) {
-    return Arbitrary.oneOf([
-      uniformInt(0, max, opts),
-      uniformInt(min, -1),
-    ]);
+    return Arbitrary.oneOf([int(0, max, opts), int(min, -1)]);
   } else {
-    return Arbitrary.oneOf([
-      uniformInt(0, max),
-      uniformInt(min, -1, opts),
-    ]);
+    return Arbitrary.oneOf([int(0, max), int(min, -1, opts)]);
   }
-}
-
-function specialNumberBias(
-  min: number,
-  max: number,
-  defaultVal: number,
-): BiasedIntPicker {
-  function pick(uniform: (min: number, max: number) => number): number {
-    switch (uniform(0, 15)) {
-      case 0:
-        return min;
-      case 1:
-        return max;
-      case 2:
-        return defaultVal;
-      case 3:
-        if (min <= 0 && max >= 0) return 0;
-        break;
-      case 4:
-        if (min <= 1 && max >= 1) return 1;
-        break;
-      case 5:
-        if (min <= -1 && max >= -1) return -1;
-    }
-    return uniform(min, max);
-  }
-  return pick;
-}
-
-/**
- * An integer range, to be picked from with bias towards special cases.
- */
-export function int(
-  min: number,
-  max: number,
-  opts?: { default?: number },
-): Arbitrary<number> {
-  if (max - min <= 10) {
-    return uniformInt(min, max, opts);
-  }
-
-  const defaultVal = chooseDefault(min, max, opts);
-  const bias = specialNumberBias(min, max, defaultVal);
-  const req = new PickRequest(min, max, { default: defaultVal, bias });
-
-  return Arbitrary.from(req);
 }
 
 /**
