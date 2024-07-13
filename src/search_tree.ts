@@ -31,10 +31,23 @@ class Node {
   #tracked: boolean;
   #branchesLeft: number;
 
-  constructor(req: PickRequest, track: boolean, branchCount: number) {
-    this.#reqMin = req.min;
-    this.#min = req.min;
-    this.#max = req.max;
+  static untracked(req: PickRequest): Node {
+    return new Node(req.min, req.max, false, req.size);
+  }
+
+  static tracked(req: PickRequest): Node {
+    return new Node(req.min, req.max, true, req.size);
+  }
+
+  private constructor(
+    min: number,
+    max: number,
+    track: boolean,
+    branchCount: number,
+  ) {
+    this.#reqMin = min;
+    this.#min = min;
+    this.#max = max;
     this.#tracked = track;
     this.#branchesLeft = branchCount;
   }
@@ -211,13 +224,12 @@ export class Cursor implements RetryPicker {
   }
 
   private nextNode(req: PickRequest) {
-    const branchCount = req.size;
-
     const nodes = this.getNodes();
     const parent = nodes[nodes.length - 1];
     if (!parent.tracked) {
-      return new Node(req, false, branchCount);
+      return Node.untracked(req);
     }
+
     const picks = this.picks;
     const parentPick = picks[picks.length - 1];
     let node = parent.getBranch(parentPick);
@@ -233,21 +245,22 @@ export class Cursor implements RetryPicker {
       }
       this.updateOdds(node.branchesLeft);
       return node;
-    } else if (this.wrapped.isRandom) {
+    }
+
+    if (this.wrapped.isRandom) {
       // See if we should create an untracked node.
       // (This is pushed to the stack but doesn't get added to the tree.)
       // If picking the same playout twice is unlikely, it's not worth tracking.
 
-      this.updateOdds(branchCount);
+      this.updateOdds(req.size);
       const willReturnProbability = this.tree.playoutsLeft /
         (1 + this.notTakenOdds);
       if (willReturnProbability < 0.5) {
-        return new Node(req, false, branchCount);
+        return Node.untracked(req);
       }
     }
 
-    // Add a tracked node to the tree.
-    node = new Node(req, true, branchCount);
+    node = Node.tracked(req);
     parent.setBranch(parentPick, node);
     return node;
   }
@@ -329,7 +342,7 @@ export class Cursor implements RetryPicker {
  * based on a heuristic.
  */
 export class SearchTree {
-  private start: Node | undefined = new Node(new PickRequest(0, 0), true, 1);
+  private start: Node | undefined = Node.tracked(new PickRequest(0, 0));
 
   #pickerCount = 0;
 
