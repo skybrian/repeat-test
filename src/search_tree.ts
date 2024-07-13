@@ -254,7 +254,9 @@ export class Cursor implements RetryPicker {
     if (this.done) throw new Error("cannot pick after finishPlayout");
 
     const replacement = this.replaceRequest(req, this.depth);
-    if (!replacement) throw new PlayoutPruned("pruned by replaceRequest");
+    if (!replacement) {
+      throw new PlayoutPruned("pruned by replaceRequest");
+    }
     req = replacement;
 
     const node = this.nextNode(req);
@@ -439,13 +441,25 @@ export function depthFirstSearch(opts?: SearchOpts): Iterable<RetryPicker> {
   return new SearchTree(0).pickers(alwaysPickDefault, opts);
 }
 
+export type BreadthFirstSearchOpts = {
+  /**
+   * The depth to start the search at.
+   *
+   * If not set, the search starts at depth 0.
+   */
+  startDepth?: number;
+};
+
 /**
  * Iterates over all playouts in breadth-first order, using iterative deepening.
  *
  * (The iterable can only be iterated over once.)
  */
-export function* breadthFirstSearch(): Iterable<RetryPicker> {
-  let maxDepth = 0;
+export function* breadthFirstSearch(
+  opts?: BreadthFirstSearchOpts,
+): Iterable<RetryPicker> {
+  let maxDepth = opts?.startDepth ?? 0;
+  let prevDepth = -1;
   let pruned = true;
   while (pruned) {
     pruned = false;
@@ -463,7 +477,7 @@ export function* breadthFirstSearch(): Iterable<RetryPicker> {
         pruned = true;
         return false;
       }
-      return depth === maxDepth;
+      return depth > prevDepth;
     };
 
     const tree = new SearchTree(0);
@@ -475,6 +489,7 @@ export function* breadthFirstSearch(): Iterable<RetryPicker> {
       if (picker === undefined) break;
       yield picker;
     }
+    prevDepth = maxDepth;
     maxDepth++;
   }
 }
