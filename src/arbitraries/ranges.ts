@@ -17,7 +17,7 @@ export type IntRangeOptions = {
 };
 
 /**
- * Generates pair of safe integers such that min <= max.
+ * Generates pair of safe, non-negative integers such that min <= max.
  */
 export function intRange(opts?: IntRangeOptions): Arbitrary<Range> {
   const minSize = opts?.minSize ?? 1;
@@ -31,7 +31,7 @@ export function intRange(opts?: IntRangeOptions): Arbitrary<Range> {
     from((pick) => {
       const size = pick(int(minSize, maxSize));
       const min = pick(
-        int(Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER - (size - 1)),
+        int(0, Number.MAX_SAFE_INTEGER - (size - 1)),
       );
       const max = min + (size - 1);
       return { min, max };
@@ -41,11 +41,12 @@ export function intRange(opts?: IntRangeOptions): Arbitrary<Range> {
 
 /**
  * Generates a record that satisfies the Range type, but isn't a valid range of
- * safe integers.
+ * non-negative safe integers.
  */
 export function invalidIntRange(): Arbitrary<Range> {
   return oneOf<Range>([
     Arbitrary.of({ min: 1, max: 0 }),
+    Arbitrary.of({ min: -1, max: 0 }),
     record({ min: safeInt(), max: nonInteger() }),
     record({ min: nonInteger(), max: safeInt() }),
   ]);

@@ -40,7 +40,7 @@ export type PickRequestOptions = {
 /**
  * Chooses a suitable default for an integer range.
  *
- * If not overridden, it's the number closest to zero between min and max.
+ * If not overridden, it's the minimum value of the range.
  */
 export function chooseDefault(
   min: number,
@@ -48,24 +48,20 @@ export function chooseDefault(
   opts?: { default?: number },
 ) {
   const override = opts?.default;
-  if (override !== undefined) {
-    if (!inRange(override, min, max)) {
-      throw new Error(
-        `the default must be in the range (${min}, ${max}); got ${override}`,
-      );
-    }
-    return override;
-  } else if (min >= 0) {
+  if (override === undefined) {
     return min;
-  } else if (max <= 0) {
-    return max;
-  } else {
-    return 0;
   }
+  if (!inRange(override, min, max)) {
+    throw new Error(
+      `the default must be in the range (${min}, ${max}); got ${override}`,
+    );
+  }
+  return override;
 }
 
 /**
- * Requests a safe integer in a given range, with optional hints to the picker.
+ * Requests a safe, non-negative integer in a given range, with optional hints
+ * to the picker.
  *
  * When {@link IntPicker.isRandom} is true and {@link PickRequestOptions.bias}
  * isn't set, requests that the number should be picked using a uniform
@@ -87,9 +83,10 @@ export class PickRequest {
   readonly default: number;
 
   /**
-   * Constructs a new request.
+   * Constructs a request an integer in a given range.
    *
-   * The range must have at at least one choice: min <= max.
+   * The range must be over non-negative integers and have at at least one
+   * choice: min <= max.
    *
    * The request's default value will be the number closest to zero that's
    * between min and max, unless overridden by
@@ -100,6 +97,9 @@ export class PickRequest {
     readonly max: number,
     opts?: PickRequestOptions,
   ) {
+    if (min < 0) {
+      throw new Error(`min must be non-negative; got ${min}`);
+    }
     if (!Number.isSafeInteger(min)) {
       throw new Error(`min must be a safe integer; got ${min}`);
     }

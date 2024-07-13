@@ -64,8 +64,6 @@ describe("SearchTree", () => {
 
 describe("Cursor", () => {
   describe("pick", () => {
-    const int32 = new PickRequest(-(2 ** 31), 2 ** 31 - 1);
-
     it("takes a pick from the underlying picker", () => {
       const tree = new SearchTree(1);
       const picker = tree.makePicker(alwaysPickDefault);
@@ -85,12 +83,14 @@ describe("Cursor", () => {
       assertThrows(() => picker.maybePick(new PickRequest(-1, 0)), Error);
     });
 
+    const uint32 = new PickRequest(0, 2 ** 32 - 1);
+
     describe("when using a non-random underlying picker", () => {
       it("continues tracking beneath a wide node", () => {
         const tree = new SearchTree(1);
         const picker = tree.makePicker(alwaysPickDefault);
         assert(picker !== undefined);
-        picker.maybePick(int32);
+        picker.maybePick(uint32);
         assert(picker.tracked);
       });
     });
@@ -118,7 +118,7 @@ describe("Cursor", () => {
       });
 
       it("doesn't track a very wide node", () => {
-        assertEquals(int32.size, 2 ** 32);
+        assertEquals(uint32.size, 2 ** 32);
 
         repeatTest(
           arb.of(0, 1, 1000, 10 ** 6, 10 ** 9, 2 ** 30),
@@ -126,7 +126,7 @@ describe("Cursor", () => {
             const tree = new SearchTree(playouts);
             const picker = tree.makePicker(randomPicker(123));
             assert(picker !== undefined);
-            picker.maybePick(int32);
+            picker.maybePick(uint32);
             assertFalse(picker.tracked);
           },
         );
