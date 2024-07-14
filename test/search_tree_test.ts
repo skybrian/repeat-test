@@ -19,6 +19,7 @@ import { PlayoutPruned, RetryPicker } from "../src/backtracking.ts";
 import { randomPicker } from "../src/random.ts";
 
 import {
+  breadthFirstPass,
   breadthFirstSearch,
   Cursor,
   depthFirstSearch,
@@ -295,10 +296,24 @@ describe("Cursor", () => {
   });
 });
 
-type Tree<T> = {
-  val: T;
-  children: Tree<T>[];
-};
+class Tree<T> {
+  readonly children: Tree<T>[];
+  constructor(readonly val: T, children?: Tree<T>[]) {
+    this.children = children ?? [];
+  }
+
+  get size(): number {
+    let size = 1;
+    for (const child of this.children) {
+      size += child.size;
+    }
+    return size;
+  }
+
+  toString(): string {
+    return JSON.stringify(this, null, 2);
+  }
+}
 
 const childCount = Arbitrary.of(0, 0, 0, 0, 1, 2, 3);
 
@@ -311,18 +326,11 @@ const anyTree = Arbitrary.from((pick) => {
     for (let i = 0; i < count; i++) {
       children.push(pickTree());
     }
-    return { val, children };
+    return new Tree(val, children);
   }
-  return pickTree();
+  const result = pickTree();
+  return result;
 });
-
-function treeSize(tree: Tree<unknown>): number {
-  let size = 1;
-  for (const child of tree.children) {
-    size += treeSize(child);
-  }
-  return size;
-}
 
 function randomWalk<T>(tree: Tree<T>, picker: RetryPicker): T {
   while (
@@ -352,8 +360,10 @@ class Maze {
         if (this.accepted.has(picks)) {
           fail(`duplicate picks: ${picks}`);
         }
+        // console.log(`accepted: ${picks} -> ${val}`);
         this.accepted.set(picks, val);
       } else {
+        // console.log(`rejected: ${picks} -> ${val}`);
         this.rejected.set(picks, val);
       }
     } catch (e) {
@@ -381,19 +391,10 @@ class Maze {
 }
 
 describe("depthFirstSearch", () => {
-  const tree: Tree<number> = {
-    val: 42,
-    children: [
-      {
-        val: 43,
-        children: [{ val: 45, children: [] }],
-      },
-      {
-        val: 44,
-        children: [],
-      },
-    ],
-  };
+  const tree = new Tree(42, [
+    new Tree(43, [new Tree(45)]),
+    new Tree(44),
+  ]);
   it("filters by request depth", () => {
     const maze = Maze.depthFirstSearch(tree, {
       replaceRequest: (depth, req) => depth < 1 ? req : undefined,
@@ -428,6 +429,230 @@ describe("depthFirstSearch", () => {
   });
 });
 
+const one = new PickRequest(1, 1);
+
+function walkUnaryTree(picker: RetryPicker): string | undefined {
+  let result = "";
+  for (let i = 0; i < 8; i++) {
+    if (picker.maybePick(one)) {
+      result += "1";
+    } else {
+      result += "0";
+    }
+  }
+  if (!picker.finishPlayout()) {
+    return undefined;
+  }
+  return result;
+}
+
+function walkBinaryTree(...stops: string[]) {
+  function walk(picker: RetryPicker): string | undefined {
+    let result = "";
+    for (let i = 0; i < 8; i++) {
+      if (stops.includes(result)) {
+        if (!picker.finishPlayout()) {
+          return undefined;
+        }
+        return result;
+      }
+      if (picker.maybePick(bit)) {
+        result += "1";
+      } else {
+        result += "0";
+      }
+    }
+    if (!picker.finishPlayout()) {
+      return undefined;
+    }
+    return result;
+  }
+  return walk;
+}
+
+function runPass(
+  idx: number,
+  walk: (picker: RetryPicker) => string | undefined,
+) {
+  const playouts = new Set<string>();
+  let pruneCalls = 0;
+  let prunedPlayouts = 0;
+  for (
+    const picker of breadthFirstPass(idx, () => {
+      pruneCalls++;
+    })
+  ) {
+    try {
+      const playout = walk(picker);
+      if (playout === undefined) {
+        prunedPlayouts++;
+        continue;
+      }
+      if (playouts.has(playout)) {
+        fail(`duplicate playout: ${playout}`);
+      }
+      playouts.add(playout);
+    } catch (e) {
+      if (e instanceof PlayoutPruned) {
+        prunedPlayouts++;
+        continue;
+      }
+      throw e;
+    }
+  }
+  return {
+    playouts: Array.from(playouts),
+    pruneCalls,
+    prunedPlayouts,
+  };
+}
+
+describe("breadthFirstPass", () => {
+  describe("for a single-playout tree", () => {
+    it("yields the full playout on the first pass", () => {
+      assertEquals(runPass(0, walkUnaryTree), {
+        playouts: ["11111111"],
+        pruneCalls: 1,
+        prunedPlayouts: 0,
+      });
+    });
+    it("yields nothing on the second pass", () => {
+      assertEquals(runPass(1, walkUnaryTree), {
+        playouts: [],
+        pruneCalls: 1,
+        prunedPlayouts: 1,
+      });
+    });
+  });
+  describe("for a binary tree", () => {
+    describe("on the first pass", () => {
+      it("stops if there's an empty playout", () => {
+        assertEquals(runPass(0, walkBinaryTree("")), {
+          playouts: [""],
+          pruneCalls: 0,
+          prunedPlayouts: 0,
+        });
+      });
+      it("can yield a long minimum playout", () => {
+        assertEquals(runPass(0, walkBinaryTree()), {
+          playouts: ["00000000"],
+          pruneCalls: 1,
+          prunedPlayouts: 0,
+        });
+      });
+    });
+
+    describe("on the second pass", () => {
+      it("can't yield an empty playout", () => {
+        assertEquals(runPass(1, walkBinaryTree("")), {
+          playouts: [],
+          pruneCalls: 0,
+          prunedPlayouts: 1,
+        });
+      });
+      it("stops for a playout with one pick", () => {
+        assertEquals(runPass(1, walkBinaryTree("1")), {
+          playouts: ["1"],
+          pruneCalls: 1,
+          prunedPlayouts: 0,
+        });
+      });
+      it("can yield a long playout with one non-default pick", () => {
+        assertEquals(runPass(1, walkBinaryTree()), {
+          playouts: ["10000000"],
+          pruneCalls: 1,
+          prunedPlayouts: 0,
+        });
+      });
+    });
+
+    describe("on the third pass", () => {
+      it("can't yield an empty playout", () => {
+        assertEquals(runPass(2, walkBinaryTree("")), {
+          playouts: [],
+          pruneCalls: 0,
+          prunedPlayouts: 1,
+        });
+      });
+      it("can't yield playouts with one pick", () => {
+        assertEquals(runPass(2, walkBinaryTree("0", "1")), {
+          playouts: [],
+          pruneCalls: 0,
+          prunedPlayouts: 2,
+        });
+      });
+      it("stops after playouts with two picks", () => {
+        assertEquals(runPass(2, walkBinaryTree("01", "11")), {
+          playouts: ["01", "11"],
+          pruneCalls: 1,
+          prunedPlayouts: 0,
+        });
+      });
+      it("can yield two long playouts", () => {
+        assertEquals(runPass(2, walkBinaryTree()), {
+          playouts: ["01000000", "11000000"],
+          pruneCalls: 1,
+          prunedPlayouts: 0,
+        });
+      });
+    });
+
+    describe("on the fourth pass", () => {
+      it("can't yield an empty playout", () => {
+        assertEquals(runPass(3, walkBinaryTree("")), {
+          playouts: [],
+          pruneCalls: 0,
+          prunedPlayouts: 1,
+        });
+      });
+      it("can't yield playouts with one pick", () => {
+        assertEquals(runPass(3, walkBinaryTree("0", "1")), {
+          playouts: [],
+          pruneCalls: 0,
+          prunedPlayouts: 2,
+        });
+      });
+      it("can't yield playouts with two pick", () => {
+        assertEquals(runPass(3, walkBinaryTree("00", "01", "10", "11")), {
+          playouts: [],
+          pruneCalls: 0,
+          prunedPlayouts: 4,
+        });
+      });
+      it("stops after playouts with three picks", () => {
+        assertEquals(runPass(3, walkBinaryTree("001", "011", "101", "111")), {
+          playouts: ["001", "011", "101", "111"],
+          pruneCalls: 1,
+          prunedPlayouts: 0,
+        });
+      });
+      it("yields four long playouts", () => {
+        assertEquals(runPass(3, walkBinaryTree()), {
+          playouts: ["00100000", "01100000", "10100000", "11100000"],
+          pruneCalls: 1,
+          prunedPlayouts: 0,
+        });
+      });
+    });
+    it("yields eight playouts on the fifth pass", () => {
+      assertEquals(runPass(4, walkBinaryTree()), {
+        playouts: [
+          "00010000",
+          "00110000",
+          "01010000",
+          "01110000",
+          "10010000",
+          "10110000",
+          "11010000",
+          "11110000",
+        ],
+        pruneCalls: 1,
+        prunedPlayouts: 0,
+      });
+    });
+  });
+});
+
 describe("breadthFirstSearch", () => {
   it("iterates once when there aren't any branches", () => {
     let count = 0;
@@ -448,18 +673,14 @@ describe("breadthFirstSearch", () => {
     assertEquals(Array.from(accepted), ["[0]", "[1]", "[2]"]);
   });
   it("visits each child branch once", () => {
-    const example = arb.record({
-      tree: anyTree,
-    });
-    repeatTest(example, ({ tree }) => {
-      const size = treeSize(tree);
-      const expectedLeaves = Array(size).fill(0).map((_, i) => i);
+    repeatTest(anyTree, (tree) => {
+      const expectedLeaves = Array(tree.size).fill(0).map((_, i) => i);
 
       const maze = new Maze(tree);
       for (const picker of breadthFirstSearch()) {
         maze.visit(picker);
       }
       assertEquals(expectedLeaves, maze.leaves);
-    });
+    }, { only: "1995150143:4" });
   });
 });

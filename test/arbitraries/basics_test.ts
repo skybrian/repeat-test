@@ -36,7 +36,7 @@ describe("int", () => {
       assertMembers(arb.int(-3, -2), [-2, -3]);
     });
     it("includes positive and negative numbers within range", () => {
-      assertMembers(arb.int(-2, 2), [0, 1, 2, -1, -2]);
+      assertMembers(arb.int(-3, 3), [0, -1, 1, 2, 3, -2, -3]);
     });
   });
   describe("default", () => {
@@ -122,8 +122,8 @@ describe("record", () => {
     it("reads picks ordered by the keys", () => {
       assertSolutions(example, [
         { val: { a: 1, b: 3 }, picks: [1, 3] },
-        { val: { a: 1, b: 4 }, picks: [1, 4] },
         { val: { a: 2, b: 3 }, picks: [2, 3] },
+        { val: { a: 1, b: 4 }, picks: [1, 4] },
         { val: { a: 2, b: 4 }, picks: [2, 4] },
       ]);
     });
@@ -177,13 +177,15 @@ describe("array", () => {
           { val: [false], picks: [1, 0, 0] },
           { val: [true], picks: [1, 1, 0] },
           { val: [false, false], picks: [1, 0, 1, 0, 0] },
+          { val: [true, false], picks: [1, 1, 1, 0, 0] },
           { val: [false, true], picks: [1, 0, 1, 1, 0] },
+          { val: [true, true], picks: [1, 1, 1, 1, 0] },
         ]);
       });
     });
   });
-  describe("of ints", () => {
-    const ints = arb.array(arb.int(0, 2 ** 16));
+  describe("of unsigned ints", () => {
+    const ints = arb.array(arb.int(0, 2 ** 32));
     it("defaults to an empty array", () => {
       assertEquals(ints.default, []);
     });

@@ -133,6 +133,7 @@ export type SearchOpts = {
    */
   replaceRequest?: RequestFilter;
   acceptPlayout?: PlayoutFilter;
+  acceptEmptyPlayout?: boolean;
 };
 
 export class Cursor implements RetryPicker {
@@ -144,7 +145,7 @@ export class Cursor implements RetryPicker {
    */
   private readonly nodes: Node[];
 
-  private readonly reqs: (PickRequest | undefined)[];
+  private readonly reqs: PickRequest[];
 
   /**
    * The picks made in the current playout. The pick at index 0 is always 0,
@@ -154,6 +155,7 @@ export class Cursor implements RetryPicker {
 
   private readonly replaceRequest: RequestFilter;
   private readonly acceptPlayout: PlayoutFilter;
+  private readonly acceptEmptyPlayout: boolean;
 
   private done = false;
 
@@ -176,10 +178,11 @@ export class Cursor implements RetryPicker {
     opts: SearchOpts = {},
   ) {
     this.nodes = [start];
-    this.reqs = [undefined];
+    this.reqs = [new PickRequest(0, 0)];
     this.picks = [0];
     this.replaceRequest = opts.replaceRequest ?? ((_, req) => req);
     this.acceptPlayout = opts.acceptPlayout ?? (() => true);
+    this.acceptEmptyPlayout = opts.acceptEmptyPlayout ?? true;
   }
 
   getNodes(): Node[] {
@@ -297,11 +300,10 @@ export class Cursor implements RetryPicker {
     this.tree.checkAlive(this.version);
     this.done = true;
     this.tree.endPlayout();
-    const lastReq = this.reqs[this.reqs.length - 1];
-    if (!lastReq) {
-      // No need to filter the only playout of an empty tree (constant).
-      return true;
+    if (this.depth === 0) {
+      return this.acceptEmptyPlayout;
     }
+    const lastReq = this.reqs[this.reqs.length - 1];
     const lastDepth = this.reqs.length - 2;
     return this.acceptPlayout(lastDepth, lastReq);
   }
@@ -469,24 +471,38 @@ export function depthFirstSearch(opts?: SearchOpts): Iterable<RetryPicker> {
   return new SearchTree(0).pickers(alwaysPickDefault, opts);
 }
 
-function* breadthFirstPass(
-  maxDepth: number,
-  prunedPlayout: () => void,
+/**
+ * Runs a single pass of a breadth-first search.
+ * @param passIdx the number of previous passes that were run.
+ * @param more called if more passes are needed.
+ */
+export function* breadthFirstPass(
+  passIdx: number,
+  more: () => void,
 ): Iterable<RetryPicker> {
+  let moreSent = false;
+  function pruned() {
+    if (!moreSent) {
+      more();
+      moreSent = true;
+    }
+  }
   const replaceRequest = (depth: number, req: PickRequest) => {
-    if (depth > maxDepth) {
-      prunedPlayout();
-      return undefined;
+    if (depth === passIdx - 1) {
+      pruned();
+      if (req.min === req.max) {
+        return undefined; //  no more playouts
+      }
+      return new PickRequest(req.min + 1, req.max);
+    } else if (depth >= passIdx) {
+      pruned();
+      return new PickRequest(req.min, req.min);
     }
     return req;
   };
 
   const acceptPlayout = (lastDepth: number, _req: PickRequest) => {
-    if (lastDepth + 1 > maxDepth) {
-      prunedPlayout();
-      return false;
-    }
-    return lastDepth + 1 >= maxDepth;
+    return lastDepth >= passIdx - 1;
   };
 
   const tree = new SearchTree(0);
@@ -494,6 +510,7 @@ function* breadthFirstPass(
     const picker = tree.makePicker(alwaysPickDefault, {
       replaceRequest,
       acceptPlayout,
+      acceptEmptyPlayout: passIdx === 0,
     });
     if (picker === undefined) break;
     yield picker;
