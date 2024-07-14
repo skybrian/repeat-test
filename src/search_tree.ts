@@ -469,6 +469,37 @@ export function depthFirstSearch(opts?: SearchOpts): Iterable<RetryPicker> {
   return new SearchTree(0).pickers(alwaysPickDefault, opts);
 }
 
+function* breadthFirstPass(
+  maxDepth: number,
+  prunedPlayout: () => void,
+): Iterable<RetryPicker> {
+  const replaceRequest = (depth: number, req: PickRequest) => {
+    if (depth > maxDepth) {
+      prunedPlayout();
+      return undefined;
+    }
+    return req;
+  };
+
+  const acceptPlayout = (lastDepth: number, _req: PickRequest) => {
+    if (lastDepth + 1 > maxDepth) {
+      prunedPlayout();
+      return false;
+    }
+    return lastDepth + 1 >= maxDepth;
+  };
+
+  const tree = new SearchTree(0);
+  while (true) {
+    const picker = tree.makePicker(alwaysPickDefault, {
+      replaceRequest,
+      acceptPlayout,
+    });
+    if (picker === undefined) break;
+    yield picker;
+  }
+}
+
 /**
  * Iterates over all playouts in breadth-first order, using iterative deepening.
  *
@@ -479,32 +510,9 @@ export function* breadthFirstSearch(): Iterable<RetryPicker> {
   let pruned = true;
   while (pruned) {
     pruned = false;
-
-    const replaceRequest = (depth: number, req: PickRequest) => {
-      if (depth > maxDepth) {
-        pruned = true;
-        return undefined;
-      }
-      return req;
-    };
-
-    const acceptPlayout = (depth: number, _req: PickRequest) => {
-      if (depth > maxDepth - 1) {
-        pruned = true;
-        return false;
-      }
-      return depth >= maxDepth - 1;
-    };
-
-    const tree = new SearchTree(0);
-    while (true) {
-      const picker = tree.makePicker(alwaysPickDefault, {
-        replaceRequest,
-        acceptPlayout,
-      });
-      if (picker === undefined) break;
-      yield picker;
-    }
+    yield* breadthFirstPass(maxDepth, () => {
+      pruned = true;
+    });
     maxDepth++;
   }
 }
