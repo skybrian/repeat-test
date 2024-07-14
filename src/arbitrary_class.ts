@@ -320,8 +320,7 @@ export default class Arbitrary<T> {
    */
   get solutions(): IterableIterator<Solution<T>> {
     function* allPicks(arb: Arbitrary<T>): IterableIterator<Solution<T>> {
-      const startDepth = arb.defaultSolution.playout.picks.length + 3;
-      const it = breadthFirstSearch({ startDepth })[Symbol.iterator]();
+      const it = breadthFirstSearch()[Symbol.iterator]();
       // Pick will exit early when it finds a solution.
       // Resume the same iteration after each pick.
       const resumable: IterableIterator<RetryPicker> = {

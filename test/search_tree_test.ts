@@ -450,14 +450,13 @@ describe("breadthFirstSearch", () => {
   it("visits each child branch once", () => {
     const example = arb.record({
       tree: anyTree,
-      startDepth: Arbitrary.from(new PickRequest(0, 10)),
     });
-    repeatTest(example, ({ tree, startDepth }) => {
+    repeatTest(example, ({ tree }) => {
       const size = treeSize(tree);
       const expectedLeaves = Array(size).fill(0).map((_, i) => i);
 
       const maze = new Maze(tree);
-      for (const picker of breadthFirstSearch({ startDepth })) {
+      for (const picker of breadthFirstSearch()) {
         maze.visit(picker);
       }
       assertEquals(expectedLeaves, maze.leaves);

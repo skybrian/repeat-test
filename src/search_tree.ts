@@ -469,25 +469,13 @@ export function depthFirstSearch(opts?: SearchOpts): Iterable<RetryPicker> {
   return new SearchTree(0).pickers(alwaysPickDefault, opts);
 }
 
-export type BreadthFirstSearchOpts = {
-  /**
-   * The depth to start the search at.
-   *
-   * If not set, the search starts at depth 0.
-   */
-  startDepth?: number;
-};
-
 /**
  * Iterates over all playouts in breadth-first order, using iterative deepening.
  *
  * (The iterable can only be iterated over once.)
  */
-export function* breadthFirstSearch(
-  opts?: BreadthFirstSearchOpts,
-): Iterable<RetryPicker> {
-  let maxDepth = opts?.startDepth ?? 0;
-  let prevDepth = -1;
+export function* breadthFirstSearch(): Iterable<RetryPicker> {
+  let maxDepth = 0;
   let pruned = true;
   while (pruned) {
     pruned = false;
@@ -501,11 +489,11 @@ export function* breadthFirstSearch(
     };
 
     const acceptPlayout = (depth: number, _req: PickRequest) => {
-      if (depth + 1 > maxDepth) {
+      if (depth > maxDepth - 1) {
         pruned = true;
         return false;
       }
-      return depth + 1 > prevDepth;
+      return depth >= maxDepth - 1;
     };
 
     const tree = new SearchTree(0);
@@ -517,7 +505,6 @@ export function* breadthFirstSearch(
       if (picker === undefined) break;
       yield picker;
     }
-    prevDepth = maxDepth;
     maxDepth++;
   }
 }
