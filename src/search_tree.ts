@@ -118,14 +118,21 @@ interface CursorParent {
   endSearch(): void;
 }
 
+type RequestFilter = (
+  req: PickRequest,
+  depth: number,
+) => PickRequest | undefined;
+
+type PlayoutFilter = (depth: number) => boolean;
+
 export type SearchOpts = {
   /**
    * Replaces each incoming pick request with a new one. The new request might
    * have a narrower range or a different default. If the callback returns
    * undefined, the playout will be cancelled.
    */
-  replaceRequest?: (req: PickRequest, depth: number) => PickRequest | undefined;
-  acceptPlayout?: (depth: number) => boolean;
+  replaceRequest?: RequestFilter;
+  acceptPlayout?: PlayoutFilter;
 };
 
 export class Cursor implements RetryPicker {
@@ -142,12 +149,8 @@ export class Cursor implements RetryPicker {
    */
   private readonly picks: number[];
 
-  private readonly replaceRequest: (
-    req: PickRequest,
-    depth: number,
-  ) => PickRequest | undefined;
-
-  private readonly acceptPlayout: (depth: number) => boolean;
+  private readonly replaceRequest: RequestFilter;
+  private readonly acceptPlayout: PlayoutFilter;
 
   private done = false;
 
