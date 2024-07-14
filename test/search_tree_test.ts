@@ -162,7 +162,7 @@ describe("Cursor", () => {
       it("picks using a replaced request", () => {
         const tree = new SearchTree(1000);
         const picker = tree.makePicker(alwaysPickMin, {
-          replaceRequest: (req) => new PickRequest(req.default, req.default),
+          replaceRequest: (_, req) => new PickRequest(req.default, req.default),
         });
         assert(picker !== undefined);
 
@@ -244,7 +244,7 @@ describe("Cursor", () => {
     it("skips a filtered-out branch", () => {
       const tree = new SearchTree(1000);
       const picker = tree.makePicker(alwaysPickMin, {
-        replaceRequest: (req) => new PickRequest(req.default, req.default),
+        replaceRequest: (_, req) => new PickRequest(req.default, req.default),
       });
       assert(picker !== undefined);
 
@@ -396,26 +396,34 @@ describe("depthFirstSearch", () => {
   };
   it("filters by request depth", () => {
     const maze = Maze.depthFirstSearch(tree, {
-      replaceRequest: (req, depth) => depth < 1 ? req : undefined,
+      replaceRequest: (depth, req) => depth < 1 ? req : undefined,
     });
     assertEquals(Array.from(maze.accepted.keys()), ["[1]", "[2]"]);
     assertEquals(Array.from(maze.rejected.keys()), []);
     assertEquals(maze.pruneCount, 1);
   });
-  it("filters by playout depth === 1", () => {
+  it("filters by last request depth === 0", () => {
     const maze = Maze.depthFirstSearch(tree, {
-      acceptPlayout: (depth) => depth === 1,
+      acceptPlayout: (lastDepth) => lastDepth === 0,
     });
     assertEquals(Array.from(maze.accepted.keys()), ["[1]", "[2]"]);
     assertEquals(Array.from(maze.rejected.keys()), ["[0,0]", "[0,1]"]);
     assertEquals(maze.pruneCount, 0);
   });
-  it("filters by playout depth === 2", () => {
+  it("filters by last request depth === 1", () => {
     const maze = Maze.depthFirstSearch(tree, {
-      acceptPlayout: (depth) => depth === 2,
+      acceptPlayout: (lastDepth) => lastDepth === 1,
     });
     assertEquals(Array.from(maze.accepted.keys()), ["[0,0]", "[0,1]"]);
     assertEquals(Array.from(maze.rejected.keys()), ["[1]", "[2]"]);
+    assertEquals(maze.pruneCount, 0);
+  });
+  it("filters by last request size", () => {
+    const maze = Maze.depthFirstSearch(tree, {
+      acceptPlayout: (_, req) => req.size === 3,
+    });
+    assertEquals(Array.from(maze.accepted.keys()), ["[1]", "[2]"]);
+    assertEquals(Array.from(maze.rejected.keys()), ["[0,0]", "[0,1]"]);
     assertEquals(maze.pruneCount, 0);
   });
 });

@@ -119,11 +119,11 @@ interface CursorParent {
 }
 
 type RequestFilter = (
-  req: PickRequest,
   depth: number,
+  req: PickRequest,
 ) => PickRequest | undefined;
 
-type PlayoutFilter = (depth: number) => boolean;
+type PlayoutFilter = (depth: number, req: PickRequest) => boolean;
 
 export type SearchOpts = {
   /**
@@ -136,13 +136,16 @@ export type SearchOpts = {
 };
 
 export class Cursor implements RetryPicker {
-  /* Invariant: `nodes.length === picks.length` */
+  /* Invariant: `nodes.length === reqs.length === picks.length` */
 
   /**
    * The nodes used in the current playout. The 'start' node is at index 0, and
    * it points to the root at index 1.
    */
   private readonly nodes: Node[];
+
+  private readonly reqs: (PickRequest | undefined)[];
+
   /**
    * The picks made in the current playout. The pick at index 0 is always 0,
    * pointing to the root node.
@@ -173,8 +176,9 @@ export class Cursor implements RetryPicker {
     opts: SearchOpts = {},
   ) {
     this.nodes = [start];
+    this.reqs = [undefined];
     this.picks = [0];
-    this.replaceRequest = opts.replaceRequest ?? ((req) => req);
+    this.replaceRequest = opts.replaceRequest ?? ((_, req) => req);
     this.acceptPlayout = opts.acceptPlayout ?? (() => true);
   }
 
@@ -271,7 +275,7 @@ export class Cursor implements RetryPicker {
   maybePick(req: PickRequest): number {
     if (this.done) throw new Error("cannot pick after finishPlayout");
 
-    const replacement = this.replaceRequest(req, this.depth);
+    const replacement = this.replaceRequest(this.depth, req);
     if (!replacement) {
       throw new PlayoutPruned("pruned by replaceRequest");
     }
@@ -284,14 +288,22 @@ export class Cursor implements RetryPicker {
       throw new Error("internal error: node has no unpruned picks");
     }
     this.getNodes().push(node);
+    this.reqs.push(req);
     this.picks.push(pick);
     return pick;
   }
 
   finishPlayout(): boolean {
+    this.tree.checkAlive(this.version);
     this.done = true;
     this.tree.endPlayout();
-    return this.acceptPlayout(this.depth);
+    const lastReq = this.reqs[this.reqs.length - 1];
+    if (!lastReq) {
+      // No need to filter the only playout of an empty tree (constant).
+      return true;
+    }
+    const lastDepth = this.reqs.length - 2;
+    return this.acceptPlayout(lastDepth, lastReq);
   }
 
   /**
@@ -311,11 +323,9 @@ export class Cursor implements RetryPicker {
       }
       return false;
     }
-    const picks = this.picks;
-    while (nodes.length > depth + 1) {
-      nodes.pop();
-      picks.pop();
-    }
+    nodes.splice(depth + 1);
+    this.reqs.splice(depth + 1);
+    this.picks.splice(depth + 1);
     if (!this.done) {
       this.tree.endPlayout();
     }
@@ -482,7 +492,7 @@ export function* breadthFirstSearch(
   while (pruned) {
     pruned = false;
 
-    const replaceRequest = (req: PickRequest, depth: number) => {
+    const replaceRequest = (depth: number, req: PickRequest) => {
       if (depth > maxDepth) {
         pruned = true;
         return undefined;
@@ -490,12 +500,12 @@ export function* breadthFirstSearch(
       return req;
     };
 
-    const acceptPlayout = (depth: number) => {
-      if (depth > maxDepth) {
+    const acceptPlayout = (depth: number, _req: PickRequest) => {
+      if (depth + 1 > maxDepth) {
         pruned = true;
         return false;
       }
-      return depth > prevDepth;
+      return depth + 1 > prevDepth;
     };
 
     const tree = new SearchTree(0);
