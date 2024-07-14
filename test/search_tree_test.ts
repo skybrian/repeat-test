@@ -20,11 +20,13 @@ import { randomPicker } from "../src/random.ts";
 
 import {
   breadthFirstSearch,
+  BreadthFirstSearchOpts,
   Cursor,
   depthFirstSearch,
   SearchOpts,
   SearchTree,
 } from "../src/search_tree.ts";
+import Arbitrary from "../src/arbitrary_class.ts";
 
 const bit = new PickRequest(0, 1);
 
@@ -294,18 +296,63 @@ describe("Cursor", () => {
   });
 });
 
-class Maze {
-  accepted = new Set<string>();
-  rejected = new Set<string>();
+type Tree<T> = {
+  val: T;
+  children: Tree<T>[];
+};
+
+const childCount = Arbitrary.of(0, 0, 0, 0, 1, 2, 3);
+
+const anyTree = Arbitrary.from((pick) => {
+  let next = 0;
+  function pickTree(): Tree<number> {
+    const val = next++;
+    const children: Tree<number>[] = [];
+    const count = pick(childCount);
+    for (let i = 0; i < count; i++) {
+      children.push(pickTree());
+    }
+    return { val, children };
+  }
+  return pickTree();
+});
+
+function treeSize(tree: Tree<unknown>): number {
+  let size = 1;
+  for (const child of tree.children) {
+    size += treeSize(child);
+  }
+  return size;
+}
+
+function randomWalk<T>(tree: Tree<T>, picker: RetryPicker): T {
+  while (
+    tree.children.length > 0
+  ) {
+    const pick = picker.maybePick(new PickRequest(0, tree.children.length));
+    if (pick === tree.children.length) {
+      return tree.val;
+    }
+    tree = tree.children[pick];
+  }
+  return tree.val;
+}
+
+class Maze<T> {
+  accepted = new Map<string, T>();
+  rejected = new Map<string, T>();
   pruneCount = 0;
+
+  constructor(readonly tree: Tree<T>) {}
 
   visit(picker: RetryPicker) {
     try {
-      if (picker.maybePick(bit) === 1) {
-        picker.maybePick(bit);
-        this.finish(picker);
+      const val = randomWalk(this.tree, picker);
+      const picks = JSON.stringify(picker.getPicks());
+      if (picker.finishPlayout()) {
+        this.accepted.set(picks, val);
       } else {
-        this.finish(picker);
+        this.rejected.set(picks, val);
       }
     } catch (e) {
       if (e instanceof PlayoutPruned) {
@@ -316,41 +363,62 @@ class Maze {
     }
   }
 
-  finish(picker: RetryPicker) {
-    if (picker.finishPlayout()) {
-      this.accepted.add(JSON.stringify(picker.getPicks()));
-    } else {
-      this.rejected.add(JSON.stringify(picker.getPicks()));
-    }
+  get leaves() {
+    return Array.from(this.accepted.values());
   }
-}
 
-function searchMaze(opts: SearchOpts) {
-  const maze = new Maze();
-  for (const picker of depthFirstSearch(opts)) {
-    maze.visit(picker);
+  static depthFirstSearch<T>(tree: Tree<T>, opts: SearchOpts) {
+    const maze = new Maze(tree);
+    for (const picker of depthFirstSearch(opts)) {
+      maze.visit(picker);
+    }
+    return maze;
   }
-  return maze;
+
+  static breadthFirstSearch<T>(tree: Tree<T>, opts?: BreadthFirstSearchOpts) {
+    const maze = new Maze(tree);
+    for (const picker of breadthFirstSearch(opts)) {
+      maze.visit(picker);
+    }
+    return maze;
+  }
 }
 
 describe("depthFirstSearch", () => {
+  const tree = {
+    val: "a",
+    children: [
+      {
+        val: "b",
+        children: [{ val: "d", children: [] }],
+      },
+      {
+        val: "c",
+        children: [],
+      },
+    ],
+  };
   it("filters by request depth", () => {
-    const maze = searchMaze({
+    const maze = Maze.depthFirstSearch(tree, {
       replaceRequest: (req, depth) => depth < 1 ? req : undefined,
     });
-    assertEquals(Array.from(maze.accepted), ["[0]"]);
-    assertEquals(Array.from(maze.rejected), []);
+    assertEquals(Array.from(maze.accepted.keys()), ["[1]", "[2]"]);
+    assertEquals(Array.from(maze.rejected.keys()), []);
     assertEquals(maze.pruneCount, 1);
   });
   it("filters by playout depth", () => {
-    const maze = searchMaze({ acceptPlayout: (depth) => depth === 1 });
-    assertEquals(Array.from(maze.accepted), ["[0]"]);
-    assertEquals(Array.from(maze.rejected), ["[1,0]", "[1,1]"]);
+    const maze = Maze.depthFirstSearch(tree, {
+      acceptPlayout: (depth) => depth === 1,
+    });
+    assertEquals(Array.from(maze.accepted.keys()), ["[1]", "[2]"]);
+    assertEquals(Array.from(maze.rejected.keys()), ["[0,0]", "[0,1]"]);
     assertEquals(maze.pruneCount, 0);
 
-    const maze2 = searchMaze({ acceptPlayout: (depth) => depth === 2 });
-    assertEquals(Array.from(maze2.accepted), ["[1,0]", "[1,1]"]);
-    assertEquals(Array.from(maze2.rejected), ["[0]"]);
+    const maze2 = Maze.depthFirstSearch(tree, {
+      acceptPlayout: (depth) => depth === 2,
+    });
+    assertEquals(Array.from(maze2.accepted.keys()), ["[0,0]", "[0,1]"]);
+    assertEquals(Array.from(maze2.rejected.keys()), ["[1]", "[2]"]);
     assertEquals(maze.pruneCount, 0);
   });
 });
@@ -375,26 +443,19 @@ describe("breadthFirstSearch", () => {
     assertEquals(Array.from(accepted), ["[0]", "[1]", "[2]"]);
   });
   it("visits each child branch once", () => {
-    const accepted = new Set<string>();
-    let pruned = 0;
-    for (const picker of breadthFirstSearch()) {
-      try {
-        const pick = picker.maybePick(new PickRequest(0, 2));
-        if (pick === 1) {
-          picker.maybePick(new PickRequest(3, 4));
-        }
-        if (picker.finishPlayout()) {
-          accepted.add(JSON.stringify(picker.getPicks()));
-        }
-      } catch (e) {
-        if (e instanceof PlayoutPruned) {
-          pruned++;
-        } else {
-          throw e;
-        }
-      }
-    }
-    assertEquals(Array.from(accepted), ["[0]", "[2]", "[1,3]", "[1,4]"]);
-    assertEquals(pruned, 1);
+    const example = arb.record({
+      tree: anyTree,
+      startDepth: Arbitrary.of(0, 1, 2, 3),
+    });
+    repeatTest(example, ({ tree, startDepth }) => {
+      const size = treeSize(tree);
+      const expectedLeaves = Array(size).fill(0).map((_, i) => i);
+
+      const maze = Maze.breadthFirstSearch(tree, { startDepth });
+      const actualLeaves = maze.leaves;
+      actualLeaves.sort((a, b) => a - b);
+
+      assertEquals(expectedLeaves, actualLeaves);
+    });
   });
 });

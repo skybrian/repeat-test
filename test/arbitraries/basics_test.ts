@@ -29,9 +29,13 @@ describe("boolean", () => {
 
 describe("int", () => {
   describe("members", () => {
-    it("includes each number within range", () => {
+    it("includes positive numbers within range", () => {
       assertMembers(arb.int(1, 6), [1, 2, 3, 4, 5, 6]);
+    });
+    it("includes negative numbers within range", () => {
       assertMembers(arb.int(-3, -2), [-2, -3]);
+    });
+    it("includes positive and negative numbers within range", () => {
       assertMembers(arb.int(-2, 2), [0, 1, 2, -1, -2]);
     });
   });
