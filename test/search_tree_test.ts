@@ -20,7 +20,6 @@ import { randomPicker } from "../src/random.ts";
 
 import {
   breadthFirstSearch,
-  BreadthFirstSearchOpts,
   Cursor,
   depthFirstSearch,
   SearchOpts,
@@ -338,18 +337,21 @@ function randomWalk<T>(tree: Tree<T>, picker: RetryPicker): T {
   return tree.val;
 }
 
-class Maze<T> {
-  accepted = new Map<string, T>();
-  rejected = new Map<string, T>();
+class Maze {
+  accepted = new Map<string, number>();
+  rejected = new Map<string, number>();
   pruneCount = 0;
 
-  constructor(readonly tree: Tree<T>) {}
+  constructor(readonly tree: Tree<number>) {}
 
   visit(picker: RetryPicker) {
     try {
       const val = randomWalk(this.tree, picker);
       const picks = JSON.stringify(picker.getPicks());
       if (picker.finishPlayout()) {
+        if (this.accepted.has(picks)) {
+          fail(`duplicate picks: ${picks}`);
+        }
         this.accepted.set(picks, val);
       } else {
         this.rejected.set(picks, val);
@@ -364,20 +366,14 @@ class Maze<T> {
   }
 
   get leaves() {
-    return Array.from(this.accepted.values());
+    const result = Array.from(this.accepted.values());
+    result.sort((a, b) => a - b);
+    return result;
   }
 
-  static depthFirstSearch<T>(tree: Tree<T>, opts: SearchOpts) {
+  static depthFirstSearch(tree: Tree<number>, opts: SearchOpts) {
     const maze = new Maze(tree);
     for (const picker of depthFirstSearch(opts)) {
-      maze.visit(picker);
-    }
-    return maze;
-  }
-
-  static breadthFirstSearch<T>(tree: Tree<T>, opts?: BreadthFirstSearchOpts) {
-    const maze = new Maze(tree);
-    for (const picker of breadthFirstSearch(opts)) {
       maze.visit(picker);
     }
     return maze;
@@ -385,15 +381,15 @@ class Maze<T> {
 }
 
 describe("depthFirstSearch", () => {
-  const tree = {
-    val: "a",
+  const tree: Tree<number> = {
+    val: 42,
     children: [
       {
-        val: "b",
-        children: [{ val: "d", children: [] }],
+        val: 43,
+        children: [{ val: 45, children: [] }],
       },
       {
-        val: "c",
+        val: 44,
         children: [],
       },
     ],
@@ -406,19 +402,20 @@ describe("depthFirstSearch", () => {
     assertEquals(Array.from(maze.rejected.keys()), []);
     assertEquals(maze.pruneCount, 1);
   });
-  it("filters by playout depth", () => {
+  it("filters by playout depth === 1", () => {
     const maze = Maze.depthFirstSearch(tree, {
       acceptPlayout: (depth) => depth === 1,
     });
     assertEquals(Array.from(maze.accepted.keys()), ["[1]", "[2]"]);
     assertEquals(Array.from(maze.rejected.keys()), ["[0,0]", "[0,1]"]);
     assertEquals(maze.pruneCount, 0);
-
-    const maze2 = Maze.depthFirstSearch(tree, {
+  });
+  it("filters by playout depth === 2", () => {
+    const maze = Maze.depthFirstSearch(tree, {
       acceptPlayout: (depth) => depth === 2,
     });
-    assertEquals(Array.from(maze2.accepted.keys()), ["[0,0]", "[0,1]"]);
-    assertEquals(Array.from(maze2.rejected.keys()), ["[1]", "[2]"]);
+    assertEquals(Array.from(maze.accepted.keys()), ["[0,0]", "[0,1]"]);
+    assertEquals(Array.from(maze.rejected.keys()), ["[1]", "[2]"]);
     assertEquals(maze.pruneCount, 0);
   });
 });
@@ -445,17 +442,17 @@ describe("breadthFirstSearch", () => {
   it("visits each child branch once", () => {
     const example = arb.record({
       tree: anyTree,
-      startDepth: Arbitrary.of(0, 1, 2, 3),
+      startDepth: Arbitrary.from(new PickRequest(0, 10)),
     });
     repeatTest(example, ({ tree, startDepth }) => {
       const size = treeSize(tree);
       const expectedLeaves = Array(size).fill(0).map((_, i) => i);
 
-      const maze = Maze.breadthFirstSearch(tree, { startDepth });
-      const actualLeaves = maze.leaves;
-      actualLeaves.sort((a, b) => a - b);
-
-      assertEquals(expectedLeaves, actualLeaves);
+      const maze = new Maze(tree);
+      for (const picker of breadthFirstSearch({ startDepth })) {
+        maze.visit(picker);
+      }
+      assertEquals(expectedLeaves, maze.leaves);
     });
   });
 });
