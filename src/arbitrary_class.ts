@@ -425,6 +425,10 @@ export default class Arbitrary<T> {
     });
   }
 
+  asFunction() {
+    return () => this;
+  }
+
   toString() {
     return `Arbitrary(default: ${this.default})`;
   }

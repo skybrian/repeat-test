@@ -19,13 +19,7 @@ export function of<T>(...values: T[]): Arbitrary<T> {
   return Arbitrary.of(...values);
 }
 
-export function bit() {
-  return Arbitrary.from(new PickRequest(0, 1));
-}
-
-export function boolean(): Arbitrary<boolean> {
-  return Arbitrary.of(false, true);
-}
+export const boolean = Arbitrary.of(false, true).asFunction();
 
 /**
  * Chooses a safe integer.
@@ -55,6 +49,8 @@ export function int(
     return Arbitrary.oneOf([int(0, max), int(min, -1, opts)]);
   }
 }
+
+export const bit = int(0, 1).asFunction();
 
 /**
  * Creates an Arbitrary for a record with the given shape.
