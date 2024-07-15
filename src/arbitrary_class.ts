@@ -68,12 +68,23 @@ export type Solution<T> = {
   readonly playout: Playout;
 };
 
+type Solver<T> = (
+  picker: RetryPicker,
+  getPick: () => PickFunction,
+) => T;
+
+function callbackToSolver<T>(
+  callback: ArbitraryCallback<T>,
+): Solver<T> {
+  return (_picker, getPick) => callback(getPick());
+}
+
 /**
  * A set of values that can be randomly picked from. Members are generated as
  * needed.
  */
 export default class Arbitrary<T> {
-  private readonly callback: ArbitraryCallback<T>;
+  private readonly solver: Solver<T>;
 
   /**
    * An upper bound on the number of members in this Arbitrary.
@@ -92,12 +103,12 @@ export default class Arbitrary<T> {
     arg: PickRequest | ArbitraryCallback<T>,
   ): Arbitrary<T> | Arbitrary<number> {
     if (typeof arg === "function") {
-      return new Arbitrary(arg);
+      return new Arbitrary(callbackToSolver(arg));
     } else {
-      const callback: ArbitraryCallback<number> = (pick) => {
-        return pick(arg);
+      const solver = (picker: RetryPicker): number => {
+        return picker.maybePick(arg);
       };
-      return new Arbitrary(callback, { maxSize: arg.size });
+      return new Arbitrary(solver, { maxSize: arg.size });
     }
   }
 
@@ -117,7 +128,10 @@ export default class Arbitrary<T> {
       }
       maxSize *= size;
     }
-    return new Arbitrary((pick) => pick(shape) as T, { maxSize });
+    const callback = (pick: PickFunction) => {
+      return pick(shape) as T;
+    };
+    return new Arbitrary(callbackToSolver(callback), { maxSize });
   }
 
   /**
@@ -140,11 +154,14 @@ export default class Arbitrary<T> {
     }
 
     const req = new PickRequest(0, cases.length - 1);
-    const callback: ArbitraryCallback<T> = (pick) => {
-      const c = cases[pick(req)];
-      return pick(c);
+    const solver: Solver<T> = (
+      picker: RetryPicker,
+      makePick: () => PickFunction,
+    ): T => {
+      const c = cases[picker.maybePick(req)];
+      return makePick()(c);
     };
-    return new Arbitrary(callback, { maxSize });
+    return new Arbitrary(solver, { maxSize });
   }
 
   /**
@@ -164,11 +181,12 @@ export default class Arbitrary<T> {
       const constant = members[0];
       return new Arbitrary(() => constant, { maxSize: 1 });
     }
+
     const req = new PickRequest(0, members.length - 1);
-    const callback: ArbitraryCallback<T> = (pick) => {
-      return members[pick(req)];
+    const solver: Solver<T> = (picker) => {
+      return members[picker.maybePick(req)];
     };
-    return new Arbitrary(callback, {
+    return new Arbitrary(solver, {
       maxSize: members.length,
     });
   }
@@ -180,30 +198,38 @@ export default class Arbitrary<T> {
     // picker. They unwind the arbitraries depth-first to get each pick and then
     // build up a value based on it.
 
+    const pickBasicArb = <T>(
+      req: Arbitrary<T>,
+      picker: RetryPicker,
+    ): T => {
+      const level = ctx.startSpan();
+      const val = req.solver(picker, () => pickAny);
+      ctx.endSpan(level);
+      return val;
+    };
+
     const pickArb = <T>(
       req: Arbitrary<T>,
       opts?: PickFunctionOptions<T>,
     ): T => {
-      let pick = pickAny;
       const newDefaults = opts?.defaultPlayout;
-      if (newDefaults !== undefined) {
-        pick = makePickAny(replaceDefaults(ctx.picker, newDefaults));
-      }
+      const picker = newDefaults
+        ? replaceDefaults(ctx.picker, newDefaults)
+        : ctx.picker;
 
       const accept = opts?.accept;
 
       // non-backtracking case
       if (accept === undefined) {
-        const level = ctx.startSpan();
-        const val = req.callback(pick);
-        ctx.endSpan(level);
-        return val;
+        return pickBasicArb(req, picker);
       }
+
+      const pick = (newDefaults !== undefined) ? makePickAny(picker) : pickAny;
 
       // retry when there's a filter
       while (true) {
         const level = ctx.startSpan();
-        const val = req.callback(pick);
+        const val = req.solver(picker, () => pick);
         if (accept(val)) {
           ctx.endSpan(level);
           return val;
@@ -224,7 +250,7 @@ export default class Arbitrary<T> {
       }
       const result = {} as Partial<T>;
       for (const key of keys) {
-        result[key] = pickArb(req[key]);
+        result[key] = pickBasicArb(req[key], ctx.picker);
       }
       return result as T;
     };
@@ -252,10 +278,10 @@ export default class Arbitrary<T> {
   }
 
   private constructor(
-    callback: ArbitraryCallback<T>,
+    solver: Solver<T>,
     opts?: { maxSize?: number },
   ) {
-    this.callback = callback;
+    this.solver = solver;
     this.maxSize = opts?.maxSize;
     this.default; // dry run
   }
@@ -270,8 +296,8 @@ export default class Arbitrary<T> {
     for (const picker of pickers) {
       try {
         const ctx = new PlayoutContext(picker);
-        const pick = Arbitrary.makePickFunction(ctx);
-        const val = this.callback(pick);
+        const makePick = () => Arbitrary.makePickFunction(ctx);
+        const val = this.solver(ctx.picker, makePick);
         if (picker.finishPlayout()) {
           return { val, playout: ctx.toPlayout() };
         }
@@ -364,10 +390,11 @@ export default class Arbitrary<T> {
    */
   map<U>(convert: (val: T) => U): Arbitrary<U> {
     const maxSize = this.maxSize;
-    return new Arbitrary((pick) => {
+    const callback: ArbitraryCallback<U> = (pick) => {
       const output = pick(this);
       return convert(output);
-    }, { maxSize });
+    };
+    return new Arbitrary(callbackToSolver(callback), { maxSize });
   }
 
   /**
@@ -411,9 +438,10 @@ export default class Arbitrary<T> {
     }
 
     const maxSize = this.maxSize;
-    return new Arbitrary((pick) => {
+    const callback: ArbitraryCallback<T> = (pick) => {
       return pick(this, pickOpts);
-    }, { maxSize });
+    };
+    return new Arbitrary(callbackToSolver(callback), { maxSize });
   }
 
   /**
@@ -423,11 +451,12 @@ export default class Arbitrary<T> {
   chain<U>(
     convert: (val: T) => Arbitrary<U>,
   ): Arbitrary<U> {
-    return new Arbitrary((pick) => {
+    const callback: ArbitraryCallback<U> = (pick) => {
       const output = pick(this);
       const next = convert(output);
       return pick(next);
-    });
+    };
+    return new Arbitrary(callbackToSolver(callback));
   }
 
   asFunction() {
