@@ -207,7 +207,16 @@ export class PlaybackPicker implements IntPicker {
   private depth = 0;
   private rangeError?: string = undefined;
 
-  constructor(private readonly expected: number[]) {}
+  constructor(private readonly expected: number[]) {
+    for (let i = 0; i < expected.length; i++) {
+      if (expected[i] < 0) {
+        throw new Error("expected picks must be non-negative");
+      }
+      if (!Number.isSafeInteger(expected[i])) {
+        throw new Error("expected picks must be safe integers");
+      }
+    }
+  }
 
   get isRandom() {
     return false;
