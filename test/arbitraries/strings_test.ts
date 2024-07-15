@@ -12,9 +12,7 @@ describe("char16", () => {
   });
   it("parses a pick as as a code point", () => {
     for (let i = 0; i < 0xFFFF; i++) {
-      const val = arb.char16().parse([i]);
-      assertEquals(val.length, 1);
-      assertEquals(val, String.fromCodePoint(i));
+      assertParses(arb.char16(), [i], String.fromCodePoint(i));
     }
   });
 });
