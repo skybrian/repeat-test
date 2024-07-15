@@ -173,6 +173,85 @@ export default class Arbitrary<T> {
     });
   }
 
+  static makePickFunction<T>(
+    picker: RetryPicker,
+    ctx: PlayoutContext,
+  ): PickFunction {
+    // These inner functions are mutually recursive and depend on the passed-in
+    // picker. They unwind the arbitraries depth-first to get each pick and then
+    // build up a value based on it.
+
+    const pickArb = <T>(
+      req: Arbitrary<T>,
+      opts?: PickFunctionOptions<T>,
+    ): T => {
+      let pick = pickAny;
+      const newDefaults = opts?.defaultPlayout;
+      if (newDefaults !== undefined) {
+        pick = makePickAny(replaceDefaults(picker, newDefaults));
+      }
+
+      const accept = opts?.accept;
+
+      // non-backtracking case
+      if (accept === undefined) {
+        const level = ctx.startSpan();
+        const val = req.callback(pick);
+        ctx.endSpan(level);
+        return val;
+      }
+
+      // retry when there's a filter
+      while (true) {
+        const level = ctx.startSpan();
+        const val = req.callback(pick);
+        if (accept(val)) {
+          ctx.endSpan(level);
+          return val;
+        }
+        if (!ctx.cancelSpan(level)) {
+          // return default?
+          throw new PlayoutPruned(
+            `Couldn't find a playout that generates ${req}`,
+          );
+        }
+      }
+    };
+
+    const pickRecord = <T>(req: RecordShape<T>): T => {
+      const keys = Object.keys(req) as (keyof T)[];
+      if (keys.length === 0) {
+        return {} as T;
+      }
+      const result = {} as Partial<T>;
+      for (const key of keys) {
+        result[key] = pickArb(req[key]);
+      }
+      return result as T;
+    };
+
+    const makePickAny = (picker: RetryPicker): PickFunction => {
+      const dispatch = <T>(
+        req: PickRequest | Arbitrary<T> | RecordShape<T>,
+        opts?: PickFunctionOptions<T>,
+      ): number | T => {
+        if (req instanceof PickRequest) {
+          return picker.maybePick(req);
+        } else if (req instanceof Arbitrary) {
+          return pickArb(req, opts);
+        } else if (typeof req !== "object") {
+          throw new Error("pick called with invalid argument");
+        } else {
+          return pickRecord(req);
+        }
+      };
+      return dispatch;
+    };
+
+    const pickAny = makePickAny(picker);
+    return pickAny;
+  }
+
   private constructor(
     callback: ArbitraryCallback<T>,
     opts?: { maxSize?: number },
@@ -190,83 +269,10 @@ export default class Arbitrary<T> {
    */
   pick(pickers: Iterable<RetryPicker>): Solution<T> | undefined {
     for (const picker of pickers) {
-      const ctx = new PlayoutContext(picker);
-
-      // These inner functions are mutually recursive and depend on the passed-in
-      // picker. They unwind the arbitraries depth-first to get each pick and then
-      // build up a value based on it.
-
-      const pickArb = <T>(
-        req: Arbitrary<T>,
-        opts?: PickFunctionOptions<T>,
-      ): T => {
-        let pick = pickAny;
-        const newDefaults = opts?.defaultPlayout;
-        if (newDefaults !== undefined) {
-          pick = makePickAny(replaceDefaults(picker, newDefaults));
-        }
-
-        const accept = opts?.accept;
-
-        // non-backtracking case
-        if (accept === undefined) {
-          const level = ctx.startSpan();
-          const val = req.callback(pick);
-          ctx.endSpan(level);
-          return val;
-        }
-
-        // retry when there's a filter
-        while (true) {
-          const level = ctx.startSpan();
-          const val = req.callback(pick);
-          if (accept(val)) {
-            ctx.endSpan(level);
-            return val;
-          }
-          if (!ctx.cancelSpan(level)) {
-            // return default?
-            throw new PlayoutPruned(
-              `Couldn't find a playout that generates ${req}`,
-            );
-          }
-        }
-      };
-
-      const pickRecord = <T>(req: RecordShape<T>): T => {
-        const keys = Object.keys(req) as (keyof T)[];
-        if (keys.length === 0) {
-          return {} as T;
-        }
-        const result = {} as Partial<T>;
-        for (const key of keys) {
-          result[key] = pickArb(req[key]);
-        }
-        return result as T;
-      };
-
-      const makePickAny = (picker: RetryPicker): PickFunction => {
-        const dispatch = <T>(
-          req: PickRequest | Arbitrary<T> | RecordShape<T>,
-          opts?: PickFunctionOptions<T>,
-        ): number | T => {
-          if (req instanceof PickRequest) {
-            return picker.maybePick(req);
-          } else if (req instanceof Arbitrary) {
-            return pickArb(req, opts);
-          } else if (typeof req !== "object") {
-            throw new Error("pick called with invalid argument");
-          } else {
-            return pickRecord(req);
-          }
-        };
-        return dispatch;
-      };
-
-      const pickAny = makePickAny(picker);
-
       try {
-        const val = this.callback(pickAny);
+        const ctx = new PlayoutContext(picker);
+        const pick = Arbitrary.makePickFunction(picker, ctx);
+        const val = this.callback(pick);
         if (picker.finishPlayout()) {
           return { val, playout: ctx.toPlayout() };
         }
