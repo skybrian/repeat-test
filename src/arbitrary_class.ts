@@ -174,7 +174,6 @@ export default class Arbitrary<T> {
   }
 
   static makePickFunction<T>(
-    picker: RetryPicker,
     ctx: PlayoutContext,
   ): PickFunction {
     // These inner functions are mutually recursive and depend on the passed-in
@@ -188,7 +187,7 @@ export default class Arbitrary<T> {
       let pick = pickAny;
       const newDefaults = opts?.defaultPlayout;
       if (newDefaults !== undefined) {
-        pick = makePickAny(replaceDefaults(picker, newDefaults));
+        pick = makePickAny(replaceDefaults(ctx.picker, newDefaults));
       }
 
       const accept = opts?.accept;
@@ -248,7 +247,7 @@ export default class Arbitrary<T> {
       return dispatch;
     };
 
-    const pickAny = makePickAny(picker);
+    const pickAny = makePickAny(ctx.picker);
     return pickAny;
   }
 
@@ -271,7 +270,7 @@ export default class Arbitrary<T> {
     for (const picker of pickers) {
       try {
         const ctx = new PlayoutContext(picker);
-        const pick = Arbitrary.makePickFunction(picker, ctx);
+        const pick = Arbitrary.makePickFunction(ctx);
         const val = this.callback(pick);
         if (picker.finishPlayout()) {
           return { val, playout: ctx.toPlayout() };
