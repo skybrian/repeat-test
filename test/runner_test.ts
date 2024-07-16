@@ -94,11 +94,11 @@ describe("randomReps", () => {
     });
   });
   it("retries when a pick fails", () => {
-    const diceRoll = arb.int(1, 6, { default: 2 });
+    const diceRoll = arb.int(1, 6);
 
-    const rerollOnes = Arbitrary.from((pick) => {
+    const rerollTwos = Arbitrary.from((pick) => {
       const roll = pick(diceRoll);
-      if (roll === 1) {
+      if (roll === 2) {
         throw new PlayoutPruned("oh no, try again");
       }
       return "good";
@@ -107,7 +107,7 @@ describe("randomReps", () => {
     const test = () => {};
 
     repeatTest(arb.int32(), (seed) => {
-      const reps = randomReps(seed, rerollOnes, test, {
+      const reps = randomReps(seed, rerollTwos, test, {
         expectedPlayouts: 0,
       });
 

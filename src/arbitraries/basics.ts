@@ -31,22 +31,13 @@ export const boolean = Arbitrary.of(false, true).asFunction();
 export function int(
   min: number,
   max: number,
-  opts?: { default?: number },
 ): Arbitrary<number> {
   if (min >= 0) {
-    return Arbitrary.from(new PickRequest(min, max, opts));
-  }
-
-  const def = opts?.default ?? 0;
-  if (max <= 0) {
-    const negOpts = def < 0 ? { default: -def } : undefined;
-    return Arbitrary.from(new PickRequest(-max, -min, negOpts)).map((v) => -v);
-  }
-
-  if (def >= 0) {
-    return Arbitrary.oneOf([int(0, max, opts), int(min, -1)]);
+    return Arbitrary.from(new PickRequest(min, max));
+  } else if (max <= 0) {
+    return Arbitrary.from(new PickRequest(-max, -min)).map((v) => -v);
   } else {
-    return Arbitrary.oneOf([int(0, max), int(min, -1, opts)]);
+    return Arbitrary.oneOf([int(0, max), int(min, -1)]);
   }
 }
 

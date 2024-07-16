@@ -14,19 +14,4 @@ describe("shrinkPick", () => {
       assertEquals(guesses, []);
     });
   });
-  it("shrinks a non-default value to a default value", () => {
-    const example = arb.from((pick) => {
-      const defaultVal = pick(arb.int(1, 6));
-      const next = defaultVal % 6 + 1;
-      const reply = pick(
-        arb.int(1, 6, { default: next }).filter((x) => x !== defaultVal),
-      );
-      return { defaultVal, reply };
-    });
-    repeatTest(example, ({ defaultVal, reply }) => {
-      const req = new PickRequest(1, 6, { default: defaultVal });
-      const guesses = Array.from(shrinkPick(req, reply));
-      assertEquals(guesses, [defaultVal]);
-    });
-  });
 });

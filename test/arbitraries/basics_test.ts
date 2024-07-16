@@ -49,9 +49,6 @@ describe("int", () => {
     it("defaults to 0 for a range that includes 0", () => {
       assertEquals(arb.int(-6, 6).default, 0);
     });
-    it("defaults to a custom default value", () => {
-      assertEquals(arb.int(1, 6, { default: 3 }).default, 3);
-    });
   });
   describe("parse", () => {
     it("accepts picks as-is when in an unsigned range", () => {
@@ -209,10 +206,10 @@ describe("array", () => {
     });
   });
   describe("with a fixed-size array", () => {
-    const item = arb.int(0, 3, { default: 1 });
+    const item = arb.int(0, 3);
     const fixed = arb.array(item, { min: 2, max: 2 });
     it("defaults to an array of default values", () => {
-      assertEquals(fixed.default, [1, 1]);
+      assertEquals(fixed.default, [0, 0]);
     });
     it("parses each item in the array", () => {
       assertParses(fixed, [3, 2], [3, 2]);

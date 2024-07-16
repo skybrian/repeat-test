@@ -129,7 +129,7 @@ describe("wellFormedString", () => {
   it("defaults to an empty string", () => {
     assertEquals(arb.wellFormedString().default, "");
   });
-  it("starts with ascii characters", () => {
+  it("starts with the empty string, followed by single ascii characters", () => {
     assertFirstExamples(arb.wellFormedString(), [
       "",
       ...("abcdefghijklmnopqrstuvwxyz".split("")),
