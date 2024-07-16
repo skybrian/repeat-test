@@ -1,7 +1,7 @@
 import Arbitrary from "../arbitrary_class.ts";
 import * as arb from "./basics.ts";
 
-const asciiTable = arb.of(...(() => {
+const asciiTable = (() => {
   const out: string[] = [];
 
   function pushRange(start: number, end: number): void {
@@ -31,7 +31,9 @@ const asciiTable = arb.of(...(() => {
   }
   out.push(String.fromCharCode(127)); // DEL
   return out;
-})());
+})();
+
+const asciiTableArb = arb.of(...asciiTable);
 
 /**
  * The ascii characters, optionally matching a regular expression. They are
@@ -39,9 +41,9 @@ const asciiTable = arb.of(...(() => {
  */
 export function asciiChar(regexp?: RegExp): Arbitrary<string> {
   if (regexp === undefined) {
-    return asciiTable;
+    return asciiTableArb;
   }
-  return asciiTable.filter((c) => regexp.test(c)).precompute();
+  return asciiTableArb.filter((c) => regexp.test(c)).precompute();
 }
 
 /** The characters a-z and A-Z, in that order. */
@@ -63,9 +65,13 @@ export const asciiSymbol = asciiChar(/[^ a-zA-Z0-9\x00-\x1f\x7f]/).asFunction();
  * surrogates. It's useful when you want to test your code to handle
  * badly-formed strings.
  */
-export function char16(): Arbitrary<string> {
-  return charCode.map((code) => String.fromCharCode(code));
-}
+export const char16 = arb.int(0, 0xffff).map((code) => {
+  if (code < 128) {
+    return asciiTable[code];
+  }
+  return String.fromCodePoint(code);
+})
+  .asFunction();
 
 const defaultChar = "x".charCodeAt(0);
 const charCode = arb.int(0, 0xffff, { default: defaultChar });

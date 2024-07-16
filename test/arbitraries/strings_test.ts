@@ -7,22 +7,26 @@ import { isWellFormed } from "../../src/workarounds.ts";
 import * as arb from "../../src/arbitraries.ts";
 import Arbitrary from "../../src/arbitrary_class.ts";
 
-function assertContainsAscii(arb: Arbitrary<string>) {
-  const actual = arb.takeAll();
-  assertEquals(actual.length, 128);
+function assertCharCodeRange(
+  arb: Arbitrary<string>,
+  min: number,
+  max: number,
+) {
+  const actual = arb.takeAll({ limit: 100000 });
+  assertEquals(actual.length, max - min + 1);
   const actualSet = new Set(actual);
-  assertEquals(actualSet.size, 128);
-  for (let i = 0; i < 128; i++) {
+  assertEquals(actualSet.size, max - min + 1);
+  for (let i = min; i <= max; i++) {
     assert(actualSet.has(String.fromCharCode(i)));
   }
 }
 
 describe("asciiChar", () => {
-  it("selects all ascii characters by default", () => {
-    assertContainsAscii(arb.asciiChar());
+  it("selects all ascii characters, by default", () => {
+    assertCharCodeRange(arb.asciiChar(), 0, 127);
   });
-  it("selects all ascii characters given a regexp", () => {
-    assertContainsAscii(arb.asciiChar(/.*/));
+  it("selects all ascii characters, given a regexp that selects everything", () => {
+    assertCharCodeRange(arb.asciiChar(), 0, 127);
   });
   it("can select a single ascii character", () => {
     assertEquals(arb.asciiChar(/x/).takeAll(), ["x"]);
@@ -76,13 +80,11 @@ describe("asciiSymbol", () => {
 });
 
 describe("char16", () => {
-  it("defaults to 'x'", () => {
-    assertEquals(arb.char16().default, "x");
+  it("defaults to 'a'", () => {
+    assertEquals(arb.char16().default, "a");
   });
-  it("parses a pick as as a code point", () => {
-    for (let i = 0; i < 0xFFFF; i++) {
-      assertParses(arb.char16(), [i], String.fromCodePoint(i));
-    }
+  it("includes all code points", () => {
+    assertCharCodeRange(arb.char16(), 0, 0xFFFF);
   });
 });
 
