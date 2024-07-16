@@ -1,20 +1,51 @@
 import Arbitrary from "../arbitrary_class.ts";
 import * as arb from "./basics.ts";
 
-/** The ascii characters matching a regular expression. */
-export function asciiChar(regexp: RegExp): Arbitrary<string> {
-  return arb.int(0, 127).map((i) => String.fromCharCode(i))
-    .filter((c) => regexp.test(c)).precompute();
+const asciiTable = arb.of(...(() => {
+  const out: string[] = [];
+
+  function pushRange(start: number, end: number): void {
+    for (let i = start; i <= end; i++) {
+      out.push(String.fromCharCode(i));
+    }
+  }
+
+  pushRange(97, 122); // lowercase
+  pushRange(65, 90); // uppercase
+  pushRange(48, 57); // digits
+  pushRange(33, 47); // ! " # $ % & ' ( ) * + , - . /
+  pushRange(58, 64); // : ; < = > ? @
+  pushRange(91, 96); // [ \ ] ^ _ `
+  pushRange(123, 126); // { | } ~
+
+  const whitespaces = [9, 10, 11, 12, 13, 32]; // \t, \n, \v, \f, \r, space
+  whitespaces.forEach((code) => {
+    out.push(String.fromCharCode(code));
+  });
+
+  // all other control characters
+  for (let i = 0; i < 32; i++) {
+    if (!whitespaces.includes(i)) {
+      out.push(String.fromCharCode(i));
+    }
+  }
+  out.push(String.fromCharCode(127)); // DEL
+  return out;
+})());
+
+/**
+ * The ascii characters, optionally matching a regular expression. They are
+ * reordered to put characters that look nicer in examples first.
+ */
+export function asciiChar(regexp?: RegExp): Arbitrary<string> {
+  if (regexp === undefined) {
+    return asciiTable;
+  }
+  return asciiTable.filter((c) => regexp.test(c)).precompute();
 }
 
 /** The characters a-z and A-Z, in that order. */
-export const asciiLetter = arb.int(0, 26 * 2 - 1).map((i) => {
-  if (i < 26) {
-    return String.fromCharCode(i + 97);
-  } else {
-    return String.fromCharCode(i - 26 + 65);
-  }
-}).precompute().asFunction();
+export const asciiLetter = asciiChar(/[a-zA-Z]/).asFunction();
 
 /** The characters 0-9, in that order. */
 export const asciiDigit = asciiChar(/\d/).asFunction();
@@ -24,6 +55,17 @@ export const asciiWhitespace = arb.of(..." \t\n\v\f\r".split("")).asFunction();
 /** Ascii characters that are not letters, digits, whitespace, or control characters. */
 // deno-lint-ignore no-control-regex
 export const asciiSymbol = asciiChar(/[^ a-zA-Z0-9\x00-\x1f\x7f]/).asFunction();
+
+/**
+ * All strings of length 1, containing single 16-bit code unit.
+ *
+ * Some of these strings aren't well-formed because they are unpaired
+ * surrogates. It's useful when you want to test your code to handle
+ * badly-formed strings.
+ */
+export function char16(): Arbitrary<string> {
+  return charCode.map((code) => String.fromCharCode(code));
+}
 
 const defaultChar = "x".charCodeAt(0);
 const charCode = arb.int(0, 0xffff, { default: defaultChar });
@@ -38,17 +80,6 @@ const codePoint = arb.int(0, unicodeMax - surrogateGap, {
 }).map(
   (code) => (code >= surrogateMin) ? code + surrogateGap : code,
 );
-
-/**
- * All strings of length 1, which contain a single 16-bit code unit.
- *
- * Some of these strings aren't well-formed because they are unpaired
- * surrogates. So, this arbitrary can be used if you want your code to handle
- * badly-formed strings somehow.
- */
-export function char16(): Arbitrary<string> {
-  return charCode.map((code) => String.fromCharCode(code));
-}
 
 /**
  * All well-formed strings that correspond to a single Unicode code point. The

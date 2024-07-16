@@ -1,22 +1,34 @@
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { assertParses, assertSameExamples } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 import { isWellFormed } from "../../src/workarounds.ts";
 
 import * as arb from "../../src/arbitraries.ts";
+import Arbitrary from "../../src/arbitrary_class.ts";
+
+function assertContainsAscii(arb: Arbitrary<string>) {
+  const actual = arb.takeAll();
+  assertEquals(actual.length, 128);
+  const actualSet = new Set(actual);
+  assertEquals(actualSet.size, 128);
+  for (let i = 0; i < 128; i++) {
+    assert(actualSet.has(String.fromCharCode(i)));
+  }
+}
 
 describe("asciiChar", () => {
+  it("selects all ascii characters by default", () => {
+    assertContainsAscii(arb.asciiChar());
+  });
+  it("selects all ascii characters given a regexp", () => {
+    assertContainsAscii(arb.asciiChar(/.*/));
+  });
   it("can select a single ascii character", () => {
     assertEquals(arb.asciiChar(/x/).takeAll(), ["x"]);
   });
-  it("can select all ascii characters", () => {
-    const actual = arb.asciiChar(/.*/).takeAll();
-    assertEquals(actual.length, 128);
-    assertEquals(new Set(actual).size, 128);
-    for (let i = 0; i < 128; i++) {
-      assertEquals(actual.indexOf(String.fromCharCode(i)), i);
-    }
+  it("defaults to 'a'", () => {
+    assertEquals(arb.asciiChar().default, "a");
   });
 });
 
