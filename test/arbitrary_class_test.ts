@@ -74,16 +74,14 @@ describe("Arbitrary", () => {
       it("accepts a PickRequest", () => {
         const req = new PickRequest(1, 2);
         const arb = Arbitrary.from((pick) => pick(req));
-        const sol = arb.pick(defaultPlayout());
-        assert(sol !== undefined);
-        assertEquals(sol.val, 1);
+        const ex = arb.pick(defaultPlayout());
+        assertEquals(ex, 1);
       });
       it("accepts an Arbitrary", () => {
         const req = Arbitrary.of("hi", "there");
         const arb = Arbitrary.from((pick) => pick(req));
-        const sol = arb.pick(defaultPlayout());
-        assert(sol !== undefined);
-        assertEquals(sol.val, "hi");
+        const ex = arb.pick(defaultPlayout());
+        assertEquals(ex, "hi");
       });
       it("accepts a record shape", () => {
         const req = {
@@ -91,9 +89,8 @@ describe("Arbitrary", () => {
           b: Arbitrary.of(1, 2),
         };
         const arb = Arbitrary.from((pick) => pick(req));
-        const sol = arb.pick(defaultPlayout());
-        assert(sol !== undefined);
-        assertEquals(sol.val, { a: "hi", b: 1 });
+        const ex = arb.pick(defaultPlayout());
+        assertEquals(ex, { a: "hi", b: 1 });
       });
     });
     it("retries a pick with a different playout", () => {
@@ -106,9 +103,8 @@ describe("Arbitrary", () => {
         return n;
       });
       const tree = new SearchTree(0);
-      const sol = arb.pick(tree.pickers(alwaysPick(3)));
-      assert(sol !== undefined);
-      assertEquals(sol.val, 4);
+      const ex = arb.pick(tree.pickers(alwaysPick(3)));
+      assertEquals(ex, 4);
     });
   });
 
@@ -129,9 +125,8 @@ describe("Arbitrary", () => {
       const filtered = sixSided.filter(keepEvens);
       assertEquals(filtered.default, 2);
       assertEquals(filtered.examples().next().value, 2);
-      const sol = filtered.pick(defaultPlayout());
-      assert(sol !== undefined);
-      assertEquals(sol.val, 2);
+      const ex = filtered.pick(defaultPlayout());
+      assertEquals(ex, 2);
     });
     it("filters out values that don't satisfy the predicate", () => {
       const not3 = sixSided.filter((n) => n !== 3);

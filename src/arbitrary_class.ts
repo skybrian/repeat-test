@@ -68,6 +68,8 @@ export type Solution<T> = {
   readonly playout: Playout;
 };
 
+export const END_OF_PLAYOUTS = Symbol("END_OF_PLAYOUTS");
+
 /**
  * A set of examples that can be generated on demand.
  *
@@ -203,9 +205,9 @@ export default class Arbitrary<T> {
       } else if (req instanceof Arbitrary) {
         const accept = opts?.accept;
         if (accept !== undefined) {
-          return req.nestedPickWithFilter(ctx, pick, accept);
+          return req.innerPickWithFilter(ctx, pick, accept);
         } else {
-          return req.nestedPick(ctx, pick);
+          return req.innerPick(ctx, pick);
         }
       } else if (typeof req !== "object") {
         throw new Error("pick called with invalid argument");
@@ -227,7 +229,7 @@ export default class Arbitrary<T> {
     }
     const result = {} as Partial<T>;
     for (const key of keys) {
-      result[key] = req[key].nestedPick(ctx, pick);
+      result[key] = req[key].innerPick(ctx, pick);
     }
     return result as T;
   }
@@ -245,31 +247,55 @@ export default class Arbitrary<T> {
     this.default; // dry run
   }
 
+  pick(pickers: Iterable<RetryPicker>): T | typeof END_OF_PLAYOUTS {
+    for (const picker of pickers) {
+      const ctx = new PlayoutContext(picker);
+      const ex = this.pickOnce(ctx, picker);
+      if (ex !== END_OF_PLAYOUTS) {
+        return ex;
+      }
+    }
+    return END_OF_PLAYOUTS;
+  }
+
   /**
    * Finds a solution by trying each playout one at a time, given a source of
    * playouts.
    *
    * Returns undefined if it ran out of playouts without finding a solution.
    */
-  pick(pickers: Iterable<RetryPicker>): Solution<T> | undefined {
+  pickSolution(pickers: Iterable<RetryPicker>): Solution<T> | undefined {
     for (const picker of pickers) {
-      try {
-        const ctx = new PlayoutContext(picker);
-        const pick = Arbitrary.makePickFunction(ctx, picker);
-        const val = this.callback(pick);
-        if (picker.finishPlayout()) {
-          return { val, playout: ctx.toPlayout() };
-        }
-      } catch (e) {
-        if (!(e instanceof PlayoutPruned)) {
-          throw e;
-        }
-        // Try again with the next playout.
+      const ctx = new PlayoutContext(picker);
+      const val = this.pickOnce(ctx, picker);
+      if (val !== END_OF_PLAYOUTS) {
+        return { val, playout: ctx.toPlayout() };
       }
+    }
+    return undefined;
+  }
+
+  private pickOnce(
+    ctx: PlayoutContext,
+    picker: RetryPicker,
+  ): T | typeof END_OF_PLAYOUTS {
+    try {
+      const pick = Arbitrary.makePickFunction(ctx, picker);
+      const val = this.callback(pick);
+      if (picker.finishPlayout()) {
+        return val;
+      } else {
+        return END_OF_PLAYOUTS;
+      }
+    } catch (e) {
+      if (!(e instanceof PlayoutPruned)) {
+        throw e;
+      }
+      return END_OF_PLAYOUTS;
     }
   }
 
-  private nestedPick(
+  private innerPick(
     ctx: PlayoutContext,
     pick: PickFunction,
   ): T {
@@ -279,7 +305,7 @@ export default class Arbitrary<T> {
     return val;
   }
 
-  private nestedPickWithFilter(
+  private innerPickWithFilter(
     ctx: PlayoutContext,
     pick: PickFunction,
     accept: (val: T) => boolean,
@@ -310,30 +336,30 @@ export default class Arbitrary<T> {
    */
   parse(picks: number[]): T {
     const picker = new PlaybackPicker(picks);
-    const sol = this.pick(onePlayout(picker));
+    const ex = this.pick(onePlayout(picker));
     if (picker.error) {
       throw new PlayoutPruned(picker.error);
     }
-    if (!sol) {
+    if (ex === END_OF_PLAYOUTS) {
       throw new PlayoutPruned("playout not accepted");
     }
-    return sol.val;
+    return ex;
   }
 
   /** The default value of this Arbitrary. */
   get default(): T {
-    return this.defaultSolution.val;
-  }
-
-  get defaultSolution(): Solution<T> {
+    if (this.#examples) {
+      // assume it's immutable
+      return this.#examples[0];
+    }
     // make a clone, in case it's mutable
-    const sol = this.pick(defaultPlayout());
-    if (!sol) {
+    const ex = this.pick(defaultPlayout());
+    if (ex === END_OF_PLAYOUTS) {
       throw new Error(
         "couldn't generate a default value because default picks weren't accepted",
       );
     }
-    return sol;
+    return ex;
   }
 
   /**
@@ -350,10 +376,10 @@ export default class Arbitrary<T> {
           return it.next();
         },
       };
-      let sol = arb.pick(resumable);
+      let sol = arb.pickSolution(resumable);
       while (sol) {
         yield sol;
-        sol = arb.pick(resumable);
+        sol = arb.pickSolution(resumable);
       }
     }
 
