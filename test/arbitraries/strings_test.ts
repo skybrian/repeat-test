@@ -1,6 +1,10 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals } from "@std/assert";
-import { assertParses, assertSameExamples } from "../../src/asserts.ts";
+import {
+  assertFirstExamples,
+  assertParses,
+  assertSameExamples,
+} from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 import { isWellFormed } from "../../src/workarounds.ts";
 
@@ -88,18 +92,6 @@ describe("char16", () => {
   });
 });
 
-describe("anyString", () => {
-  it("defaults to an empty string", () => {
-    assertEquals(arb.anyString().default, "");
-  });
-  it("parses an array of code points", () => {
-    assertParses(arb.anyString(), [1, 0x20, 1, 0x21, 0], " !");
-  });
-  it("parses an unpaired surrogate", () => {
-    assertParses(arb.anyString(), [1, 0xD800, 0], "\uD800");
-  });
-});
-
 function codeUnits(str: string): string[] {
   return [...str].map((c) => c.charCodeAt(0).toString(16));
 }
@@ -107,8 +99,8 @@ function codeUnits(str: string): string[] {
 const surrogateGap = 0xdfff - 0xd800 + 1;
 
 describe("unicodeChar", () => {
-  it("defaults to 'x'", () => {
-    assertEquals(arb.unicodeChar().default, "x");
+  it("defaults to 'a'", () => {
+    assertEquals(arb.unicodeChar().default, "a");
   });
   it("always returns a well-formed string", () => {
     repeatTest(arb.unicodeChar(), (str) => {
@@ -121,14 +113,32 @@ describe("unicodeChar", () => {
   });
 });
 
+describe("anyString", () => {
+  it("defaults to an empty string", () => {
+    assertEquals(arb.anyString().default, "");
+  });
+  it("parses an array of ints using our modified ascii table", () => {
+    assertParses(arb.anyString(), [1, 0, 1, 1, 0], "ab");
+  });
+  it("parses an unpaired surrogate", () => {
+    assertParses(arb.anyString(), [1, 0xD800, 0], "\uD800");
+  });
+});
+
 describe("wellFormedString", () => {
   it("defaults to an empty string", () => {
     assertEquals(arb.wellFormedString().default, "");
   });
-  it("parses ascii characters", () => {
-    assertParses(arb.wellFormedString(), [1, 0x20, 1, 0x21, 0], " !");
+  it("starts with ascii characters", () => {
+    assertFirstExamples(arb.wellFormedString(), [
+      "",
+      ...("abcdefghijklmnopqrstuvwxyz".split("")),
+    ]);
   });
-  it("parses an emoji", () => {
+  it("parses an array of ints using our modified ascii table", () => {
+    assertParses(arb.anyString(), [1, 0, 1, 1, 0], "ab");
+  });
+  it("parses other Unicode characters represented as code points", () => {
     assertParses(arb.wellFormedString(), [1, 0x1FA97 - surrogateGap, 0], "🪗");
   });
   it("always returns a well-formed string", () => {

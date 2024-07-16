@@ -73,17 +73,12 @@ export const char16 = arb.int(0, 0xffff).map((code) => {
 })
   .asFunction();
 
-const defaultChar = "x".charCodeAt(0);
-const charCode = arb.int(0, 0xffff, { default: defaultChar });
-
 const surrogateMin = 0xd800;
 const surrogateMax = 0xdfff;
 const surrogateGap = surrogateMax - surrogateMin + 1;
 const unicodeMax = 0x10ffff;
 
-const codePoint = arb.int(0, unicodeMax - surrogateGap, {
-  default: defaultChar,
-}).map(
+const codePoint = arb.int(0, unicodeMax - surrogateGap).map(
   (code) => (code >= surrogateMin) ? code + surrogateGap : code,
 );
 
@@ -96,11 +91,12 @@ const codePoint = arb.int(0, unicodeMax - surrogateGap, {
  * they aren't included because they decode to unpaired surrogates, which aren't
  * well-formed.
  */
-export function unicodeChar(): Arbitrary<string> {
-  return codePoint.map(
-    (code) => String.fromCodePoint(code),
-  );
-}
+export const unicodeChar = codePoint.map((code) => {
+  if (code < 128) {
+    return asciiTable[code];
+  }
+  return String.fromCodePoint(code);
+}).asFunction();
 
 const defaultStringLimit = 500;
 
@@ -114,13 +110,11 @@ export function anyString(
 ): Arbitrary<string> {
   const min = opts?.min ?? 0;
   const max = opts?.max ?? defaultStringLimit;
-  return arb.array(charCode, { min, max }).map((arr) =>
-    String.fromCharCode(...arr)
-  );
+  return arb.array(char16(), { min, max }).map((arr) => arr.join(""));
 }
 
 /**
- * Arbitrary well-formed strings.
+ * Arbitrary well-formed Unicode strings.
  *
  * Min and max are measured in code points. `String.length` will be longer if it
  * contains surrogate pairs.
@@ -130,7 +124,5 @@ export function wellFormedString(
 ): Arbitrary<string> {
   const min = opts?.min ?? 0;
   const max = opts?.max ?? defaultStringLimit;
-  return arb.array(codePoint, { min, max }).map((arr) =>
-    String.fromCodePoint(...arr)
-  );
+  return arb.array(unicodeChar(), { min, max }).map((arr) => arr.join(""));
 }
