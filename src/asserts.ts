@@ -61,14 +61,12 @@ export function assertFirstExamples<T>(
   arb: Arbitrary<T>,
   expected: T[],
 ) {
-  const actual = take(arb.examples(), expected.length);
-  assertEquals(actual, expected);
+  assertEquals(arb.take(expected.length), expected);
 }
 
 export function assertExamples<T>(
   arb: Arbitrary<T>,
   expected: T[],
 ) {
-  const actual = take(arb.examples(), expected.length + 5);
-  assertEquals(actual, expected);
+  assertEquals(arb.take(expected.length + 5), expected);
 }

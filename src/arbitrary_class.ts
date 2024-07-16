@@ -369,6 +369,20 @@ export default class Arbitrary<T> {
   }
 
   /**
+   * Returns up to n examples from this Arbitrary.
+   */
+  take(n: number): T[] {
+    const result = [];
+    for (const ex of this.examples()) {
+      result.push(ex);
+      if (result.length >= n) {
+        break;
+      }
+    }
+    return result;
+  }
+
+  /**
    * Creates a new Arbitrary by mapping each example to a new value. (The
    * examples are in the same order as in the original.)
    */
