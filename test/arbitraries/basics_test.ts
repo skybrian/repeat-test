@@ -4,9 +4,9 @@ import { assertEquals } from "@std/assert";
 import * as arb from "../../src/arbitraries.ts";
 
 import {
-  assertFirstMembers,
+  assertExamples,
+  assertFirstExamples,
   assertFirstSolutions,
-  assertMembers,
   assertParseFails,
   assertParses,
   assertSolutions,
@@ -28,15 +28,15 @@ describe("boolean", () => {
 });
 
 describe("int", () => {
-  describe("members", () => {
+  describe("examples", () => {
     it("includes positive numbers within range", () => {
-      assertMembers(arb.int(1, 6), [1, 2, 3, 4, 5, 6]);
+      assertExamples(arb.int(1, 6), [1, 2, 3, 4, 5, 6]);
     });
     it("includes negative numbers within range", () => {
-      assertMembers(arb.int(-3, -2), [-2, -3]);
+      assertExamples(arb.int(-3, -2), [-2, -3]);
     });
     it("includes positive and negative numbers within range", () => {
-      assertMembers(arb.int(-3, 3), [0, -1, 1, 2, 3, -2, -3]);
+      assertExamples(arb.int(-3, 3), [0, -1, 1, 2, 3, -2, -3]);
     });
   });
   describe("default", () => {
@@ -178,7 +178,7 @@ describe("array", () => {
         assertParses(bools, [1, 0, 1, 1, 0], [false, true]);
       });
     });
-    describe("members", () => {
+    describe("solutions", () => {
       it("returns lists for each combination", () => {
         assertFirstSolutions(bools, [
           { val: [], picks: [0] },
@@ -197,9 +197,9 @@ describe("array", () => {
     it("defaults to an empty array", () => {
       assertEquals(ints.default, []);
     });
-    describe("members", () => {
+    describe("examples", () => {
       it("returns lists for each combination", () => {
-        assertFirstMembers(ints, [
+        assertFirstExamples(ints, [
           [],
           [0],
           [1],

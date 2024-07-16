@@ -13,7 +13,7 @@ describe("Arbitrary", () => {
     it("accepts a PickRequest", () => {
       const pick = new PickRequest(1, 2);
       const arbitrary = Arbitrary.from(pick);
-      assertEquals(Array.from(arbitrary.members), [1, 2]);
+      assertEquals(Array.from(arbitrary.examples()), [1, 2]);
     });
     it("throws if given a callback that throws", () => {
       const callback = () => {
@@ -41,7 +41,7 @@ describe("Arbitrary", () => {
     it("accepts constant alteratives", () => {
       const arb = Arbitrary.oneOf([Arbitrary.of(1), Arbitrary.of(2)]);
       assertEquals(arb.default, 1);
-      assertEquals(Array.from(arb.members), [1, 2]);
+      assertEquals(Array.from(arb.examples()), [1, 2]);
       assertEquals(arb.maxSize, 2);
     });
   });
@@ -53,14 +53,14 @@ describe("Arbitrary", () => {
     it("returns a constant Arbitrary if called with one argument", () => {
       const arb = Arbitrary.of("hi");
       assertEquals(arb.default, "hi");
-      assertEquals(Array.from(arb.members), ["hi"]);
+      assertEquals(Array.from(arb.examples()), ["hi"]);
       assertSolutions(arb, [{ val: "hi", picks: [] }]);
       assertEquals(arb.maxSize, 1);
     });
     it("creates an Arbitrary with multiple arguments", () => {
       const arb = Arbitrary.of("hi", "there");
       assertEquals(arb.default, "hi");
-      assertEquals(Array.from(arb.members), ["hi", "there"]);
+      assertEquals(Array.from(arb.examples()), ["hi", "there"]);
       assertSolutions(arb, [
         { val: "hi", picks: [0] },
         { val: "there", picks: [1] },
@@ -128,7 +128,7 @@ describe("Arbitrary", () => {
       const keepEvens = (n: number) => n % 2 === 0;
       const filtered = sixSided.filter(keepEvens);
       assertEquals(filtered.default, 2);
-      assertEquals(filtered.members.next().value, 2);
+      assertEquals(filtered.examples().next().value, 2);
       const sol = filtered.pick(defaultPlayout());
       assert(sol !== undefined);
       assertEquals(sol.val, 2);
@@ -198,22 +198,22 @@ describe("Arbitrary", () => {
     });
   });
 
-  describe("members", () => {
+  describe("examples", () => {
     it("returns the only value of a constant", () => {
       const one = Arbitrary.from(() => 1);
-      assertEquals(Array.from(one.members), [1]);
+      assertEquals(Array.from(one.examples()), [1]);
     });
 
     const bit = Arbitrary.from(new PickRequest(0, 1));
     it("returns each example of a bit", () => {
-      const members = Array.from(bit.members);
-      assertEquals(members, [0, 1]);
+      const examples = Array.from(bit.examples());
+      assertEquals(examples, [0, 1]);
     });
 
     const boolean = bit.map((b) => b == 1);
     it("handles a mapped Arbitrary", () => {
-      const members = Array.from(boolean.members);
-      assertEquals(members, [false, true]);
+      const examples = Array.from(boolean.examples());
+      assertEquals(examples, [false, true]);
     });
 
     it("handles PlayoutPruned", () => {
@@ -222,12 +222,12 @@ describe("Arbitrary", () => {
         if (n !== 3) throw new PlayoutPruned("not 3");
         return n;
       });
-      assertEquals(Array.from(onlyThree.members), [3]);
+      assertEquals(Array.from(onlyThree.examples()), [3]);
     });
 
     it("handles a filtered Arbitrary", () => {
       const justFalse = boolean.filter((b) => !b);
-      assertEquals(Array.from(justFalse.members), [false]);
+      assertEquals(Array.from(justFalse.examples()), [false]);
     });
 
     it("handles a chained Arbitrary", () => {
@@ -238,7 +238,7 @@ describe("Arbitrary", () => {
           return Arbitrary.from(() => "hi");
         }
       });
-      assertEquals(Array.from(hello.members), ["hi", "there"]);
+      assertEquals(Array.from(hello.examples()), ["hi", "there"]);
     });
 
     it("can solve a combination lock if given enough tries", () => {
@@ -253,7 +253,7 @@ describe("Arbitrary", () => {
         { maxTries: 1000 },
       );
       assertEquals(lock.default, [1, 2, 3]);
-      const solutions = Array.from(lock.members);
+      const solutions = Array.from(lock.examples());
       assertEquals(solutions, [
         [1, 2, 3],
         [1, 4, 3],

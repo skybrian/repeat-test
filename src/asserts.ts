@@ -57,18 +57,18 @@ export function assertSolutions<T>(
   assertEquals(actual, expected);
 }
 
-export function assertFirstMembers<T>(
+export function assertFirstExamples<T>(
   arb: Arbitrary<T>,
   expected: T[],
 ) {
-  const actual = take(arb.members, expected.length);
+  const actual = take(arb.examples(), expected.length);
   assertEquals(actual, expected);
 }
 
-export function assertMembers<T>(
+export function assertExamples<T>(
   arb: Arbitrary<T>,
   expected: T[],
 ) {
-  const actual = take(arb.members, expected.length + 5);
+  const actual = take(arb.examples(), expected.length + 5);
   assertEquals(actual, expected);
 }

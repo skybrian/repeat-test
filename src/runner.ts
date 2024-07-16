@@ -104,9 +104,9 @@ export function* depthFirstReps<T>(
   test: TestFunction<T>,
 ): Generator<Rep<T> | TestFailure<unknown>> {
   let index = 0;
-  for (const pick of arb.members) {
+  for (const arg of arb.examples()) {
     const key = { seed: 0, index };
-    yield { ok: true, key, arg: pick, test };
+    yield { ok: true, key, arg, test };
     index++;
   }
 }
