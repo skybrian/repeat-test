@@ -1,10 +1,67 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals } from "@std/assert";
-import { assertParses } from "../../src/asserts.ts";
+import { assertParses, assertSameExamples } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 import { isWellFormed } from "../../src/workarounds.ts";
 
 import * as arb from "../../src/arbitraries.ts";
+
+describe("asciiChar", () => {
+  it("can select a single ascii character", () => {
+    assertEquals(arb.asciiChar(/x/).takeAll(), ["x"]);
+  });
+  it("can select all ascii characters", () => {
+    const actual = arb.asciiChar(/.*/).takeAll();
+    assertEquals(actual.length, 128);
+    assertEquals(new Set(actual).size, 128);
+    for (let i = 0; i < 128; i++) {
+      assertEquals(actual.indexOf(String.fromCharCode(i)), i);
+    }
+  });
+});
+
+describe("asciiLetter", () => {
+  it("defaults to 'a'", () => {
+    assertEquals(arb.asciiLetter().default, "a");
+  });
+  it("includes lowercase and uppercase letters in order", () => {
+    assertEquals(
+      arb.asciiLetter().takeAll(),
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        .split(""),
+    );
+  });
+});
+
+describe("asciiDigit", () => {
+  it("defaults to '0'", () => {
+    assertEquals(arb.asciiDigit().default, "0");
+  });
+  it("includes digits in order", () => {
+    assertEquals(arb.asciiDigit().takeAll(), "0123456789".split(""));
+  });
+});
+
+describe("asciiWhitespace", () => {
+  it("defaults to a space", () => {
+    assertEquals(arb.asciiWhitespace().default, " ");
+  });
+  it("matches the equivalent regexp", () => {
+    assertSameExamples(arb.asciiWhitespace(), arb.asciiChar(/\s/));
+  });
+});
+
+describe("asciiSymbol", () => {
+  it("defaults to '!'", () => {
+    assertEquals(arb.asciiSymbol().default, "!");
+  });
+  it("includes symbols in order", () => {
+    assertEquals(
+      arb.asciiSymbol().takeAll(),
+      "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~".split(""),
+    );
+  });
+});
 
 describe("char16", () => {
   it("defaults to 'x'", () => {

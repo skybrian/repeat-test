@@ -3,6 +3,15 @@ import { PlayoutPruned } from "./backtracking.ts";
 import Arbitrary from "./arbitrary_class.ts";
 import { NestedPicks } from "./playouts.ts";
 
+export function assertSameExamples<T>(
+  actual: Arbitrary<T>,
+  expected: Arbitrary<T>,
+) {
+  const actualVals = new Set(actual.takeAll());
+  const expectedVals = new Set(expected.takeAll());
+  assertEquals(actualVals, expectedVals);
+}
+
 export function assertParses<T>(
   arb: Arbitrary<T>,
   picks: number[],

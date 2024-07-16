@@ -1,6 +1,30 @@
 import Arbitrary from "../arbitrary_class.ts";
 import * as arb from "./basics.ts";
 
+/** The ascii characters matching a regular expression. */
+export function asciiChar(regexp: RegExp): Arbitrary<string> {
+  return arb.int(0, 127).map((i) => String.fromCharCode(i))
+    .filter((c) => regexp.test(c)).precompute();
+}
+
+/** The characters a-z and A-Z, in that order. */
+export const asciiLetter = arb.int(0, 26 * 2 - 1).map((i) => {
+  if (i < 26) {
+    return String.fromCharCode(i + 97);
+  } else {
+    return String.fromCharCode(i - 26 + 65);
+  }
+}).precompute().asFunction();
+
+/** The characters 0-9, in that order. */
+export const asciiDigit = asciiChar(/\d/).asFunction();
+
+export const asciiWhitespace = arb.of(..." \t\n\v\f\r".split("")).asFunction();
+
+/** Ascii characters that are not letters, digits, whitespace, or control characters. */
+// deno-lint-ignore no-control-regex
+export const asciiSymbol = asciiChar(/[^ a-zA-Z0-9\x00-\x1f\x7f]/).asFunction();
+
 const defaultChar = "x".charCodeAt(0);
 const charCode = arb.int(0, 0xffff, { default: defaultChar });
 

@@ -416,6 +416,39 @@ export default class Arbitrary<T> {
   }
 
   /**
+   * Generates all examples from this Arbitrary, provided that it's not too many.
+   *
+   * @param opts.limit The maximum size of the array to return.
+   */
+  takeAll(opts?: { limit: number }): T[] {
+    const limit = opts?.limit ?? 1000;
+
+    const examples = this.take(limit + 1);
+    if ((examples.length > limit)) {
+      throw new Error(
+        `Arbitrary.precompute: wanted at most ${limit} examples, got more`,
+      );
+    }
+    return examples;
+  }
+
+  /**
+   * Creates a new Arbitrary that generates the same examples as this one, but
+   * they're picked from an internal list instead of generated each time.
+   *
+   * The examples won't be cloned, so this method should only be used for
+   * immutable values.
+   *
+   * When picking randomly, a uniform distribution will be used, regardless of
+   * what the distribution was originally.
+   *
+   * @param opts.limit The maximum number of examples allowed.
+   */
+  precompute(opts?: { limit: number }): Arbitrary<T> {
+    return Arbitrary.of(...this.takeAll(opts));
+  }
+
+  /**
    * Creates a new Arbitrary by mapping each example to a new value. (The
    * examples are in the same order as in the original.)
    */
@@ -442,7 +475,7 @@ export default class Arbitrary<T> {
     accept: (val: T) => boolean,
     opts?: { maxTries: number },
   ): Arbitrary<T> {
-    const maxTries = opts?.maxTries ?? 10;
+    const maxTries = opts?.maxTries ?? 1000;
 
     const solve = (): number[] | undefined => {
       let tries = 0;
