@@ -193,6 +193,7 @@ export default class Arbitrary<T> {
 
   static makePickFunction<T>(
     ctx: PlayoutContext,
+    topPicker: RetryPicker,
   ): PickFunction {
     // These inner functions are mutually recursive and depend on the passed-in
     // picker. They unwind the arbitraries depth-first to get each pick and then
@@ -210,18 +211,19 @@ export default class Arbitrary<T> {
 
     const pickArb = <T>(
       req: Arbitrary<T>,
+      localPicker: RetryPicker,
       opts?: PickFunctionOptions<T>,
     ): T => {
       const newDefaults = opts?.defaultPlayout;
       const picker = newDefaults
-        ? replaceDefaults(ctx.picker, newDefaults)
-        : ctx.picker;
+        ? replaceDefaults(localPicker, newDefaults)
+        : localPicker;
 
       const accept = opts?.accept;
 
       // non-backtracking case
       if (accept === undefined) {
-        return pickBasicArb(req, picker);
+        return pickBasicArb(req, localPicker);
       }
 
       const pick = (newDefaults !== undefined) ? makePickAny(picker) : pickAny;
@@ -243,14 +245,14 @@ export default class Arbitrary<T> {
       }
     };
 
-    const pickRecord = <T>(req: RecordShape<T>): T => {
+    const pickRecord = <T>(req: RecordShape<T>, picker: RetryPicker): T => {
       const keys = Object.keys(req) as (keyof T)[];
       if (keys.length === 0) {
         return {} as T;
       }
       const result = {} as Partial<T>;
       for (const key of keys) {
-        result[key] = pickBasicArb(req[key], ctx.picker);
+        result[key] = pickBasicArb(req[key], picker);
       }
       return result as T;
     };
@@ -263,17 +265,17 @@ export default class Arbitrary<T> {
         if (req instanceof PickRequest) {
           return picker.maybePick(req);
         } else if (req instanceof Arbitrary) {
-          return pickArb(req, opts);
+          return pickArb(req, picker, opts);
         } else if (typeof req !== "object") {
           throw new Error("pick called with invalid argument");
         } else {
-          return pickRecord(req);
+          return pickRecord(req, picker);
         }
       };
       return dispatch;
     };
 
-    const pickAny = makePickAny(ctx.picker);
+    const pickAny = makePickAny(topPicker);
     return pickAny;
   }
 
@@ -296,8 +298,8 @@ export default class Arbitrary<T> {
     for (const picker of pickers) {
       try {
         const ctx = new PlayoutContext(picker);
-        const makePick = () => Arbitrary.makePickFunction(ctx);
-        const val = this.solver(ctx.picker, makePick);
+        const makePick = () => Arbitrary.makePickFunction(ctx, picker);
+        const val = this.solver(picker, makePick);
         if (picker.finishPlayout()) {
           return { val, playout: ctx.toPlayout() };
         }

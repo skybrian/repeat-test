@@ -101,7 +101,7 @@ export class PlayoutContext {
   /** The offset of each incomplete span, in the order created.  */
   private readonly openSpans: number[] = [];
 
-  constructor(readonly picker: RetryPicker) {}
+  constructor(private readonly picker: RetryPicker) {}
 
   get level(): number {
     return this.openSpans.length;
