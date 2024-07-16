@@ -199,34 +199,23 @@ export default class Arbitrary<T> {
     // picker. They unwind the arbitraries depth-first to get each pick and then
     // build up a value based on it.
 
-    const pickBasicArb = <T>(
+    const pickArb = <T>(
       req: Arbitrary<T>,
       picker: RetryPicker,
     ): T => {
       const level = ctx.startSpan();
-      const val = req.solver(picker, () => pickAny);
+      const pick = makePickAny(picker);
+      const val = req.solver(picker, () => pick);
       ctx.endSpan(level);
       return val;
     };
 
-    const pickArb = <T>(
+    const pickArbWithFilter = <T>(
       req: Arbitrary<T>,
-      localPicker: RetryPicker,
-      opts?: PickFunctionOptions<T>,
+      picker: RetryPicker,
+      accept: (val: T) => boolean,
     ): T => {
-      const newDefaults = opts?.defaultPlayout;
-      const picker = newDefaults
-        ? replaceDefaults(localPicker, newDefaults)
-        : localPicker;
-
-      const accept = opts?.accept;
-
-      // non-backtracking case
-      if (accept === undefined) {
-        return pickBasicArb(req, localPicker);
-      }
-
-      const pick = (newDefaults !== undefined) ? makePickAny(picker) : pickAny;
+      const pick = makePickAny(picker);
 
       // retry when there's a filter
       while (true) {
@@ -252,7 +241,7 @@ export default class Arbitrary<T> {
       }
       const result = {} as Partial<T>;
       for (const key of keys) {
-        result[key] = pickBasicArb(req[key], picker);
+        result[key] = pickArb(req[key], picker);
       }
       return result as T;
     };
@@ -265,7 +254,16 @@ export default class Arbitrary<T> {
         if (req instanceof PickRequest) {
           return picker.maybePick(req);
         } else if (req instanceof Arbitrary) {
-          return pickArb(req, picker, opts);
+          const newDefaults = opts?.defaultPlayout;
+          if (newDefaults !== undefined) {
+            picker = replaceDefaults(picker, newDefaults);
+          }
+          const accept = opts?.accept;
+          if (accept !== undefined) {
+            return pickArbWithFilter(req, picker, accept);
+          } else {
+            return pickArb(req, picker);
+          }
         } else if (typeof req !== "object") {
           throw new Error("pick called with invalid argument");
         } else {
