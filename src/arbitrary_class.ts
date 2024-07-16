@@ -63,13 +63,8 @@ export interface PickFunction {
  */
 export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 
-export type Solution<T> = {
-  readonly val: T;
-  readonly playout: Playout;
-};
-
 type Solver<T> = (
-  picker: RetryPicker,
+  maybePick: (req: PickRequest) => number,
   getPick: () => PickFunction,
 ) => T;
 
@@ -78,6 +73,11 @@ function callbackToSolver<T>(
 ): Solver<T> {
   return (_picker, getPick) => callback(getPick());
 }
+
+export type Solution<T> = {
+  readonly val: T;
+  readonly playout: Playout;
+};
 
 /**
  * A set of values that can be randomly picked from. Members are generated as
@@ -105,8 +105,8 @@ export default class Arbitrary<T> {
     if (typeof arg === "function") {
       return new Arbitrary(callbackToSolver(arg));
     } else {
-      const solver = (picker: RetryPicker): number => {
-        return picker.maybePick(arg);
+      const solver: Solver<number> = (maybePick) => {
+        return maybePick(arg);
       };
       return new Arbitrary(solver, { maxSize: arg.size });
     }
@@ -154,12 +154,9 @@ export default class Arbitrary<T> {
     }
 
     const req = new PickRequest(0, cases.length - 1);
-    const solver: Solver<T> = (
-      picker: RetryPicker,
-      makePick: () => PickFunction,
-    ): T => {
-      const c = cases[picker.maybePick(req)];
-      return makePick()(c);
+    const solver: Solver<T> = (maybePick, getPick): T => {
+      const c = cases[maybePick(req)];
+      return getPick()(c);
     };
     return new Arbitrary(solver, { maxSize });
   }
@@ -183,8 +180,8 @@ export default class Arbitrary<T> {
     }
 
     const req = new PickRequest(0, members.length - 1);
-    const solver: Solver<T> = (picker) => {
-      return members[picker.maybePick(req)];
+    const solver: Solver<T> = (maybePick) => {
+      return members[maybePick(req)];
     };
     return new Arbitrary(solver, {
       maxSize: members.length,
@@ -204,8 +201,9 @@ export default class Arbitrary<T> {
       picker: RetryPicker,
     ): T => {
       const level = ctx.startSpan();
+      const maybePick = picker.maybePick.bind(picker);
       const pick = makePickAny(picker);
-      const val = req.solver(picker, () => pick);
+      const val = req.solver(maybePick, () => pick);
       ctx.endSpan(level);
       return val;
     };
@@ -215,12 +213,13 @@ export default class Arbitrary<T> {
       picker: RetryPicker,
       accept: (val: T) => boolean,
     ): T => {
+      const maybePick = picker.maybePick.bind(picker);
       const pick = makePickAny(picker);
 
       // retry when there's a filter
       while (true) {
         const level = ctx.startSpan();
-        const val = req.solver(picker, () => pick);
+        const val = req.solver(maybePick, () => pick);
         if (accept(val)) {
           ctx.endSpan(level);
           return val;
@@ -296,8 +295,9 @@ export default class Arbitrary<T> {
     for (const picker of pickers) {
       try {
         const ctx = new PlayoutContext(picker);
+        const maybePick = picker.maybePick.bind(picker);
         const makePick = () => Arbitrary.makePickFunction(ctx, picker);
-        const val = this.solver(picker, makePick);
+        const val = this.solver(maybePick, makePick);
         if (picker.finishPlayout()) {
           return { val, playout: ctx.toPlayout() };
         }
