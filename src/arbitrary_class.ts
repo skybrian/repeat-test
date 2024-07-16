@@ -175,90 +175,54 @@ export default class Arbitrary<T> {
     });
   }
 
-  static makePickFunction<T>(
+  private static makePickFunction<T>(
     ctx: PlayoutContext,
-    topPicker: RetryPicker,
+    defaultPicker: RetryPicker,
   ): PickFunction {
-    // These inner functions are mutually recursive and depend on the passed-in
-    // picker. They unwind the arbitraries depth-first to get each pick and then
-    // build up a value based on it.
-
-    const pickArb = <T>(
-      req: Arbitrary<T>,
-      picker: RetryPicker,
-    ): T => {
-      const level = ctx.startSpan();
-      const pick = makePickAny(picker);
-      const val = req.callback(pick);
-      ctx.endSpan(level);
-      return val;
-    };
-
-    const pickArbWithFilter = <T>(
-      req: Arbitrary<T>,
-      picker: RetryPicker,
-      accept: (val: T) => boolean,
-    ): T => {
-      const pick = makePickAny(picker);
-
-      // retry when there's a filter
-      while (true) {
-        const level = ctx.startSpan();
-        const val = req.callback(pick);
-        if (accept(val)) {
-          ctx.endSpan(level);
-          return val;
-        }
-        if (!ctx.cancelSpan(level)) {
-          // return default?
-          throw new PlayoutPruned(
-            `Couldn't find a playout that generates ${req}`,
-          );
-        }
+    const dispatch = <T>(
+      req: PickRequest | Arbitrary<T> | RecordShape<T>,
+      opts?: PickFunctionOptions<T>,
+    ): number | T => {
+      let picker = defaultPicker;
+      let pick: PickFunction = dispatch;
+      const newDefaults = opts?.defaultPlayout;
+      if (newDefaults !== undefined) {
+        picker = replaceDefaults(picker, newDefaults);
+        pick = Arbitrary.makePickFunction(ctx, picker);
       }
-    };
 
-    const pickRecord = <T>(req: RecordShape<T>, picker: RetryPicker): T => {
-      const keys = Object.keys(req) as (keyof T)[];
-      if (keys.length === 0) {
-        return {} as T;
-      }
-      const result = {} as Partial<T>;
-      for (const key of keys) {
-        result[key] = pickArb(req[key], picker);
-      }
-      return result as T;
-    };
-
-    const makePickAny = (picker: RetryPicker): PickFunction => {
-      const dispatch = <T>(
-        req: PickRequest | Arbitrary<T> | RecordShape<T>,
-        opts?: PickFunctionOptions<T>,
-      ): number | T => {
-        if (req instanceof PickRequest) {
-          return picker.maybePick(req);
-        } else if (req instanceof Arbitrary) {
-          const newDefaults = opts?.defaultPlayout;
-          if (newDefaults !== undefined) {
-            picker = replaceDefaults(picker, newDefaults);
-          }
-          const accept = opts?.accept;
-          if (accept !== undefined) {
-            return pickArbWithFilter(req, picker, accept);
-          } else {
-            return pickArb(req, picker);
-          }
-        } else if (typeof req !== "object") {
-          throw new Error("pick called with invalid argument");
+      if (req instanceof PickRequest) {
+        return picker.maybePick(req);
+      } else if (req instanceof Arbitrary) {
+        const accept = opts?.accept;
+        if (accept !== undefined) {
+          return req.nestedPickWithFilter(ctx, pick, accept);
         } else {
-          return pickRecord(req, picker);
+          return req.nestedPick(ctx, pick);
         }
-      };
-      return dispatch;
+      } else if (typeof req !== "object") {
+        throw new Error("pick called with invalid argument");
+      } else {
+        return Arbitrary.pickRecord(req, ctx, pick);
+      }
     };
+    return dispatch;
+  }
 
-    const pickAny = makePickAny(topPicker);
-    return pickAny;
+  private static pickRecord<T>(
+    req: RecordShape<T>,
+    ctx: PlayoutContext,
+    pick: PickFunction,
+  ): T {
+    const keys = Object.keys(req) as (keyof T)[];
+    if (keys.length === 0) {
+      return {} as T;
+    }
+    const result = {} as Partial<T>;
+    for (const key of keys) {
+      result[key] = req[key].nestedPick(ctx, pick);
+    }
+    return result as T;
   }
 
   private constructor(
@@ -292,6 +256,37 @@ export default class Arbitrary<T> {
           throw e;
         }
         // Try again with the next playout.
+      }
+    }
+  }
+
+  private nestedPick(
+    ctx: PlayoutContext,
+    pick: PickFunction,
+  ): T {
+    const level = ctx.startSpan();
+    const val = this.callback(pick);
+    ctx.endSpan(level);
+    return val;
+  }
+
+  private nestedPickWithFilter(
+    ctx: PlayoutContext,
+    pick: PickFunction,
+    accept: (val: T) => boolean,
+  ): T {
+    while (true) {
+      const level = ctx.startSpan();
+      const val = this.callback(pick);
+      if (accept(val)) {
+        ctx.endSpan(level);
+        return val;
+      }
+      if (!ctx.cancelSpan(level)) {
+        // return default?
+        throw new PlayoutPruned(
+          `Couldn't find a playout that generates ${this}`,
+        );
       }
     }
   }
