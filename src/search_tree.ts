@@ -1,4 +1,9 @@
-import { alwaysPickDefault, IntPicker, PickRequest } from "./picks.ts";
+import {
+  alwaysPickDefault,
+  alwaysPickMin,
+  IntPicker,
+  PickRequest,
+} from "./picks.ts";
 
 import { PlayoutPruned, RetryPicker } from "./backtracking.ts";
 
@@ -507,7 +512,7 @@ export function* breadthFirstPass(
 
   const tree = new SearchTree(0);
   while (true) {
-    const picker = tree.makePicker(alwaysPickDefault, {
+    const picker = tree.makePicker(alwaysPickMin, {
       replaceRequest,
       acceptPlayout,
       acceptEmptyPlayout: passIdx === 0,
@@ -521,6 +526,9 @@ export function* breadthFirstPass(
  * Iterates over all playouts in breadth-first order, using iterative deepening.
  *
  * (The iterable can only be iterated over once.)
+ *
+ * Note: to avoid duplicate playouts, the return value of
+ * {@link RetryPicker.finishPlayout} must be used to filter them.
  */
 export function* breadthFirstSearch(): Iterable<RetryPicker> {
   let maxDepth = 0;

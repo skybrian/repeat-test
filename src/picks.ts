@@ -141,6 +141,10 @@ export class PickRequest {
     });
   }
 
+  withoutDefault() {
+    return new PickRequest(this.min, this.max, { bias: this.bias });
+  }
+
   toString() {
     return `PickRequest(${this.min}, ${this.max})`;
   }

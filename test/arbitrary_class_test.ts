@@ -119,12 +119,13 @@ describe("Arbitrary", () => {
       const keepEverything = () => true;
       const filtered = sixSided.filter(keepEverything);
       assertEquals(filtered.default, 1);
+      assertEquals(filtered.takeAll(), [1, 2, 3, 4, 5, 6]);
     });
     it("changes the default to the next value that satisfies the predicate", () => {
       const keepEvens = (n: number) => n % 2 === 0;
       const filtered = sixSided.filter(keepEvens);
       assertEquals(filtered.default, 2);
-      assertEquals(filtered.examples().next().value, 2);
+      assertEquals(filtered.takeAll(), [2, 4, 6]);
       const ex = filtered.pick(defaultPlayout());
       assertEquals(ex, 2);
     });
@@ -236,22 +237,49 @@ describe("Arbitrary", () => {
       assertEquals(Array.from(hello.examples()), ["hi", "there"]);
     });
 
-    it("can solve a combination lock if given enough tries", () => {
+    it("can solve a toggle lock if given enough tries", () => {
+      const digit = new PickRequest(0, 1);
+      const digitCount = 2;
+      const solutions = new Set(["[0,1]", "[1,0]"]);
+
       const digits = Arbitrary.from((pick) => {
-        const a = pick(new PickRequest(0, 9));
-        const b = pick(new PickRequest(0, 9));
-        const c = pick(new PickRequest(0, 9));
-        return [a, b, c];
+        const picks: number[] = [];
+        for (let i = 0; i < digitCount; i++) {
+          picks.push(pick(digit));
+        }
+        return JSON.stringify(picks);
       });
       const lock = digits.filter(
-        ([a, b, c]) => a == 1 && (b == 2 || b == 4) && c == 3,
+        (pick) => solutions.has(pick),
         { maxTries: 1000 },
       );
-      assertEquals(lock.default, [1, 2, 3]);
-      const solutions = Array.from(lock.examples());
-      assertEquals(solutions, [
-        [1, 2, 3],
-        [1, 4, 3],
+      assertEquals(lock.default, "[1,0]");
+      assertEquals(lock.takeAll(), [
+        "[1,0]",
+        "[0,1]",
+      ]);
+    });
+
+    it("can solve a combination lock if given enough tries", () => {
+      const digit = new PickRequest(1, 9);
+      const digitCount = 3;
+      const solutions = new Set(["[1,2,3]", "[1,4,3]"]);
+
+      const digits = Arbitrary.from((pick) => {
+        const picks: number[] = [];
+        for (let i = 0; i < digitCount; i++) {
+          picks.push(pick(digit));
+        }
+        return JSON.stringify(picks);
+      });
+      const lock = digits.filter(
+        (pick) => solutions.has(pick),
+        { maxTries: 1000 },
+      );
+      assertEquals(lock.default, "[1,2,3]");
+      assertEquals(lock.takeAll(), [
+        "[1,2,3]",
+        "[1,4,3]",
       ]);
     });
   });

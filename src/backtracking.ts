@@ -104,50 +104,50 @@ export function defaultPlayout(): Iterable<RetryPicker> {
 }
 
 /**
- * A picker that overrides some requests' default values before passing them on.
- *
- * Each request will be modified until the underlying picker chooses a
- * non-default value.
+ * A picker that overrides some requests' defaults by rotating the replies.
  */
 export function replaceDefaults(
   wrapped: RetryPicker,
   defaultPlayout: number[],
 ): RetryPicker {
-  let onDefaultPath = true;
+  const picks: number[] = [];
 
   const picker: RetryPicker = {
     maybePick(req) {
       const depth = wrapped.depth;
-      if (!onDefaultPath || depth >= defaultPlayout.length) {
-        onDefaultPath = false;
-        return wrapped.maybePick(req);
+      const oldPick = wrapped.maybePick(req.withoutDefault());
+      if (depth >= defaultPlayout.length) {
+        picks.push(oldPick);
+        return oldPick;
       }
-      const modified = req.withDefault(defaultPlayout[depth]);
-      const pick = wrapped.maybePick(modified);
-      if (pick !== modified.default) {
-        onDefaultPath = false;
+
+      const def = defaultPlayout[depth];
+      let pick = oldPick - req.min + def;
+      while (pick > req.max) {
+        pick -= req.size;
       }
+      picks.push(pick);
       return pick;
     },
-    backTo: function (depth: number): boolean {
+    backTo(depth: number): boolean {
       if (!wrapped.backTo(depth)) {
         return false;
       }
-      if (onDefaultPath) {
+      if (depth !== wrapped.depth) {
+        throw new Error(
+          `wrapped picker didn't implement backTo correctly. Want: depth=${depth} got: ${wrapped.depth}`,
+        );
+      }
+      picks.length = depth;
+      if (depth >= defaultPlayout.length) {
         return true; // Unchanged by backtracking.
       }
-      depth = wrapped.depth;
-      if (depth >= defaultPlayout.length) {
-        return true;
-      }
       // Check that the picks so far match the new defaults.
-      const picks = wrapped.getPicks();
       for (let i = 0; i < depth; i++) {
         if (picks[i] !== defaultPlayout[i]) {
           return true;
         }
       }
-      onDefaultPath = true;
       return true;
     },
     finishPlayout: function (): boolean {
@@ -158,7 +158,7 @@ export function replaceDefaults(
       return wrapped.depth;
     },
     getPicks: function (): number[] {
-      return wrapped.getPicks();
+      return picks;
     },
   };
   return picker;
