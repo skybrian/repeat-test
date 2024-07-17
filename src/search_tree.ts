@@ -1,9 +1,4 @@
-import {
-  alwaysPickDefault,
-  alwaysPickMin,
-  IntPicker,
-  PickRequest,
-} from "./picks.ts";
+import { alwaysPickMin, IntPicker, PickRequest } from "./picks.ts";
 
 import { PlayoutPruned, RetryPicker } from "./backtracking.ts";
 
@@ -133,8 +128,8 @@ type PlayoutFilter = (depth: number, req: PickRequest) => boolean;
 export type SearchOpts = {
   /**
    * Replaces each incoming pick request with a new one. The new request might
-   * have a narrower range or a different default. If the callback returns
-   * undefined, the playout will be cancelled.
+   * have a narrower range. If the callback returns undefined, the playout will
+   * be cancelled.
    */
   replaceRequest?: RequestFilter;
   acceptPlayout?: PlayoutFilter;
@@ -473,7 +468,7 @@ export class SearchTree {
  * (if successful) or by taking the next value from the iterator.
  */
 export function depthFirstSearch(opts?: SearchOpts): Iterable<RetryPicker> {
-  return new SearchTree(0).pickers(alwaysPickDefault, opts);
+  return new SearchTree(0).pickers(alwaysPickMin, opts);
 }
 
 /**

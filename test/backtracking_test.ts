@@ -3,7 +3,7 @@ import { assertEquals } from "@std/assert";
 import { randomPicker } from "../src/random.ts";
 
 import { alwaysPickMin, PickRequest } from "../src/picks.ts";
-import { onePlayoutPicker, replaceDefaults } from "../src/backtracking.ts";
+import { onePlayoutPicker, rotatePicks } from "../src/backtracking.ts";
 import { breadthFirstSearch, depthFirstSearch } from "../src/search_tree.ts";
 
 const bit = new PickRequest(0, 1);
@@ -19,9 +19,9 @@ describe("onePlayoutPicker", () => {
   });
 });
 
-describe("replaceDefaults", () => {
+describe("rotatePicks", () => {
   it("returns the new defaults instead of a minimum value", () => {
-    const picker = replaceDefaults(onePlayoutPicker(alwaysPickMin), [1, 2]);
+    const picker = rotatePicks(onePlayoutPicker(alwaysPickMin), [1, 2]);
 
     assertEquals(picker.maybePick(new PickRequest(0, 1)), 1);
     assertEquals(picker.depth, 1);
@@ -39,7 +39,7 @@ describe("replaceDefaults", () => {
     const bit = new PickRequest(0, 1);
     const playouts: string[] = [];
     for (let picker of depthFirstSearch()) {
-      picker = replaceDefaults(picker, [1, 1]);
+      picker = rotatePicks(picker, [1, 1]);
       for (let i = 0; i < 3; i++) {
         picker.maybePick(bit);
       }
@@ -61,7 +61,7 @@ describe("replaceDefaults", () => {
     const bit = new PickRequest(0, 1);
     const playouts: string[] = [];
     for (let picker of breadthFirstSearch()) {
-      picker = replaceDefaults(picker, [1, 1]);
+      picker = rotatePicks(picker, [1, 1]);
       for (let i = 0; i < 3; i++) {
         picker.maybePick(bit);
       }

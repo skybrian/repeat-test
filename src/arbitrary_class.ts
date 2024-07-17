@@ -1,11 +1,11 @@
 import { PickRequest, PlaybackPicker } from "./picks.ts";
 
 import {
-  defaultPlayout,
+  minPlayout,
   onePlayout,
   PlayoutPruned,
-  replaceDefaults,
   RetryPicker,
+  rotatePicks,
 } from "./backtracking.ts";
 
 import { Playout, PlayoutContext } from "./playouts.ts";
@@ -204,7 +204,7 @@ export default class Arbitrary<T> {
       let pick: PickFunction = dispatch;
       const newDefaults = opts?.defaultPlayout;
       if (newDefaults !== undefined) {
-        picker = replaceDefaults(picker, newDefaults);
+        picker = rotatePicks(picker, newDefaults);
         pick = Arbitrary.makePickFunction(ctx, picker);
       }
 
@@ -367,7 +367,7 @@ export default class Arbitrary<T> {
       return this.#examples[0];
     }
     // make a clone, in case it's mutable
-    const ex = this.pick(defaultPlayout());
+    const ex = this.pick(minPlayout());
     if (ex === END_OF_PLAYOUTS) {
       throw new Error(
         "couldn't generate a default value because default picks weren't accepted",

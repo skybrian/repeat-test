@@ -1,4 +1,4 @@
-import { alwaysPickDefault, IntPicker, PickRequest } from "./picks.ts";
+import { alwaysPickMin, IntPicker, PickRequest } from "./picks.ts";
 
 /**
  * This playout was cancelled, perhaps because it was filtered out.
@@ -98,15 +98,16 @@ export function onePlayout(picker: IntPicker): Iterable<RetryPicker> {
   return [onePlayoutPicker(picker)].values();
 }
 
-/** An iterable that provides one playout that always picks the default. */
-export function defaultPlayout(): Iterable<RetryPicker> {
-  return onePlayout(alwaysPickDefault);
+/** An iterable that provides one playout that always picks the minimum. */
+export function minPlayout(): Iterable<RetryPicker> {
+  return onePlayout(alwaysPickMin);
 }
 
 /**
- * A picker that overrides some requests' defaults by rotating the replies.
+ * A picker that rotates each reply so that when the underlying picker picks a
+ * minimum value, it picks a default value instead.
  */
-export function replaceDefaults(
+export function rotatePicks(
   wrapped: RetryPicker,
   defaultPlayout: number[],
 ): RetryPicker {
@@ -115,7 +116,7 @@ export function replaceDefaults(
   const picker: RetryPicker = {
     maybePick(req) {
       const depth = wrapped.depth;
-      const oldPick = wrapped.maybePick(req.withoutDefault());
+      const oldPick = wrapped.maybePick(req);
       if (depth >= defaultPlayout.length) {
         picks.push(oldPick);
         return oldPick;
@@ -133,21 +134,7 @@ export function replaceDefaults(
       if (!wrapped.backTo(depth)) {
         return false;
       }
-      if (depth !== wrapped.depth) {
-        throw new Error(
-          `wrapped picker didn't implement backTo correctly. Want: depth=${depth} got: ${wrapped.depth}`,
-        );
-      }
       picks.length = depth;
-      if (depth >= defaultPlayout.length) {
-        return true; // Unchanged by backtracking.
-      }
-      // Check that the picks so far match the new defaults.
-      for (let i = 0; i < depth; i++) {
-        if (picks[i] !== defaultPlayout[i]) {
-          return true;
-        }
-      }
       return true;
     },
     finishPlayout: function (): boolean {

@@ -25,39 +25,11 @@ export function uniformBias(min: number, max: number): BiasedIntPicker {
 
 export type PickRequestOptions = {
   /**
-   * Overrides the default value for this request. This number should satisfy
-   * {@link inRange} for the request.
-   */
-  default?: number;
-
-  /**
    * Overrides the distribution for this request. The output should satisfy
    * {@link inRange} for the request.
    */
   bias?: BiasedIntPicker;
 };
-
-/**
- * Chooses a suitable default for an integer range.
- *
- * If not overridden, it's the minimum value of the range.
- */
-export function chooseDefault(
-  min: number,
-  max: number,
-  opts?: { default?: number },
-) {
-  const override = opts?.default;
-  if (override === undefined) {
-    return min;
-  }
-  if (!inRange(override, min, max)) {
-    throw new Error(
-      `the default must be in the range (${min}, ${max}); got ${override}`,
-    );
-  }
-  return override;
-}
 
 /**
  * Requests a safe, non-negative integer in a given range, with optional hints
@@ -74,13 +46,6 @@ export class PickRequest {
    * The output is assumed to satisfy {@link PickRequest.inRange}.
    */
   readonly bias: BiasedIntPicker;
-
-  /**
-   * A default pick that can be used when not picking randomly.
-   *
-   * Invariant: satisfies {@link inRange}.
-   */
-  readonly default: number;
 
   /**
    * Constructs a request an integer in a given range.
@@ -109,7 +74,6 @@ export class PickRequest {
     if (min > max) {
       throw new Error(`invalid range: (${min}, ${max})`);
     }
-    this.default = chooseDefault(min, max, opts);
     this.bias = opts?.bias ?? uniformBias(min, max);
   }
 
@@ -124,25 +88,6 @@ export class PickRequest {
   /** Returns true if the given number satisfies this request. */
   inRange(n: number): boolean {
     return inRange(n, this.min, this.max);
-  }
-
-  /**
-   * Returns a new request that's the same as this one, but with a new default.
-   */
-  withDefault(defaultOverride: number): PickRequest {
-    if (!inRange(defaultOverride, this.min, this.max)) {
-      throw new Error(
-        `the default must be in the range (${this.min}, ${this.max}); got ${defaultOverride}`,
-      );
-    }
-    return new PickRequest(this.min, this.max, {
-      default: defaultOverride,
-      bias: this.bias,
-    });
-  }
-
-  withoutDefault() {
-    return new PickRequest(this.min, this.max, { bias: this.bias });
   }
 
   toString() {
@@ -167,13 +112,6 @@ export interface IntPicker {
    */
   pick(req: PickRequest): number;
 }
-
-export const alwaysPickDefault: IntPicker = {
-  get isRandom() {
-    return false;
-  },
-  pick: (req) => req.default,
-};
 
 export const alwaysPickMin: IntPicker = {
   get isRandom() {
@@ -229,7 +167,7 @@ export class PlaybackPicker implements IntPicker {
   pick(req: PickRequest): number {
     if (this.depth >= this.expected.length) {
       this.depth++;
-      return req.default;
+      return req.min;
     }
     let pick = this.expected[this.depth];
     if (!req.inRange(pick)) {
@@ -238,7 +176,7 @@ export class PlaybackPicker implements IntPicker {
           `pick at offset ${this.depth} doesn't satisfy the request.` +
           ` Want: (${req.min}, ${req.max}). Got: ${pick}`;
       }
-      pick = req.default;
+      pick = req.min;
     }
     this.depth++;
     return pick;

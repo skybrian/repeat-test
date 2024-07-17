@@ -1,8 +1,8 @@
 import { PickRequest } from "./picks.ts";
 
 export function shrinkPick(req: PickRequest, reply: number): Iterable<number> {
-  if (reply === req.default) {
+  if (reply === req.min) {
     return [];
   }
-  return [req.default];
+  return [req.min];
 }

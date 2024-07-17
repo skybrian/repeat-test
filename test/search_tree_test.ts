@@ -9,12 +9,7 @@ import {
 import * as arb from "../src/arbitraries.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import {
-  alwaysPick,
-  alwaysPickDefault,
-  alwaysPickMin,
-  PickRequest,
-} from "../src/picks.ts";
+import { alwaysPick, alwaysPickMin, PickRequest } from "../src/picks.ts";
 import { PlayoutPruned, RetryPicker } from "../src/backtracking.ts";
 import { randomPicker } from "../src/random.ts";
 
@@ -34,7 +29,7 @@ describe("SearchTree", () => {
   describe("makePicker", () => {
     it("starts a playout with no picks", () => {
       const tree = new SearchTree(1);
-      const picker = tree.makePicker(alwaysPickDefault);
+      const picker = tree.makePicker(alwaysPickMin);
       assert(picker !== undefined);
       assertEquals(picker.depth, 0);
       assertEquals(picker.getPicks(), []);
@@ -48,7 +43,7 @@ describe("SearchTree", () => {
 
       let count = 0;
       for (let i = 0; i < 2; i++) {
-        const pickers = tree.pickers(alwaysPickDefault);
+        const pickers = tree.pickers(alwaysPickMin);
         for (const p of pickers) {
           assertEquals(p.depth, 0);
           assertEquals(p.maybePick(new PickRequest(0, 3)), count);
@@ -57,7 +52,7 @@ describe("SearchTree", () => {
           if (count % 2 == 0) break;
         }
       }
-      const empty = tree.pickers(alwaysPickDefault);
+      const empty = tree.pickers(alwaysPickMin);
       assert(empty.next().done);
       assertEquals(count, 4);
     });
@@ -68,7 +63,7 @@ describe("Cursor", () => {
   describe("pick", () => {
     it("takes a pick from the underlying picker", () => {
       const tree = new SearchTree(1);
-      const picker = tree.makePicker(alwaysPickDefault);
+      const picker = tree.makePicker(alwaysPickMin);
       assert(picker !== undefined);
       assertEquals(picker.maybePick(bit), 0);
       assertEquals(picker.depth, 1);
@@ -78,7 +73,7 @@ describe("Cursor", () => {
 
     it("requires the same range as last time", () => {
       const tree = new SearchTree(1);
-      const picker = tree.makePicker(alwaysPickDefault);
+      const picker = tree.makePicker(alwaysPickMin);
       assert(picker !== undefined);
       assertEquals(picker.maybePick(bit), 0);
       picker.backTo(0);
@@ -90,7 +85,7 @@ describe("Cursor", () => {
     describe("when using a non-random underlying picker", () => {
       it("continues tracking beneath a wide node", () => {
         const tree = new SearchTree(1);
-        const picker = tree.makePicker(alwaysPickDefault);
+        const picker = tree.makePicker(alwaysPickMin);
         assert(picker !== undefined);
         picker.maybePick(uint32);
         assert(picker.tracked);
@@ -163,12 +158,12 @@ describe("Cursor", () => {
       it("picks using a replaced request", () => {
         const tree = new SearchTree(1000);
         const picker = tree.makePicker(alwaysPickMin, {
-          replaceRequest: (_, req) => new PickRequest(req.default, req.default),
+          replaceRequest: (_, req) => new PickRequest(req.max, req.max),
         });
         assert(picker !== undefined);
 
         assertEquals(
-          picker.maybePick(new PickRequest(0, 1, { default: 1 })),
+          picker.maybePick(new PickRequest(0, 1)),
           1,
         );
         assertFalse(picker.backTo(0));
@@ -180,7 +175,7 @@ describe("Cursor", () => {
     describe("for a depth-first search", () => {
       function makePicker(): Cursor {
         const tree = new SearchTree(0);
-        const picker = tree.makePicker(alwaysPickDefault);
+        const picker = tree.makePicker(alwaysPickMin);
         assert(picker !== undefined);
         return picker;
       }
@@ -245,11 +240,11 @@ describe("Cursor", () => {
     it("skips a filtered-out branch", () => {
       const tree = new SearchTree(1000);
       const picker = tree.makePicker(alwaysPickMin, {
-        replaceRequest: (_, req) => new PickRequest(req.default, req.default),
+        replaceRequest: (_, req) => new PickRequest(req.min, req.min),
       });
       assert(picker !== undefined);
 
-      assertEquals(picker.maybePick(new PickRequest(0, 1, { default: 0 })), 0);
+      assertEquals(picker.maybePick(new PickRequest(0, 1)), 0);
       assertFalse(picker.backTo(0));
     });
   });
@@ -257,7 +252,6 @@ describe("Cursor", () => {
   it("fully explores a combination lock", () => {
     const underlyingPickers = arb.oneOf([
       arb.of(
-        alwaysPickDefault,
         alwaysPickMin,
         alwaysPick(3),
       ),
@@ -288,7 +282,7 @@ describe("Cursor", () => {
 
       const playouts = Array.from(seen.values());
       assertEquals(playouts.length, 1000);
-      if (underlying === alwaysPickDefault) {
+      if (underlying === alwaysPickMin) {
         assertEquals(playouts[0], "[0,0,0]");
         assertEquals(playouts[999], "[9,9,9]");
       }

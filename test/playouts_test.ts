@@ -4,7 +4,7 @@ import * as arb from "../src/arbitraries.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import { alwaysPickDefault, PickRequest } from "../src/picks.ts";
+import { alwaysPickMin, PickRequest } from "../src/picks.ts";
 
 import { NestedPicks, Playout, PlayoutContext } from "../src/playouts.ts";
 import { SearchTree } from "../src/search_tree.ts";
@@ -115,7 +115,7 @@ describe("Playout", () => {
 describe("PlayoutContext", () => {
   function makePicker() {
     const tree = new SearchTree(0);
-    const picker = tree.makePicker(alwaysPickDefault);
+    const picker = tree.makePicker(alwaysPickMin);
     assert(picker !== undefined);
     return picker;
   }

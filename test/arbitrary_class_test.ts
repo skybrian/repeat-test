@@ -4,7 +4,7 @@ import { assertParseFails, assertSolutions } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
-import { defaultPlayout, PlayoutPruned } from "../src/backtracking.ts";
+import { minPlayout, PlayoutPruned } from "../src/backtracking.ts";
 import Arbitrary, { ArbitraryCallback } from "../src/arbitrary_class.ts";
 import { SearchTree } from "../src/search_tree.ts";
 
@@ -74,13 +74,13 @@ describe("Arbitrary", () => {
       it("accepts a PickRequest", () => {
         const req = new PickRequest(1, 2);
         const arb = Arbitrary.from((pick) => pick(req));
-        const ex = arb.pick(defaultPlayout());
+        const ex = arb.pick(minPlayout());
         assertEquals(ex, 1);
       });
       it("accepts an Arbitrary", () => {
         const req = Arbitrary.of("hi", "there");
         const arb = Arbitrary.from((pick) => pick(req));
-        const ex = arb.pick(defaultPlayout());
+        const ex = arb.pick(minPlayout());
         assertEquals(ex, "hi");
       });
       it("accepts a record shape", () => {
@@ -89,7 +89,7 @@ describe("Arbitrary", () => {
           b: Arbitrary.of(1, 2),
         };
         const arb = Arbitrary.from((pick) => pick(req));
-        const ex = arb.pick(defaultPlayout());
+        const ex = arb.pick(minPlayout());
         assertEquals(ex, { a: "hi", b: 1 });
       });
     });
@@ -126,7 +126,7 @@ describe("Arbitrary", () => {
       const filtered = sixSided.filter(keepEvens);
       assertEquals(filtered.default, 2);
       assertEquals(filtered.takeAll(), [2, 4, 6]);
-      const ex = filtered.pick(defaultPlayout());
+      const ex = filtered.pick(minPlayout());
       assertEquals(ex, 2);
     });
     it("filters out values that don't satisfy the predicate", () => {
@@ -139,11 +139,11 @@ describe("Arbitrary", () => {
 
   describe("map", () => {
     it("changes the default", () => {
-      const original = Arbitrary.from(new PickRequest(1, 6, { default: 3 }));
-      assertEquals(original.default, 3);
+      const original = Arbitrary.from(new PickRequest(1, 6));
+      assertEquals(original.default, 1);
 
       const mapped = original.map((n) => n * 2);
-      assertEquals(mapped.default, 6);
+      assertEquals(mapped.default, 2);
     });
   });
 
@@ -213,12 +213,12 @@ describe("Arbitrary", () => {
     });
 
     it("handles PlayoutPruned", () => {
-      const onlyThree = Arbitrary.from((pick) => {
-        const n = pick(new PickRequest(2, 3, { default: 3 }));
-        if (n !== 3) throw new PlayoutPruned("not 3");
+      const notTwo = Arbitrary.from((pick) => {
+        const n = pick(new PickRequest(1, 3));
+        if (n === 2) throw new PlayoutPruned("skip 2");
         return n;
       });
-      assertEquals(Array.from(onlyThree.examples()), [3]);
+      assertEquals(notTwo.takeAll(), [1, 3]);
     });
 
     it("handles a filtered Arbitrary", () => {
