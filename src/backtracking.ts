@@ -53,6 +53,11 @@ export interface RetryPicker {
   get depth(): number;
 
   /**
+   * Returns the pick requests made so far.
+   */
+  getRequests(): PickRequest[];
+
+  /**
    * Returns the picks made so far.
    */
   getPicks(): number[];
@@ -64,6 +69,7 @@ export interface RetryPicker {
  * It just logs the picks.
  */
 export function onePlayoutPicker(picker: IntPicker): RetryPicker {
+  const reqs: PickRequest[] = [];
   const picks: number[] = [];
   let done = false;
 
@@ -77,6 +83,7 @@ export function onePlayoutPicker(picker: IntPicker): RetryPicker {
         throw new Error("maybePick called after the playout finished");
       }
       const pick = picker.pick(req);
+      reqs.push(req);
       picks.push(pick);
       return pick;
     },
@@ -86,6 +93,10 @@ export function onePlayoutPicker(picker: IntPicker): RetryPicker {
     },
     backTo: function (): boolean {
       return false;
+    },
+
+    getRequests: function (): PickRequest[] {
+      return reqs.slice();
     },
 
     getPicks: function (): number[] {
@@ -111,6 +122,7 @@ export function rotatePicks(
   wrapped: RetryPicker,
   defaultPlayout: number[],
 ): RetryPicker {
+  const reqs: PickRequest[] = [];
   const picks: number[] = [];
 
   const picker: RetryPicker = {
@@ -118,6 +130,7 @@ export function rotatePicks(
       const depth = wrapped.depth;
       const oldPick = wrapped.maybePick(req);
       if (depth >= defaultPlayout.length) {
+        reqs.push(req);
         picks.push(oldPick);
         return oldPick;
       }
@@ -127,6 +140,7 @@ export function rotatePicks(
       while (pick > req.max) {
         pick -= req.size;
       }
+      reqs.push(req);
       picks.push(pick);
       return pick;
     },
@@ -134,17 +148,21 @@ export function rotatePicks(
       if (!wrapped.backTo(depth)) {
         return false;
       }
+      reqs.length = depth;
       picks.length = depth;
       return true;
     },
-    finishPlayout: function (): boolean {
+    finishPlayout(): boolean {
       return wrapped.finishPlayout();
     },
 
     get depth() {
-      return wrapped.depth;
+      return reqs.length;
     },
-    getPicks: function (): number[] {
+    getRequests(): PickRequest[] {
+      return reqs;
+    },
+    getPicks(): number[] {
       return picks;
     },
   };

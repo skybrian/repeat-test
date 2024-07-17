@@ -1,6 +1,13 @@
+import { PickRequest } from "./picks.ts";
 import { RetryPicker } from "./backtracking.ts";
 
 export type NestedPicks = (number | NestedPicks)[];
+
+export type PlayoutOpts = {
+  reqs?: PickRequest[];
+  starts?: number[];
+  ends?: number[];
+};
 
 /**
  * A log of choices made while generating a value using an {@link IntPicker}.
@@ -14,27 +21,37 @@ export type NestedPicks = (number | NestedPicks)[];
  * single number.
  */
 export class Playout {
+  readonly reqs: PickRequest[];
+  readonly ends: number[];
+  readonly starts: number[];
+
   /**
    * Constructs a Playout from logged picks and spans.
    *
    * @param picks The picks made to generate the value.
-   * @param spanStarts The starting index of each span, in the order entered.
+   * @param  The starting index of each span, in the order entered.
    * @param spanEnds The ending index of each span, in the order entered.
    *
    * (Note that zero-length spans are ambigous in this representation.)
    */
   constructor(
     readonly picks: number[],
-    readonly spanStarts: number[],
-    readonly spanEnds: number[],
+    opts?: PlayoutOpts,
   ) {
-    if (spanStarts.length !== spanEnds.length) {
-      throw new Error("spanStarts and spanEnds must have the same length");
+    this.reqs = opts?.reqs ??
+      picks.map((pick) => new PickRequest(pick, pick));
+    if (this.reqs.length !== picks.length) {
+      throw new Error("picks and reqs must be the same length");
+    }
+    this.starts = opts?.starts ?? [];
+    this.ends = opts?.ends ?? [];
+    if (this.starts.length !== this.ends.length) {
+      throw new Error("span starts and ends must have the same length");
     }
   }
 
   toNestedPicks(): NestedPicks {
-    const { picks, spanStarts, spanEnds } = this;
+    const { picks, starts, ends } = this;
 
     const root: NestedPicks = [];
     let current = root;
@@ -42,7 +59,7 @@ export class Playout {
     const spanEndStack: number[] = [];
 
     function startSpans(i: number) {
-      while (spanAt < spanStarts.length && spanStarts[spanAt] === i) {
+      while (spanAt < starts.length && starts[spanAt] === i) {
         // start a new list
         const nextList: NestedPicks = [];
         current.push(nextList);
@@ -50,7 +67,7 @@ export class Playout {
         current = nextList;
 
         // remember where to stop
-        spanEndStack.push(spanEnds[spanAt]);
+        spanEndStack.push(ends[spanAt]);
         spanAt++;
         endSpans(i); // might have just started an empty span
       }
@@ -186,8 +203,10 @@ export class PlayoutContext {
     if (this.level !== 0) {
       throw new Error("unclosed span at end of playout");
     }
+    const reqs = this.picker.getRequests();
+    const picks = this.picker.getPicks();
     const starts = this.starts.slice();
     const ends = this.ends.slice();
-    return new Playout(this.picker.getPicks(), starts, ends);
+    return new Playout(picks, { reqs, starts, ends });
   }
 }

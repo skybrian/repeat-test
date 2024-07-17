@@ -145,7 +145,8 @@ export class Cursor implements RetryPicker {
    */
   private readonly nodes: Node[];
 
-  private readonly reqs: PickRequest[];
+  private readonly originalReqs: PickRequest[];
+  private readonly modifiedReqs: PickRequest[];
 
   /**
    * The picks made in the current playout. The pick at index 0 is always 0,
@@ -178,7 +179,8 @@ export class Cursor implements RetryPicker {
     opts: SearchOpts = {},
   ) {
     this.nodes = [start];
-    this.reqs = [new PickRequest(0, 0)];
+    this.originalReqs = [new PickRequest(0, 0)];
+    this.modifiedReqs = [new PickRequest(0, 0)];
     this.picks = [0];
     this.replaceRequest = opts.replaceRequest ?? ((_, req) => req);
     this.acceptPlayout = opts.acceptPlayout ?? (() => true);
@@ -278,20 +280,20 @@ export class Cursor implements RetryPicker {
   maybePick(req: PickRequest): number {
     if (this.done) throw new Error("cannot pick after finishPlayout");
 
-    const replacement = this.replaceRequest(this.depth, req);
-    if (!replacement) {
+    const modified = this.replaceRequest(this.depth, req);
+    if (!modified) {
       throw new PlayoutPruned("pruned by replaceRequest");
     }
-    req = replacement;
 
-    const node = this.nextNode(req);
-    const firstChoice = this.wrapped.pick(req);
+    const node = this.nextNode(modified);
+    const firstChoice = this.wrapped.pick(modified);
     const pick = node.filterPick(firstChoice);
     if (pick === undefined) {
       throw new Error("internal error: node has no unpruned picks");
     }
     this.getNodes().push(node);
-    this.reqs.push(req);
+    this.originalReqs.push(req);
+    this.modifiedReqs.push(modified);
     this.picks.push(pick);
     return pick;
   }
@@ -303,8 +305,8 @@ export class Cursor implements RetryPicker {
     if (this.depth === 0) {
       return this.acceptEmptyPlayout;
     }
-    const lastReq = this.reqs[this.reqs.length - 1];
-    const lastDepth = this.reqs.length - 2;
+    const lastReq = this.modifiedReqs[this.modifiedReqs.length - 1];
+    const lastDepth = this.modifiedReqs.length - 2;
     return this.acceptPlayout(lastDepth, lastReq);
   }
 
@@ -326,7 +328,8 @@ export class Cursor implements RetryPicker {
       return false;
     }
     nodes.splice(depth + 1);
-    this.reqs.splice(depth + 1);
+    this.originalReqs.splice(depth + 1);
+    this.modifiedReqs.splice(depth + 1);
     this.picks.splice(depth + 1);
     if (!this.done) {
       this.tree.endPlayout();
@@ -337,6 +340,10 @@ export class Cursor implements RetryPicker {
 
   get depth(): number {
     return this.getNodes().length - 1;
+  }
+
+  getRequests(): PickRequest[] {
+    return this.originalReqs.slice(1);
   }
 
   getPicks(): number[] {
