@@ -81,6 +81,7 @@ export const END_OF_PLAYOUTS = Symbol("END_OF_PLAYOUTS");
  */
 export default class Arbitrary<T> {
   private readonly callback: ArbitraryCallback<T>;
+  readonly #label: string;
   readonly #examples: T[] | undefined;
 
   /**
@@ -98,11 +99,14 @@ export default class Arbitrary<T> {
   ): Arbitrary<T>;
   static from<T>(
     arg: PickRequest | ArbitraryCallback<T>,
+    opts?: { label?: string },
   ): Arbitrary<T> | Arbitrary<number> {
     if (typeof arg === "function") {
-      return new Arbitrary(arg);
+      const label = opts?.label ?? "callback";
+      return new Arbitrary(arg, { label });
     } else {
-      return new Arbitrary((pick) => pick(arg), { maxSize: arg.size });
+      const label = opts?.label ?? `pick ${arg.min} - ${arg.max}`;
+      return new Arbitrary((pick) => pick(arg), { label, maxSize: arg.size });
     }
   }
 
@@ -125,7 +129,7 @@ export default class Arbitrary<T> {
     const callback = (pick: PickFunction) => {
       return pick(shape) as T;
     };
-    return new Arbitrary(callback, { maxSize });
+    return new Arbitrary(callback, { maxSize, label: "record" });
   }
 
   /**
@@ -152,7 +156,7 @@ export default class Arbitrary<T> {
       const i = pick(req);
       return cases[i].callback(pick);
     };
-    return new Arbitrary(callback, { maxSize });
+    return new Arbitrary(callback, { maxSize, label: "oneOf" });
   }
 
   /**
@@ -170,7 +174,10 @@ export default class Arbitrary<T> {
       throw new Error("Arbitrary.of() requires at least one argument");
     } else if (examples.length === 1) {
       const constant = examples[0];
-      return new Arbitrary(() => constant, { maxSize: 1 });
+      return new Arbitrary(() => constant, {
+        maxSize: 1,
+        label: "of (constant)",
+      });
     }
 
     const req = new PickRequest(0, examples.length - 1);
@@ -181,6 +188,7 @@ export default class Arbitrary<T> {
     return new Arbitrary(callback, {
       examples,
       maxSize: examples.length,
+      label: "of",
     });
   }
 
@@ -236,15 +244,21 @@ export default class Arbitrary<T> {
 
   private constructor(
     callback: ArbitraryCallback<T>,
-    opts?: {
+    opts: {
+      label: string;
       examples?: T[];
       maxSize?: number;
     },
   ) {
     this.callback = callback;
-    this.#examples = opts?.examples;
-    this.maxSize = opts?.maxSize;
+    this.#label = opts.label;
+    this.#examples = opts.examples;
+    this.maxSize = opts.maxSize;
     this.default; // dry run
+  }
+
+  get label(): string {
+    return this.#label;
   }
 
   pick(pickers: Iterable<RetryPicker>): T | typeof END_OF_PLAYOUTS {
@@ -458,7 +472,7 @@ export default class Arbitrary<T> {
       const output = pick(this);
       return convert(output);
     };
-    return new Arbitrary(callback, { maxSize });
+    return new Arbitrary(callback, { maxSize, label: "map" });
   }
 
   /**
@@ -505,7 +519,7 @@ export default class Arbitrary<T> {
     const callback: ArbitraryCallback<T> = (pick) => {
       return pick(this, pickOpts);
     };
-    return new Arbitrary(callback, { maxSize });
+    return new Arbitrary(callback, { maxSize, label: "filter" });
   }
 
   /**
@@ -520,7 +534,7 @@ export default class Arbitrary<T> {
       const next = convert(output);
       return pick(next);
     };
-    return new Arbitrary(callback);
+    return new Arbitrary(callback, { label: "chain" });
   }
 
   asFunction() {
@@ -528,6 +542,6 @@ export default class Arbitrary<T> {
   }
 
   toString() {
-    return `Arbitrary(default: ${this.default})`;
+    return `Arbitrary(${this.label})`;
   }
 }
