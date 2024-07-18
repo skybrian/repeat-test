@@ -15,20 +15,16 @@ export function pickGuesses(
 export function* removeTrailingGuesses(
   playout: Playout,
 ): Iterable<number[]> {
-  const { reqs, picks } = playout;
-
-  while (
-    picks.length > 0 && picks[picks.length - 1] === reqs[reqs.length - 1].min
-  ) {
-    picks.pop();
-    reqs.pop();
+  const picks = playout.picks.trim();
+  if (picks.length === 0) {
+    return; // Already at the minimum.
   }
 
   // Try trimming the last half of the picks.
-  if (reqs.length > 1) {
-    let newLen = Math.floor(picks.length / 2);
-    while (newLen < reqs.length) {
-      yield picks.slice(0, newLen);
+  if (picks.length > 1) {
+    let newLen = Math.ceil(picks.length / 2);
+    while (newLen < picks.length) {
+      yield picks.replies.slice(0, newLen);
       const remaining = picks.length - newLen;
       newLen += Math.ceil(remaining / 2);
     }

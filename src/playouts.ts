@@ -1,6 +1,35 @@
 import { PickRequest } from "./picks.ts";
 import { RetryPicker } from "./backtracking.ts";
 
+export class PickList {
+  constructor(readonly reqs: PickRequest[], readonly replies: number[]) {
+    if (this.reqs.length !== replies.length) {
+      throw new Error("reqs and replies must be the same length");
+    }
+  }
+
+  get length() {
+    return this.reqs.length;
+  }
+
+  /** Removes trailing picks that are the same as the request's minimum value. */
+  trim(): PickList {
+    if (this.reqs.length === 0) return this;
+
+    let last = this.reqs.length - 1;
+    while (last >= 0 && this.replies[last] === this.reqs[last].min) {
+      last--;
+    }
+    if (last === this.reqs.length - 1) {
+      return this;
+    }
+    return new PickList(
+      this.reqs.slice(0, last + 1),
+      this.replies.slice(0, last + 1),
+    );
+  }
+}
+
 export type NestedPicks = (number | NestedPicks)[];
 
 export type PlayoutOpts = {
@@ -21,28 +50,26 @@ export type PlayoutOpts = {
  * single number.
  */
 export class Playout {
-  readonly reqs: PickRequest[];
-  readonly ends: number[];
+  readonly picks: PickList;
   readonly starts: number[];
+  readonly ends: number[];
 
   /**
    * Constructs a Playout from logged picks and spans.
    *
-   * @param picks The picks made to generate the value.
+   * @param replies The picks made to generate the value.
    * @param  The starting index of each span, in the order entered.
    * @param spanEnds The ending index of each span, in the order entered.
    *
    * (Note that zero-length spans are ambigous in this representation.)
    */
   constructor(
-    readonly picks: number[],
+    replies: number[],
     opts?: PlayoutOpts,
   ) {
-    this.reqs = opts?.reqs ??
-      picks.map((pick) => new PickRequest(pick, pick));
-    if (this.reqs.length !== picks.length) {
-      throw new Error("picks and reqs must be the same length");
-    }
+    const reqs = opts?.reqs ??
+      replies.map((pick) => new PickRequest(pick, pick));
+    this.picks = new PickList(reqs, replies);
     this.starts = opts?.starts ?? [];
     this.ends = opts?.ends ?? [];
     if (this.starts.length !== this.ends.length) {
@@ -52,6 +79,7 @@ export class Playout {
 
   toNestedPicks(): NestedPicks {
     const { picks, starts, ends } = this;
+    const { replies } = picks;
 
     const root: NestedPicks = [];
     let current = root;
@@ -84,11 +112,11 @@ export class Playout {
     }
 
     let spanAt = 0;
-    for (let i = 0; i <= picks.length; i++) {
+    for (let i = 0; i <= replies.length; i++) {
       endSpans(i);
       startSpans(i);
-      if (i < picks.length) {
-        current.push(picks[i]);
+      if (i < replies.length) {
+        current.push(replies[i]);
       }
     }
     if (spanEndStack.length > 0) {
