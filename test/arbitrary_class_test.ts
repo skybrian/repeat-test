@@ -135,6 +135,50 @@ describe("Arbitrary", () => {
         assert(n !== 3, `want: not 3, got ${n}`);
       });
     });
+    it("filters an arbitrary created from multiple picks", () => {
+      const bit = new PickRequest(0, 1);
+      const bitCount = 2;
+      const solutions = new Set(["[0,1]", "[1,0]"]);
+
+      const combos = Arbitrary.from((pick) => {
+        const picks: number[] = [];
+        for (let i = 0; i < bitCount; i++) {
+          picks.push(pick(bit));
+        }
+        return JSON.stringify(picks);
+      });
+      const filtered = combos.filter(
+        (pick) => solutions.has(pick),
+      );
+      assertEquals(filtered.default, "[1,0]");
+      assertEquals(filtered.takeAll(), [
+        "[1,0]",
+        "[0,1]",
+      ]);
+    });
+
+    it("can solve a combination lock if given enough tries", () => {
+      const digit = new PickRequest(1, 9);
+      const digitCount = 3;
+      const solutions = new Set(["[1,2,3]", "[1,4,3]"]);
+
+      const digits = Arbitrary.from((pick) => {
+        const picks: number[] = [];
+        for (let i = 0; i < digitCount; i++) {
+          picks.push(pick(digit));
+        }
+        return JSON.stringify(picks);
+      });
+      const lock = digits.filter(
+        (pick) => solutions.has(pick),
+        { maxTries: 1000 },
+      );
+      assertEquals(lock.default, "[1,2,3]");
+      assertEquals(lock.takeAll(), [
+        "[1,2,3]",
+        "[1,4,3]",
+      ]);
+    });
   });
 
   describe("map", () => {
@@ -194,22 +238,20 @@ describe("Arbitrary", () => {
     });
   });
 
-  describe("examples", () => {
+  describe("takeAll", () => {
     it("returns the only value of a constant", () => {
       const one = Arbitrary.from(() => 1);
-      assertEquals(Array.from(one.examples()), [1]);
+      assertEquals(one.takeAll(), [1]);
     });
 
     const bit = Arbitrary.from(new PickRequest(0, 1));
-    it("returns each example of a bit", () => {
-      const examples = Array.from(bit.examples());
-      assertEquals(examples, [0, 1]);
+    it("returns both bit values", () => {
+      assertEquals(bit.takeAll(), [0, 1]);
     });
 
-    const boolean = bit.map((b) => b == 1);
     it("handles a mapped Arbitrary", () => {
-      const examples = Array.from(boolean.examples());
-      assertEquals(examples, [false, true]);
+      const bool = bit.map((b) => b == 1);
+      assertEquals(bool.takeAll(), [false, true]);
     });
 
     it("handles PlayoutPruned", () => {
@@ -222,65 +264,19 @@ describe("Arbitrary", () => {
     });
 
     it("handles a filtered Arbitrary", () => {
-      const justFalse = boolean.filter((b) => !b);
-      assertEquals(Array.from(justFalse.examples()), [false]);
+      const zero = bit.filter((b) => b === 0);
+      assertEquals(zero.takeAll(), [0]);
     });
 
     it("handles a chained Arbitrary", () => {
-      const hello = boolean.chain((val) => {
-        if (val) {
+      const hello = bit.chain((val) => {
+        if (val === 1) {
           return Arbitrary.from(() => "there");
         } else {
           return Arbitrary.from(() => "hi");
         }
       });
       assertEquals(Array.from(hello.examples()), ["hi", "there"]);
-    });
-
-    it("can solve a toggle lock if given enough tries", () => {
-      const digit = new PickRequest(0, 1);
-      const digitCount = 2;
-      const solutions = new Set(["[0,1]", "[1,0]"]);
-
-      const digits = Arbitrary.from((pick) => {
-        const picks: number[] = [];
-        for (let i = 0; i < digitCount; i++) {
-          picks.push(pick(digit));
-        }
-        return JSON.stringify(picks);
-      });
-      const lock = digits.filter(
-        (pick) => solutions.has(pick),
-        { maxTries: 1000 },
-      );
-      assertEquals(lock.default, "[1,0]");
-      assertEquals(lock.takeAll(), [
-        "[1,0]",
-        "[0,1]",
-      ]);
-    });
-
-    it("can solve a combination lock if given enough tries", () => {
-      const digit = new PickRequest(1, 9);
-      const digitCount = 3;
-      const solutions = new Set(["[1,2,3]", "[1,4,3]"]);
-
-      const digits = Arbitrary.from((pick) => {
-        const picks: number[] = [];
-        for (let i = 0; i < digitCount; i++) {
-          picks.push(pick(digit));
-        }
-        return JSON.stringify(picks);
-      });
-      const lock = digits.filter(
-        (pick) => solutions.has(pick),
-        { maxTries: 1000 },
-      );
-      assertEquals(lock.default, "[1,2,3]");
-      assertEquals(lock.takeAll(), [
-        "[1,2,3]",
-        "[1,4,3]",
-      ]);
     });
   });
 
