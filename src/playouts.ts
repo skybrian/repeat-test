@@ -1,34 +1,5 @@
-import { PickRequest } from "./picks.ts";
+import { PickList, PickRequest } from "./picks.ts";
 import { RetryPicker } from "./backtracking.ts";
-
-export class PickList {
-  constructor(readonly reqs: PickRequest[], readonly replies: number[]) {
-    if (this.reqs.length !== replies.length) {
-      throw new Error("reqs and replies must be the same length");
-    }
-  }
-
-  get length() {
-    return this.reqs.length;
-  }
-
-  /** Removes trailing picks that are the same as the request's minimum value. */
-  trim(): PickList {
-    if (this.reqs.length === 0) return this;
-
-    let last = this.reqs.length - 1;
-    while (last >= 0 && this.replies[last] === this.reqs[last].min) {
-      last--;
-    }
-    if (last === this.reqs.length - 1) {
-      return this;
-    }
-    return new PickList(
-      this.reqs.slice(0, last + 1),
-      this.replies.slice(0, last + 1),
-    );
-  }
-}
 
 export type NestedPicks = (number | NestedPicks)[];
 

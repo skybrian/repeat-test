@@ -142,6 +142,62 @@ export function alwaysPick(n: number) {
   return picker;
 }
 
+export class PickList {
+  #reqs: PickRequest[];
+  #replies: number[];
+
+  static empty() {
+    return new PickList([], []);
+  }
+
+  constructor(reqs: PickRequest[], replies: number[]) {
+    if (reqs.length !== replies.length) {
+      throw new Error("reqs and replies must be the same length");
+    }
+    this.#reqs = reqs;
+    this.#replies = replies;
+  }
+
+  get length() {
+    return this.#reqs.length;
+  }
+
+  set length(val: number) {
+    this.#reqs.length = val;
+    this.#replies.length = val;
+  }
+
+  get reqs() {
+    return this.#reqs.slice();
+  }
+
+  get replies() {
+    return this.#replies.slice();
+  }
+
+  push(req: PickRequest, reply: number) {
+    this.#reqs.push(req);
+    this.#replies.push(reply);
+  }
+
+  /** Removes trailing picks that are the same as the request's minimum value. */
+  trim(): PickList {
+    if (this.#reqs.length === 0) return this;
+
+    let last = this.#reqs.length - 1;
+    while (last >= 0 && this.#replies[last] === this.#reqs[last].min) {
+      last--;
+    }
+    if (last === this.#reqs.length - 1) {
+      return this;
+    }
+    return new PickList(
+      this.#reqs.slice(0, last + 1),
+      this.#replies.slice(0, last + 1),
+    );
+  }
+}
+
 /**
  * A picker that provides a single playout and checks for mismatches.
  */

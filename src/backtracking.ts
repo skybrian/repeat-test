@@ -1,4 +1,4 @@
-import { alwaysPickMin, IntPicker, PickRequest } from "./picks.ts";
+import { alwaysPickMin, IntPicker, PickList, PickRequest } from "./picks.ts";
 
 /**
  * This playout was cancelled, perhaps because it was filtered out.
@@ -69,8 +69,7 @@ export interface RetryPicker {
  * It just logs the picks.
  */
 export function onePlayoutPicker(picker: IntPicker): RetryPicker {
-  const reqs: PickRequest[] = [];
-  const picks: number[] = [];
+  const picks = PickList.empty();
   let done = false;
 
   return {
@@ -83,8 +82,7 @@ export function onePlayoutPicker(picker: IntPicker): RetryPicker {
         throw new Error("maybePick called after the playout finished");
       }
       const pick = picker.pick(req);
-      reqs.push(req);
-      picks.push(pick);
+      picks.push(req, pick);
       return pick;
     },
     finishPlayout: function (): boolean {
@@ -96,11 +94,11 @@ export function onePlayoutPicker(picker: IntPicker): RetryPicker {
     },
 
     getRequests: function (): PickRequest[] {
-      return reqs.slice();
+      return picks.reqs;
     },
 
     getPicks: function (): number[] {
-      return picks.slice();
+      return picks.replies;
     },
   };
 }
@@ -122,16 +120,14 @@ export function rotatePicks(
   wrapped: RetryPicker,
   defaultPlayout: number[],
 ): RetryPicker {
-  const reqs: PickRequest[] = [];
-  const picks: number[] = [];
+  const picks = PickList.empty();
 
   const picker: RetryPicker = {
     maybePick(req) {
       const depth = wrapped.depth;
       const oldPick = wrapped.maybePick(req);
       if (depth >= defaultPlayout.length) {
-        reqs.push(req);
-        picks.push(oldPick);
+        picks.push(req, oldPick);
         return oldPick;
       }
 
@@ -140,15 +136,13 @@ export function rotatePicks(
       while (pick > req.max) {
         pick -= req.size;
       }
-      reqs.push(req);
-      picks.push(pick);
+      picks.push(req, pick);
       return pick;
     },
     backTo(depth: number): boolean {
       if (!wrapped.backTo(depth)) {
         return false;
       }
-      reqs.length = depth;
       picks.length = depth;
       return true;
     },
@@ -157,13 +151,13 @@ export function rotatePicks(
     },
 
     get depth() {
-      return reqs.length;
+      return picks.length;
     },
     getRequests(): PickRequest[] {
-      return reqs;
+      return picks.reqs;
     },
     getPicks(): number[] {
-      return picks;
+      return picks.replies;
     },
   };
   return picker;
