@@ -63,7 +63,7 @@ function picksToPlayout(input: NestedPicks): Playout {
 describe("Playout", () => {
   describe("toNestedPicks", () => {
     it("returns an empty list when there are no picks or spans", () => {
-      const playout = new Playout(PickList.empty());
+      const playout = new Playout();
       assertEquals(playout.toNestedPicks(), []);
     });
     it("returns a list of picks when there are only picks", () => {
@@ -73,7 +73,7 @@ describe("Playout", () => {
     it("interprets empty spans as sequential", () => {
       // This is actually ambigous. Could also be [[]].
       // But SpanLog shouldn't be emitting empty spans anyway.
-      const playout = new Playout(PickList.empty(), {
+      const playout = new Playout(new PickList(), {
         starts: [0, 0],
         ends: [0, 0],
       });

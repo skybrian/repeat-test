@@ -64,7 +64,7 @@ export interface RetryPicker {
  * It just logs the picks.
  */
 export function onePlayoutPicker(picker: IntPicker): RetryPicker {
-  const picks = PickList.empty();
+  const picks = new PickList();
   let done = false;
 
   return {
@@ -111,7 +111,7 @@ export function rotatePicks(
   wrapped: RetryPicker,
   defaultPlayout: number[],
 ): RetryPicker {
-  const picks = PickList.empty();
+  const picks = new PickList();
 
   const picker: RetryPicker = {
     maybePick(req) {

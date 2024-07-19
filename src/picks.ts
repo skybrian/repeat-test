@@ -146,10 +146,6 @@ export class PickList {
   #reqs: PickRequest[];
   #replies: number[];
 
-  static empty() {
-    return new PickList([], []);
-  }
-
   /**
    * Constructs a pick list with no alternative choices.
    *
@@ -159,7 +155,11 @@ export class PickList {
     return new PickList(replies.map((r) => new PickRequest(r, r)), replies);
   }
 
-  constructor(reqs: PickRequest[], replies: number[]) {
+  constructor();
+  constructor(reqs: PickRequest[], replies: number[]);
+  constructor(reqs?: PickRequest[], replies?: number[]) {
+    reqs = reqs ?? [];
+    replies = replies ?? [];
     if (reqs.length !== replies.length) {
       throw new Error("reqs and replies must be the same length");
     }

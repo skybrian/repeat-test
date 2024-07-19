@@ -51,7 +51,7 @@ describe("shrink", () => {
 
 describe("shorterGuesses", () => {
   it("doesn't guess for an empty playout", () => {
-    const playout = new Playout(PickList.empty());
+    const playout = new Playout();
     const guesses = Array.from(shorterGuesses(playout));
     assertEquals(guesses, []);
   });
@@ -110,7 +110,7 @@ describe("shorterGuesses", () => {
 
 describe("changePickGuesses", () => {
   it("doesn't guess for an empty playout", () => {
-    const playout = new Playout(PickList.empty());
+    const playout = new Playout();
     const guesses = Array.from(changePickGuesses(playout));
     assertEquals(guesses, []);
   });

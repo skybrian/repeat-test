@@ -33,10 +33,10 @@ export class Playout {
    * (Note that zero-length spans are ambigous in this representation.)
    */
   constructor(
-    picks: PickList,
+    picks?: PickList,
     spans?: SpanList,
   ) {
-    this.picks = picks;
+    this.picks = picks ?? new PickList();
     this.spans = spans ?? { starts: [], ends: [] };
     if (this.spans.starts.length !== this.spans.ends.length) {
       throw new Error("span starts and ends must have the same length");
