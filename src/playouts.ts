@@ -1,12 +1,11 @@
-import { PickList, PickRequest } from "./picks.ts";
+import { PickList } from "./picks.ts";
 import { RetryPicker } from "./backtracking.ts";
 
 export type NestedPicks = (number | NestedPicks)[];
 
-export type PlayoutOpts = {
-  reqs?: PickRequest[];
-  starts?: number[];
-  ends?: number[];
+export type SpanList = {
+  starts: number[];
+  ends: number[];
 };
 
 /**
@@ -22,35 +21,31 @@ export type PlayoutOpts = {
  */
 export class Playout {
   readonly picks: PickList;
-  readonly starts: number[];
-  readonly ends: number[];
+  readonly spans: SpanList;
 
   /**
    * Constructs a Playout from logged picks and spans.
    *
    * @param replies The picks made to generate the value.
-   * @param  The starting index of each span, in the order entered.
-   * @param spanEnds The ending index of each span, in the order entered.
+   * @param opts.start The starting index of each span, in the order entered.
+   * @param opts.end The ending index of each span, in the order entered.
    *
    * (Note that zero-length spans are ambigous in this representation.)
    */
   constructor(
-    replies: number[],
-    opts?: PlayoutOpts,
+    picks: PickList,
+    spans?: SpanList,
   ) {
-    const reqs = opts?.reqs ??
-      replies.map((pick) => new PickRequest(pick, pick));
-    this.picks = new PickList(reqs, replies);
-    this.starts = opts?.starts ?? [];
-    this.ends = opts?.ends ?? [];
-    if (this.starts.length !== this.ends.length) {
+    this.picks = picks;
+    this.spans = spans ?? { starts: [], ends: [] };
+    if (this.spans.starts.length !== this.spans.ends.length) {
       throw new Error("span starts and ends must have the same length");
     }
   }
 
   toNestedPicks(): NestedPicks {
-    const { picks, starts, ends } = this;
-    const { replies } = picks;
+    const { replies } = this.picks;
+    const { starts, ends } = this.spans;
 
     const root: NestedPicks = [];
     let current = root;
@@ -202,10 +197,9 @@ export class PlayoutContext {
     if (this.level !== 0) {
       throw new Error("unclosed span at end of playout");
     }
-    const reqs = this.picker.getRequests();
     const picks = this.picker.getPicks();
     const starts = this.starts.slice();
     const ends = this.ends.slice();
-    return new Playout(picks, { reqs, starts, ends });
+    return new Playout(picks, { starts, ends });
   }
 }

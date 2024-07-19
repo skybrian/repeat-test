@@ -53,14 +53,9 @@ export interface RetryPicker {
   get depth(): number;
 
   /**
-   * Returns the pick requests made so far.
-   */
-  getRequests(): PickRequest[];
-
-  /**
    * Returns the picks made so far.
    */
-  getPicks(): number[];
+  getPicks(): PickList;
 }
 
 /**
@@ -93,12 +88,8 @@ export function onePlayoutPicker(picker: IntPicker): RetryPicker {
       return false;
     },
 
-    getRequests: function (): PickRequest[] {
-      return picks.reqs;
-    },
-
-    getPicks: function (): number[] {
-      return picks.replies;
+    getPicks: function (): PickList {
+      return picks.slice();
     },
   };
 }
@@ -153,11 +144,8 @@ export function rotatePicks(
     get depth() {
       return picks.length;
     },
-    getRequests(): PickRequest[] {
-      return picks.reqs;
-    },
-    getPicks(): number[] {
-      return picks.replies;
+    getPicks(): PickList {
+      return picks.slice();
     },
   };
   return picker;

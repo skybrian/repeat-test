@@ -150,6 +150,15 @@ export class PickList {
     return new PickList([], []);
   }
 
+  /**
+   * Constructs a pick list with no alternative choices.
+   *
+   * Each request's range only includes the reply.
+   */
+  static fromReplies(replies: number[]) {
+    return new PickList(replies.map((r) => new PickRequest(r, r)), replies);
+  }
+
   constructor(reqs: PickRequest[], replies: number[]) {
     if (reqs.length !== replies.length) {
       throw new Error("reqs and replies must be the same length");
@@ -178,6 +187,13 @@ export class PickList {
   push(req: PickRequest, reply: number) {
     this.#reqs.push(req);
     this.#replies.push(reply);
+  }
+
+  slice(start?: number, end?: number): PickList {
+    return new PickList(
+      this.#reqs.slice(start, end),
+      this.#replies.slice(start, end),
+    );
   }
 
   /** Removes trailing picks that are the same as the request's minimum value. */

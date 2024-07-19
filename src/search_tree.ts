@@ -1,4 +1,4 @@
-import { alwaysPickMin, IntPicker, PickRequest } from "./picks.ts";
+import { alwaysPickMin, IntPicker, PickList, PickRequest } from "./picks.ts";
 
 import { PlayoutPruned, RetryPicker } from "./backtracking.ts";
 
@@ -342,12 +342,8 @@ export class Cursor implements RetryPicker {
     return this.getNodes().length - 1;
   }
 
-  getRequests(): PickRequest[] {
-    return this.originalReqs.slice(1);
-  }
-
-  getPicks(): number[] {
-    return this.picks.slice(1);
+  getPicks(): PickList {
+    return new PickList(this.originalReqs.slice(1), this.picks.slice(1));
   }
 }
 

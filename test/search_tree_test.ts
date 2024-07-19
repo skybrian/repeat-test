@@ -32,7 +32,8 @@ describe("SearchTree", () => {
       const picker = tree.makePicker(alwaysPickMin);
       assert(picker !== undefined);
       assertEquals(picker.depth, 0);
-      assertEquals(picker.getPicks(), []);
+      assertEquals(picker.getPicks().reqs, []);
+      assertEquals(picker.getPicks().replies, []);
       assert(picker.tracked);
     });
   });
@@ -67,7 +68,8 @@ describe("Cursor", () => {
       assert(picker !== undefined);
       assertEquals(picker.maybePick(bit), 0);
       assertEquals(picker.depth, 1);
-      assertEquals(picker.getPicks(), [0]);
+      assertEquals(picker.getPicks().reqs, [bit]);
+      assertEquals(picker.getPicks().replies, [0]);
       assert(picker.tracked);
     });
 
@@ -200,7 +202,8 @@ describe("Cursor", () => {
         picker.maybePick(bit);
         assert(picker.backTo(0));
         assertEquals(picker.depth, 0);
-        assertEquals(picker.getPicks(), []);
+        assertEquals(picker.getPicks().reqs, []);
+        assertEquals(picker.getPicks().replies, []);
       });
 
       it("goes to a different child after a fork", () => {
@@ -349,7 +352,7 @@ class Maze {
   visit(picker: RetryPicker) {
     try {
       const val = randomWalk(this.tree, picker);
-      const picks = JSON.stringify(picker.getPicks());
+      const picks = JSON.stringify(picker.getPicks().replies);
       if (picker.finishPlayout()) {
         if (this.accepted.has(picks)) {
           fail(`duplicate picks: ${picks}`);
@@ -661,7 +664,7 @@ describe("breadthFirstSearch", () => {
     for (const picker of breadthFirstSearch()) {
       picker.maybePick(new PickRequest(0, 2));
       if (picker.finishPlayout()) {
-        accepted.add(JSON.stringify(picker.getPicks()));
+        accepted.add(JSON.stringify(picker.getPicks().replies));
       }
     }
     assertEquals(Array.from(accepted), ["[0]", "[1]", "[2]"]);
@@ -675,6 +678,6 @@ describe("breadthFirstSearch", () => {
         maze.visit(picker);
       }
       assertEquals(expectedLeaves, maze.leaves);
-    }, { only: "1995150143:4" });
+    });
   });
 });

@@ -3,7 +3,7 @@ import { assert, assertEquals } from "@std/assert";
 import * as arb from "../src/arbitraries.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import { PickRequest } from "../src/picks.ts";
+import { PickList, PickRequest } from "../src/picks.ts";
 import {
   changePickGuesses,
   pickGuesses,
@@ -51,14 +51,14 @@ describe("shrink", () => {
 
 describe("shorterGuesses", () => {
   it("doesn't guess for an empty playout", () => {
-    const playout = new Playout([]);
+    const playout = new Playout(PickList.empty());
     const guesses = Array.from(shorterGuesses(playout));
     assertEquals(guesses, []);
   });
   it("doesn't guess if no requests were provided", () => {
     const example = arb.array(arb.int(0, 1000));
     repeatTest(example, (picks) => {
-      const playout = new Playout(picks);
+      const playout = new Playout(PickList.fromReplies(picks));
       const guesses = Array.from(shorterGuesses(playout));
       assertEquals(guesses, []);
     });
@@ -68,7 +68,7 @@ describe("shorterGuesses", () => {
     repeatTest(example, (ranges) => {
       const reqs = ranges.map((r) => new PickRequest(r.min, r.max));
       const picks = ranges.map((r) => r.min);
-      const playout = new Playout(picks, { reqs });
+      const playout = new Playout(new PickList(reqs, picks));
       const guesses = Array.from(shorterGuesses(playout));
       assertEquals(guesses, []);
     });
@@ -86,7 +86,7 @@ describe("shorterGuesses", () => {
     });
     repeatTest(playout, ({ ranges, picks }) => {
       const reqs = ranges.map((r) => new PickRequest(r.min, r.max));
-      const playout = new Playout(picks, { reqs });
+      const playout = new Playout(new PickList(reqs, picks));
       const guesses = Array.from(shorterGuesses(playout));
       assert(guesses.length > 0);
 
@@ -110,15 +110,14 @@ describe("shorterGuesses", () => {
 
 describe("changePickGuesses", () => {
   it("doesn't guess for an empty playout", () => {
-    const playout = new Playout([]);
+    const playout = new Playout(PickList.empty());
     const guesses = Array.from(changePickGuesses(playout));
     assertEquals(guesses, []);
   });
   it("replaces one pick with the minimum", () => {
     const roll = new PickRequest(1, 2);
-    const playout = new Playout([2, 2], {
-      reqs: [roll, roll],
-    });
+    const picks = new PickList([roll, roll], [2, 2]);
+    const playout = new Playout(picks);
     const guesses = Array.from(changePickGuesses(playout));
     assertEquals(guesses, [[1, 2], [2, 1]]);
   });
