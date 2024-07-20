@@ -3,6 +3,14 @@ import { PlayoutPruned } from "./backtracking.ts";
 import Arbitrary from "./arbitrary_class.ts";
 import { NestedPicks } from "./playouts.ts";
 
+import Codec from "../src/codec_class.ts";
+
+export function assertRoundTrip<T>(codec: Codec<T>, input: T) {
+  const encoded = codec.encode(input);
+  const decoded = codec.decode(encoded);
+  assertEquals(decoded, input);
+}
+
 export function assertSameExamples<T>(
   actual: Arbitrary<T>,
   expected: Arbitrary<T>,

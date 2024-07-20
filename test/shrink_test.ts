@@ -12,6 +12,7 @@ import {
 } from "../src/shrink.ts";
 import { Playout } from "../src/playouts.ts";
 import Codec from "../src/codec_class.ts";
+import * as codec from "../src/codecs.ts";
 
 function assertShrink<T>(
   codec: Codec<T>,
@@ -30,21 +31,21 @@ function assertShrink<T>(
 describe("shrink", () => {
   describe("for a single pick", () => {
     it("returns the same solution when already at the minimum", () => {
-      assertShrink(Codec.int(1, 6), () => true, 1, 1);
+      assertShrink(codec.int(1, 6), () => true, 1, 1);
     });
     it("shrinks an int to the minimum", () => {
-      assertShrink(Codec.int(1, 6), () => true, 6, 1);
+      assertShrink(codec.int(1, 6), () => true, 6, 1);
     });
     it("finds a smaller int", () => {
-      assertShrink(Codec.int(1, 6), (n) => n >= 3, 6, 3);
+      assertShrink(codec.int(1, 6), (n) => n >= 3, 6, 3);
     });
   });
   describe("for an ascii character", () => {
     it("returns 'a' when given 'a'", () => {
-      assertShrink(Codec.asciiChar(), () => true, "a", "a");
+      assertShrink(codec.asciiChar(), () => true, "a", "a");
     });
     it("shrinks 'Z' to 'a'", () => {
-      assertShrink(Codec.asciiChar(), () => true, "Z", "a");
+      assertShrink(codec.asciiChar(), () => true, "Z", "a");
     });
   });
 });
