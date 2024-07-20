@@ -51,25 +51,6 @@ describe("int", () => {
     });
   });
   describe("parse", () => {
-    it("accepts picks as-is when in an unsigned range", () => {
-      for (let i = 1; i <= 6; i++) {
-        assertParses(arb.int(1, 6), [i], i);
-      }
-    });
-    it("negates picks in a negative range", () => {
-      for (let i = -6; i <= -1; i++) {
-        assertParses(arb.int(-6, -1), [-i], i);
-      }
-    });
-    it("parses a sign and magnitude in a signed range", () => {
-      const signed = arb.int(-3, 3);
-      for (let i = 0; i <= 3; i++) {
-        assertParses(signed, [0, i], i);
-      }
-      for (let i = -3; i < 0; i++) {
-        assertParses(signed, [1, -i], i);
-      }
-    });
     it("rejects numbers out of range", () => {
       for (const n of [0, 7]) {
         assertParseFails(arb.int(1, 6), [n]);

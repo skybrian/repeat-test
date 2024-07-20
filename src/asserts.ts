@@ -11,6 +11,11 @@ export function assertRoundTrip<T>(codec: Codec<T>, input: T) {
   assertEquals(decoded, input);
 }
 
+export function assertEncoding<T>(codec: Codec<T>, picks: number[], result: T) {
+  assertEquals(codec.decode(picks), result);
+  assertEquals(codec.encode(result), picks);
+}
+
 export function assertSameExamples<T>(
   actual: Arbitrary<T>,
   expected: Arbitrary<T>,
