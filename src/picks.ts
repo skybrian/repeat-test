@@ -184,6 +184,10 @@ export class PickList {
     return this.#replies.slice();
   }
 
+  isMinPlayout() {
+    return this.trim().length === 0;
+  }
+
   push(req: PickRequest, reply: number) {
     this.#reqs.push(req);
     this.#replies.push(reply);

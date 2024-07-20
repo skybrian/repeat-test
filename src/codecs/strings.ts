@@ -13,6 +13,7 @@ export function asciiChar(): Codec<string> {
 export function char16(): Codec<string> {
   const domain = arb.char16();
   return new Codec(domain, (val) => {
+    if (typeof val !== "string") return undefined;
     if (val.length !== 1) return undefined;
     const code = val.codePointAt(0);
     if (code === undefined) return undefined;
@@ -30,6 +31,7 @@ export function anyString() {
   const item = char16();
 
   return new Codec(domain, (val) => {
+    if (typeof val !== "string") return undefined;
     const out: number[] = [];
     for (let i = 0; i < val.length; i++) {
       const encoded = item.encode(val.charAt(i));

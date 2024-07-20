@@ -6,22 +6,30 @@ import { repeatTest } from "../../src/runner.ts";
 
 import * as codec from "../../src/codecs.ts";
 
-describe("Codec.int", () => {
+const minMaxVal = arb.from((pick) => {
+  const { min, max } = pick(arb.intRange());
+  const val = pick(arb.int(min, max));
+  return { min, max, val };
+});
+
+describe("int", () => {
   it("throws when given an invalid range", () => {
     repeatTest(arb.invalidIntRange(), ({ min, max }) => {
       assertThrows(() => codec.int(min, max));
     });
   });
 
-  const minMaxVal = arb.from((pick) => {
-    const { min, max } = pick(arb.intRange());
-    const val = pick(arb.int(min, max));
-    return { min, max, val };
-  });
-
   it("round-trips integers for any valid range", () => {
     repeatTest(minMaxVal, ({ min, max, val }) => {
       assertRoundTrip(codec.int(min, max), val);
+    });
+  });
+
+  it("rejects integers outside the given range", () => {
+    repeatTest(arb.intRange({ minMin: -100 }), ({ min, max }) => {
+      const cdc = codec.int(min, max);
+      assertEquals(cdc.maybeEncode(min - 1), undefined);
+      assertEquals(cdc.maybeEncode(max + 1), undefined);
     });
   });
 
@@ -52,5 +60,23 @@ describe("Codec.int", () => {
     for (let i = -3; i < 0; i++) {
       assertEncoding(signed, [1, -i], i);
     }
+  });
+});
+
+describe("Codec.oneOf", () => {
+  it("throws when given an empty array", () => {
+    assertThrows(() => codec.oneOf([]), Error);
+  });
+  it("encodes a single case the same way as the child codec", () => {
+    repeatTest(minMaxVal, ({ min, max, val }) => {
+      const child = codec.int(min, max);
+      const oneWay = codec.oneOf([child]);
+      assertEncoding(oneWay, child.encode(val), val);
+    });
+  });
+  it("encodes distinct cases by putting the case index first", () => {
+    const multiWay = codec.oneOf([codec.int(1, 3), codec.int(4, 6)]);
+    assertEncoding(multiWay, [0, 2], 2);
+    assertEncoding(multiWay, [1, 5], 5);
   });
 });
