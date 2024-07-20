@@ -31,8 +31,8 @@ export function anyString() {
 
   return new Codec(domain, (val) => {
     const out: number[] = [];
-    for (const c of val) {
-      const encoded = item.encode(c);
+    for (let i = 0; i < val.length; i++) {
+      const encoded = item.encode(val.charAt(i));
       if (encoded === undefined) return undefined;
       out.push(1);
       out.push(...encoded);
