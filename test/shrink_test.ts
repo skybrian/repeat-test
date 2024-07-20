@@ -11,18 +11,18 @@ import {
   shrink,
 } from "../src/shrink.ts";
 import { Playout } from "../src/playouts.ts";
-import Arbitrary from "../src/arbitrary_class.ts";
+import Codec from "../src/codec_class.ts";
 
 function assertShrink<T>(
-  choices: Arbitrary<T>,
+  codec: Codec<T>,
   interesting: (arg: T) => boolean,
   start: T,
   result: T,
 ) {
-  const startSol = choices.findSolution((val) => val === start);
+  const startSol = codec.toSolution(start);
   assert(startSol, "didn't find starting solution");
 
-  const smaller = shrink(choices, startSol, interesting);
+  const smaller = shrink(codec.domain, startSol, interesting);
   assert(smaller, "didn't find a smaller solution");
   assertEquals(smaller.val, result);
 }
@@ -30,21 +30,21 @@ function assertShrink<T>(
 describe("shrink", () => {
   describe("for a single pick", () => {
     it("returns the same solution when already at the minimum", () => {
-      assertShrink(arb.int(1, 6), () => true, 1, 1);
+      assertShrink(Codec.int(1, 6), () => true, 1, 1);
     });
     it("shrinks an int to the minimum", () => {
-      assertShrink(arb.int(1, 6), () => true, 6, 1);
+      assertShrink(Codec.int(1, 6), () => true, 6, 1);
     });
     it("finds a smaller int", () => {
-      assertShrink(arb.int(1, 6), (n) => n >= 3, 6, 3);
+      assertShrink(Codec.int(1, 6), (n) => n >= 3, 6, 3);
     });
   });
-  describe("for an ascii letter", () => {
+  describe("for an ascii character", () => {
     it("returns 'a' when given 'a'", () => {
-      assertShrink(arb.asciiLetter(), () => true, "a", "a");
+      assertShrink(Codec.asciiChar(), () => true, "a", "a");
     });
     it("shrinks 'Z' to 'a'", () => {
-      assertShrink(arb.asciiLetter(), () => true, "z", "a");
+      assertShrink(Codec.asciiChar(), () => true, "Z", "a");
     });
   });
 });
@@ -64,7 +64,7 @@ describe("shorterGuesses", () => {
     });
   });
   it("doesn't guess if all playouts are at the minimum", () => {
-    const example = arb.array(arb.intRange());
+    const example = arb.array(arb.intRange({ minMin: 0 }));
     repeatTest(example, (ranges) => {
       const reqs = ranges.map((r) => new PickRequest(r.min, r.max));
       const picks = ranges.map((r) => r.min);
@@ -78,7 +78,7 @@ describe("shorterGuesses", () => {
       const ranges: arb.Range[] = [];
       const picks: number[] = [];
       while (picks.length < 2 || pick(arb.boolean())) {
-        const req = pick(arb.intRange({ minSize: 2 }));
+        const req = pick(arb.intRange({ minMin: 0, minSize: 2 }));
         ranges.push(req);
         picks.push(pick(arb.int(req.min + 1, req.max)));
       }

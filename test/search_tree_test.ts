@@ -678,6 +678,6 @@ describe("breadthFirstSearch", () => {
         maze.visit(picker);
       }
       assertEquals(expectedLeaves, maze.leaves);
-    });
+    }, { reps: 100 });
   });
 });

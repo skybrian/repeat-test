@@ -8,7 +8,7 @@ import { PickRequest } from "../src/picks.ts";
 describe("PickRequest", () => {
   describe("constructor", () => {
     it("throws when given an invalid range", () => {
-      repeatTest(arb.invalidIntRange(), ({ min, max }) => {
+      repeatTest(arb.invalidIntRange({ minMin: 0 }), ({ min, max }) => {
         assertThrows(() => new PickRequest(min, max));
       });
     });
