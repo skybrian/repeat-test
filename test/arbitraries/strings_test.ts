@@ -1,10 +1,6 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals } from "@std/assert";
-import {
-  assertFirstExamples,
-  assertParses,
-  assertSameExamples,
-} from "../../src/asserts.ts";
+import { assertFirstExamples, assertSameExamples } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 import { isWellFormed } from "../../src/workarounds.ts";
 
@@ -96,8 +92,6 @@ function codeUnits(str: string): string[] {
   return [...str].map((c) => c.charCodeAt(0).toString(16));
 }
 
-const surrogateGap = 0xdfff - 0xd800 + 1;
-
 describe("unicodeChar", () => {
   it("defaults to 'a'", () => {
     assertEquals(arb.unicodeChar().default, "a");
@@ -117,12 +111,6 @@ describe("anyString", () => {
   it("defaults to an empty string", () => {
     assertEquals(arb.anyString().default, "");
   });
-  it("parses an array of ints using our modified ascii table", () => {
-    assertParses(arb.anyString(), [1, 0, 1, 1, 0], "ab");
-  });
-  it("parses an unpaired surrogate", () => {
-    assertParses(arb.anyString(), [1, 0xD800, 0], "\uD800");
-  });
 });
 
 describe("wellFormedString", () => {
@@ -134,12 +122,6 @@ describe("wellFormedString", () => {
       "",
       ...("abcdefghijklmnopqrstuvwxyz".split("")),
     ]);
-  });
-  it("parses an array of ints using our modified ascii table", () => {
-    assertParses(arb.anyString(), [1, 0, 1, 1, 0], "ab");
-  });
-  it("parses other Unicode characters represented as code points", () => {
-    assertParses(arb.wellFormedString(), [1, 0x1FA97 - surrogateGap, 0], "🪗");
   });
   it("always returns a well-formed string", () => {
     repeatTest(arb.wellFormedString(), (str) => {

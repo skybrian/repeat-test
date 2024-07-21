@@ -8,7 +8,6 @@ import {
   assertFirstExamples,
   assertFirstSolutions,
   assertParseFails,
-  assertParses,
   assertSolutions,
 } from "../../src/asserts.ts";
 

@@ -1,5 +1,6 @@
 import Arbitrary from "../arbitrary_class.ts";
 import * as arb from "./basics.ts";
+import { surrogateGap, surrogateMin, unicodeMax } from "../unicode.ts";
 
 const asciiTable = (() => {
   const out: string[] = [];
@@ -72,11 +73,6 @@ export const char16 = arb.int(0, 0xffff).map((code) => {
   return String.fromCodePoint(code);
 })
   .asFunction();
-
-const surrogateMin = 0xd800;
-const surrogateMax = 0xdfff;
-const surrogateGap = surrogateMax - surrogateMin + 1;
-const unicodeMax = 0x10ffff;
 
 const codePoint = arb.int(0, unicodeMax - surrogateGap).map(
   (code) => (code >= surrogateMin) ? code + surrogateGap : code,
