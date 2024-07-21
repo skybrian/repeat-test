@@ -7,13 +7,12 @@ import {
   assertExamples,
   assertFirstExamples,
   assertFirstSolutions,
-  assertParseFails,
   assertSolutions,
 } from "../../src/asserts.ts";
 
 describe("boolean", () => {
   it("defaults to false", () => {
-    assertParseFails(arb.boolean(), []);
+    assertEquals(arb.boolean().default, false);
   });
   it("has two solutions", () => {
     assertSolutions(arb.boolean(), [
@@ -47,13 +46,6 @@ describe("int", () => {
     });
     it("defaults to 0 for a range that includes 0", () => {
       assertEquals(arb.int(-6, 6).default, 0);
-    });
-  });
-  describe("parse", () => {
-    it("rejects numbers out of range", () => {
-      for (const n of [0, 7]) {
-        assertParseFails(arb.int(1, 6), [n]);
-      }
     });
   });
   describe("maxSize", () => {

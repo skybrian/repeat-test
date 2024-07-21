@@ -33,14 +33,6 @@ export function assertSameExamples<T>(
   assertEquals(actualVals, expectedVals);
 }
 
-export function assertParses<T>(
-  arb: Arbitrary<T>,
-  picks: number[],
-  expected: T,
-) {
-  assertEquals(arb.parse(picks), expected);
-}
-
 export function assertParseFails<T>(
   arb: Arbitrary<T>,
   picks: number[],
