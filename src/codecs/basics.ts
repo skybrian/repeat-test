@@ -1,3 +1,5 @@
+import { AnyRecord } from "../types.ts";
+import { RecordShape as ArbRecordShape } from "../arbitrary_class.ts";
 import * as arb from "../arbitraries.ts";
 import Codec from "../codec_class.ts";
 
@@ -9,6 +11,8 @@ export function of<T>(...values: T[]): Codec<T> {
     return sol.playout.picks.replies;
   });
 }
+
+export const boolean = of(false, true).asFunction();
 
 export function int(min: number, max: number): Codec<number> {
   const domain = arb.int(min, max);
@@ -32,7 +36,39 @@ export function int(min: number, max: number): Codec<number> {
   }
 }
 
-export const boolean = of(false, true).asFunction();
+export type RecordShape<T> = {
+  [K in keyof T]: Codec<T[K]>;
+};
+
+export function record<T extends AnyRecord>(
+  fields: RecordShape<T>,
+): Codec<T> {
+  const fieldKeys = Object.keys(fields) as (keyof T)[];
+  const fieldDomains: Partial<ArbRecordShape<T>> = {};
+  for (const key of fieldKeys) {
+    fieldDomains[key] = fields[key].domain;
+  }
+  const domain = arb.record(fieldDomains as ArbRecordShape<T>);
+
+  return new Codec(
+    domain,
+    (val) => {
+      if (val === null || typeof val !== "object") return undefined;
+      for (const key of Object.keys(val)) {
+        if (!(key in fields)) return undefined;
+      }
+
+      const out: number[] = [];
+      for (const key of fieldKeys) {
+        const fieldVal = val[key as keyof typeof val];
+        const encoded = fields[key].maybeEncode(fieldVal);
+        if (encoded === undefined) return undefined;
+        out.push(...encoded);
+      }
+      return out;
+    },
+  );
+}
 
 export function array<T>(
   item: Codec<T>,

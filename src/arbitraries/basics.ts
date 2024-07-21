@@ -1,5 +1,5 @@
+import { AnyRecord } from "../types.ts";
 import Arbitrary, {
-  AnyRecord,
   ArbitraryCallback,
   RecordShape,
 } from "../arbitrary_class.ts";

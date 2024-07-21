@@ -6,6 +6,17 @@ import { repeatTest } from "../../src/runner.ts";
 
 import * as codec from "../../src/codecs.ts";
 
+describe("boolean", () => {
+  it("encodes booleans", () => {
+    assertEncoding(codec.boolean(), [0], false);
+    assertEncoding(codec.boolean(), [1], true);
+  });
+  it("rejects non-booleans", () => {
+    assertEquals(codec.boolean().maybeEncode(undefined), undefined);
+    assertEquals(codec.boolean().maybeEncode(0), undefined);
+  });
+});
+
 const minMaxVal = arb.from((pick) => {
   const { min, max } = pick(arb.intRange());
   const val = pick(arb.int(min, max));
@@ -63,14 +74,52 @@ describe("int", () => {
   });
 });
 
-describe("boolean", () => {
-  it("encodes booleans", () => {
-    assertEncoding(codec.boolean(), [0], false);
-    assertEncoding(codec.boolean(), [1], true);
+describe("record", () => {
+  it("throws an error for a non-record shape", () => {
+    assertThrows(
+      () => codec.record(undefined as unknown as codec.RecordShape<unknown>),
+      Error,
+    );
+    assertThrows(
+      () => codec.record({ a: "b" } as codec.RecordShape<unknown>),
+      Error,
+    );
   });
-  it("rejects non-booleans", () => {
-    assertEquals(codec.boolean().maybeEncode(undefined), undefined);
-    assertEquals(codec.boolean().maybeEncode(0), undefined);
+  it("rejects a non-record", () => {
+    assertEquals(codec.record({}).maybeEncode(undefined), undefined);
+  });
+  it("rejects a record with an extra field", () => {
+    assertEquals(codec.record({}).maybeEncode({ a: 0 }), undefined);
+  });
+  it("rejects a record with a missing field", () => {
+    assertEquals(
+      codec.record({ a: codec.int(0, 1) }).maybeEncode({}),
+      undefined,
+    );
+  });
+  it("rejects a record with an invalid field", () => {
+    assertEquals(
+      codec.record({ a: codec.int(0, 1) }).maybeEncode({ a: 2 }),
+      undefined,
+    );
+  });
+  it("round-trips records", () => {
+    const shape = {
+      a: codec.int(0, 1),
+      b: codec.int(1, 6),
+    };
+    const rec = codec.record(shape);
+    repeatTest(rec.domain, (val) => {
+      assertRoundTrip(rec, val);
+    });
+  });
+  it("encodes records as a sequence of encoded fields", () => {
+    const shape = {
+      a: codec.int(0, 1),
+      b: codec.int(1, 6),
+    };
+    const rec = codec.record(shape);
+    assertEncoding(rec, [1, 6], { a: 1, b: 6 });
   });
 });
 

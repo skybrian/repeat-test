@@ -47,6 +47,10 @@ export default class Codec<T> {
     return this.#callback(val);
   }
 
+  inDomain(val: unknown): val is T {
+    return this.#callback(val) !== undefined;
+  }
+
   /** Returns the picks that encode the given value. */
   pickify(val: T): number[] {
     const result = this.#callback(val);

@@ -1,3 +1,4 @@
+import { AnyRecord } from "./types.ts";
 import { PickRequest } from "./picks.ts";
 
 import {
@@ -28,8 +29,6 @@ export type PickFunctionOptions<T> = {
    */
   defaultPlayout?: number[];
 };
-
-export type AnyRecord = Record<string, unknown>;
 
 /**
  * Specifies a record to be generated.
