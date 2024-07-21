@@ -56,7 +56,7 @@ export function oneOf<T>(cases: Arbitrary<T>[]): Arbitrary<T> {
   return Arbitrary.oneOf(cases);
 }
 
-const defaultArrayLimit = 1000;
+export const defaultArrayLimit = 1000;
 
 export function array<T>(
   item: Arbitrary<T>,

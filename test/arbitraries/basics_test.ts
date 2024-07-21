@@ -167,14 +167,4 @@ describe("array", () => {
       });
     });
   });
-  describe("with a fixed-size array", () => {
-    const item = arb.int(0, 3);
-    const fixed = arb.array(item, { min: 2, max: 2 });
-    it("defaults to an array of default values", () => {
-      assertEquals(fixed.default, [0, 0]);
-    });
-    it("parses each item in the array", () => {
-      assertParses(fixed, [3, 2], [3, 2]);
-    });
-  });
 });

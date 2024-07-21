@@ -75,17 +75,25 @@ describe("boolean", () => {
 });
 
 describe("array", () => {
-  const arr = codec.array(codec.int(1, 3));
-  it("writes a zero for the end of an array", () => {
-    assertEncoding(arr, [0], []);
+  describe("for a variable-length array", () => {
+    const arr = codec.array(codec.int(1, 3));
+    it("writes a zero for the end of an array", () => {
+      assertEncoding(arr, [0], []);
+    });
+    it("writes a one to start each item", () => {
+      assertEncoding(arr, [1, 2, 0], [2]);
+      assertEncoding(arr, [1, 2, 1, 3, 0], [2, 3]);
+    });
+    it("rejects non-arrays", () => {
+      assertEquals(arr.maybeEncode(undefined), undefined);
+      assertEquals(arr.maybeEncode(0), undefined);
+    });
   });
-  it("writes a one to start each item", () => {
-    assertEncoding(arr, [1, 2, 0], [2]);
-    assertEncoding(arr, [1, 2, 1, 3, 0], [2, 3]);
-  });
-  it("rejects non-arrays", () => {
-    assertEquals(arr.maybeEncode(undefined), undefined);
-    assertEquals(arr.maybeEncode(0), undefined);
+  describe("for a fixed-length array", () => {
+    const arr = codec.array(codec.int(1, 3), { min: 2, max: 2 });
+    it("encodes the items without prefixes", () => {
+      assertEncoding(arr, [2, 3], [2, 3]);
+    });
   });
 });
 

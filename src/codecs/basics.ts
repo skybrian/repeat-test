@@ -34,18 +34,44 @@ export function int(min: number, max: number): Codec<number> {
 
 export const boolean = of(false, true).asFunction();
 
-export function array<T>(item: Codec<T>): Codec<T[]> {
-  const domain = arb.array(item.domain);
+export function array<T>(
+  item: Codec<T>,
+  opts?: { min?: number; max?: number },
+): Codec<T[]> {
+  const domain = arb.array(item.domain, opts);
+  const min = opts?.min ?? 0;
+  const max = opts?.max ?? arb.defaultArrayLimit;
+
+  const inDomain = (val: unknown): val is T[] => {
+    if (!Array.isArray(val)) return false;
+    return (val.length >= min && val.length <= max);
+  };
+
   return new Codec(domain, (val) => {
-    if (!Array.isArray(val)) return undefined;
+    if (!inDomain(val)) return undefined;
     const out: number[] = [];
-    for (const v of val) {
-      const encoded = item.maybeEncode(v);
+
+    let i = 0;
+
+    // Fixed-length portion.
+    while (i < min) {
+      const encoded = item.maybeEncode(val[i]);
+      if (encoded === undefined) return undefined;
+      out.push(...encoded);
+      i++;
+    }
+
+    // Variable-length portion.
+    while (i < val.length) {
+      const encoded = item.maybeEncode(val[i]);
       if (encoded === undefined) return undefined;
       out.push(1);
       out.push(...encoded);
+      i++;
     }
-    out.push(0);
+    if (min < max) {
+      out.push(0);
+    }
     return out;
   });
 }
