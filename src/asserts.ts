@@ -1,27 +1,18 @@
-import { assertEquals, assertThrows } from "@std/assert";
-import { PlayoutPruned } from "./backtracking.ts";
+import { assertEquals } from "@std/assert";
 import Arbitrary from "./arbitrary_class.ts";
 import { NestedPicks } from "./playouts.ts";
 
 import Codec from "../src/codec_class.ts";
 
-export function assertRoundTrip<T>(codec: Codec<T>, input: T) {
-  const encoded = codec.encode(input);
-  const decoded = codec.decode(encoded);
-  assertEquals(decoded, input);
+export function assertRoundTrip<T>(codec: Codec<T>, val: T) {
+  const picks = codec.pickify(val);
+  const decoded = codec.parse(picks);
+  assertEquals(decoded, val);
 }
 
-export function assertEncoding<T>(codec: Codec<T>, picks: number[], result: T) {
-  assertEquals(
-    codec.decode(picks),
-    result,
-    `codec.decode(${picks}) returned an unexpected result`,
-  );
-  assertEquals(
-    codec.encode(result),
-    picks,
-    `codec.encode(${result}) returned an unexpected result`,
-  );
+export function assertEncoding<T>(codec: Codec<T>, picks: number[], val: T) {
+  assertEquals(codec.parse(picks), val, `codec.parse(${picks}) failed`);
+  assertEquals(codec.pickify(val), picks, `codec.pickify(${val}) failed`);
 }
 
 export function assertSameExamples<T>(
@@ -31,13 +22,6 @@ export function assertSameExamples<T>(
   const actualVals = new Set(actual.takeAll());
   const expectedVals = new Set(expected.takeAll());
   assertEquals(actualVals, expectedVals);
-}
-
-export function assertParseFails<T>(
-  arb: Arbitrary<T>,
-  picks: number[],
-) {
-  assertThrows(() => arb.parse(picks), PlayoutPruned);
 }
 
 function take<T>(it: Iterator<T>, n: number): T[] {

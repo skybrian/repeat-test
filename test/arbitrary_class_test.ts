@@ -1,6 +1,6 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
-import { assertParseFails, assertSolutions } from "../src/asserts.ts";
+import { assertSolutions } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
@@ -188,53 +188,6 @@ describe("Arbitrary", () => {
 
       const mapped = original.map((n) => n * 2);
       assertEquals(mapped.default, 2);
-    });
-  });
-
-  describe("parse", () => {
-    const sixSided = Arbitrary.from(new PickRequest(1, 6));
-    it("fails when not enough values were supplied", () => {
-      assertParseFails(sixSided, []);
-    });
-    it("fails when too many values were supplied", () => {
-      assertParseFails(sixSided, [1, 1]);
-    });
-    it("fails for an out-of-range value", () => {
-      assertParseFails(sixSided, [7]);
-    });
-    it("returns the value from a successful parse", () => {
-      for (let i = 1; i < 6; i++) {
-        assertEquals(i, sixSided.parse([i]));
-      }
-    });
-
-    describe("the pick function (during a parse)", () => {
-      const bit = new PickRequest(0, 1);
-
-      function makeMock() {
-        const answers: number[] = [];
-        const mock = Arbitrary.from((pick) => {
-          answers.push(pick(bit));
-          return 123;
-        });
-        // clear anything that happened during the constructor
-        answers.length = 0;
-        return { mock, answers };
-      }
-
-      it("fails due to not enough picks", () => {
-        const { mock } = makeMock();
-        assertParseFails(mock, []);
-      });
-      it("fails due to an out-of-range pick", () => {
-        const { mock } = makeMock();
-        assertParseFails(mock, [2]);
-      });
-      it("returns the given pick when in range", () => {
-        const { mock, answers } = makeMock();
-        mock.parse([1]);
-        assertEquals(answers, [1]);
-      });
     });
   });
 

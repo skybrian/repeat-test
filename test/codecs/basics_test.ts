@@ -105,7 +105,7 @@ describe("oneOf", () => {
     repeatTest(minMaxVal, ({ min, max, val }) => {
       const child = codec.int(min, max);
       const oneWay = codec.oneOf([child]);
-      assertEncoding(oneWay, child.encode(val), val);
+      assertEncoding(oneWay, child.pickify(val), val);
     });
   });
   it("encodes distinct cases by putting the case index first", () => {

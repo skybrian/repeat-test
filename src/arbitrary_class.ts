@@ -1,8 +1,7 @@
-import { PickRequest, PlaybackPicker } from "./picks.ts";
+import { PickRequest } from "./picks.ts";
 
 import {
   minPlayout,
-  onePlayout,
   PlayoutPruned,
   RetryPicker,
   rotatePicks,
@@ -338,26 +337,6 @@ export default class Arbitrary<T> {
         );
       }
     }
-  }
-
-  /**
-   * Returns the value corresponding to the given playout.
-   *
-   * Throws {@link PlayoutPruned} if there is no solution for the given playout.
-   *
-   * This function can be used to test which picks the Arbitrary accepts as
-   * input.
-   */
-  parse(picks: number[]): T {
-    const picker = new PlaybackPicker(picks);
-    const ex = this.pick(onePlayout(picker));
-    if (picker.error) {
-      throw new PlayoutPruned(picker.error);
-    }
-    if (ex === END_OF_PLAYOUTS) {
-      throw new PlayoutPruned("playout not accepted");
-    }
-    return ex;
   }
 
   /** The default value of this Arbitrary. */
