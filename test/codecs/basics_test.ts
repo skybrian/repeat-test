@@ -63,7 +63,33 @@ describe("int", () => {
   });
 });
 
-describe("Codec.oneOf", () => {
+describe("boolean", () => {
+  it("encodes booleans", () => {
+    assertEncoding(codec.boolean(), [0], false);
+    assertEncoding(codec.boolean(), [1], true);
+  });
+  it("rejects non-booleans", () => {
+    assertEquals(codec.boolean().maybeEncode(undefined), undefined);
+    assertEquals(codec.boolean().maybeEncode(0), undefined);
+  });
+});
+
+describe("array", () => {
+  const arr = codec.array(codec.int(1, 3));
+  it("writes a zero for the end of an array", () => {
+    assertEncoding(arr, [0], []);
+  });
+  it("writes a one to start each item", () => {
+    assertEncoding(arr, [1, 2, 0], [2]);
+    assertEncoding(arr, [1, 2, 1, 3, 0], [2, 3]);
+  });
+  it("rejects non-arrays", () => {
+    assertEquals(arr.maybeEncode(undefined), undefined);
+    assertEquals(arr.maybeEncode(0), undefined);
+  });
+});
+
+describe("oneOf", () => {
   it("throws when given an empty array", () => {
     assertThrows(() => codec.oneOf([]), Error);
   });

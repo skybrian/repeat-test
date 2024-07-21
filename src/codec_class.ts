@@ -62,4 +62,8 @@ export default class Codec<T> {
     if (picks === undefined) return undefined;
     return this.#domain.pickSolution(onePlayout(new PlaybackPicker(picks)));
   }
+
+  asFunction() {
+    return () => this;
+  }
 }

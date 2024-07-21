@@ -129,14 +129,6 @@ describe("oneOf", () => {
     assertEquals(oneWay.default, 1);
     assertEquals(threeWay.default, 1);
   });
-  it("reads no picks when there's only one branch", () => {
-    assertParses(oneWay, [1], 1);
-  });
-  it("reads a pick to select a branch", () => {
-    assertParses(threeWay, [0, 1], 1);
-    assertParses(threeWay, [1, 3], 3);
-    assertParses(threeWay, [2, 5], 5);
-  });
 });
 
 describe("array", () => {
@@ -144,17 +136,6 @@ describe("array", () => {
     const bools = arb.array(arb.boolean());
     it("defaults to an empty array", () => {
       assertEquals(bools.default, []);
-    });
-    describe("parse", () => {
-      it("parses a zero as ending the array", () => {
-        assertParses(bools, [0], []);
-      });
-      it("parses a one as starting an item", () => {
-        assertParses(bools, [1, 0, 0], [false]);
-      });
-      it("parses a two-item array", () => {
-        assertParses(bools, [1, 0, 1, 1, 0], [false, true]);
-      });
     });
     describe("solutions", () => {
       it("returns lists for each combination", () => {

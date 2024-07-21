@@ -1,6 +1,15 @@
 import * as arb from "../arbitraries.ts";
 import Codec from "../codec_class.ts";
 
+export function of<T>(...values: T[]): Codec<T> {
+  const domain = arb.of(...values);
+  return new Codec(domain, (val) => {
+    const sol = domain.findSolution((s) => s === val);
+    if (!sol) return undefined;
+    return sol.playout.picks.replies;
+  });
+}
+
 export function int(min: number, max: number): Codec<number> {
   const domain = arb.int(min, max);
 
@@ -21,6 +30,24 @@ export function int(min: number, max: number): Codec<number> {
       (val) => inDomain(val) ? [val < 0 ? 1 : 0, Math.abs(val)] : undefined,
     );
   }
+}
+
+export const boolean = of(false, true).asFunction();
+
+export function array<T>(item: Codec<T>): Codec<T[]> {
+  const domain = arb.array(item.domain);
+  return new Codec(domain, (val) => {
+    if (!Array.isArray(val)) return undefined;
+    const out: number[] = [];
+    for (const v of val) {
+      const encoded = item.maybeEncode(v);
+      if (encoded === undefined) return undefined;
+      out.push(1);
+      out.push(...encoded);
+    }
+    out.push(0);
+    return out;
+  });
 }
 
 /**
