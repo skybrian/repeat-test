@@ -4,7 +4,7 @@ import * as arb from "../src/arbitraries.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { PickList, PickRequest } from "../src/picks.ts";
-import { shrink, shrinkLength, shrinkStartingPicks } from "../src/shrink.ts";
+import { shrink, shrinkLength, shrinkPicksFrom } from "../src/shrink.ts";
 import Codec from "../src/codec_class.ts";
 import * as codec from "../src/codecs.ts";
 
@@ -72,6 +72,9 @@ describe("shrink", () => {
     it("removes trailing characters", () => {
       assertShrinks(codec.anyString(), (s) => s.startsWith("a"), "abc", "a");
     });
+    it("sets unused characters to 'a'", () => {
+      assertShrinks(codec.anyString(), (s) => s.endsWith("z"), "xyz", "aaz");
+    });
   });
 });
 
@@ -134,15 +137,16 @@ describe("shrinkLength", () => {
   });
 });
 
-describe("shrinkEachPick", () => {
+describe("shrinkPicksFrom", () => {
+  const shrinkPicks = shrinkPicksFrom(0);
   it("can't shrink an empty playout", () => {
-    const guesses = Array.from(shrinkStartingPicks(new PickList()));
+    const guesses = Array.from(shrinkPicks(new PickList()));
     assertEquals(guesses, []);
   });
   it("replaces each pick with the minimum", () => {
     const roll = new PickRequest(1, 2);
     const picks = new PickList([roll, roll], [2, 2]);
-    const guesses = Array.from(shrinkStartingPicks(picks));
+    const guesses = Array.from(shrinkPicks(picks));
     assertEquals(guesses, [[1, 2], [1, 1]]);
   });
 });

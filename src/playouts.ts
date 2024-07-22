@@ -43,6 +43,11 @@ export class Playout {
     }
   }
 
+  /** The number of picks in the playout. */
+  get length(): number {
+    return this.picks.length;
+  }
+
   toNestedPicks(): NestedPicks {
     const { replies } = this.picks;
     const { starts, ends } = this.spans;
