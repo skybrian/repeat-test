@@ -4,7 +4,12 @@ import * as arb from "../src/arbitraries.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { PickList, PickRequest } from "../src/picks.ts";
-import { shrink, shrinkLength, shrinkPicksFrom } from "../src/shrink.ts";
+import {
+  shrink,
+  shrinkLength,
+  shrinkOptionsUntil,
+  shrinkPicksFrom,
+} from "../src/shrink.ts";
 import Codec from "../src/codec_class.ts";
 import * as codec from "../src/codecs.ts";
 
@@ -31,19 +36,22 @@ function assertNoChange<T>(
 }
 
 describe("shrink", () => {
-  describe("for a single pick", () => {
+  describe("for an int", () => {
     it("can't shrink the minimum value", () => {
       assertNoChange(codec.int(1, 6), () => true, 1);
     });
-    it("can't shrink when there's no alternative", () => {
+    it("can't shrink when the value is required", () => {
       repeatTest(arb.minMaxVal(), ({ min, max, val }) => {
         assertNoChange(codec.int(min, max), (n) => n === val, val);
       });
     });
-    it("shrinks an int to the minimum", () => {
+    it("shrinks an unused positive int to the minimum", () => {
       assertShrinks(codec.int(1, 6), () => true, 6, 1);
     });
-    it("finds a smaller int", () => {
+    it("shrinks an unused negative int to the maximum", () => {
+      assertShrinks(codec.int(-6, -1), () => true, -6, -1);
+    });
+    it("shrinks as far as possible for an inequality", () => {
       assertShrinks(codec.int(1, 6), (n) => n >= 3, 6, 3);
     });
   });
@@ -51,13 +59,16 @@ describe("shrink", () => {
     it("can't shrink 'a'", () => {
       assertNoChange(codec.asciiChar(), () => true, "a");
     });
-    it("can't shrink when there's no alternative", () => {
+    it("can't shrink when all characters are used", () => {
       repeatTest(arb.asciiChar(), (start) => {
         assertNoChange(codec.asciiChar(), (c) => c === start, start);
       });
     });
-    it("shrinks 'Z' to 'a'", () => {
+    it("shrinks an unused character to 'a'", () => {
       assertShrinks(codec.asciiChar(), () => true, "Z", "a");
+    });
+    it("shrinks a used character to a lower one that works", () => {
+      assertShrinks(codec.asciiChar(), (s) => /[A-Z]/.test(s), "Z", "A");
     });
   });
   describe("for a string", () => {
@@ -69,11 +80,14 @@ describe("shrink", () => {
         assertNoChange(codec.anyString(), (s) => s === start, start);
       });
     });
-    it("removes trailing characters", () => {
+    it("removes unused trailing characters", () => {
       assertShrinks(codec.anyString(), (s) => s.startsWith("a"), "abc", "a");
     });
     it("sets unused characters to 'a'", () => {
-      assertShrinks(codec.anyString(), (s) => s.endsWith("z"), "xyz", "aaz");
+      assertShrinks(codec.anyString(), (s) => s.at(2) === "z", "xyz", "aaz");
+    });
+    it("removes unused leading characters", () => {
+      assertShrinks(codec.anyString(), (s) => s.endsWith("z"), "xyz", "z");
     });
   });
 });
@@ -138,15 +152,43 @@ describe("shrinkLength", () => {
 });
 
 describe("shrinkPicksFrom", () => {
-  const shrinkPicks = shrinkPicksFrom(0);
+  const shrink = shrinkPicksFrom(0);
   it("can't shrink an empty playout", () => {
-    const guesses = Array.from(shrinkPicks(new PickList()));
-    assertEquals(guesses, []);
+    const guesses = shrink(new PickList());
+    assertEquals(Array.from(guesses), []);
   });
   it("replaces each pick with the minimum", () => {
     const roll = new PickRequest(1, 2);
     const picks = new PickList([roll, roll], [2, 2]);
-    const guesses = Array.from(shrinkPicks(picks));
-    assertEquals(guesses, [[1, 2], [1, 1]]);
+    const guesses = shrink(picks);
+    assertEquals(Array.from(guesses), [[1, 2], [1, 1]]);
+  });
+});
+
+describe("shrinkOptionsUntil", () => {
+  it("can't shrink an empty playout", () => {
+    const guesses = shrinkOptionsUntil(0)(new PickList());
+    assertEquals(Array.from(guesses), []);
+  });
+  it("removes an option at the end of the playout", () => {
+    const bit = new PickRequest(0, 1);
+    const roll = new PickRequest(1, 6);
+    const picks = new PickList([bit, roll], [1, 6]);
+    const guesses = shrinkOptionsUntil(2)(picks);
+    assertEquals(Array.from(guesses), [[]]);
+  });
+  it("removes an option with something after it", () => {
+    const bit = new PickRequest(0, 1);
+    const roll = new PickRequest(1, 6);
+    const picks = new PickList([bit, roll, roll], [1, 6, 3]);
+    const guesses = shrinkOptionsUntil(2)(picks);
+    assertEquals(Array.from(guesses), [[3]]);
+  });
+  it("removes two options", () => {
+    const bit = new PickRequest(0, 1);
+    const roll = new PickRequest(1, 6);
+    const picks = new PickList([bit, roll, bit, roll, roll], [1, 6, 1, 3, 5]);
+    const guesses = shrinkOptionsUntil(4)(picks);
+    assertEquals(Array.from(guesses), [[1, 6, 5], [5]]);
   });
 });

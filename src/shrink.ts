@@ -22,24 +22,26 @@ export function shrink<T>(
     start: Solution<T>,
     strategies: Iterable<Strategy>,
   ): Solution<T> {
-    let best = start;
     for (const strategy of strategies) {
+      let worked = false;
       for (const guess of strategy(start.playout.picks)) {
         const picker = new PlaybackPicker(guess);
         const picked = arb.pickSolution(onePlayout(picker));
-        if (!picked || !interesting(picked.val)) {
-          break;
+        if (picked && interesting(picked.val)) {
+          start = picked;
+          worked = true;
         }
-        best = picked;
       }
+      if (worked) break;
     }
-    return best;
+    return start;
   }
 
   // Try each way of shrinking until no rule applies.
   while (true) {
     let best = tryStrategies(start, [shrinkLength]);
     best = tryStrategies(best, shrinkPicks(best.playout.picks));
+    best = tryStrategies(best, shrinkOptions(best.playout.picks));
     const oldPicks = start.playout.picks;
     const newPicks = best.playout.picks;
     if (PickList.equalPicks(oldPicks, newPicks)) {
@@ -74,7 +76,10 @@ export function* shrinkLength(
 }
 
 /**
- * Returns a sequence of strategies that shrink each pick in the playout.
+ * Returns a family of strategies that try to shrink each pick in the playout.
+ *
+ * Returns the strategies to try. Each strategy assumes that the previous one
+ * failed.
  */
 function* shrinkPicks(picks: PickList): Iterable<Strategy> {
   const len = picks.length;
@@ -84,12 +89,15 @@ function* shrinkPicks(picks: PickList): Iterable<Strategy> {
 }
 
 /**
- * A family of strategies that shrink sequential picks.
+ * A family of strategies that shrink individual picks.
  *
- * Starts by shrinking the first pick by one. If that works, tries doubling the
- * amount removed. Finally, tries setting the entire pick to the minimum.
+ * Each strategy starts by shrinking the pick at the given index by one. If that
+ * works, it tries repeatedly doubling the amount removed. Finally, tries
+ * setting the entire pick to the minimum.
  *
- * If that works, tries again with the second pick, and so on.
+ * If that works, tries again with the next pick, for the rest of the playout.
+ *
+ * @param start The index of the first pick to shrink.
  */
 export function shrinkPicksFrom(
   start: number,
@@ -97,7 +105,7 @@ export function shrinkPicksFrom(
   function* shrink(
     picks: PickList,
   ): Iterable<number[]> {
-    picks.trim();
+    picks = picks.trim();
     const len = picks.length;
     const reqs = picks.reqs;
     const replies = picks.replies;
@@ -117,6 +125,37 @@ export function shrinkPicksFrom(
       }
       replies[i] = min;
       yield replies.slice();
+    }
+  }
+  return shrink;
+}
+
+function* shrinkOptions(picks: PickList): Iterable<Strategy> {
+  for (let i = picks.length; i >= 0; i--) {
+    yield shrinkOptionsUntil(i);
+  }
+}
+
+/**
+ * A family of strategies that shrink options.
+ *
+ * An option is two or more picks, starting with a bit that's set to 1.
+ *
+ * @param limit the index beyond which the playout should be preserved.
+ */
+export function shrinkOptionsUntil(limit: number): Strategy {
+  function* shrink(
+    picks: PickList,
+  ): Iterable<number[]> {
+    picks = picks.trim();
+
+    let end = limit > picks.length ? picks.length : limit;
+    for (let start = end - 2; start >= 0; start -= 1) {
+      if (picks.isBit(start, 1)) {
+        picks.splice(start, end - start);
+        yield picks.replies;
+        end = start;
+      }
     }
   }
   return shrink;

@@ -179,6 +179,17 @@ export class PickList {
     return this.trim().length === 0;
   }
 
+  isBit(i: number, expected?: number) {
+    const req = this.#reqs[i];
+    if (req.min !== 0 || req.max !== 1) {
+      return false;
+    }
+    if (expected !== undefined) {
+      return expected === this.#replies[i];
+    }
+    return true;
+  }
+
   push(req: PickRequest, reply: number) {
     this.#reqs.push(req);
     this.#replies.push(reply);
@@ -189,6 +200,11 @@ export class PickList {
       this.#reqs.slice(start, end),
       this.#replies.slice(start, end),
     );
+  }
+
+  splice(start: number, deleteCount: number) {
+    this.#reqs.splice(start, deleteCount);
+    this.#replies.splice(start, deleteCount);
   }
 
   /** Removes trailing picks that are the same as the request's minimum value. */
