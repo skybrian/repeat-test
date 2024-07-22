@@ -1,102 +1,108 @@
-import { PickRequest, PlaybackPicker } from "./picks.ts";
+import { PickList, PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
-import { Playout } from "./playouts.ts";
 import Arbitrary, { Solution } from "./arbitrary_class.ts";
+
+/**
+ * A shrink strategy provides increasingly smaller guesses for shrinking a solution.
+ *
+ * Each guess assumes that the previous guess was correct.
+ */
+type Strategy = (picks: PickList) => Iterable<number[]>;
 
 /**
  * Given a playout from an arbitrary, returns a smaller solution that satisfies a predicate.
  */
 export function shrink<T>(
   arb: Arbitrary<T>,
-  sol: Solution<T>,
   interesting: (arg: T) => boolean,
+  start: Solution<T>,
 ): Solution<T> {
+  /** Tries to shrink a solution using guesses from the given strategy. */
+  function tryStrategy(
+    start: Solution<T>,
+    strategy: Strategy,
+  ): Solution<T> {
+    let best = start;
+    for (const guess of strategy(start.playout.picks)) {
+      const picker = new PlaybackPicker(guess);
+      const picked = arb.pickSolution(onePlayout(picker));
+      if (!picked || !interesting(picked.val)) {
+        break;
+      }
+      best = picked;
+    }
+    return best;
+  }
+
+  // Try each way of shrinking until no rule applies.
   while (true) {
-    const next = shrinkOnce(arb, guesses(sol.playout), interesting);
-    if (!next) {
-      return sol;
+    let best = start;
+    for (const strategy of [shrinkLength, shrinkStartingPicks]) {
+      best = tryStrategy(best, strategy);
     }
-    sol = next;
+    const oldPicks = start.playout.picks;
+    const newPicks = best.playout.picks;
+    if (PickList.equalPicks(oldPicks, newPicks)) {
+      return best;
+    }
+    start = best;
   }
 }
 
-export function shrinkOnce<T>(
-  arb: Arbitrary<T>,
-  guesses: Iterable<number[]>,
-  interesting: (arg: T) => boolean,
-): Solution<T> | undefined {
-  for (const guess of guesses) {
-    const picker = new PlaybackPicker(guess);
-    const input = arb.pickSolution(onePlayout(picker));
-    if (input && interesting(input.val)) {
-      return input;
-    }
-  }
-  return undefined;
-}
-
-function* guesses(
-  playout: Playout,
+/**
+ * A strategy that tries removing suffixes from a playout.
+ *
+ * First tries removing the last pick. If that works, tries doubling the number
+ * of picks to remove. Finally, tries removing the entire playout.
+ */
+export function* shrinkLength(
+  picks: PickList,
 ): Iterable<number[]> {
-  const shorter = shorterGuesses(playout)[Symbol.iterator]();
-  const smaller = changePickGuesses(playout)[Symbol.iterator]();
-  while (true) {
-    const next1 = shorter.next();
-    const next2 = smaller.next();
-    if (next1.done && next2.done) {
-      return;
-    }
-    if (!next1.done) {
-      yield next1.value;
-    }
-    if (!next2.done) {
-      yield next2.value;
-    }
+  const replies = picks.trim().replies;
+  const len = replies.length;
+  if (len === 0) {
+    return;
   }
+  let delta = 1;
+  let guess = len - delta;
+  while (guess > 0) {
+    yield replies.slice(0, guess);
+    delta *= 2;
+    guess = len - delta;
+  }
+  yield [];
 }
 
-/** Tries removing suffixes of the given playout. */
-export function* shorterGuesses(
-  playout: Playout,
+/**
+ * A strategy that tries shrinking each pick, one at a time.
+ *
+ * Starts by shrinking the first pick by one. If that works, tries doubling the
+ * amount removed. Finally, tries setting the entire pick to the minimum.
+ *
+ * If that works, tries again with the second pick, and so on.
+ */
+export function* shrinkStartingPicks(
+  picks: PickList,
 ): Iterable<number[]> {
-  const picks = playout.picks.trim();
-  if (picks.length === 0) {
-    return; // Already at the minimum.
-  }
-
-  // Try trimming the last half of the picks.
-  if (picks.length > 0) {
-    let newLen = Math.floor(picks.length / 2);
-    while (newLen < picks.length) {
-      yield picks.replies.slice(0, newLen);
-      const remaining = picks.length - newLen;
-      newLen += Math.ceil(remaining / 2);
+  picks.trim();
+  const len = picks.length;
+  const reqs = picks.reqs;
+  const replies = picks.replies;
+  for (let i = 0; i < len; i++) {
+    const min = reqs[i].min;
+    const reply = replies[i];
+    if (reply === min) {
+      continue;
     }
-  }
-}
-
-/** Tries changing one pick at a time. */
-export function* changePickGuesses(
-  playout: Playout,
-): Iterable<number[]> {
-  const picks = playout.picks.trim();
-  const { reqs, replies } = playout.picks;
-  for (let i = 0; i < picks.length; i++) {
-    for (const guess of pickGuesses(reqs[i], replies[i])) {
-      yield [...replies.slice(0, i), guess, ...replies.slice(i + 1)];
+    let delta = 1;
+    let guess = reply - delta;
+    while (guess > min) {
+      replies[i] = guess;
+      yield replies.slice();
+      delta *= 2;
+      guess = reply - delta;
     }
-  }
-}
-
-/** Returns a list of guesses that are smaller than the given reply. */
-export function* pickGuesses(
-  req: PickRequest,
-  reply: number,
-): Iterable<number> {
-  let min = req.min;
-  while (min < reply) {
-    const guess = Math.floor((min + reply) / 2);
-    yield guess;
-    min = guess + 1;
+    replies[i] = min;
+    yield replies.slice();
   }
 }

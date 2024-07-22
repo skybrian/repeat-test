@@ -17,12 +17,6 @@ describe("boolean", () => {
   });
 });
 
-const minMaxVal = arb.from((pick) => {
-  const { min, max } = pick(arb.intRange());
-  const val = pick(arb.int(min, max));
-  return { min, max, val };
-});
-
 describe("int", () => {
   it("throws when given an invalid range", () => {
     repeatTest(arb.invalidIntRange(), ({ min, max }) => {
@@ -31,7 +25,7 @@ describe("int", () => {
   });
 
   it("round-trips integers for any valid range", () => {
-    repeatTest(minMaxVal, ({ min, max, val }) => {
+    repeatTest(arb.minMaxVal(), ({ min, max, val }) => {
       assertRoundTrip(codec.int(min, max), val);
     });
   });
@@ -45,7 +39,7 @@ describe("int", () => {
   });
 
   it("returns a solution that matches the original value", () => {
-    repeatTest(minMaxVal, ({ min, max, val }) => {
+    repeatTest(arb.minMaxVal(), ({ min, max, val }) => {
       const cdc = codec.int(min, max);
       const solution = cdc.toSolution(val);
       assert(solution !== undefined);
@@ -151,7 +145,7 @@ describe("oneOf", () => {
     assertThrows(() => codec.oneOf([]), Error);
   });
   it("encodes a single case the same way as the child codec", () => {
-    repeatTest(minMaxVal, ({ min, max, val }) => {
+    repeatTest(arb.minMaxVal(), ({ min, max, val }) => {
       const child = codec.int(min, max);
       const oneWay = codec.oneOf([child]);
       assertEncoding(oneWay, child.pickify(val), val);

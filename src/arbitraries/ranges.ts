@@ -55,6 +55,18 @@ export function intRange(opts?: IntRangeOptions): Arbitrary<Range> {
 }
 
 /**
+ * Generates a safe integer range and a value within that range.
+ */
+export function minMaxVal(opts?: IntRangeOptions) {
+  const range = intRange(opts);
+  return from((pick) => {
+    const { min, max } = pick(range);
+    const val = pick(int(min, max));
+    return { min, max, val };
+  });
+}
+
+/**
  * Generates a record that satisfies the Range type, but isn't a valid range of
  * non-negative safe integers.
  */

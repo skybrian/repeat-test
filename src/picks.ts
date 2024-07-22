@@ -146,15 +146,6 @@ export class PickList {
   #reqs: PickRequest[];
   #replies: number[];
 
-  /**
-   * Constructs a pick list with no alternative choices.
-   *
-   * Each request's range only includes the reply.
-   */
-  static fromReplies(replies: number[]) {
-    return new PickList(replies.map((r) => new PickRequest(r, r)), replies);
-  }
-
   constructor();
   constructor(reqs: PickRequest[], replies: number[]);
   constructor(reqs?: PickRequest[], replies?: number[]) {
@@ -215,6 +206,26 @@ export class PickList {
       this.#reqs.slice(0, last + 1),
       this.#replies.slice(0, last + 1),
     );
+  }
+
+  /**
+   * Constructs a pick list with no alternative choices.
+   *
+   * Each request's range only includes the reply.
+   */
+  static fromReplies(replies: number[]) {
+    return new PickList(replies.map((r) => new PickRequest(r, r)), replies);
+  }
+
+  static equalPicks(a: PickList, b: PickList) {
+    const aPicks = a.#replies;
+    const bPicks = b.#replies;
+    const len = aPicks.length;
+    if (len !== bPicks.length) return false;
+    for (let i = 0; i < len; i++) {
+      if (aPicks[i] !== bPicks[i]) return false;
+    }
+    return true;
   }
 }
 
