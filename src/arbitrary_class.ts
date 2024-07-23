@@ -113,8 +113,6 @@ export class Generated<T> {
   }
 }
 
-const END_OF_PLAYOUTS = Symbol("END_OF_PLAYOUTS");
-
 /**
  * A set of values that can be generated on demand.
  *
@@ -146,7 +144,7 @@ export default class Arbitrary<T> {
     this.default(); // dry run
   }
 
-  /** An arbitrary label indicating what kind of Arbitrary this is, for debugging. */
+  /** A label indicating what kind of Arbitrary this is, for debugging. */
   get label(): string {
     return this.#label;
   }
@@ -168,32 +166,20 @@ export default class Arbitrary<T> {
   generate(pickers: Iterable<RetryPicker>): Generated<T> | undefined {
     for (const picker of pickers) {
       const log = new SpanLog(picker);
-      const val = this.pickOnce(log, picker);
-      if (val !== END_OF_PLAYOUTS) {
-        return new Generated(this, picker.getPicks(), log.getSpans(), val);
+
+      try {
+        const pick = Arbitrary.makePickFunction(log, picker);
+        const val = this.#callback(pick);
+        if (picker.finishPlayout()) {
+          return new Generated(this, picker.getPicks(), log.getSpans(), val);
+        }
+      } catch (e) {
+        if (!(e instanceof PlayoutPruned)) {
+          throw e;
+        }
       }
     }
     return undefined;
-  }
-
-  private pickOnce(
-    log: SpanLog,
-    picker: RetryPicker,
-  ): T | typeof END_OF_PLAYOUTS {
-    try {
-      const pick = Arbitrary.makePickFunction(log, picker);
-      const val = this.#callback(pick);
-      if (picker.finishPlayout()) {
-        return val;
-      } else {
-        return END_OF_PLAYOUTS;
-      }
-    } catch (e) {
-      if (!(e instanceof PlayoutPruned)) {
-        throw e;
-      }
-      return END_OF_PLAYOUTS;
-    }
   }
 
   private innerPick(
@@ -219,7 +205,6 @@ export default class Arbitrary<T> {
         return val;
       }
       if (!log.cancelSpan(level)) {
-        // return default?
         throw new PlayoutPruned(
           `Couldn't find a playout that generates ${this}`,
         );
