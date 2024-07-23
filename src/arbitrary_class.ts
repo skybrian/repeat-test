@@ -88,7 +88,8 @@ export class Generated<T> {
     this.#val = val;
   }
 
-  get generator() {
+  /** The arbitrary that generated this value. */
+  get generator(): Arbitrary<T> {
     return this.#generator;
   }
 
@@ -351,11 +352,11 @@ export default class Arbitrary<T> {
    */
   map<U>(convert: (val: T) => U, opts?: ArbitraryOpts): Arbitrary<U> {
     const label = opts?.label ?? "map";
-    const maxSize = this.maxSize;
     const callback: ArbitraryCallback<U> = (pick) => {
       const output = pick(this);
       return convert(output);
     };
+    const maxSize = this.maxSize;
     return new Arbitrary(label, callback, { maxSize });
   }
 
@@ -371,7 +372,7 @@ export default class Arbitrary<T> {
    */
   filter(
     accept: (val: T) => boolean,
-    opts?: { maxTries: number },
+    opts?: { maxTries?: number; label?: string },
   ): Arbitrary<T> {
     const maxTries = opts?.maxTries ?? 1000;
     const pickOpts: PickFunctionOptions<T> = { accept };
@@ -386,11 +387,12 @@ export default class Arbitrary<T> {
       pickOpts.defaultPlayout = gen.replies();
     }
 
-    const maxSize = this.maxSize;
+    const label = opts?.label ?? "filter";
     const callback: ArbitraryCallback<T> = (pick) => {
       return pick(this, pickOpts);
     };
-    return new Arbitrary("filter", callback, { maxSize });
+    const maxSize = this.maxSize;
+    return new Arbitrary(label, callback, { maxSize });
   }
 
   /**
@@ -399,13 +401,15 @@ export default class Arbitrary<T> {
    */
   chain<U>(
     convert: (val: T) => Arbitrary<U>,
+    opts?: ArbitraryOpts,
   ): Arbitrary<U> {
+    const label = opts?.label ?? "chain";
     const callback: ArbitraryCallback<U> = (pick) => {
       const output = pick(this);
       const next = convert(output);
       return pick(next);
     };
-    return new Arbitrary("chain", callback);
+    return new Arbitrary(label, callback);
   }
 
   asFunction() {
@@ -442,9 +446,9 @@ export default class Arbitrary<T> {
         return new Arbitrary(label, () => constant, { maxSize: 1 });
       }
 
-      const label = opts?.label ?? "array";
-
       const req = new PickRequest(0, arg.length - 1);
+
+      const label = opts?.label ?? "array";
       const callback: ArbitraryCallback<T> = (pick) => {
         const i = pick(req);
         return arg[i];
@@ -454,7 +458,7 @@ export default class Arbitrary<T> {
         maxSize: arg.length,
       });
     } else {
-      const label = opts?.label ?? `pick ${arg.min} - ${arg.max}`;
+      const label = opts?.label ?? "pick";
       return new Arbitrary(label, (pick) => pick(arg), { maxSize: arg.size });
     }
   }
@@ -464,6 +468,7 @@ export default class Arbitrary<T> {
    */
   static record<T extends AnyRecord>(
     shape: RecordShape<T>,
+    opts?: ArbitraryOpts,
   ): Arbitrary<T> {
     let maxSize: number | undefined = 1;
     const keys = Object.keys(shape) as (keyof T)[];
@@ -478,7 +483,8 @@ export default class Arbitrary<T> {
     const callback = (pick: PickFunction) => {
       return pick(shape) as T;
     };
-    return new Arbitrary("record", callback, { maxSize });
+    const label = opts?.label ?? "record";
+    return new Arbitrary(label, callback, { maxSize });
   }
 
   /**

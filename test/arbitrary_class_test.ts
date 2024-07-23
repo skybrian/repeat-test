@@ -35,6 +35,14 @@ describe("Arbitrary", () => {
       assertEquals(arb.default(), { a: 1, b: 2 });
       assertEquals(arb.maxSize, 1);
     });
+    it("has a default label", () => {
+      const arb = Arbitrary.record({});
+      assertEquals(arb.label, "record");
+    });
+    it("accepts a custom label", () => {
+      const arb = Arbitrary.record({}, { label: "my label" });
+      assertEquals(arb.label, "my label");
+    });
   });
 
   describe("oneOf", () => {
@@ -91,143 +99,18 @@ describe("Arbitrary", () => {
       const gen = arb.generate(minPlayout());
       assertEquals(gen?.val, { a: "hi", b: 1 });
     });
-  });
-  it("retries a pick with a different playout", () => {
-    const roll = new PickRequest(1, 6);
-    const arb = Arbitrary.from((pick) => {
-      const n = pick(roll);
-      if (n === 3) {
-        throw new PlayoutPruned("try again");
-      }
-      return n;
-    });
-    const tree = new SearchTree(0);
-    const gen = arb.generate(tree.pickers(alwaysPick(3)));
-    assertEquals(gen?.val, 4);
-  });
-
-  describe("filter", () => {
-    const sixSided = Arbitrary.from(new PickRequest(1, 6));
-
-    it("disallows filters that don't allow any values through", () => {
-      const rejectEverything = () => false;
-      assertThrows(() => sixSided.filter(rejectEverything));
-    });
-    it("keeps the default the same if it works", () => {
-      const keepEverything = () => true;
-      const filtered = sixSided.filter(keepEverything);
-      assertEquals(filtered.default(), 1);
-      assertEquals(filtered.takeAll(), [1, 2, 3, 4, 5, 6]);
-    });
-    it("changes the default to the next value that satisfies the predicate", () => {
-      const keepEvens = (n: number) => n % 2 === 0;
-      const filtered = sixSided.filter(keepEvens);
-      assertEquals(filtered.default(), 2);
-      assertEquals(filtered.takeAll(), [2, 4, 6]);
-      const gen = filtered.generate(minPlayout());
-      assertEquals(gen?.val, 2);
-    });
-    it("filters out values that don't satisfy the predicate", () => {
-      const not3 = sixSided.filter((n) => n !== 3);
-      repeatTest(not3, (n) => {
-        assert(n !== 3, `want: not 3, got ${n}`);
-      });
-    });
-    it("filters an arbitrary created from multiple picks", () => {
-      const bit = new PickRequest(0, 1);
-      const bitCount = 2;
-      const accepted = new Set(["[0,1]", "[1,0]"]);
-
-      const combos = Arbitrary.from((pick) => {
-        const picks: number[] = [];
-        for (let i = 0; i < bitCount; i++) {
-          picks.push(pick(bit));
+    it("retries a pick with a different playout", () => {
+      const roll = new PickRequest(1, 6);
+      const arb = Arbitrary.from((pick) => {
+        const n = pick(roll);
+        if (n === 3) {
+          throw new PlayoutPruned("try again");
         }
-        return JSON.stringify(picks);
-      });
-      const filtered = combos.filter(
-        (pick) => accepted.has(pick),
-      );
-      assertEquals(filtered.default(), "[1,0]");
-      assertEquals(filtered.takeAll(), [
-        "[1,0]",
-        "[0,1]",
-      ]);
-    });
-
-    it("can solve a combination lock if given enough tries", () => {
-      const digit = new PickRequest(1, 9);
-      const digitCount = 3;
-      const accepted = new Set(["[1,2,3]", "[1,4,3]"]);
-
-      const digits = Arbitrary.from((pick) => {
-        const picks: number[] = [];
-        for (let i = 0; i < digitCount; i++) {
-          picks.push(pick(digit));
-        }
-        return JSON.stringify(picks);
-      });
-      const lock = digits.filter(
-        (pick) => accepted.has(pick),
-        { maxTries: 1000 },
-      );
-      assertEquals(lock.default(), "[1,2,3]");
-      assertEquals(lock.takeAll(), [
-        "[1,2,3]",
-        "[1,4,3]",
-      ]);
-    });
-  });
-
-  describe("map", () => {
-    it("changes the default", () => {
-      const original = Arbitrary.from(new PickRequest(1, 6));
-      assertEquals(original.default(), 1);
-
-      const mapped = original.map((n) => n * 2);
-      assertEquals(mapped.default(), 2);
-    });
-  });
-
-  describe("takeAll", () => {
-    it("returns the only value of a constant", () => {
-      const one = Arbitrary.from(() => 1);
-      assertEquals(one.takeAll(), [1]);
-    });
-
-    const bit = Arbitrary.from(new PickRequest(0, 1));
-    it("returns both bit values", () => {
-      assertEquals(bit.takeAll(), [0, 1]);
-    });
-
-    it("handles a mapped Arbitrary", () => {
-      const bool = bit.map((b) => b == 1);
-      assertEquals(bool.takeAll(), [false, true]);
-    });
-
-    it("handles PlayoutPruned", () => {
-      const notTwo = Arbitrary.from((pick) => {
-        const n = pick(new PickRequest(1, 3));
-        if (n === 2) throw new PlayoutPruned("skip 2");
         return n;
       });
-      assertEquals(notTwo.takeAll(), [1, 3]);
-    });
-
-    it("handles a filtered Arbitrary", () => {
-      const zero = bit.filter((b) => b === 0);
-      assertEquals(zero.takeAll(), [0]);
-    });
-
-    it("handles a chained Arbitrary", () => {
-      const hello = bit.chain((val) => {
-        if (val === 1) {
-          return Arbitrary.from(() => "there");
-        } else {
-          return Arbitrary.from(() => "hi");
-        }
-      });
-      assertEquals(hello.takeAll(), ["hi", "there"]);
+      const tree = new SearchTree(0);
+      const gen = arb.generate(tree.pickers(alwaysPick(3)));
+      assertEquals(gen?.val, 4);
     });
   });
 
@@ -281,6 +164,171 @@ describe("Arbitrary", () => {
       assertEquals(vals[0].nestedPicks(), [0, 0, 0]);
       assertEquals(vals[999].val, 999);
       assertEquals(vals[999].nestedPicks(), [9, 9, 9]);
+    });
+  });
+
+  describe("takeAll", () => {
+    it("returns the only value of a constant", () => {
+      const one = Arbitrary.from(() => 1);
+      assertEquals(one.takeAll(), [1]);
+    });
+
+    const bit = Arbitrary.from(new PickRequest(0, 1));
+    it("returns both bit values", () => {
+      assertEquals(bit.takeAll(), [0, 1]);
+    });
+
+    it("handles a mapped Arbitrary", () => {
+      const bool = bit.map((b) => b == 1);
+      assertEquals(bool.takeAll(), [false, true]);
+    });
+
+    it("handles PlayoutPruned", () => {
+      const notTwo = Arbitrary.from((pick) => {
+        const n = pick(new PickRequest(1, 3));
+        if (n === 2) throw new PlayoutPruned("skip 2");
+        return n;
+      });
+      assertEquals(notTwo.takeAll(), [1, 3]);
+    });
+
+    it("handles a filtered Arbitrary", () => {
+      const zero = bit.filter((b) => b === 0);
+      assertEquals(zero.takeAll(), [0]);
+    });
+
+    it("handles a chained Arbitrary", () => {
+      const hello = bit.chain((val) => {
+        if (val === 1) {
+          return Arbitrary.from(() => "there");
+        } else {
+          return Arbitrary.from(() => "hi");
+        }
+      });
+      assertEquals(hello.takeAll(), ["hi", "there"]);
+    });
+
+    it("generates all values for a combination lock", () => {
+      const digit = new PickRequest(1, 9);
+      const digitCount = 3;
+      const accepted = new Set(["[1,2,3]", "[1,4,3]"]);
+
+      const digits = Arbitrary.from((pick) => {
+        const picks: number[] = [];
+        for (let i = 0; i < digitCount; i++) {
+          picks.push(pick(digit));
+        }
+        return JSON.stringify(picks);
+      });
+      const lock = digits.filter(
+        (pick) => accepted.has(pick),
+        { maxTries: 1000 },
+      );
+      assertEquals(lock.default(), "[1,2,3]");
+      assertEquals(lock.takeAll(), [
+        "[1,2,3]",
+        "[1,4,3]",
+      ]);
+    });
+  });
+
+  describe("filter", () => {
+    const sixSided = Arbitrary.from(new PickRequest(1, 6));
+
+    it("disallows filters that don't allow any values through", () => {
+      const rejectEverything = () => false;
+      assertThrows(() => sixSided.filter(rejectEverything));
+    });
+    it("keeps the default the same if it works", () => {
+      const keepEverything = () => true;
+      const filtered = sixSided.filter(keepEverything);
+      assertEquals(filtered.default(), 1);
+      assertEquals(filtered.takeAll(), [1, 2, 3, 4, 5, 6]);
+    });
+    it("changes the default to the next value that satisfies the predicate", () => {
+      const keepEvens = (n: number) => n % 2 === 0;
+      const filtered = sixSided.filter(keepEvens);
+      assertEquals(filtered.default(), 2);
+      assertEquals(filtered.takeAll(), [2, 4, 6]);
+      const gen = filtered.generate(minPlayout());
+      assertEquals(gen?.val, 2);
+    });
+    it("filters out values that don't satisfy the predicate", () => {
+      const not3 = sixSided.filter((n) => n !== 3);
+      repeatTest(not3, (n) => {
+        assert(n !== 3, `want: not 3, got ${n}`);
+      });
+    });
+    it("filters an arbitrary created from multiple picks", () => {
+      const bit = new PickRequest(0, 1);
+      const bitCount = 2;
+      const accepted = new Set(["[0,1]", "[1,0]"]);
+
+      const combos = Arbitrary.from((pick) => {
+        const picks: number[] = [];
+        for (let i = 0; i < bitCount; i++) {
+          picks.push(pick(bit));
+        }
+        return JSON.stringify(picks);
+      });
+      const filtered = combos.filter(
+        (pick) => accepted.has(pick),
+      );
+      assertEquals(filtered.default(), "[1,0]");
+      assertEquals(filtered.takeAll(), [
+        "[1,0]",
+        "[0,1]",
+      ]);
+    });
+    it("has a label by default", () => {
+      const original = Arbitrary.of(1, 2, 3);
+      const filtered = original.filter(
+        (n) => n === 2,
+      );
+      assertEquals(filtered.label, "filter");
+    });
+    it("accepts a custom label", () => {
+      const original = Arbitrary.of(1, 2, 3);
+      const filtered = original.filter(
+        (n) => n === 2,
+        { label: "two" },
+      );
+      assertEquals(filtered.label, "two");
+    });
+  });
+
+  describe("map", () => {
+    it("changes the default", () => {
+      const original = Arbitrary.from(new PickRequest(1, 6));
+      assertEquals(original.default(), 1);
+
+      const mapped = original.map((n) => n * 2);
+      assertEquals(mapped.default(), 2);
+    });
+    it("has a label by default", () => {
+      const original = Arbitrary.from(new PickRequest(1, 6));
+      const mapped = original.map((n) => n * 2);
+      assertEquals(mapped.label, "map");
+    });
+    it("accepts a custom label", () => {
+      const original = Arbitrary.from(new PickRequest(1, 6));
+      const mapped = original.map((n) => n * 2, { label: "double" });
+      assertEquals(mapped.label, "double");
+    });
+  });
+
+  describe("chain", () => {
+    it("has a label by default", () => {
+      const hello = Arbitrary.from(() => "hello");
+      const world = hello.chain(() => Arbitrary.from(() => "world"));
+      assertEquals(world.label, "chain");
+    });
+    it("accepts a custom label", () => {
+      const hello = Arbitrary.from(() => "hello");
+      const world = hello.chain(() => Arbitrary.from(() => "world"), {
+        label: "hello",
+      });
+      assertEquals(world.label, "hello");
     });
   });
 
