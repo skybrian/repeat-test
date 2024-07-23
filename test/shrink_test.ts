@@ -22,7 +22,7 @@ function assertShrinks<T>(
   const startSol = codec.toSolution(start);
   assert(startSol, "didn't find starting solution");
 
-  const smaller = shrink(codec.domain, interesting, startSol);
+  const smaller = shrink(codec.generator, interesting, startSol);
   assert(smaller, "didn't find a smaller solution");
   assertEquals(smaller.val, result);
 }

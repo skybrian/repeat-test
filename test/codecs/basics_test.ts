@@ -103,7 +103,7 @@ describe("record", () => {
       b: codec.int(1, 6),
     };
     const rec = codec.record(shape);
-    repeatTest(rec.domain, (val) => {
+    repeatTest(rec.generator, (val) => {
       assertRoundTrip(rec, val);
     });
   });

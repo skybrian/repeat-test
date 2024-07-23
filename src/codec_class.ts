@@ -8,23 +8,23 @@ export type EncodeCallback = (val: unknown) => number[] | undefined;
  * A codec converts between values and pick sequences that can be parsed by an Arbitrary.
  */
 export default class Codec<T> {
-  #domain: Arbitrary<T>;
+  #generator: Arbitrary<T>;
   #callback: EncodeCallback;
 
   constructor(
-    domain: Arbitrary<T>,
+    generator: Arbitrary<T>,
     callback: EncodeCallback,
   ) {
-    this.#domain = domain;
+    this.#generator = generator;
     this.#callback = callback;
 
     // Verify that we can round-trip the default value.
-    const def = domain.default;
+    const def = generator.default;
     const picks = this.#callback(def);
     if (picks === undefined) {
       throw new Error("callback can't parse the domain's default value");
     }
-    const sol = this.#domain.pickSolution(
+    const sol = this.#generator.pickSolution(
       onePlayout(new PlaybackPicker(picks)),
     );
     if (sol === undefined) {
@@ -37,17 +37,17 @@ export default class Codec<T> {
   }
 
   /**
-   * The Arbitrary that defines the set of possible values that can be encoded.
+   * An Arbitrary that generates values in this codec's domain.
    */
-  get domain() {
-    return this.#domain;
+  get generator() {
+    return this.#generator;
   }
 
   maybeEncode(val: unknown): number[] | undefined {
     return this.#callback(val);
   }
 
-  inDomain(val: unknown): val is T {
+  has(val: unknown): val is T {
     return this.#callback(val) !== undefined;
   }
 
@@ -61,7 +61,7 @@ export default class Codec<T> {
   /** Given some picks, returns the value that they encode. */
   parse(picks: number[]): T {
     const picker = new PlaybackPicker(picks);
-    const val = this.domain.pick(onePlayout(picker));
+    const val = this.generator.pick(onePlayout(picker));
     if (picker.error) {
       throw new Error(picker.error);
     }
@@ -74,7 +74,7 @@ export default class Codec<T> {
   toSolution(val: T): Solution<T> | undefined {
     const picks = this.maybeEncode(val);
     if (picks === undefined) return undefined;
-    return this.#domain.pickSolution(onePlayout(new PlaybackPicker(picks)));
+    return this.#generator.pickSolution(onePlayout(new PlaybackPicker(picks)));
   }
 
   asFunction() {

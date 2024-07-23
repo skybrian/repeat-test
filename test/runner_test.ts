@@ -144,7 +144,7 @@ function makeRep<T>(input: Codec<T>, arg: T, test: TestFunction<T>): Rep<T> {
   const rep: Rep<T> = {
     ok: true,
     key: { seed: 1, index: 1 },
-    arb: input.domain,
+    arb: input.generator,
     arg: sol,
     test,
   };
