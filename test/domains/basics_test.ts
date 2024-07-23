@@ -4,7 +4,7 @@ import * as arb from "../../src/arbitraries.ts";
 import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 
-import * as dom from "../../src/codecs.ts";
+import * as dom from "../../src/domains.ts";
 
 describe("boolean", () => {
   it("encodes booleans", () => {

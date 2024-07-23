@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 import Arbitrary from "./arbitrary_class.ts";
 import { NestedPicks } from "./spans.ts";
 
-import Domain from "../src/codec_class.ts";
+import Domain from "./domain_class.ts";
 
 export function assertRoundTrip<T>(dom: Domain<T>, val: T) {
   const copy = dom.regenerate(val);

@@ -1,7 +1,7 @@
 import { AnyRecord } from "../types.ts";
 import { RecordShape as ArbRecordShape } from "../arbitrary_class.ts";
 import * as arb from "../arbitraries.ts";
-import Domain from "../codec_class.ts";
+import Domain from "../domain_class.ts";
 
 export function of<T>(...values: T[]): Domain<T> {
   const generator = arb.of(...values);

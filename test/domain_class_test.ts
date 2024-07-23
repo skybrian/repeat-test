@@ -3,7 +3,7 @@ import { assertEquals, assertThrows } from "@std/assert";
 
 import { PickRequest } from "../src/picks.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
-import Domain from "../src/codec_class.ts";
+import Domain from "../src/domain_class.ts";
 
 describe("Domain", () => {
   describe("parse", () => {

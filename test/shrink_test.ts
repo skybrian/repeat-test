@@ -10,8 +10,8 @@ import {
   shrinkOptionsUntil,
   shrinkPicksFrom,
 } from "../src/shrink.ts";
-import Domain from "../src/codec_class.ts";
-import * as codec from "../src/codecs.ts";
+import Domain from "../src/domain_class.ts";
+import * as codec from "../src/domains.ts";
 
 function assertShrinks<T>(
   dom: Domain<T>,

@@ -1,4 +1,4 @@
-import Domain from "../codec_class.ts";
+import Domain from "../domain_class.ts";
 import * as arb from "../arbitraries.ts";
 import { isWellFormed } from "../workarounds.ts";
 import * as unicode from "../unicode.ts";

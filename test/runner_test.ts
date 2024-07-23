@@ -3,9 +3,9 @@ import { assert, assertEquals, assertFalse, fail } from "@std/assert";
 
 import { minPlayout, PlayoutPruned } from "../src/backtracking.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
-import Domain from "../src/codec_class.ts";
+import Domain from "../src/domain_class.ts";
 import * as arb from "../src/arbitraries.ts";
-import * as codec from "../src/codecs.ts";
+import * as codec from "../src/domains.ts";
 import { success } from "../src/results.ts";
 
 import {
