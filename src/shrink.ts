@@ -17,41 +17,19 @@ export function shrink<T>(
   interesting: (arg: T) => boolean,
   start: Solution<T>,
 ): Solution<T> {
-  /**
-   * Tries to shrink a solution using guesses from the given strategies.
-   * Returns a new solution if any of them succeed.
-   */
-  function tryEach(
-    start: Solution<T>,
-    strategies: Iterable<Strategy>,
-  ): Solution<T> | undefined {
-    // Try each strategy in order, until one works.
-    for (const strategy of strategies) {
-      // Keep trying guesses from the same strategy while they succeed.
-      let worked = false;
-      for (const guess of strategy(start.playout.picks)) {
-        const picker = new PlaybackPicker(guess);
-        const picked = arb.pickSolution(onePlayout(picker));
-        if (!picked || !interesting(picked.val)) {
-          break;
-        }
-        start = picked;
-        worked = true;
-      }
-
-      if (worked) {
-        return start;
-      }
-    }
-    return undefined; // no strategies worked
-  }
-
   while (true) {
-    const newSolution = tryEach(start, strategiesToTry(start));
-    if (!newSolution) {
-      return start;
+    // Try each strategy in order, until one works.
+    let worked: Solution<T> | undefined = undefined;
+    for (const strategy of strategiesToTry(start)) {
+      worked = runStrategy(arb, interesting, start, strategy);
+      if (worked) {
+        break; // Restarting
+      }
     }
-    start = newSolution;
+    if (!worked) {
+      return start; // No strategies work anymore
+    }
+    start = worked; // Restart with the better solution
   }
 }
 
@@ -61,6 +39,24 @@ function* strategiesToTry<T>(
   yield shrinkLength;
   yield* shrinkPicks(start.playout.picks);
   yield* shrinkOptions(start.playout.picks);
+}
+
+function runStrategy<T>(
+  arb: Arbitrary<T>,
+  interesting: (arg: T) => boolean,
+  start: Solution<T>,
+  strategy: Strategy,
+): Solution<T> | undefined {
+  let worked: Solution<T> | undefined = undefined;
+  for (const guess of strategy(start.playout.picks)) {
+    const picker = new PlaybackPicker(guess);
+    const shrunk = arb.pickSolution(onePlayout(picker));
+    if (!shrunk || !interesting(shrunk.val)) {
+      return worked;
+    }
+    worked = shrunk;
+  }
+  return worked;
 }
 
 /**
