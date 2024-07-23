@@ -59,22 +59,25 @@ export interface PickFunction {
  */
 export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 
+/**
+ * Holds a generated value along with the picks that were used to generate it.
+ */
 export class Generated<T> {
   #generator: Arbitrary<T>;
-  #val: T;
   #picks: PickList;
   #spans: SpanList;
+  #val: T;
 
   constructor(
     generator: Arbitrary<T>,
-    val: T,
     picks: PickList,
     spans: SpanList,
+    val: T,
   ) {
     this.#generator = generator;
-    this.#val = val;
     this.#picks = picks;
     this.#spans = spans;
+    this.#val = val;
   }
 
   get generator() {
@@ -136,7 +139,7 @@ export default class Arbitrary<T> {
     this.#label = opts.label;
     this.#examples = opts.examples;
     this.maxSize = opts.maxSize;
-    this.default; // dry run
+    this.default(); // dry run
   }
 
   get label(): string {
@@ -165,7 +168,7 @@ export default class Arbitrary<T> {
       const log = new SpanLog(picker);
       const val = this.pickOnce(log, picker);
       if (val !== END_OF_PLAYOUTS) {
-        return new Generated(this, val, picker.getPicks(), log.getSpans());
+        return new Generated(this, picker.getPicks(), log.getSpans(), val);
       }
     }
     return undefined;
@@ -223,19 +226,19 @@ export default class Arbitrary<T> {
   }
 
   /** The default value of this Arbitrary. */
-  get default(): T {
+  default(): T {
     if (this.#examples) {
       // assume it's immutable
       return this.#examples[0];
     }
     // make a clone, in case it's mutable
-    const ex = this.pick(minPlayout());
-    if (ex === END_OF_PLAYOUTS) {
+    const gen = this.generate(minPlayout());
+    if (gen === undefined) {
       throw new Error(
         "couldn't generate a default value because default picks weren't accepted",
       );
     }
-    return ex;
+    return gen.val;
   }
 
   /**
@@ -382,7 +385,7 @@ export default class Arbitrary<T> {
     const maxTries = opts?.maxTries ?? 1000;
     const pickOpts: PickFunctionOptions<T> = { accept };
 
-    if (!accept(this.default)) {
+    if (!accept(this.default())) {
       // Override the default picks when picking from the unfiltered Arbitrary
       // so that the default will pass the filter.
       const gen = this.findGenerated(accept, { limit: maxTries });

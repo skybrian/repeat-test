@@ -19,7 +19,7 @@ export default class Codec<T> {
     this.#callback = callback;
 
     // Verify that we can round-trip the default value.
-    const def = generator.default;
+    const def = generator.default();
     const picks = this.#callback(def);
     if (picks === undefined) {
       throw new Error("callback can't parse the domain's default value");

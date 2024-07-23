@@ -32,7 +32,7 @@ describe("Arbitrary", () => {
   describe("record", () => {
     it("accepts a constant record shape", () => {
       const arb = Arbitrary.record({ a: Arbitrary.of(1), b: Arbitrary.of(2) });
-      assertEquals(arb.default, { a: 1, b: 2 });
+      assertEquals(arb.default(), { a: 1, b: 2 });
       assertEquals(arb.maxSize, 1);
     });
   });
@@ -40,7 +40,7 @@ describe("Arbitrary", () => {
   describe("oneOf", () => {
     it("accepts constant alteratives", () => {
       const arb = Arbitrary.oneOf([Arbitrary.of(1), Arbitrary.of(2)]);
-      assertEquals(arb.default, 1);
+      assertEquals(arb.default(), 1);
       assertEquals(Array.from(arb.examples()), [1, 2]);
       assertEquals(arb.maxSize, 2);
     });
@@ -52,14 +52,14 @@ describe("Arbitrary", () => {
     });
     it("returns a constant Arbitrary if called with one argument", () => {
       const arb = Arbitrary.of("hi");
-      assertEquals(arb.default, "hi");
+      assertEquals(arb.default(), "hi");
       assertEquals(Array.from(arb.examples()), ["hi"]);
       assertNested(arb, [{ val: "hi", picks: [] }]);
       assertEquals(arb.maxSize, 1);
     });
     it("creates an Arbitrary with multiple arguments", () => {
       const arb = Arbitrary.of("hi", "there");
-      assertEquals(arb.default, "hi");
+      assertEquals(arb.default(), "hi");
       assertEquals(Array.from(arb.examples()), ["hi", "there"]);
       assertNested(arb, [
         { val: "hi", picks: [0] },
@@ -118,13 +118,13 @@ describe("Arbitrary", () => {
     it("keeps the default the same if it works", () => {
       const keepEverything = () => true;
       const filtered = sixSided.filter(keepEverything);
-      assertEquals(filtered.default, 1);
+      assertEquals(filtered.default(), 1);
       assertEquals(filtered.takeAll(), [1, 2, 3, 4, 5, 6]);
     });
     it("changes the default to the next value that satisfies the predicate", () => {
       const keepEvens = (n: number) => n % 2 === 0;
       const filtered = sixSided.filter(keepEvens);
-      assertEquals(filtered.default, 2);
+      assertEquals(filtered.default(), 2);
       assertEquals(filtered.takeAll(), [2, 4, 6]);
       const ex = filtered.pick(minPlayout());
       assertEquals(ex, 2);
@@ -150,7 +150,7 @@ describe("Arbitrary", () => {
       const filtered = combos.filter(
         (pick) => accepted.has(pick),
       );
-      assertEquals(filtered.default, "[1,0]");
+      assertEquals(filtered.default(), "[1,0]");
       assertEquals(filtered.takeAll(), [
         "[1,0]",
         "[0,1]",
@@ -173,7 +173,7 @@ describe("Arbitrary", () => {
         (pick) => accepted.has(pick),
         { maxTries: 1000 },
       );
-      assertEquals(lock.default, "[1,2,3]");
+      assertEquals(lock.default(), "[1,2,3]");
       assertEquals(lock.takeAll(), [
         "[1,2,3]",
         "[1,4,3]",
@@ -184,10 +184,10 @@ describe("Arbitrary", () => {
   describe("map", () => {
     it("changes the default", () => {
       const original = Arbitrary.from(new PickRequest(1, 6));
-      assertEquals(original.default, 1);
+      assertEquals(original.default(), 1);
 
       const mapped = original.map((n) => n * 2);
-      assertEquals(mapped.default, 2);
+      assertEquals(mapped.default(), 2);
     });
   });
 

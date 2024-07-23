@@ -12,7 +12,7 @@ import {
 
 describe("boolean", () => {
   it("defaults to false", () => {
-    assertEquals(arb.boolean().default, false);
+    assertEquals(arb.boolean().default(), false);
   });
   it("generates both values", () => {
     assertNested(arb.boolean(), [
@@ -39,13 +39,13 @@ describe("int", () => {
   });
   describe("default", () => {
     it("defaults to min for positive numbers", () => {
-      assertEquals(arb.int(1, 6).default, 1);
+      assertEquals(arb.int(1, 6).default(), 1);
     });
     it("defaults to max for negative numbers", () => {
-      assertEquals(arb.int(-6, -1).default, -1);
+      assertEquals(arb.int(-6, -1).default(), -1);
     });
     it("defaults to 0 for a range that includes 0", () => {
-      assertEquals(arb.int(-6, 6).default, 0);
+      assertEquals(arb.int(-6, 6).default(), 0);
     });
   });
   describe("maxSize", () => {
@@ -59,7 +59,7 @@ describe("record", () => {
   describe("for an empty record shape", () => {
     const empty = arb.record({});
     it("creates empty records", () => {
-      assertEquals(empty.default, {});
+      assertEquals(empty.default(), {});
       assertNested(empty, [
         { val: {}, picks: [] },
       ]);
@@ -82,7 +82,7 @@ describe("record", () => {
       a: arb.int(1, 2),
     });
     it("defaults to the default value of the field", () => {
-      assertEquals(oneField.default, { a: 1 });
+      assertEquals(oneField.default(), { a: 1 });
     });
     it("makes one pick", () => {
       assertNested(oneField, [
@@ -117,8 +117,8 @@ describe("oneOf", () => {
     arb.int(5, 6),
   ]);
   it("defaults to the first branch", () => {
-    assertEquals(oneWay.default, 1);
-    assertEquals(threeWay.default, 1);
+    assertEquals(oneWay.default(), 1);
+    assertEquals(threeWay.default(), 1);
   });
 });
 
@@ -126,7 +126,7 @@ describe("array", () => {
   describe("of booleans", () => {
     const bools = arb.array(arb.boolean());
     it("defaults to an empty array", () => {
-      assertEquals(bools.default, []);
+      assertEquals(bools.default(), []);
     });
     describe("generateAll", () => {
       it("returns each combination in increasing order", () => {
@@ -145,7 +145,7 @@ describe("array", () => {
   describe("of unsigned ints", () => {
     const ints = arb.array(arb.int(0, 2 ** 32));
     it("defaults to an empty array", () => {
-      assertEquals(ints.default, []);
+      assertEquals(ints.default(), []);
     });
     describe("examples", () => {
       it("returns each combination in increasing order", () => {

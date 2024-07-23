@@ -32,13 +32,13 @@ describe("asciiChar", () => {
     assertEquals(arb.asciiChar(/x/).takeAll(), ["x"]);
   });
   it("defaults to 'a'", () => {
-    assertEquals(arb.asciiChar().default, "a");
+    assertEquals(arb.asciiChar().default(), "a");
   });
 });
 
 describe("asciiLetter", () => {
   it("defaults to 'a'", () => {
-    assertEquals(arb.asciiLetter().default, "a");
+    assertEquals(arb.asciiLetter().default(), "a");
   });
   it("includes lowercase and uppercase letters in order", () => {
     assertEquals(
@@ -51,7 +51,7 @@ describe("asciiLetter", () => {
 
 describe("asciiDigit", () => {
   it("defaults to '0'", () => {
-    assertEquals(arb.asciiDigit().default, "0");
+    assertEquals(arb.asciiDigit().default(), "0");
   });
   it("includes digits in order", () => {
     assertEquals(arb.asciiDigit().takeAll(), "0123456789".split(""));
@@ -60,7 +60,7 @@ describe("asciiDigit", () => {
 
 describe("asciiWhitespace", () => {
   it("defaults to a space", () => {
-    assertEquals(arb.asciiWhitespace().default, " ");
+    assertEquals(arb.asciiWhitespace().default(), " ");
   });
   it("matches the equivalent regexp", () => {
     assertSameExamples(arb.asciiWhitespace(), arb.asciiChar(/\s/));
@@ -69,7 +69,7 @@ describe("asciiWhitespace", () => {
 
 describe("asciiSymbol", () => {
   it("defaults to '!'", () => {
-    assertEquals(arb.asciiSymbol().default, "!");
+    assertEquals(arb.asciiSymbol().default(), "!");
   });
   it("includes symbols in order", () => {
     assertEquals(
@@ -81,7 +81,7 @@ describe("asciiSymbol", () => {
 
 describe("char16", () => {
   it("defaults to 'a'", () => {
-    assertEquals(arb.char16().default, "a");
+    assertEquals(arb.char16().default(), "a");
   });
   it("includes all code points", () => {
     assertCharCodeRange(arb.char16(), 0, 0xFFFF);
@@ -94,7 +94,7 @@ function codeUnits(str: string): string[] {
 
 describe("unicodeChar", () => {
   it("defaults to 'a'", () => {
-    assertEquals(arb.unicodeChar().default, "a");
+    assertEquals(arb.unicodeChar().default(), "a");
   });
   it("always returns a well-formed string", () => {
     repeatTest(arb.unicodeChar(), (str) => {
@@ -109,13 +109,13 @@ describe("unicodeChar", () => {
 
 describe("anyString", () => {
   it("defaults to an empty string", () => {
-    assertEquals(arb.anyString().default, "");
+    assertEquals(arb.anyString().default(), "");
   });
 });
 
 describe("wellFormedString", () => {
   it("defaults to an empty string", () => {
-    assertEquals(arb.wellFormedString().default, "");
+    assertEquals(arb.wellFormedString().default(), "");
   });
   it("starts with the empty string, followed by single ascii characters", () => {
     assertFirstValues(arb.wellFormedString(), [
