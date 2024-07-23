@@ -1,9 +1,11 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, fail } from "@std/assert";
 
-import { PlayoutPruned } from "../src/backtracking.ts";
+import { minPlayout, PlayoutPruned } from "../src/backtracking.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
+import Codec from "../src/codec_class.ts";
 import * as arb from "../src/arbitraries.ts";
+import * as codec from "../src/codecs.ts";
 import { success } from "../src/results.ts";
 
 import {
@@ -14,6 +16,7 @@ import {
   repeatTest,
   runRep,
   serializeRepKey,
+  TestFunction,
 } from "../src/runner.ts";
 
 const anyKey = arb.record({ seed: arb.int32(), index: arb.int(0, 100) });
@@ -58,12 +61,10 @@ describe("depthFirstReps", () => {
 
     let index = 0;
     for (const rep of reps) {
-      assertEquals(rep, {
-        ok: true,
-        key: { seed: 0, index },
-        arg: index + 1,
-        test,
-      });
+      assert(rep.ok);
+      assertEquals(rep.key, { seed: 0, index });
+      assertEquals(rep.arg.val, index + 1);
+      assertEquals(rep.test, test);
       index++;
     }
     assertEquals(index, 10);
@@ -87,8 +88,8 @@ describe("randomReps", () => {
         assert(rep.ok);
         assertEquals(rep.key, { seed, index: picks.size });
         assertEquals(rep.test, test);
-        assertFalse(picks.has(rep.arg));
-        picks.add(rep.arg);
+        assertFalse(picks.has(rep.arg.val));
+        picks.add(rep.arg.val);
       }
       assertEquals(picks.size, 10, "didn't generate the right number of reps");
     });
@@ -112,46 +113,78 @@ describe("randomReps", () => {
       });
 
       for (let i = 0; i < 4; i++) {
-        assertEquals(reps.next().value, {
-          ok: true,
-          key: { seed, index: i },
-          arg: "good",
-          test,
-        });
+        const rep = reps.next().value;
+        assert(rep.ok);
+        assertEquals(rep.key, { seed, index: i });
+        assertEquals(rep.arg.val, "good");
+        assertEquals(rep.test, test);
       }
     });
   });
 });
 
+function makeDefaultRep<T>(input: Arbitrary<T>, test: TestFunction<T>): Rep<T> {
+  const sol = input.pickSolution(minPlayout());
+  assert(sol !== undefined);
+
+  const rep: Rep<T> = {
+    ok: true,
+    key: { seed: 1, index: 1 },
+    arb: input,
+    arg: sol,
+    test,
+  };
+  return rep;
+}
+
+function makeRep<T>(input: Codec<T>, arg: T, test: TestFunction<T>): Rep<T> {
+  const sol = input.toSolution(arg);
+  assert(sol !== undefined);
+
+  const rep: Rep<T> = {
+    ok: true,
+    key: { seed: 1, index: 1 },
+    arb: input.domain,
+    arg: sol,
+    test,
+  };
+  return rep;
+}
+
 describe("runRep", () => {
   it("returns success if the test passes", () => {
-    const test = () => {};
-    const rep: Rep<number> = {
-      ok: true,
-      key: { seed: 1, index: 1 },
-      arg: 1,
-      test,
-    };
+    const rep = makeDefaultRep(arb.int(1, 10), () => {});
     assertEquals(runRep(rep), success());
   });
   it("returns a failure if the test throws", () => {
-    const test = () => {
+    const rep = makeDefaultRep(arb.int(1, 10), () => {
       throw new Error("test failed");
-    };
-    const rep: Rep<number> = {
-      ok: true,
-      key: { seed: 1, index: 1 },
-      arg: 1,
-      test,
-    };
+    });
     const result = runRep(rep);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
-    assertEquals(result.arg, rep.arg);
+    assertEquals(result.arg, rep.arg.val);
     if (!(result.caught instanceof Error)) {
       fail("expected caught to be an Error");
     }
     assertEquals(result.caught.message, "test failed");
+  });
+  it("shrinks the input to a test that fails", () => {
+    const input = codec.int(0, 1000);
+    const test = (i: number) => {
+      if (i >= 10) {
+        throw new Error("test failed");
+      }
+    };
+    const rep = makeRep(input, 100, test);
+    const result = runRep(rep);
+    if (result.ok) fail("expected a failure");
+    assertEquals(result.key, rep.key);
+    if (!(result.caught instanceof Error)) {
+      fail("expected caught to be an Error");
+    }
+    assertEquals(result.caught.message, "test failed");
+    assertEquals(result.arg, 10);
   });
 });
 

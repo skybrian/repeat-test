@@ -1,8 +1,9 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
 import { SearchTree } from "./search_tree.ts";
-import Arbitrary, { END_OF_PLAYOUTS } from "./arbitrary_class.ts";
+import Arbitrary, { Solution } from "./arbitrary_class.ts";
 import { fail, Failure, Success, success } from "./results.ts";
 import { alwaysPickMin } from "./picks.ts";
+import { shrink } from "./shrink.ts";
 
 /** A function that runs a test, using generated input. */
 export type TestFunction<T> = (arg: T) => void;
@@ -35,7 +36,8 @@ export function serializeRepKey(key: RepKey): string {
 export type Rep<T> = {
   ok: true;
   key: RepKey;
-  arg: T;
+  arb: Arbitrary<T>;
+  arg: Solution<T>;
   test: TestFunction<T>;
 };
 
@@ -69,14 +71,14 @@ export function* randomReps<T>(
 
   // Make sure that the default picks work.
   // (And records them in the tree, so we don't test the default again.)
-  const arg = arb.pick(tree.pickers(alwaysPickMin));
-  if (arg === END_OF_PLAYOUTS) {
+  const arg = arb.pickSolution(tree.pickers(alwaysPickMin));
+  if (arg === undefined) {
     throw new Error("can't generate default value of supplied arbitrary");
   }
 
   // The first rep always uses the default.
   const key = { seed, index };
-  yield { ok: true, key, arg, test };
+  yield { ok: true, key, arb, arg, test };
   index++;
 
   // Generate each rep with a different picker.
@@ -86,11 +88,11 @@ export function* randomReps<T>(
     const random = pickers.next().value;
     // const picker = retryPicker(random, filterLimit);
     try {
-      const arg = arb.pick(tree.pickers(random));
-      if (arg === END_OF_PLAYOUTS) {
+      const arg = arb.pickSolution(tree.pickers(random));
+      if (arg === undefined) {
         return; // No more test args to generate.
       }
-      yield { ok: true, key, arg, test };
+      yield { ok: true, key, arb, arg, test };
     } catch (e) {
       yield { ok: false, key, arg: undefined, caught: e };
     }
@@ -103,9 +105,9 @@ export function* depthFirstReps<T>(
   test: TestFunction<T>,
 ): Generator<Rep<T> | TestFailure<unknown>> {
   let index = 0;
-  for (const arg of arb.examples()) {
+  for (const arg of arb.solutions) {
     const key = { seed: 0, index };
-    yield { ok: true, key, arg, test };
+    yield { ok: true, key, arb, arg, test };
     index++;
   }
 }
@@ -119,14 +121,26 @@ export function reportFailure(failure: TestFailure<unknown>): never {
 
 /** Runs one repetition. */
 export function runRep<T>(rep: Rep<T>): Success<void> | TestFailure<T> {
-  try {
-    rep.test(rep.arg);
+  const interesting = (arg: T) => {
+    try {
+      rep.test(arg);
+      return false;
+    } catch (_e) {
+      return true;
+    }
+  };
+  if (!interesting(rep.arg.val)) {
     return success();
+  }
+  const shrunk = shrink(rep.arb, interesting, rep.arg);
+  try {
+    rep.test(shrunk.val);
+    throw new Error("flaky test passed after shrinking");
   } catch (e) {
     return {
       ok: false,
       key: rep.key,
-      arg: rep.arg,
+      arg: shrunk.val,
       caught: e,
     };
   }
