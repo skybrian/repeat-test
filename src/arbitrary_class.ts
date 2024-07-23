@@ -1,15 +1,12 @@
 import { AnyRecord } from "./types.ts";
 import { PickList, PickRequest } from "./picks.ts";
-
 import {
   minPlayout,
   PlayoutPruned,
   RetryPicker,
   rotatePicks,
 } from "./backtracking.ts";
-
 import { nestedPicks, SpanList, SpanLog } from "./spans.ts";
-
 import { breadthFirstSearch } from "./search_tree.ts";
 
 export type PickFunctionOptions<T> = {
@@ -108,13 +105,13 @@ export class Generated<T> {
 export const END_OF_PLAYOUTS = Symbol("END_OF_PLAYOUTS");
 
 /**
- * A set of examples that can be generated on demand.
+ * A set of values that can be generated on demand.
  *
- * Each Arbitrary contains at least one example, its {@link default} value. Some
- * Arbitraries define {@link maxSize}, giving an upper bound. Others contain an
- * infinite number of examples.
+ * Every Arbitrary contains a {@link default} value. Some Arbitraries define
+ * {@link maxSize}, providing an upper bound on how many values they contain.
+ * Others contain an infinite number of values.
  *
- * The examples can be iterated over using {@link examples}.
+ * The values can be iterated over using {@link examples}.
  */
 export default class Arbitrary<T> {
   private readonly callback: ArbitraryCallback<T>;
@@ -126,158 +123,6 @@ export default class Arbitrary<T> {
    * (Only available for some small sets.)
    */
   readonly maxSize: number | undefined;
-
-  /**
-   * Creates an arbitrary from a {@link PickRequest} or {@link ArbitraryCallback}.
-   */
-  static from(req: PickRequest): Arbitrary<number>;
-  static from<T>(
-    callback: ArbitraryCallback<T>,
-  ): Arbitrary<T>;
-  static from<T>(
-    arg: PickRequest | ArbitraryCallback<T>,
-    opts?: { label?: string },
-  ): Arbitrary<T> | Arbitrary<number> {
-    if (typeof arg === "function") {
-      const label = opts?.label ?? "callback";
-      return new Arbitrary(arg, { label });
-    } else {
-      const label = opts?.label ?? `pick ${arg.min} - ${arg.max}`;
-      return new Arbitrary((pick) => pick(arg), { label, maxSize: arg.size });
-    }
-  }
-
-  /**
-   * Creates an Arbitrary for a record with the given shape.
-   */
-  static record<T extends AnyRecord>(
-    shape: RecordShape<T>,
-  ): Arbitrary<T> {
-    let maxSize: number | undefined = 1;
-    const keys = Object.keys(shape) as (keyof T)[];
-    for (const key of keys) {
-      const size = shape[key].maxSize;
-      if (size === undefined) {
-        maxSize = undefined;
-        break;
-      }
-      maxSize *= size;
-    }
-    const callback = (pick: PickFunction) => {
-      return pick(shape) as T;
-    };
-    return new Arbitrary(callback, { maxSize, label: "record" });
-  }
-
-  /**
-   * Creates an arbitrary that picks one of the given arbitaries and then returns it.
-   */
-  static oneOf<T>(cases: Arbitrary<T>[]): Arbitrary<T> {
-    if (cases.length === 0) {
-      throw new Error("oneOf must be called with at least one alternative");
-    }
-    if (cases.length === 1) {
-      return cases[0];
-    }
-    let maxSize: number | undefined = 0;
-    for (const c of cases) {
-      if (c.maxSize === undefined) {
-        maxSize = undefined;
-        break;
-      }
-      maxSize += c.maxSize;
-    }
-
-    const req = new PickRequest(0, cases.length - 1);
-    const callback: ArbitraryCallback<T> = (pick) => {
-      const i = pick(req);
-      return cases[i].callback(pick);
-    };
-    return new Arbitrary(callback, { maxSize, label: "oneOf" });
-  }
-
-  /**
-   * Creates an Arbitrary that returns one of the given items. The first one
-   * will be the default.
-   *
-   * The items are returned as-is, without being cloned. If they are mutable,
-   * this might result in unexpected side effects.
-   *
-   * Consider using {@link from} to generate a new instance of mutable objects
-   * each time.
-   */
-  static of<T>(...examples: T[]): Arbitrary<T> {
-    if (examples.length === 0) {
-      throw new Error("Arbitrary.of() requires at least one argument");
-    } else if (examples.length === 1) {
-      const constant = examples[0];
-      return new Arbitrary(() => constant, {
-        maxSize: 1,
-        label: "of (constant)",
-      });
-    }
-
-    const req = new PickRequest(0, examples.length - 1);
-    const callback: ArbitraryCallback<T> = (pick) => {
-      const i = pick(req);
-      return examples[i];
-    };
-    return new Arbitrary(callback, {
-      examples,
-      maxSize: examples.length,
-      label: "of",
-    });
-  }
-
-  private static makePickFunction<T>(
-    log: SpanLog,
-    defaultPicker: RetryPicker,
-  ): PickFunction {
-    const dispatch = <T>(
-      req: PickRequest | Arbitrary<T> | RecordShape<T>,
-      opts?: PickFunctionOptions<T>,
-    ): number | T => {
-      let picker = defaultPicker;
-      let pick: PickFunction = dispatch;
-      const newDefaults = opts?.defaultPlayout;
-      if (newDefaults !== undefined) {
-        picker = rotatePicks(picker, newDefaults);
-        pick = Arbitrary.makePickFunction(log, picker);
-      }
-
-      if (req instanceof PickRequest) {
-        return picker.maybePick(req);
-      } else if (req instanceof Arbitrary) {
-        const accept = opts?.accept;
-        if (accept !== undefined) {
-          return req.innerPickWithFilter(log, pick, accept);
-        } else {
-          return req.innerPick(log, pick);
-        }
-      } else if (typeof req !== "object") {
-        throw new Error("pick called with invalid argument");
-      } else {
-        return Arbitrary.pickRecord(req, log, pick);
-      }
-    };
-    return dispatch;
-  }
-
-  private static pickRecord<T>(
-    req: RecordShape<T>,
-    log: SpanLog,
-    pick: PickFunction,
-  ): T {
-    const keys = Object.keys(req) as (keyof T)[];
-    if (keys.length === 0) {
-      return {} as T;
-    }
-    const result = {} as Partial<T>;
-    for (const key of keys) {
-      result[key] = req[key].innerPick(log, pick);
-    }
-    return result as T;
-  }
 
   private constructor(
     callback: ArbitraryCallback<T>,
@@ -575,5 +420,157 @@ export default class Arbitrary<T> {
 
   toString() {
     return `Arbitrary(${this.label})`;
+  }
+
+  /**
+   * Creates an arbitrary from a {@link PickRequest} or {@link ArbitraryCallback}.
+   */
+  static from(req: PickRequest): Arbitrary<number>;
+  static from<T>(
+    callback: ArbitraryCallback<T>,
+  ): Arbitrary<T>;
+  static from<T>(
+    arg: PickRequest | ArbitraryCallback<T>,
+    opts?: { label?: string },
+  ): Arbitrary<T> | Arbitrary<number> {
+    if (typeof arg === "function") {
+      const label = opts?.label ?? "callback";
+      return new Arbitrary(arg, { label });
+    } else {
+      const label = opts?.label ?? `pick ${arg.min} - ${arg.max}`;
+      return new Arbitrary((pick) => pick(arg), { label, maxSize: arg.size });
+    }
+  }
+
+  /**
+   * Creates an Arbitrary for a record with the given shape.
+   */
+  static record<T extends AnyRecord>(
+    shape: RecordShape<T>,
+  ): Arbitrary<T> {
+    let maxSize: number | undefined = 1;
+    const keys = Object.keys(shape) as (keyof T)[];
+    for (const key of keys) {
+      const size = shape[key].maxSize;
+      if (size === undefined) {
+        maxSize = undefined;
+        break;
+      }
+      maxSize *= size;
+    }
+    const callback = (pick: PickFunction) => {
+      return pick(shape) as T;
+    };
+    return new Arbitrary(callback, { maxSize, label: "record" });
+  }
+
+  /**
+   * Creates an arbitrary that picks one of the given arbitaries and then returns it.
+   */
+  static oneOf<T>(cases: Arbitrary<T>[]): Arbitrary<T> {
+    if (cases.length === 0) {
+      throw new Error("oneOf must be called with at least one alternative");
+    }
+    if (cases.length === 1) {
+      return cases[0];
+    }
+    let maxSize: number | undefined = 0;
+    for (const c of cases) {
+      if (c.maxSize === undefined) {
+        maxSize = undefined;
+        break;
+      }
+      maxSize += c.maxSize;
+    }
+
+    const req = new PickRequest(0, cases.length - 1);
+    const callback: ArbitraryCallback<T> = (pick) => {
+      const i = pick(req);
+      return cases[i].callback(pick);
+    };
+    return new Arbitrary(callback, { maxSize, label: "oneOf" });
+  }
+
+  /**
+   * Creates an Arbitrary that returns one of the given items. The first one
+   * will be the default.
+   *
+   * The items are returned as-is, without being cloned. If they are mutable,
+   * this might result in unexpected side effects.
+   *
+   * Consider using {@link from} to generate a new instance of mutable objects
+   * each time.
+   */
+  static of<T>(...examples: T[]): Arbitrary<T> {
+    if (examples.length === 0) {
+      throw new Error("Arbitrary.of() requires at least one argument");
+    } else if (examples.length === 1) {
+      const constant = examples[0];
+      return new Arbitrary(() => constant, {
+        maxSize: 1,
+        label: "of (constant)",
+      });
+    }
+
+    const req = new PickRequest(0, examples.length - 1);
+    const callback: ArbitraryCallback<T> = (pick) => {
+      const i = pick(req);
+      return examples[i];
+    };
+    return new Arbitrary(callback, {
+      examples,
+      maxSize: examples.length,
+      label: "of",
+    });
+  }
+
+  private static makePickFunction<T>(
+    log: SpanLog,
+    defaultPicker: RetryPicker,
+  ): PickFunction {
+    const dispatch = <T>(
+      req: PickRequest | Arbitrary<T> | RecordShape<T>,
+      opts?: PickFunctionOptions<T>,
+    ): number | T => {
+      let picker = defaultPicker;
+      let pick: PickFunction = dispatch;
+      const newDefaults = opts?.defaultPlayout;
+      if (newDefaults !== undefined) {
+        picker = rotatePicks(picker, newDefaults);
+        pick = Arbitrary.makePickFunction(log, picker);
+      }
+
+      if (req instanceof PickRequest) {
+        return picker.maybePick(req);
+      } else if (req instanceof Arbitrary) {
+        const accept = opts?.accept;
+        if (accept !== undefined) {
+          return req.innerPickWithFilter(log, pick, accept);
+        } else {
+          return req.innerPick(log, pick);
+        }
+      } else if (typeof req !== "object") {
+        throw new Error("pick called with invalid argument");
+      } else {
+        return Arbitrary.pickRecord(req, log, pick);
+      }
+    };
+    return dispatch;
+  }
+
+  private static pickRecord<T>(
+    req: RecordShape<T>,
+    log: SpanLog,
+    pick: PickFunction,
+  ): T {
+    const keys = Object.keys(req) as (keyof T)[];
+    if (keys.length === 0) {
+      return {} as T;
+    }
+    const result = {} as Partial<T>;
+    for (const key of keys) {
+      result[key] = req[key].innerPick(log, pick);
+    }
+    return result as T;
   }
 }
