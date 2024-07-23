@@ -13,7 +13,7 @@ describe("Arbitrary", () => {
     it("accepts a PickRequest", () => {
       const pick = new PickRequest(1, 2);
       const arbitrary = Arbitrary.from(pick);
-      assertEquals(Array.from(arbitrary.examples()), [1, 2]);
+      assertEquals(arbitrary.takeAll(), [1, 2]);
     });
     it("throws if given a callback that throws", () => {
       const callback = () => {
@@ -41,7 +41,7 @@ describe("Arbitrary", () => {
     it("accepts constant alteratives", () => {
       const arb = Arbitrary.oneOf([Arbitrary.of(1), Arbitrary.of(2)]);
       assertEquals(arb.default(), 1);
-      assertEquals(Array.from(arb.examples()), [1, 2]);
+      assertEquals(arb.takeAll(), [1, 2]);
       assertEquals(arb.maxSize, 2);
     });
   });
@@ -53,14 +53,14 @@ describe("Arbitrary", () => {
     it("returns a constant Arbitrary if called with one argument", () => {
       const arb = Arbitrary.of("hi");
       assertEquals(arb.default(), "hi");
-      assertEquals(Array.from(arb.examples()), ["hi"]);
+      assertEquals(arb.takeAll(), ["hi"]);
       assertNested(arb, [{ val: "hi", picks: [] }]);
       assertEquals(arb.maxSize, 1);
     });
     it("creates an Arbitrary with multiple arguments", () => {
       const arb = Arbitrary.of("hi", "there");
       assertEquals(arb.default(), "hi");
-      assertEquals(Array.from(arb.examples()), ["hi", "there"]);
+      assertEquals(arb.takeAll(), ["hi", "there"]);
       assertNested(arb, [
         { val: "hi", picks: [0] },
         { val: "there", picks: [1] },
@@ -229,7 +229,7 @@ describe("Arbitrary", () => {
           return Arbitrary.from(() => "hi");
         }
       });
-      assertEquals(Array.from(hello.examples()), ["hi", "there"]);
+      assertEquals(hello.takeAll(), ["hi", "there"]);
     });
   });
 
