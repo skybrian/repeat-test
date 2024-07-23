@@ -1,5 +1,5 @@
 import { AnyRecord } from "./types.ts";
-import { PickRequest } from "./picks.ts";
+import { PickList, PickRequest } from "./picks.ts";
 
 import {
   minPlayout,
@@ -8,7 +8,7 @@ import {
   rotatePicks,
 } from "./backtracking.ts";
 
-import { Playout, PlayoutContext } from "./playouts.ts";
+import { nestedPicks, PlayoutContext, SpanList } from "./playouts.ts";
 
 import { breadthFirstSearch } from "./search_tree.ts";
 
@@ -63,26 +63,45 @@ export interface PickFunction {
 export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 
 export class Generated<T> {
+  #generator: Arbitrary<T>;
+  #val: T;
+  #picks: PickList;
+  #spans: SpanList;
+
   constructor(
-    readonly generator: Arbitrary<T>,
-    readonly val: T,
-    private readonly playout: Playout,
-  ) {}
+    generator: Arbitrary<T>,
+    val: T,
+    picks: PickList,
+    spans: SpanList,
+  ) {
+    this.#generator = generator;
+    this.#val = val;
+    this.#picks = picks;
+    this.#spans = spans;
+  }
+
+  get generator() {
+    return this.#generator;
+  }
+
+  get val() {
+    return this.#val;
+  }
 
   isDefault() {
-    return this.playout.picks.isMinPlayout();
+    return this.#picks.isMinPlayout();
   }
 
   picks() {
-    return this.playout.picks.slice();
+    return this.#picks.slice();
   }
 
   replies() {
-    return this.playout.picks.replies();
+    return this.#picks.replies();
   }
 
   nestedPicks() {
-    return this.playout.toNestedPicks();
+    return nestedPicks(this.replies(), this.#spans);
   }
 }
 
@@ -301,7 +320,7 @@ export default class Arbitrary<T> {
       const ctx = new PlayoutContext(picker);
       const val = this.pickOnce(ctx, picker);
       if (val !== END_OF_PLAYOUTS) {
-        return new Generated(this, val, ctx.toPlayout());
+        return new Generated(this, val, picker.getPicks(), ctx.getSpans());
       }
     }
     return undefined;
