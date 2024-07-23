@@ -1,6 +1,6 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
-import { assertSolutions } from "../src/asserts.ts";
+import { assertNested } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
@@ -54,14 +54,14 @@ describe("Arbitrary", () => {
       const arb = Arbitrary.of("hi");
       assertEquals(arb.default, "hi");
       assertEquals(Array.from(arb.examples()), ["hi"]);
-      assertSolutions(arb, [{ val: "hi", picks: [] }]);
+      assertNested(arb, [{ val: "hi", picks: [] }]);
       assertEquals(arb.maxSize, 1);
     });
     it("creates an Arbitrary with multiple arguments", () => {
       const arb = Arbitrary.of("hi", "there");
       assertEquals(arb.default, "hi");
       assertEquals(Array.from(arb.examples()), ["hi", "there"]);
-      assertSolutions(arb, [
+      assertNested(arb, [
         { val: "hi", picks: [0] },
         { val: "there", picks: [1] },
       ]);
@@ -111,7 +111,7 @@ describe("Arbitrary", () => {
   describe("filter", () => {
     const sixSided = Arbitrary.from(new PickRequest(1, 6));
 
-    it("disallows filters that don't allow any solution", () => {
+    it("disallows filters that don't allow any values through", () => {
       const rejectEverything = () => false;
       assertThrows(() => sixSided.filter(rejectEverything));
     });
@@ -138,7 +138,7 @@ describe("Arbitrary", () => {
     it("filters an arbitrary created from multiple picks", () => {
       const bit = new PickRequest(0, 1);
       const bitCount = 2;
-      const solutions = new Set(["[0,1]", "[1,0]"]);
+      const accepted = new Set(["[0,1]", "[1,0]"]);
 
       const combos = Arbitrary.from((pick) => {
         const picks: number[] = [];
@@ -148,7 +148,7 @@ describe("Arbitrary", () => {
         return JSON.stringify(picks);
       });
       const filtered = combos.filter(
-        (pick) => solutions.has(pick),
+        (pick) => accepted.has(pick),
       );
       assertEquals(filtered.default, "[1,0]");
       assertEquals(filtered.takeAll(), [
@@ -160,7 +160,7 @@ describe("Arbitrary", () => {
     it("can solve a combination lock if given enough tries", () => {
       const digit = new PickRequest(1, 9);
       const digitCount = 3;
-      const solutions = new Set(["[1,2,3]", "[1,4,3]"]);
+      const accepted = new Set(["[1,2,3]", "[1,4,3]"]);
 
       const digits = Arbitrary.from((pick) => {
         const picks: number[] = [];
@@ -170,7 +170,7 @@ describe("Arbitrary", () => {
         return JSON.stringify(picks);
       });
       const lock = digits.filter(
-        (pick) => solutions.has(pick),
+        (pick) => accepted.has(pick),
         { maxTries: 1000 },
       );
       assertEquals(lock.default, "[1,2,3]");
@@ -233,43 +233,43 @@ describe("Arbitrary", () => {
     });
   });
 
-  describe("solutions", () => {
-    it("finds the only solution for a constant", () => {
+  describe("generateAll", () => {
+    it("generates a single value for a constant", () => {
       const one = Arbitrary.from(() => 1);
-      assertSolutions(one, [{ val: 1, picks: [] }]);
+      assertNested(one, [{ val: 1, picks: [] }]);
     });
 
-    it("finds the only solution for a filtered constant", () => {
+    it("generates a single value for a filtered constant", () => {
       const one = Arbitrary.from(() => 1).filter((val) => val === 1);
-      assertSolutions(one, [{ val: 1, picks: [] }]);
+      assertNested(one, [{ val: 1, picks: [] }]);
     });
 
-    it("finds each solution for an int range", () => {
+    it("generates each value an integer range", () => {
       const oneTwoThree = Arbitrary.from(new PickRequest(1, 3));
-      assertSolutions(oneTwoThree, [
+      assertNested(oneTwoThree, [
         { val: 1, picks: [1] },
         { val: 2, picks: [2] },
         { val: 3, picks: [3] },
       ]);
     });
 
-    it("finds each solution for a boolean", () => {
+    it("generates both values for a boolean", () => {
       const boolean = Arbitrary.from(new PickRequest(0, 1)).map((b) => b === 1);
-      assertSolutions(boolean, [
+      assertNested(boolean, [
         { val: false, picks: [0] },
         { val: true, picks: [1] },
       ]);
     });
 
-    it("finds each solution for filtered PickRequest", () => {
+    it("generates the accepted values from a filter", () => {
       const bit = Arbitrary.from(new PickRequest(0, 1))
         .filter((b) => b === 0);
-      assertSolutions(bit, [
+      assertNested(bit, [
         { val: 0, picks: [0] },
       ]);
     });
 
-    it("finds every combination for an odometer", () => {
+    it("generates every combination for an odometer", () => {
       const digit = new PickRequest(0, 9);
       const digits = Arbitrary.from((pick) => {
         const a = pick(digit);
@@ -278,11 +278,11 @@ describe("Arbitrary", () => {
         return a * 100 + b * 10 + c;
       });
 
-      const sols = Array.from(digits.solutions);
-      assertEquals(sols[0].val, 0);
-      assertEquals(sols[0].playout.toNestedPicks(), [0, 0, 0]);
-      assertEquals(sols[999].val, 999);
-      assertEquals(sols[999].playout.toNestedPicks(), [9, 9, 9]);
+      const vals = Array.from(digits.generateAll());
+      assertEquals(vals[0].val, 0);
+      assertEquals(vals[0].playout.toNestedPicks(), [0, 0, 0]);
+      assertEquals(vals[999].val, 999);
+      assertEquals(vals[999].playout.toNestedPicks(), [9, 9, 9]);
     });
   });
 

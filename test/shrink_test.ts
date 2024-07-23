@@ -19,11 +19,11 @@ function assertShrinks<T>(
   start: T,
   result: T,
 ) {
-  const startSol = codec.toSolution(start);
-  assert(startSol, "didn't find starting solution");
+  const gen = codec.regenerate(start);
+  assert(gen, "couldn't regenerate the starting value");
 
-  const smaller = shrink(codec.generator, interesting, startSol);
-  assert(smaller, "didn't find a smaller solution");
+  const smaller = shrink(codec.generator, interesting, gen);
+  assert(smaller, "didn't find the expected smaller value");
   assertEquals(smaller.val, result);
 }
 

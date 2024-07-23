@@ -1,6 +1,6 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals } from "@std/assert";
-import { assertFirstExamples, assertSameExamples } from "../../src/asserts.ts";
+import { assertFirstValues, assertSameExamples } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 import { isWellFormed } from "../../src/workarounds.ts";
 
@@ -118,7 +118,7 @@ describe("wellFormedString", () => {
     assertEquals(arb.wellFormedString().default, "");
   });
   it("starts with the empty string, followed by single ascii characters", () => {
-    assertFirstExamples(arb.wellFormedString(), [
+    assertFirstValues(arb.wellFormedString(), [
       "",
       ...("abcdefghijklmnopqrstuvwxyz".split("")),
     ]);

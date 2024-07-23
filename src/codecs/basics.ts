@@ -4,11 +4,11 @@ import * as arb from "../arbitraries.ts";
 import Codec from "../codec_class.ts";
 
 export function of<T>(...values: T[]): Codec<T> {
-  const gen = arb.of(...values);
-  return new Codec(gen, (val) => {
-    const sol = gen.findSolution((s) => s === val);
-    if (!sol) return undefined;
-    return sol.playout.picks.replies;
+  const generator = arb.of(...values);
+  return new Codec(generator, (val) => {
+    const gen = generator.findGenerated((s) => s === val);
+    if (!gen) return undefined;
+    return gen.playout.picks.replies;
   });
 }
 

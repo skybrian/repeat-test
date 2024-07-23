@@ -36,41 +36,41 @@ function take<T>(it: Iterator<T>, n: number): T[] {
   return result;
 }
 
-type NestedSol<T> = { val: T; picks: NestedPicks };
+type Nested<T> = { val: T; picks: NestedPicks };
 
-function takeSols<T>(
+function takeVals<T>(
   arb: Arbitrary<T>,
   n: number,
-): NestedSol<T>[] {
-  return take(arb.solutions, n).map((sol) => ({
-    val: sol.val,
-    picks: sol.playout.toNestedPicks(),
+): Nested<T>[] {
+  return take(arb.generateAll(), n).map((gen) => ({
+    val: gen.val,
+    picks: gen.playout.toNestedPicks(),
   }));
 }
 
-export function assertFirstSolutions<T>(
+export function assertFirstNested<T>(
   arb: Arbitrary<T>,
-  expected: NestedSol<T>[],
+  expected: Nested<T>[],
 ) {
-  assertEquals(takeSols(arb, expected.length), expected);
+  assertEquals(takeVals(arb, expected.length), expected);
 }
 
-export function assertSolutions<T>(
+export function assertNested<T>(
   arb: Arbitrary<T>,
-  expected: NestedSol<T>[],
+  expected: Nested<T>[],
 ) {
-  const actual = takeSols(arb, expected.length + 5);
+  const actual = takeVals(arb, expected.length + 5);
   assertEquals(actual, expected);
 }
 
-export function assertFirstExamples<T>(
+export function assertFirstValues<T>(
   arb: Arbitrary<T>,
   expected: T[],
 ) {
   assertEquals(arb.take(expected.length), expected);
 }
 
-export function assertExamples<T>(
+export function assertValues<T>(
   arb: Arbitrary<T>,
   expected: T[],
 ) {

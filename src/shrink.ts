@@ -1,25 +1,28 @@
 import { PickList, PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
-import Arbitrary, { Solution } from "./arbitrary_class.ts";
+import Arbitrary, { Generated } from "./arbitrary_class.ts";
 
 /**
- * A shrink strategy provides increasingly smaller guesses for shrinking a solution.
+ * Provides increasingly smaller guesses for how to shrink a value.
  *
- * Each guess assumes that the previous guess was correct.
+ * Each guess assumes that the previous guess worked.
  */
 type Strategy = (picks: PickList) => Iterable<number[]>;
 
 /**
- * Given a playout from an arbitrary, returns a smaller solution that satisfies a predicate.
+ * Given a generated value, returns a possibly smaller one that satisfies a
+ * predicate.
+ *
+ * If no smaller value is found, returns the original value.
  */
 export function shrink<T>(
   arb: Arbitrary<T>,
   interesting: (arg: T) => boolean,
-  start: Solution<T>,
-): Solution<T> {
+  start: Generated<T>,
+): Generated<T> {
   while (true) {
     // Try each strategy in order, until one works.
-    let worked: Solution<T> | undefined = undefined;
+    let worked: Generated<T> | undefined = undefined;
     for (const strategy of strategiesToTry(start)) {
       worked = runStrategy(arb, interesting, start, strategy);
       if (worked) {
@@ -29,12 +32,12 @@ export function shrink<T>(
     if (!worked) {
       return start; // No strategies work anymore
     }
-    start = worked; // Restart with the better solution
+    start = worked; // Try to shrink again with the smaller value
   }
 }
 
 function* strategiesToTry<T>(
-  start: Solution<T>,
+  start: Generated<T>,
 ): Iterable<Strategy> {
   yield shrinkLength;
   yield* shrinkPicks(start.playout.picks);
@@ -44,13 +47,13 @@ function* strategiesToTry<T>(
 function runStrategy<T>(
   arb: Arbitrary<T>,
   interesting: (arg: T) => boolean,
-  start: Solution<T>,
+  start: Generated<T>,
   strategy: Strategy,
-): Solution<T> | undefined {
-  let worked: Solution<T> | undefined = undefined;
+): Generated<T> | undefined {
+  let worked: Generated<T> | undefined = undefined;
   for (const guess of strategy(start.playout.picks)) {
     const picker = new PlaybackPicker(guess);
-    const shrunk = arb.pickSolution(onePlayout(picker));
+    const shrunk = arb.generate(onePlayout(picker));
     if (!shrunk || !interesting(shrunk.val)) {
       return worked;
     }

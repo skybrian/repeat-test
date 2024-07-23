@@ -38,12 +38,12 @@ describe("int", () => {
     });
   });
 
-  it("returns a solution that matches the original value", () => {
+  it("regenerates the original value", () => {
     repeatTest(arb.minMaxVal(), ({ min, max, val }) => {
-      const cdc = codec.int(min, max);
-      const solution = cdc.toSolution(val);
-      assert(solution !== undefined);
-      assertEquals(solution.val, val);
+      const domain = codec.int(min, max);
+      const copy = domain.regenerate(val);
+      assert(copy !== undefined);
+      assertEquals(copy.val, val);
     });
   });
 

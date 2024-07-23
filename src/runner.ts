@@ -1,6 +1,6 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
 import { SearchTree } from "./search_tree.ts";
-import Arbitrary, { Solution } from "./arbitrary_class.ts";
+import Arbitrary, { Generated } from "./arbitrary_class.ts";
 import { fail, Failure, Success, success } from "./results.ts";
 import { alwaysPickMin } from "./picks.ts";
 import { shrink } from "./shrink.ts";
@@ -37,7 +37,7 @@ export type Rep<T> = {
   ok: true;
   key: RepKey;
   arb: Arbitrary<T>;
-  arg: Solution<T>;
+  arg: Generated<T>;
   test: TestFunction<T>;
 };
 
@@ -71,7 +71,7 @@ export function* randomReps<T>(
 
   // Make sure that the default picks work.
   // (And records them in the tree, so we don't test the default again.)
-  const arg = arb.pickSolution(tree.pickers(alwaysPickMin));
+  const arg = arb.generate(tree.pickers(alwaysPickMin));
   if (arg === undefined) {
     throw new Error("can't generate default value of supplied arbitrary");
   }
@@ -88,7 +88,7 @@ export function* randomReps<T>(
     const random = pickers.next().value;
     // const picker = retryPicker(random, filterLimit);
     try {
-      const arg = arb.pickSolution(tree.pickers(random));
+      const arg = arb.generate(tree.pickers(random));
       if (arg === undefined) {
         return; // No more test args to generate.
       }
@@ -105,7 +105,7 @@ export function* depthFirstReps<T>(
   test: TestFunction<T>,
 ): Generator<Rep<T> | TestFailure<unknown>> {
   let index = 0;
-  for (const arg of arb.solutions) {
+  for (const arg of arb.generateAll()) {
     const key = { seed: 0, index };
     yield { ok: true, key, arb, arg, test };
     index++;

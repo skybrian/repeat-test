@@ -4,9 +4,9 @@ import { isWellFormed } from "../workarounds.ts";
 import * as unicode from "../unicode.ts";
 
 export const asciiChar = new Codec(arb.asciiChar(), (val) => {
-  const sol = arb.asciiChar().findSolution((s) => s === val);
-  if (!sol) return undefined;
-  return sol.playout.picks.replies;
+  const gen = arb.asciiChar().findGenerated((s) => s === val);
+  if (!gen) return undefined;
+  return gen.playout.picks.replies;
 }).asFunction();
 
 export const char16 = new Codec(arb.char16(), (val) => {

@@ -124,28 +124,28 @@ describe("randomReps", () => {
 });
 
 function makeDefaultRep<T>(input: Arbitrary<T>, test: TestFunction<T>): Rep<T> {
-  const sol = input.pickSolution(minPlayout());
-  assert(sol !== undefined);
+  const gen = input.generate(minPlayout());
+  assert(gen !== undefined);
 
   const rep: Rep<T> = {
     ok: true,
     key: { seed: 1, index: 1 },
     arb: input,
-    arg: sol,
+    arg: gen,
     test,
   };
   return rep;
 }
 
 function makeRep<T>(input: Codec<T>, arg: T, test: TestFunction<T>): Rep<T> {
-  const sol = input.toSolution(arg);
-  assert(sol !== undefined);
+  const gen = input.regenerate(arg);
+  assert(gen !== undefined);
 
   const rep: Rep<T> = {
     ok: true,
     key: { seed: 1, index: 1 },
     arb: input.generator,
-    arg: sol,
+    arg: gen,
     test,
   };
   return rep;

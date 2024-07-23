@@ -1,5 +1,5 @@
 import { PlaybackPicker } from "./picks.ts";
-import Arbitrary, { END_OF_PLAYOUTS, Solution } from "./arbitrary_class.ts";
+import Arbitrary, { END_OF_PLAYOUTS, Generated } from "./arbitrary_class.ts";
 import { onePlayout } from "./backtracking.ts";
 
 export type EncodeCallback = (val: unknown) => number[] | undefined;
@@ -24,12 +24,12 @@ export default class Codec<T> {
     if (picks === undefined) {
       throw new Error("callback can't parse the domain's default value");
     }
-    const sol = this.#generator.pickSolution(
+    const gen = this.#generator.generate(
       onePlayout(new PlaybackPicker(picks)),
     );
-    if (sol === undefined) {
+    if (gen === undefined) {
       throw new Error("domain didn't accept the picks for the default value");
-    } else if (!sol.playout.picks.isMinPlayout()) {
+    } else if (!gen.playout.picks.isMinPlayout()) {
       throw new Error(
         "callback didn't return a minimum playout for the domain's default value",
       );
@@ -71,10 +71,10 @@ export default class Codec<T> {
     return val;
   }
 
-  toSolution(val: T): Solution<T> | undefined {
+  regenerate(val: T): Generated<T> | undefined {
     const picks = this.maybeEncode(val);
     if (picks === undefined) return undefined;
-    return this.#generator.pickSolution(onePlayout(new PlaybackPicker(picks)));
+    return this.#generator.generate(onePlayout(new PlaybackPicker(picks)));
   }
 
   asFunction() {
