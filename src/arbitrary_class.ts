@@ -8,7 +8,7 @@ import {
   rotatePicks,
 } from "./backtracking.ts";
 
-import { nestedPicks, PlayoutContext, SpanList } from "./playouts.ts";
+import { nestedPicks, PlayoutContext, SpanList } from "./spans.ts";
 
 import { breadthFirstSearch } from "./search_tree.ts";
 

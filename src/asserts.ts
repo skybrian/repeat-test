@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import Arbitrary from "./arbitrary_class.ts";
-import { NestedPicks } from "./playouts.ts";
+import { NestedPicks } from "./spans.ts";
 
 import Codec from "../src/codec_class.ts";
 

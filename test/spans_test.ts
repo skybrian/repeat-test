@@ -6,7 +6,7 @@ import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPickMin, PickRequest } from "../src/picks.ts";
 
-import { NestedPicks, nestedPicks, PlayoutContext } from "../src/playouts.ts";
+import { NestedPicks, nestedPicks, PlayoutContext } from "../src/spans.ts";
 import { SearchTree } from "../src/search_tree.ts";
 
 type NestedPickOpts = {
