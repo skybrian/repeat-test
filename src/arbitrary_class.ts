@@ -113,7 +113,7 @@ export class Generated<T> {
   }
 }
 
-export const END_OF_PLAYOUTS = Symbol("END_OF_PLAYOUTS");
+const END_OF_PLAYOUTS = Symbol("END_OF_PLAYOUTS");
 
 /**
  * A set of values that can be generated on demand.
@@ -157,17 +157,6 @@ export default class Arbitrary<T> {
    */
   get maxSize(): number | undefined {
     return this.#maxSize;
-  }
-
-  pick(pickers: Iterable<RetryPicker>): T | typeof END_OF_PLAYOUTS {
-    for (const picker of pickers) {
-      const log = new SpanLog(picker);
-      const val = this.pickOnce(log, picker);
-      if (val !== END_OF_PLAYOUTS) {
-        return val;
-      }
-    }
-    return END_OF_PLAYOUTS;
   }
 
   /**

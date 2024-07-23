@@ -1,5 +1,5 @@
 import { PlaybackPicker } from "./picks.ts";
-import Arbitrary, { END_OF_PLAYOUTS, Generated } from "./arbitrary_class.ts";
+import Arbitrary, { Generated } from "./arbitrary_class.ts";
 import { onePlayout } from "./backtracking.ts";
 
 export type EncodeCallback = (val: unknown) => number[] | undefined;
@@ -61,14 +61,14 @@ export default class Codec<T> {
   /** Given some picks, returns the value that they encode. */
   parse(picks: number[]): T {
     const picker = new PlaybackPicker(picks);
-    const val = this.generator.pick(onePlayout(picker));
+    const gen = this.generator.generate(onePlayout(picker));
     if (picker.error) {
       throw new Error(picker.error);
     }
-    if (val === END_OF_PLAYOUTS) {
+    if (gen === undefined) {
       throw new Error("picks not accepted");
     }
-    return val;
+    return gen.val;
   }
 
   regenerate(val: T): Generated<T> | undefined {

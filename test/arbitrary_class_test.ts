@@ -69,43 +69,41 @@ describe("Arbitrary", () => {
     });
   });
 
-  describe("pick", () => {
-    describe("the pick function (during a pick)", () => {
-      it("accepts a PickRequest", () => {
-        const req = new PickRequest(1, 2);
-        const arb = Arbitrary.from((pick) => pick(req));
-        const ex = arb.pick(minPlayout());
-        assertEquals(ex, 1);
-      });
-      it("accepts an Arbitrary", () => {
-        const req = Arbitrary.of("hi", "there");
-        const arb = Arbitrary.from((pick) => pick(req));
-        const ex = arb.pick(minPlayout());
-        assertEquals(ex, "hi");
-      });
-      it("accepts a record shape", () => {
-        const req = {
-          a: Arbitrary.of("hi", "there"),
-          b: Arbitrary.of(1, 2),
-        };
-        const arb = Arbitrary.from((pick) => pick(req));
-        const ex = arb.pick(minPlayout());
-        assertEquals(ex, { a: "hi", b: 1 });
-      });
+  describe("the pick function (while generating)", () => {
+    it("accepts a PickRequest", () => {
+      const req = new PickRequest(1, 2);
+      const arb = Arbitrary.from((pick) => pick(req));
+      const gen = arb.generate(minPlayout());
+      assertEquals(gen?.val, 1);
     });
-    it("retries a pick with a different playout", () => {
-      const roll = new PickRequest(1, 6);
-      const arb = Arbitrary.from((pick) => {
-        const n = pick(roll);
-        if (n === 3) {
-          throw new PlayoutPruned("try again");
-        }
-        return n;
-      });
-      const tree = new SearchTree(0);
-      const ex = arb.pick(tree.pickers(alwaysPick(3)));
-      assertEquals(ex, 4);
+    it("accepts an Arbitrary", () => {
+      const req = Arbitrary.of("hi", "there");
+      const arb = Arbitrary.from((pick) => pick(req));
+      const gen = arb.generate(minPlayout());
+      assertEquals(gen?.val, "hi");
     });
+    it("accepts a record shape", () => {
+      const req = {
+        a: Arbitrary.of("hi", "there"),
+        b: Arbitrary.of(1, 2),
+      };
+      const arb = Arbitrary.from((pick) => pick(req));
+      const gen = arb.generate(minPlayout());
+      assertEquals(gen?.val, { a: "hi", b: 1 });
+    });
+  });
+  it("retries a pick with a different playout", () => {
+    const roll = new PickRequest(1, 6);
+    const arb = Arbitrary.from((pick) => {
+      const n = pick(roll);
+      if (n === 3) {
+        throw new PlayoutPruned("try again");
+      }
+      return n;
+    });
+    const tree = new SearchTree(0);
+    const gen = arb.generate(tree.pickers(alwaysPick(3)));
+    assertEquals(gen?.val, 4);
   });
 
   describe("filter", () => {
@@ -126,8 +124,8 @@ describe("Arbitrary", () => {
       const filtered = sixSided.filter(keepEvens);
       assertEquals(filtered.default(), 2);
       assertEquals(filtered.takeAll(), [2, 4, 6]);
-      const ex = filtered.pick(minPlayout());
-      assertEquals(ex, 2);
+      const gen = filtered.generate(minPlayout());
+      assertEquals(gen?.val, 2);
     });
     it("filters out values that don't satisfy the predicate", () => {
       const not3 = sixSided.filter((n) => n !== 3);
