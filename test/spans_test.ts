@@ -6,7 +6,7 @@ import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPickMin, PickRequest } from "../src/picks.ts";
 
-import { NestedPicks, nestedPicks, PlayoutContext } from "../src/spans.ts";
+import { NestedPicks, nestedPicks, SpanLog } from "../src/spans.ts";
 import { SearchTree } from "../src/search_tree.ts";
 
 type NestedPickOpts = {
@@ -106,7 +106,7 @@ describe("nestedPicks", () => {
   });
 });
 
-describe("PlayoutContext", () => {
+describe("SpanLog", () => {
   function makePicker() {
     const tree = new SearchTree(0);
     const picker = tree.makePicker(alwaysPickMin);
@@ -114,57 +114,56 @@ describe("PlayoutContext", () => {
     return picker;
   }
   let picker = makePicker();
-  let ctx = new PlayoutContext(picker);
+  let log = new SpanLog(picker);
 
   beforeEach(() => {
     picker = makePicker();
-    ctx = new PlayoutContext(picker);
+    log = new SpanLog(picker);
+  });
+
+  function checkNestedPicks(expected: NestedPicks) {
+    const nested = nestedPicks(picker.getPicks().replies(), log.getSpans());
+    assertEquals(nested, expected);
+  }
+
+  it("returns an empty array when there are no spans", () => {
+    checkNestedPicks([]);
+  });
+
+  it("ignores an empty span", () => {
+    log.startSpan();
+    log.endSpan(1);
+    checkNestedPicks([]);
+  });
+
+  const req = new PickRequest(1, 6);
+
+  it("ignores a single-pick span", () => {
+    log.startSpan();
+    picker.maybePick(req);
+    log.endSpan(1);
+    checkNestedPicks([1]);
+  });
+
+  it("ignores a span that contains only a single subspan", () => {
+    log.startSpan();
+    log.startSpan();
+    picker.maybePick(req);
+    picker.maybePick(req);
+    log.endSpan(2);
+    log.endSpan(1);
+    checkNestedPicks([[1, 1]]);
   });
 
   describe("cancelSpan", () => {
     it("throws an error when there are no spans", () => {
-      assertThrows(() => ctx.cancelSpan(0), Error);
+      assertThrows(() => log.cancelSpan(0), Error);
     });
     it("throws an error when the level doesn't match startSpan", () => {
-      ctx.startSpan();
-      ctx.endSpan(1);
-      assertThrows(() => ctx.cancelSpan(0), Error);
-      assertThrows(() => ctx.cancelSpan(2), Error);
-    });
-  });
-  describe("getSpans", () => {
-    function checkNestedPicks(expected: NestedPicks) {
-      const nested = nestedPicks(picker.getPicks().replies(), ctx.getSpans());
-      assertEquals(nested, expected);
-    }
-
-    it("returns an empty array when there are no spans", () => {
-      checkNestedPicks([]);
-    });
-
-    it("ignores an empty span", () => {
-      ctx.startSpan();
-      ctx.endSpan(1);
-      checkNestedPicks([]);
-    });
-
-    const req = new PickRequest(1, 6);
-
-    it("ignores a single-pick span", () => {
-      ctx.startSpan();
-      picker.maybePick(req);
-      ctx.endSpan(1);
-      checkNestedPicks([1]);
-    });
-
-    it("ignores a span that contains only a single subspan", () => {
-      ctx.startSpan();
-      ctx.startSpan();
-      picker.maybePick(req);
-      picker.maybePick(req);
-      ctx.endSpan(2);
-      ctx.endSpan(1);
-      checkNestedPicks([[1, 1]]);
+      log.startSpan();
+      log.endSpan(1);
+      assertThrows(() => log.cancelSpan(0), Error);
+      assertThrows(() => log.cancelSpan(2), Error);
     });
   });
 });

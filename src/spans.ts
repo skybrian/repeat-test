@@ -55,13 +55,18 @@ export function nestedPicks(replies: number[], spans: SpanList): NestedPicks {
 }
 
 /**
- * The methods available when running a playout.
+ * Provides methods to record spans of picks.
+ *
+ * This log can be used along with a {@link RetryPicker} to record spans within
+ * which picks were requested. The starts and ends of spans are recorded based
+ * on how many picks were recorded. The {@link cancelSpan} method must be called
+ * instead of {@link RetryPicker.backTo}.
  *
  * Spans must nest to form a tree. Spans with less than two picks aren't
- * normally recorded. A span's *level* is the number of spans are still open
- * when it's created.
+ * recorded. A span's *level* is the number of spans are still open when it's
+ * created.
  */
-export class PlayoutContext {
+export class SpanLog {
   // Invariant: starts.length == ends.length
   // (Parallel lists.)
 

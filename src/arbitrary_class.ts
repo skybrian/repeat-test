@@ -8,7 +8,7 @@ import {
   rotatePicks,
 } from "./backtracking.ts";
 
-import { nestedPicks, PlayoutContext, SpanList } from "./spans.ts";
+import { nestedPicks, SpanList, SpanLog } from "./spans.ts";
 
 import { breadthFirstSearch } from "./search_tree.ts";
 
@@ -230,7 +230,7 @@ export default class Arbitrary<T> {
   }
 
   private static makePickFunction<T>(
-    ctx: PlayoutContext,
+    log: SpanLog,
     defaultPicker: RetryPicker,
   ): PickFunction {
     const dispatch = <T>(
@@ -242,7 +242,7 @@ export default class Arbitrary<T> {
       const newDefaults = opts?.defaultPlayout;
       if (newDefaults !== undefined) {
         picker = rotatePicks(picker, newDefaults);
-        pick = Arbitrary.makePickFunction(ctx, picker);
+        pick = Arbitrary.makePickFunction(log, picker);
       }
 
       if (req instanceof PickRequest) {
@@ -250,14 +250,14 @@ export default class Arbitrary<T> {
       } else if (req instanceof Arbitrary) {
         const accept = opts?.accept;
         if (accept !== undefined) {
-          return req.innerPickWithFilter(ctx, pick, accept);
+          return req.innerPickWithFilter(log, pick, accept);
         } else {
-          return req.innerPick(ctx, pick);
+          return req.innerPick(log, pick);
         }
       } else if (typeof req !== "object") {
         throw new Error("pick called with invalid argument");
       } else {
-        return Arbitrary.pickRecord(req, ctx, pick);
+        return Arbitrary.pickRecord(req, log, pick);
       }
     };
     return dispatch;
@@ -265,7 +265,7 @@ export default class Arbitrary<T> {
 
   private static pickRecord<T>(
     req: RecordShape<T>,
-    ctx: PlayoutContext,
+    log: SpanLog,
     pick: PickFunction,
   ): T {
     const keys = Object.keys(req) as (keyof T)[];
@@ -274,7 +274,7 @@ export default class Arbitrary<T> {
     }
     const result = {} as Partial<T>;
     for (const key of keys) {
-      result[key] = req[key].innerPick(ctx, pick);
+      result[key] = req[key].innerPick(log, pick);
     }
     return result as T;
   }
@@ -300,10 +300,10 @@ export default class Arbitrary<T> {
 
   pick(pickers: Iterable<RetryPicker>): T | typeof END_OF_PLAYOUTS {
     for (const picker of pickers) {
-      const ctx = new PlayoutContext(picker);
-      const ex = this.pickOnce(ctx, picker);
-      if (ex !== END_OF_PLAYOUTS) {
-        return ex;
+      const log = new SpanLog(picker);
+      const val = this.pickOnce(log, picker);
+      if (val !== END_OF_PLAYOUTS) {
+        return val;
       }
     }
     return END_OF_PLAYOUTS;
@@ -317,21 +317,21 @@ export default class Arbitrary<T> {
    */
   generate(pickers: Iterable<RetryPicker>): Generated<T> | undefined {
     for (const picker of pickers) {
-      const ctx = new PlayoutContext(picker);
-      const val = this.pickOnce(ctx, picker);
+      const log = new SpanLog(picker);
+      const val = this.pickOnce(log, picker);
       if (val !== END_OF_PLAYOUTS) {
-        return new Generated(this, val, picker.getPicks(), ctx.getSpans());
+        return new Generated(this, val, picker.getPicks(), log.getSpans());
       }
     }
     return undefined;
   }
 
   private pickOnce(
-    ctx: PlayoutContext,
+    log: SpanLog,
     picker: RetryPicker,
   ): T | typeof END_OF_PLAYOUTS {
     try {
-      const pick = Arbitrary.makePickFunction(ctx, picker);
+      const pick = Arbitrary.makePickFunction(log, picker);
       const val = this.callback(pick);
       if (picker.finishPlayout()) {
         return val;
@@ -347,28 +347,28 @@ export default class Arbitrary<T> {
   }
 
   private innerPick(
-    ctx: PlayoutContext,
+    log: SpanLog,
     pick: PickFunction,
   ): T {
-    const level = ctx.startSpan();
+    const level = log.startSpan();
     const val = this.callback(pick);
-    ctx.endSpan(level);
+    log.endSpan(level);
     return val;
   }
 
   private innerPickWithFilter(
-    ctx: PlayoutContext,
+    log: SpanLog,
     pick: PickFunction,
     accept: (val: T) => boolean,
   ): T {
     while (true) {
-      const level = ctx.startSpan();
+      const level = log.startSpan();
       const val = this.callback(pick);
       if (accept(val)) {
-        ctx.endSpan(level);
+        log.endSpan(level);
         return val;
       }
-      if (!ctx.cancelSpan(level)) {
+      if (!log.cancelSpan(level)) {
         // return default?
         throw new PlayoutPruned(
           `Couldn't find a playout that generates ${this}`,
