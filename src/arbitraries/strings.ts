@@ -2,7 +2,7 @@ import Arbitrary from "../arbitrary_class.ts";
 import * as arb from "./basics.ts";
 import { surrogateGap, surrogateMin, unicodeMax } from "../unicode.ts";
 
-const asciiTable = (() => {
+const asciiTable: string[] = (() => {
   const out: string[] = [];
 
   function pushRange(start: number, end: number): void {
@@ -34,7 +34,7 @@ const asciiTable = (() => {
   return out;
 })();
 
-const asciiTableArb = arb.of(...asciiTable);
+const asciiTableArb = Arbitrary.from(asciiTable, { label: "asciiChar" });
 
 /**
  * The ascii characters, optionally matching a regular expression. They are
@@ -44,7 +44,8 @@ export function asciiChar(regexp?: RegExp): Arbitrary<string> {
   if (regexp === undefined) {
     return asciiTableArb;
   }
-  return asciiTableArb.filter((c) => regexp.test(c)).precompute();
+  const label = regexp.toString();
+  return asciiTableArb.filter((c) => regexp.test(c)).precompute({ label });
 }
 
 /** The characters a-z and A-Z, in that order. */
@@ -53,7 +54,9 @@ export const asciiLetter = asciiChar(/[a-zA-Z]/).asFunction();
 /** The characters 0-9, in that order. */
 export const asciiDigit = asciiChar(/\d/).asFunction();
 
-export const asciiWhitespace = arb.of(..." \t\n\v\f\r".split("")).asFunction();
+export const asciiWhitespace = Arbitrary.from(" \t\n\v\f\r".split(""), {
+  label: "whitespace",
+}).asFunction();
 
 /** Ascii characters that are not letters, digits, whitespace, or control characters. */
 // deno-lint-ignore no-control-regex
@@ -71,7 +74,7 @@ export const char16 = arb.int(0, 0xffff).map((code) => {
     return asciiTable[code];
   }
   return String.fromCodePoint(code);
-})
+}, { label: "char16" })
   .asFunction();
 
 const codePoint = arb.int(0, unicodeMax - surrogateGap).map(
@@ -92,7 +95,7 @@ export const unicodeChar = codePoint.map((code) => {
     return asciiTable[code];
   }
   return String.fromCodePoint(code);
-}).asFunction();
+}, { label: "unicodeChar" }).asFunction();
 
 const defaultStringLimit = 500;
 
@@ -106,7 +109,9 @@ export function anyString(
 ): Arbitrary<string> {
   const min = opts?.min ?? 0;
   const max = opts?.max ?? defaultStringLimit;
-  return arb.array(char16(), { min, max }).map((arr) => arr.join(""));
+  return arb.array(char16(), { min, max }).map((arr) => arr.join(""), {
+    label: "anyString",
+  });
 }
 
 /**
@@ -120,5 +125,7 @@ export function wellFormedString(
 ): Arbitrary<string> {
   const min = opts?.min ?? 0;
   const max = opts?.max ?? defaultStringLimit;
-  return arb.array(unicodeChar(), { min, max }).map((arr) => arr.join(""));
+  return arb.array(unicodeChar(), { min, max }).map((arr) => arr.join(""), {
+    label: "wellFormedString",
+  });
 }

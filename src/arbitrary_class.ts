@@ -340,7 +340,7 @@ export default class Arbitrary<T> {
    *
    * @param opts.limit The maximum size of the array to return.
    */
-  takeAll(opts?: { limit: number }): T[] {
+  takeAll(opts?: { limit?: number }): T[] {
     const limit = opts?.limit ?? 1000;
 
     const examples = this.take(limit + 1);
@@ -364,8 +364,8 @@ export default class Arbitrary<T> {
    *
    * @param opts.limit The maximum number of examples allowed.
    */
-  precompute(opts?: { limit: number }): Arbitrary<T> {
-    return Arbitrary.of(...this.takeAll(opts));
+  precompute(opts?: { limit?: number; label?: string }): Arbitrary<T> {
+    return Arbitrary.from(this.takeAll(opts), opts);
   }
 
   /**

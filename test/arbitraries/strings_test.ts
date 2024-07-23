@@ -34,6 +34,10 @@ describe("asciiChar", () => {
   it("defaults to 'a'", () => {
     assertEquals(arb.asciiChar().default(), "a");
   });
+  it("has a label", () => {
+    assertEquals(arb.asciiChar().label, "asciiChar");
+    assertEquals(arb.asciiChar(/[a-z]/).label, "/[a-z]/");
+  });
 });
 
 describe("asciiLetter", () => {
@@ -46,6 +50,9 @@ describe("asciiLetter", () => {
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
         .split(""),
     );
+  });
+  it("has a label", () => {
+    assertEquals(arb.asciiLetter().label, "/[a-zA-Z]/");
   });
 });
 
@@ -64,6 +71,9 @@ describe("asciiWhitespace", () => {
   });
   it("matches the equivalent regexp", () => {
     assertSameExamples(arb.asciiWhitespace(), arb.asciiChar(/\s/));
+  });
+  it("has a label", () => {
+    assertEquals(arb.asciiWhitespace().label, "whitespace");
   });
 });
 
@@ -86,6 +96,9 @@ describe("char16", () => {
   it("includes all code points", () => {
     assertCharCodeRange(arb.char16(), 0, 0xFFFF);
   });
+  it("has a label", () => {
+    assertEquals(arb.char16().label, "char16");
+  });
 });
 
 function codeUnits(str: string): string[] {
@@ -105,11 +118,17 @@ describe("unicodeChar", () => {
       );
     });
   });
+  it("has a label", () => {
+    assertEquals(arb.unicodeChar().label, "unicodeChar");
+  });
 });
 
 describe("anyString", () => {
   it("defaults to an empty string", () => {
     assertEquals(arb.anyString().default(), "");
+  });
+  it("has a label", () => {
+    assertEquals(arb.anyString().label, "anyString");
   });
 });
 
@@ -131,5 +150,8 @@ describe("wellFormedString", () => {
         `not well-formed: ${codeUnits(str)}`,
       );
     });
+  });
+  it("has a label", () => {
+    assertEquals(arb.wellFormedString().label, "wellFormedString");
   });
 });
