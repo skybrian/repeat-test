@@ -17,38 +17,50 @@ export function shrink<T>(
   interesting: (arg: T) => boolean,
   start: Solution<T>,
 ): Solution<T> {
-  /** Tries to shrink a solution using guesses from the given strategies. */
-  function tryStrategies(
+  /**
+   * Tries to shrink a solution using guesses from the given strategies.
+   * Returns a new solution if any of them succeed.
+   */
+  function tryEach(
     start: Solution<T>,
     strategies: Iterable<Strategy>,
-  ): Solution<T> {
+  ): Solution<T> | undefined {
+    // Try each strategy in order, until one works.
     for (const strategy of strategies) {
+      // Keep trying guesses from the same strategy while they succeed.
       let worked = false;
       for (const guess of strategy(start.playout.picks)) {
         const picker = new PlaybackPicker(guess);
         const picked = arb.pickSolution(onePlayout(picker));
-        if (picked && interesting(picked.val)) {
-          start = picked;
-          worked = true;
+        if (!picked || !interesting(picked.val)) {
+          break;
         }
+        start = picked;
+        worked = true;
       }
-      if (worked) break;
+
+      if (worked) {
+        return start;
+      }
     }
-    return start;
+    return undefined; // no strategies worked
   }
 
-  // Try each way of shrinking until no rule applies.
   while (true) {
-    let best = tryStrategies(start, [shrinkLength]);
-    best = tryStrategies(best, shrinkPicks(best.playout.picks));
-    best = tryStrategies(best, shrinkOptions(best.playout.picks));
-    const oldPicks = start.playout.picks;
-    const newPicks = best.playout.picks;
-    if (PickList.equalPicks(oldPicks, newPicks)) {
-      return best;
+    const newSolution = tryEach(start, strategiesToTry(start));
+    if (!newSolution) {
+      return start;
     }
-    start = best;
+    start = newSolution;
   }
+}
+
+function* strategiesToTry<T>(
+  start: Solution<T>,
+): Iterable<Strategy> {
+  yield shrinkLength;
+  yield* shrinkPicks(start.playout.picks);
+  yield* shrinkOptions(start.playout.picks);
 }
 
 /**
