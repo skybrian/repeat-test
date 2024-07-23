@@ -2,17 +2,16 @@ import { assertEquals } from "@std/assert";
 import Arbitrary from "./arbitrary_class.ts";
 import { NestedPicks } from "./spans.ts";
 
-import Codec from "../src/codec_class.ts";
+import Domain from "../src/codec_class.ts";
 
-export function assertRoundTrip<T>(codec: Codec<T>, val: T) {
-  const picks = codec.pickify(val);
-  const decoded = codec.parse(picks);
-  assertEquals(decoded, val);
+export function assertRoundTrip<T>(dom: Domain<T>, val: T) {
+  const copy = dom.regenerate(val);
+  assertEquals(copy?.val, val);
 }
 
-export function assertEncoding<T>(codec: Codec<T>, picks: number[], val: T) {
-  assertEquals(codec.parse(picks), val, `codec.parse(${picks}) failed`);
-  assertEquals(codec.pickify(val), picks, `codec.pickify(${val}) failed`);
+export function assertEncoding<T>(dom: Domain<T>, picks: number[], val: T) {
+  assertEquals(dom.parse(picks), val, `codec.parse(${picks}) failed`);
+  assertEquals(dom.pickify(val), picks, `codec.pickify(${val}) failed`);
 }
 
 export function assertSameExamples<T>(

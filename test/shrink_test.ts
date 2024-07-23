@@ -10,29 +10,29 @@ import {
   shrinkOptionsUntil,
   shrinkPicksFrom,
 } from "../src/shrink.ts";
-import Codec from "../src/codec_class.ts";
+import Domain from "../src/codec_class.ts";
 import * as codec from "../src/codecs.ts";
 
 function assertShrinks<T>(
-  codec: Codec<T>,
+  dom: Domain<T>,
   interesting: (arg: T) => boolean,
   start: T,
   result: T,
 ) {
-  const gen = codec.regenerate(start);
+  const gen = dom.regenerate(start);
   assert(gen, "couldn't regenerate the starting value");
 
-  const smaller = shrink(codec.generator, interesting, gen);
+  const smaller = shrink(dom.generator, interesting, gen);
   assert(smaller, "didn't find the expected smaller value");
   assertEquals(smaller.val, result);
 }
 
 function assertNoChange<T>(
-  codec: Codec<T>,
+  dom: Domain<T>,
   interesting: (arg: T) => boolean,
   start: T,
 ) {
-  assertShrinks(codec, interesting, start, start);
+  assertShrinks(dom, interesting, start, start);
 }
 
 describe("shrink", () => {

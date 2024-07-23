@@ -5,9 +5,9 @@ import { onePlayout } from "./backtracking.ts";
 export type EncodeCallback = (val: unknown) => number[] | undefined;
 
 /**
- * A codec converts between values and pick sequences that can be parsed by an Arbitrary.
+ * A domain can both validate and generate a set of values.
  */
-export default class Codec<T> {
+export default class Domain<T> {
   #generator: Arbitrary<T>;
   #callback: EncodeCallback;
 
@@ -36,29 +36,34 @@ export default class Codec<T> {
     }
   }
 
-  /**
-   * An Arbitrary that generates values in this codec's domain.
-   */
-  get generator() {
+  /** The Arbitrary that generates values for this domain. */
+  get generator(): Arbitrary<T> {
     return this.#generator;
   }
 
-  maybeEncode(val: unknown): number[] | undefined {
-    return this.#callback(val);
-  }
-
+  /** Returns true if the value is a member of this domain. */
   has(val: unknown): val is T {
     return this.#callback(val) !== undefined;
   }
 
-  /** Returns the picks that encode the given value. */
+  /**
+   * Returns the picks that encode a value.
+   * @throws an Error if the value is not a member of this domain.
+   */
   pickify(val: T): number[] {
     const result = this.#callback(val);
     if (result === undefined) throw new Error("Invalid value");
     return result;
   }
 
-  /** Given some picks, returns the value that they encode. */
+  maybePickify(val: unknown): number[] | undefined {
+    return this.#callback(val);
+  }
+
+  /**
+   * Given some picks, returns corresponding value.
+   * @throws an Error if the picks don't encode a member of this domain.
+   */
   parse(picks: number[]): T {
     const picker = new PlaybackPicker(picks);
     const gen = this.generator.generate(onePlayout(picker));
@@ -71,8 +76,9 @@ export default class Codec<T> {
     return gen.val;
   }
 
+  /** Makes a copy of a value by converting it to picks and back again. */
   regenerate(val: T): Generated<T> | undefined {
-    const picks = this.maybeEncode(val);
+    const picks = this.maybePickify(val);
     if (picks === undefined) return undefined;
     return this.#generator.generate(onePlayout(new PlaybackPicker(picks)));
   }

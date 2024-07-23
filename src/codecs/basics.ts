@@ -1,11 +1,11 @@
 import { AnyRecord } from "../types.ts";
 import { RecordShape as ArbRecordShape } from "../arbitrary_class.ts";
 import * as arb from "../arbitraries.ts";
-import Codec from "../codec_class.ts";
+import Domain from "../codec_class.ts";
 
-export function of<T>(...values: T[]): Codec<T> {
+export function of<T>(...values: T[]): Domain<T> {
   const generator = arb.of(...values);
-  return new Codec(generator, (val) => {
+  return new Domain(generator, (val) => {
     const gen = generator.findGenerated((s) => s === val);
     if (!gen) return undefined;
     return gen.replies();
@@ -14,7 +14,7 @@ export function of<T>(...values: T[]): Codec<T> {
 
 export const boolean = of(false, true).asFunction();
 
-export function int(min: number, max: number): Codec<number> {
+export function int(min: number, max: number): Domain<number> {
   const gen = arb.int(min, max);
 
   const accept = (val: unknown): val is number => {
@@ -25,11 +25,11 @@ export function int(min: number, max: number): Codec<number> {
   };
 
   if (min >= 0) {
-    return new Codec(gen, (val) => accept(val) ? [val] : undefined);
+    return new Domain(gen, (val) => accept(val) ? [val] : undefined);
   } else if (max <= 0) {
-    return new Codec(gen, (val) => accept(val) ? [-val] : undefined);
+    return new Domain(gen, (val) => accept(val) ? [-val] : undefined);
   } else {
-    return new Codec(
+    return new Domain(
       gen,
       (val) => accept(val) ? [val < 0 ? 1 : 0, Math.abs(val)] : undefined,
     );
@@ -37,12 +37,12 @@ export function int(min: number, max: number): Codec<number> {
 }
 
 export type RecordShape<T> = {
-  [K in keyof T]: Codec<T[K]>;
+  [K in keyof T]: Domain<T[K]>;
 };
 
 export function record<T extends AnyRecord>(
   fields: RecordShape<T>,
-): Codec<T> {
+): Domain<T> {
   const fieldKeys = Object.keys(fields) as (keyof T)[];
   const fieldGens: Partial<ArbRecordShape<T>> = {};
   for (const key of fieldKeys) {
@@ -50,7 +50,7 @@ export function record<T extends AnyRecord>(
   }
   const gen = arb.record(fieldGens as ArbRecordShape<T>);
 
-  return new Codec(
+  return new Domain(
     gen,
     (val) => {
       if (val === null || typeof val !== "object") return undefined;
@@ -61,9 +61,9 @@ export function record<T extends AnyRecord>(
       const out: number[] = [];
       for (const key of fieldKeys) {
         const fieldVal = val[key as keyof typeof val];
-        const encoded = fields[key].maybeEncode(fieldVal);
-        if (encoded === undefined) return undefined;
-        out.push(...encoded);
+        const picks = fields[key].maybePickify(fieldVal);
+        if (picks === undefined) return undefined;
+        out.push(...picks);
       }
       return out;
     },
@@ -71,9 +71,9 @@ export function record<T extends AnyRecord>(
 }
 
 export function array<T>(
-  item: Codec<T>,
+  item: Domain<T>,
   opts?: { min?: number; max?: number },
-): Codec<T[]> {
+): Domain<T[]> {
   const gen = arb.array(item.generator, opts);
   const min = opts?.min ?? 0;
   const max = opts?.max ?? arb.defaultArrayLimit;
@@ -83,7 +83,7 @@ export function array<T>(
     return (val.length >= min && val.length <= max);
   };
 
-  return new Codec(gen, (val) => {
+  return new Domain(gen, (val) => {
     if (!accept(val)) return undefined;
     const out: number[] = [];
 
@@ -91,18 +91,18 @@ export function array<T>(
 
     // Fixed-length portion.
     while (i < min) {
-      const encoded = item.maybeEncode(val[i]);
-      if (encoded === undefined) return undefined;
-      out.push(...encoded);
+      const picks = item.maybePickify(val[i]);
+      if (picks === undefined) return undefined;
+      out.push(...picks);
       i++;
     }
 
     // Variable-length portion.
     while (i < val.length) {
-      const encoded = item.maybeEncode(val[i]);
-      if (encoded === undefined) return undefined;
+      const picks = item.maybePickify(val[i]);
+      if (picks === undefined) return undefined;
       out.push(1);
-      out.push(...encoded);
+      out.push(...picks);
       i++;
     }
     if (min < max) {
@@ -115,7 +115,7 @@ export function array<T>(
 /**
  * A codec that encodes a value using the first child codec that accepts it.
  */
-export function oneOf<T>(cases: Codec<T>[]): Codec<T> {
+export function oneOf<T>(cases: Domain<T>[]): Domain<T> {
   if (cases.length === 0) {
     throw new Error("oneOf must have at least one choice");
   } else if (cases.length === 1) {
@@ -124,9 +124,9 @@ export function oneOf<T>(cases: Codec<T>[]): Codec<T> {
 
   const gen = arb.oneOf(cases.map((c) => c.generator));
 
-  return new Codec(gen, (val) => {
+  return new Domain(gen, (val) => {
     for (const [i, c] of cases.entries()) {
-      const picks = c.maybeEncode(val);
+      const picks = c.maybePickify(val);
       if (picks !== undefined) return [i, ...picks];
     }
     return undefined;

@@ -1,15 +1,15 @@
-import Codec from "../codec_class.ts";
+import Domain from "../codec_class.ts";
 import * as arb from "../arbitraries.ts";
 import { isWellFormed } from "../workarounds.ts";
 import * as unicode from "../unicode.ts";
 
-export const asciiChar = new Codec(arb.asciiChar(), (val) => {
+export const asciiChar = new Domain(arb.asciiChar(), (val) => {
   const gen = arb.asciiChar().findGenerated((s) => s === val);
   if (!gen) return undefined;
   return gen.replies();
 }).asFunction();
 
-export const char16 = new Codec(arb.char16(), (val) => {
+export const char16 = new Domain(arb.char16(), (val) => {
   if (typeof val !== "string") return undefined;
   if (val.length !== 1) return undefined;
   const code = val.charCodeAt(0);
@@ -23,23 +23,23 @@ export const char16 = new Codec(arb.char16(), (val) => {
 // Using the max array size here because the implementation uses arrays.
 const maxStringLength = 2 ** 32 - 1;
 
-export const anyString = new Codec(
+export const anyString = new Domain(
   arb.anyString({ min: 0, max: maxStringLength }),
   (val) => {
     if (typeof val !== "string") return undefined;
     const out: number[] = [];
     for (let i = 0; i < val.length; i++) {
-      const encoded = char16().pickify(val.charAt(i));
-      if (encoded === undefined) return undefined;
+      const picks = char16().pickify(val.charAt(i));
+      if (picks === undefined) return undefined;
       out.push(1);
-      out.push(...encoded);
+      out.push(...picks);
     }
     out.push(0);
     return out;
   },
 ).asFunction();
 
-export const wellFormedString = new Codec(arb.wellFormedString(), (val) => {
+export const wellFormedString = new Domain(arb.wellFormedString(), (val) => {
   if (typeof val !== "string") return undefined;
   if (!isWellFormed(val)) return undefined;
 

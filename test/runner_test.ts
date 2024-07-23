@@ -3,7 +3,7 @@ import { assert, assertEquals, assertFalse, fail } from "@std/assert";
 
 import { minPlayout, PlayoutPruned } from "../src/backtracking.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
-import Codec from "../src/codec_class.ts";
+import Domain from "../src/codec_class.ts";
 import * as arb from "../src/arbitraries.ts";
 import * as codec from "../src/codecs.ts";
 import { success } from "../src/results.ts";
@@ -137,7 +137,7 @@ function makeDefaultRep<T>(input: Arbitrary<T>, test: TestFunction<T>): Rep<T> {
   return rep;
 }
 
-function makeRep<T>(input: Codec<T>, arg: T, test: TestFunction<T>): Rep<T> {
+function makeRep<T>(input: Domain<T>, arg: T, test: TestFunction<T>): Rep<T> {
   const gen = input.regenerate(arg);
   assert(gen !== undefined);
 
