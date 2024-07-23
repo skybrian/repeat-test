@@ -62,10 +62,29 @@ export interface PickFunction {
  */
 export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 
-export type Generated<T> = {
-  readonly val: T;
-  readonly playout: Playout;
-};
+export class Generated<T> {
+  constructor(
+    readonly generator: Arbitrary<T>,
+    readonly val: T,
+    private readonly playout: Playout,
+  ) {}
+
+  isDefault() {
+    return this.playout.picks.isMinPlayout();
+  }
+
+  picks() {
+    return this.playout.picks.slice();
+  }
+
+  replies() {
+    return this.playout.picks.replies();
+  }
+
+  nestedPicks() {
+    return this.playout.toNestedPicks();
+  }
+}
 
 export const END_OF_PLAYOUTS = Symbol("END_OF_PLAYOUTS");
 
@@ -282,7 +301,7 @@ export default class Arbitrary<T> {
       const ctx = new PlayoutContext(picker);
       const val = this.pickOnce(ctx, picker);
       if (val !== END_OF_PLAYOUTS) {
-        return { val, playout: ctx.toPlayout() };
+        return new Generated(this, val, ctx.toPlayout());
       }
     }
     return undefined;
@@ -497,29 +516,16 @@ export default class Arbitrary<T> {
     opts?: { maxTries: number },
   ): Arbitrary<T> {
     const maxTries = opts?.maxTries ?? 1000;
-
-    const find = (): number[] | undefined => {
-      let tries = 0;
-      for (const gen of this.generateAll()) {
-        if (accept(gen.val)) {
-          return gen.playout.picks.replies;
-        }
-        tries++;
-        if (tries >= maxTries) {
-          throw new Error(
-            `filter didn't accept any values within ${maxTries} tries`,
-          );
-        }
-      }
-      throw new Error("filter didn't accept any values");
-    };
-
     const pickOpts: PickFunctionOptions<T> = { accept };
 
     if (!accept(this.default)) {
       // Override the default picks when picking from the unfiltered Arbitrary
       // so that the default will pass the filter.
-      pickOpts.defaultPlayout = find();
+      const gen = this.findGenerated(accept, { limit: maxTries });
+      if (gen === undefined) {
+        throw new Error("filter didn't accept any values");
+      }
+      pickOpts.defaultPlayout = gen.replies();
     }
 
     const maxSize = this.maxSize;

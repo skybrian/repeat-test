@@ -167,11 +167,11 @@ export class PickList {
     this.#replies.length = val;
   }
 
-  get reqs() {
+  reqs() {
     return this.#reqs.slice();
   }
 
-  get replies() {
+  replies() {
     return this.#replies.slice();
   }
 

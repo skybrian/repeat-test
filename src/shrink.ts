@@ -40,8 +40,8 @@ function* strategiesToTry<T>(
   start: Generated<T>,
 ): Iterable<Strategy> {
   yield shrinkLength;
-  yield* shrinkPicks(start.playout.picks);
-  yield* shrinkOptions(start.playout.picks);
+  yield* shrinkPicks(start.picks());
+  yield* shrinkOptions(start.picks());
 }
 
 function runStrategy<T>(
@@ -51,7 +51,7 @@ function runStrategy<T>(
   strategy: Strategy,
 ): Generated<T> | undefined {
   let worked: Generated<T> | undefined = undefined;
-  for (const guess of strategy(start.playout.picks)) {
+  for (const guess of strategy(start.picks())) {
     const picker = new PlaybackPicker(guess);
     const shrunk = arb.generate(onePlayout(picker));
     if (!shrunk || !interesting(shrunk.val)) {
@@ -71,7 +71,7 @@ function runStrategy<T>(
 export function* shrinkLength(
   picks: PickList,
 ): Iterable<number[]> {
-  const replies = picks.trim().replies;
+  const replies = picks.trim().replies();
   const len = replies.length;
   if (len === 0) {
     return;
@@ -118,8 +118,8 @@ export function shrinkPicksFrom(
   ): Iterable<number[]> {
     picks = picks.trim();
     const len = picks.length;
-    const reqs = picks.reqs;
-    const replies = picks.replies;
+    const reqs = picks.reqs();
+    const replies = picks.replies();
     for (let i = start; i < len; i++) {
       const min = reqs[i].min;
       const reply = replies[i];
@@ -164,7 +164,7 @@ export function shrinkOptionsUntil(limit: number): Strategy {
     for (let start = end - 2; start >= 0; start -= 1) {
       if (picks.isBit(start, 1)) {
         picks.splice(start, end - start);
-        yield picks.replies;
+        yield picks.replies();
         end = start;
       }
     }

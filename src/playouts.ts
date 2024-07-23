@@ -49,7 +49,7 @@ export class Playout {
   }
 
   toNestedPicks(): NestedPicks {
-    const { replies } = this.picks;
+    const replies = this.picks.replies();
     const { starts, ends } = this.spans;
 
     const root: NestedPicks = [];

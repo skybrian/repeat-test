@@ -8,7 +8,7 @@ export function of<T>(...values: T[]): Codec<T> {
   return new Codec(generator, (val) => {
     const gen = generator.findGenerated((s) => s === val);
     if (!gen) return undefined;
-    return gen.playout.picks.replies;
+    return gen.replies();
   });
 }
 

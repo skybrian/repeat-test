@@ -44,7 +44,7 @@ function takeVals<T>(
 ): Nested<T>[] {
   return take(arb.generateAll(), n).map((gen) => ({
     val: gen.val,
-    picks: gen.playout.toNestedPicks(),
+    picks: gen.nestedPicks(),
   }));
 }
 

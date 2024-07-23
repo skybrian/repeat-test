@@ -28,11 +28,11 @@ export default class Codec<T> {
       onePlayout(new PlaybackPicker(picks)),
     );
     if (gen === undefined) {
-      throw new Error("domain didn't accept the picks for the default value");
-    } else if (!gen.playout.picks.isMinPlayout()) {
       throw new Error(
-        "callback didn't return a minimum playout for the domain's default value",
+        "can't round-trip the generator's default value: calback's picks weren't accepted",
       );
+    } else if (!gen.isDefault()) {
+      throw new Error("can't round-trip the generator's default value");
     }
   }
 

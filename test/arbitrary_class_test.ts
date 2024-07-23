@@ -280,9 +280,9 @@ describe("Arbitrary", () => {
 
       const vals = Array.from(digits.generateAll());
       assertEquals(vals[0].val, 0);
-      assertEquals(vals[0].playout.toNestedPicks(), [0, 0, 0]);
+      assertEquals(vals[0].nestedPicks(), [0, 0, 0]);
       assertEquals(vals[999].val, 999);
-      assertEquals(vals[999].playout.toNestedPicks(), [9, 9, 9]);
+      assertEquals(vals[999].nestedPicks(), [9, 9, 9]);
     });
   });
 

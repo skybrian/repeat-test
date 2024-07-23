@@ -6,7 +6,7 @@ import * as unicode from "../unicode.ts";
 export const asciiChar = new Codec(arb.asciiChar(), (val) => {
   const gen = arb.asciiChar().findGenerated((s) => s === val);
   if (!gen) return undefined;
-  return gen.playout.picks.replies;
+  return gen.replies();
 }).asFunction();
 
 export const char16 = new Codec(arb.char16(), (val) => {
