@@ -5,7 +5,7 @@ import { minPlayout, PlayoutPruned } from "../src/backtracking.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 import Domain from "../src/domain_class.ts";
 import * as arb from "../src/arbitraries.ts";
-import * as codec from "../src/domains.ts";
+import * as dom from "../src/domains.ts";
 import { success } from "../src/results.ts";
 
 import {
@@ -170,7 +170,7 @@ describe("runRep", () => {
     assertEquals(result.caught.message, "test failed");
   });
   it("shrinks the input to a test that fails", () => {
-    const input = codec.int(0, 1000);
+    const input = dom.int(0, 100);
     const test = (i: number) => {
       if (i >= 10) {
         throw new Error("test failed");

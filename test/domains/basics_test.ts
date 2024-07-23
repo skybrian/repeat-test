@@ -144,7 +144,7 @@ describe("oneOf", () => {
   it("throws when given an empty array", () => {
     assertThrows(() => dom.oneOf([]), Error);
   });
-  it("encodes a single case the same way as the child codec", () => {
+  it("encodes a single case the same way as the child domain", () => {
     repeatTest(arb.minMaxVal(), ({ min, max, val }) => {
       const child = dom.int(min, max);
       const oneWay = dom.oneOf([child]);

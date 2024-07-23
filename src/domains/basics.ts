@@ -113,7 +113,11 @@ export function array<T>(
 }
 
 /**
- * A codec that encodes a value using the first child codec that accepts it.
+ * A domain that's the union of the values in each child domain.
+ *
+ * If the child domains overlap, there will be multiple ways to convert a value
+ * into picks. The encoding for the first child that matches will be used when
+ * serializing, and any encoding accepted when deserializing.
  */
 export function oneOf<T>(cases: Domain<T>[]): Domain<T> {
   if (cases.length === 0) {

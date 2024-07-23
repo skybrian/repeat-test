@@ -11,7 +11,7 @@ import {
   shrinkPicksFrom,
 } from "../src/shrink.ts";
 import Domain from "../src/domain_class.ts";
-import * as codec from "../src/domains.ts";
+import * as dom from "../src/domains.ts";
 
 function assertShrinks<T>(
   dom: Domain<T>,
@@ -38,56 +38,56 @@ function assertNoChange<T>(
 describe("shrink", () => {
   describe("for an int", () => {
     it("can't shrink the minimum value", () => {
-      assertNoChange(codec.int(1, 6), () => true, 1);
+      assertNoChange(dom.int(1, 6), () => true, 1);
     });
     it("can't shrink when the value is required", () => {
       repeatTest(arb.minMaxVal(), ({ min, max, val }) => {
-        assertNoChange(codec.int(min, max), (n) => n === val, val);
+        assertNoChange(dom.int(min, max), (n) => n === val, val);
       });
     });
     it("shrinks an unused positive int to the minimum", () => {
-      assertShrinks(codec.int(1, 6), () => true, 6, 1);
+      assertShrinks(dom.int(1, 6), () => true, 6, 1);
     });
     it("shrinks an unused negative int to the maximum", () => {
-      assertShrinks(codec.int(-6, -1), () => true, -6, -1);
+      assertShrinks(dom.int(-6, -1), () => true, -6, -1);
     });
     it("shrinks as far as possible for an inequality", () => {
-      assertShrinks(codec.int(1, 6), (n) => n >= 3, 6, 3);
+      assertShrinks(dom.int(1, 6), (n) => n >= 3, 6, 3);
     });
   });
   describe("for an ascii character", () => {
     it("can't shrink 'a'", () => {
-      assertNoChange(codec.asciiChar(), () => true, "a");
+      assertNoChange(dom.asciiChar(), () => true, "a");
     });
     it("can't shrink when all characters are used", () => {
       repeatTest(arb.asciiChar(), (start) => {
-        assertNoChange(codec.asciiChar(), (c) => c === start, start);
+        assertNoChange(dom.asciiChar(), (c) => c === start, start);
       });
     });
     it("shrinks an unused character to 'a'", () => {
-      assertShrinks(codec.asciiChar(), () => true, "Z", "a");
+      assertShrinks(dom.asciiChar(), () => true, "Z", "a");
     });
     it("shrinks a used character to a lower one that works", () => {
-      assertShrinks(codec.asciiChar(), (s) => /[A-Z]/.test(s), "Z", "A");
+      assertShrinks(dom.asciiChar(), (s) => /[A-Z]/.test(s), "Z", "A");
     });
   });
   describe("for a string", () => {
     it("can't shrink an empty string", () => {
-      assertNoChange(codec.anyString(), () => true, "");
+      assertNoChange(dom.anyString(), () => true, "");
     });
     it("can't shrink when there's no alternative", () => {
       repeatTest(arb.anyString(), (start) => {
-        assertNoChange(codec.anyString(), (s) => s === start, start);
+        assertNoChange(dom.anyString(), (s) => s === start, start);
       });
     });
     it("removes unused trailing characters", () => {
-      assertShrinks(codec.anyString(), (s) => s.startsWith("a"), "abc", "a");
+      assertShrinks(dom.anyString(), (s) => s.startsWith("a"), "abc", "a");
     });
     it("sets unused characters to 'a'", () => {
-      assertShrinks(codec.anyString(), (s) => s.at(2) === "z", "xyz", "aaz");
+      assertShrinks(dom.anyString(), (s) => s.at(2) === "z", "xyz", "aaz");
     });
     it("removes unused leading characters", () => {
-      assertShrinks(codec.anyString(), (s) => s.endsWith("z"), "xyz", "z");
+      assertShrinks(dom.anyString(), (s) => s.endsWith("z"), "xyz", "z");
     });
   });
 });
