@@ -23,6 +23,9 @@ describe("boolean", () => {
   it("has maxSize set to 2", () => {
     assertEquals(arb.boolean().maxSize, 2);
   });
+  it("has a label", () => {
+    assertEquals(arb.boolean().label, "boolean");
+  });
 });
 
 describe("int", () => {
@@ -52,6 +55,11 @@ describe("int", () => {
     it("has maxSize set to the size of the range", () => {
       assertEquals(arb.int(1, 6).maxSize, 6);
     });
+  });
+  it("has a label", () => {
+    assertEquals(arb.int(1, 6).label, "int(1, 6)");
+    assertEquals(arb.int(-6, -1).label, "int(-6, -1)");
+    assertEquals(arb.int(-6, 6).label, "int(-6, 6)");
   });
 });
 

@@ -48,6 +48,14 @@ export interface PickFunction {
   <T extends AnyRecord>(reqs: RecordShape<T>, opts?: PickFunctionOptions<T>): T;
 }
 
+export type ArbitraryOpts = {
+  /**
+   * An arbitrary label that can be used to identify an arbitrary when debugging.
+   * If not provided, a default label will be used.
+   */
+  label?: string;
+};
+
 /**
  * A function that generates an value, given some picks.
  *
@@ -117,33 +125,38 @@ export const END_OF_PLAYOUTS = Symbol("END_OF_PLAYOUTS");
  * The values can be iterated over using {@link examples}.
  */
 export default class Arbitrary<T> {
-  private readonly callback: ArbitraryCallback<T>;
   readonly #label: string;
-  readonly #examples: T[] | undefined;
+  readonly #callback: ArbitraryCallback<T>;
 
-  /**
-   * An upper bound on the number of examples in this Arbitrary.
-   * (Only available for some small sets.)
-   */
-  readonly maxSize: number | undefined;
+  readonly #examples: T[] | undefined;
+  readonly #maxSize: number | undefined;
 
   private constructor(
+    label: string,
     callback: ArbitraryCallback<T>,
-    opts: {
-      label: string;
+    opts?: {
       examples?: T[];
       maxSize?: number;
     },
   ) {
-    this.callback = callback;
-    this.#label = opts.label;
-    this.#examples = opts.examples;
-    this.maxSize = opts.maxSize;
+    this.#label = label;
+    this.#callback = callback;
+    this.#examples = opts?.examples;
+    this.#maxSize = opts?.maxSize;
     this.default(); // dry run
   }
 
+  /** An arbitrary label indicating what kind of Arbitrary this is, for debugging. */
   get label(): string {
     return this.#label;
+  }
+
+  /**
+   * An upper bound on the number of values that this Arbitrary can generate
+   * using {@link generateAll}. (Only available for some small sets.)
+   */
+  get maxSize(): number | undefined {
+    return this.#maxSize;
   }
 
   pick(pickers: Iterable<RetryPicker>): T | typeof END_OF_PLAYOUTS {
@@ -180,7 +193,7 @@ export default class Arbitrary<T> {
   ): T | typeof END_OF_PLAYOUTS {
     try {
       const pick = Arbitrary.makePickFunction(log, picker);
-      const val = this.callback(pick);
+      const val = this.#callback(pick);
       if (picker.finishPlayout()) {
         return val;
       } else {
@@ -199,7 +212,7 @@ export default class Arbitrary<T> {
     pick: PickFunction,
   ): T {
     const level = log.startSpan();
-    const val = this.callback(pick);
+    const val = this.#callback(pick);
     log.endSpan(level);
     return val;
   }
@@ -211,7 +224,7 @@ export default class Arbitrary<T> {
   ): T {
     while (true) {
       const level = log.startSpan();
-      const val = this.callback(pick);
+      const val = this.#callback(pick);
       if (accept(val)) {
         log.endSpan(level);
         return val;
@@ -359,13 +372,14 @@ export default class Arbitrary<T> {
    * Creates a new Arbitrary by mapping each example to a new value. (The
    * examples are in the same order as in the original.)
    */
-  map<U>(convert: (val: T) => U): Arbitrary<U> {
+  map<U>(convert: (val: T) => U, opts?: ArbitraryOpts): Arbitrary<U> {
+    const label = opts?.label ?? "map";
     const maxSize = this.maxSize;
     const callback: ArbitraryCallback<U> = (pick) => {
       const output = pick(this);
       return convert(output);
     };
-    return new Arbitrary(callback, { maxSize, label: "map" });
+    return new Arbitrary(label, callback, { maxSize });
   }
 
   /**
@@ -399,7 +413,7 @@ export default class Arbitrary<T> {
     const callback: ArbitraryCallback<T> = (pick) => {
       return pick(this, pickOpts);
     };
-    return new Arbitrary(callback, { maxSize, label: "filter" });
+    return new Arbitrary("filter", callback, { maxSize });
   }
 
   /**
@@ -414,7 +428,7 @@ export default class Arbitrary<T> {
       const next = convert(output);
       return pick(next);
     };
-    return new Arbitrary(callback, { label: "chain" });
+    return new Arbitrary("chain", callback);
   }
 
   asFunction() {
@@ -426,22 +440,45 @@ export default class Arbitrary<T> {
   }
 
   /**
-   * Creates an arbitrary from a {@link PickRequest} or {@link ArbitraryCallback}.
+   * Creates an Arbitrary from an {@link ArbitraryCallback}, an array of
+   * examples, or a {@link PickRequest}.
    */
-  static from(req: PickRequest): Arbitrary<number>;
+  static from(req: PickRequest, opts?: { label?: string }): Arbitrary<number>;
   static from<T>(
     callback: ArbitraryCallback<T>,
+    opts?: { label?: string },
   ): Arbitrary<T>;
+  static from<T>(examples: T[], opts?: { label?: string }): Arbitrary<T>;
   static from<T>(
-    arg: PickRequest | ArbitraryCallback<T>,
+    arg: PickRequest | ArbitraryCallback<T> | T[],
     opts?: { label?: string },
   ): Arbitrary<T> | Arbitrary<number> {
     if (typeof arg === "function") {
       const label = opts?.label ?? "callback";
-      return new Arbitrary(arg, { label });
+      return new Arbitrary(label, arg);
+    } else if (Array.isArray(arg)) {
+      if (arg.length === 0) {
+        throw new Error("an array of examples must have at least one element");
+      } else if (arg.length === 1) {
+        const label = opts?.label ?? "constant";
+        const constant = arg[0];
+        return new Arbitrary(label, () => constant, { maxSize: 1 });
+      }
+
+      const label = opts?.label ?? "array";
+
+      const req = new PickRequest(0, arg.length - 1);
+      const callback: ArbitraryCallback<T> = (pick) => {
+        const i = pick(req);
+        return arg[i];
+      };
+      return new Arbitrary(label, callback, {
+        examples: arg,
+        maxSize: arg.length,
+      });
     } else {
       const label = opts?.label ?? `pick ${arg.min} - ${arg.max}`;
-      return new Arbitrary((pick) => pick(arg), { label, maxSize: arg.size });
+      return new Arbitrary(label, (pick) => pick(arg), { maxSize: arg.size });
     }
   }
 
@@ -464,13 +501,13 @@ export default class Arbitrary<T> {
     const callback = (pick: PickFunction) => {
       return pick(shape) as T;
     };
-    return new Arbitrary(callback, { maxSize, label: "record" });
+    return new Arbitrary("record", callback, { maxSize });
   }
 
   /**
    * Creates an arbitrary that picks one of the given arbitaries and then returns it.
    */
-  static oneOf<T>(cases: Arbitrary<T>[]): Arbitrary<T> {
+  static oneOf<T>(cases: Arbitrary<T>[], opts?: ArbitraryOpts): Arbitrary<T> {
     if (cases.length === 0) {
       throw new Error("oneOf must be called with at least one alternative");
     }
@@ -489,9 +526,10 @@ export default class Arbitrary<T> {
     const req = new PickRequest(0, cases.length - 1);
     const callback: ArbitraryCallback<T> = (pick) => {
       const i = pick(req);
-      return cases[i].callback(pick);
+      return cases[i].#callback(pick);
     };
-    return new Arbitrary(callback, { maxSize, label: "oneOf" });
+    const label = opts?.label ?? "oneOf";
+    return new Arbitrary(label, callback, { maxSize });
   }
 
   /**
@@ -507,24 +545,8 @@ export default class Arbitrary<T> {
   static of<T>(...examples: T[]): Arbitrary<T> {
     if (examples.length === 0) {
       throw new Error("Arbitrary.of() requires at least one argument");
-    } else if (examples.length === 1) {
-      const constant = examples[0];
-      return new Arbitrary(() => constant, {
-        maxSize: 1,
-        label: "of (constant)",
-      });
     }
-
-    const req = new PickRequest(0, examples.length - 1);
-    const callback: ArbitraryCallback<T> = (pick) => {
-      const i = pick(req);
-      return examples[i];
-    };
-    return new Arbitrary(callback, {
-      examples,
-      maxSize: examples.length,
-      label: "of",
-    });
+    return Arbitrary.from(examples, { label: "of" });
   }
 
   private static makePickFunction<T>(

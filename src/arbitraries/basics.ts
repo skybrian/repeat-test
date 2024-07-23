@@ -1,6 +1,7 @@
 import { AnyRecord } from "../types.ts";
 import Arbitrary, {
   ArbitraryCallback,
+  ArbitraryOpts,
   RecordShape,
 } from "../arbitrary_class.ts";
 import { PickRequest } from "../picks.ts";
@@ -10,8 +11,11 @@ import { PickRequest } from "../picks.ts";
  *
  * For more, see {@link ArbitraryCallback}.
  */
-export function from<T>(callback: ArbitraryCallback<T>): Arbitrary<T> {
-  return Arbitrary.from(callback);
+export function from<T>(
+  callback: ArbitraryCallback<T>,
+  opts?: ArbitraryOpts,
+): Arbitrary<T> {
+  return Arbitrary.from(callback, opts);
 }
 
 /** An arbitrary that returns one of the given arguments. */
@@ -19,7 +23,8 @@ export function of<T>(...values: T[]): Arbitrary<T> {
   return Arbitrary.of(...values);
 }
 
-export const boolean = Arbitrary.of(false, true).asFunction();
+export const boolean = Arbitrary.from([false, true], { label: "boolean" })
+  .asFunction();
 
 /**
  * Chooses a safe integer.
@@ -32,12 +37,15 @@ export function int(
   min: number,
   max: number,
 ): Arbitrary<number> {
+  const label = `int(${min}, ${max})`;
   if (min >= 0) {
-    return Arbitrary.from(new PickRequest(min, max));
+    return Arbitrary.from(new PickRequest(min, max), { label });
   } else if (max <= 0) {
-    return Arbitrary.from(new PickRequest(-max, -min)).map((v) => -v);
+    return Arbitrary.from(new PickRequest(-max, -min)).map((v) => -v, {
+      label,
+    });
   } else {
-    return Arbitrary.oneOf([int(0, max), int(min, -1)]);
+    return Arbitrary.oneOf([int(0, max), int(min, -1)], { label });
   }
 }
 
