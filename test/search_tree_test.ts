@@ -10,7 +10,7 @@ import * as arb from "../src/arbitraries.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPick, alwaysPickMin, PickRequest } from "../src/picks.ts";
-import { PlayoutPruned, RetryPicker } from "../src/backtracking.ts";
+import { Pruned, RetryPicker } from "../src/backtracking.ts";
 import { randomPicker } from "../src/random.ts";
 
 import {
@@ -364,7 +364,7 @@ class Maze {
         this.rejected.set(picks, val);
       }
     } catch (e) {
-      if (e instanceof PlayoutPruned) {
+      if (e instanceof Pruned) {
         this.pruneCount++;
       } else {
         throw e;
@@ -490,7 +490,7 @@ function runPass(
       }
       playouts.add(playout);
     } catch (e) {
-      if (e instanceof PlayoutPruned) {
+      if (e instanceof Pruned) {
         prunedPlayouts++;
         continue;
       }

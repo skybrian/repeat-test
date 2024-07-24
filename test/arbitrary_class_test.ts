@@ -4,7 +4,7 @@ import { assertNested } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
-import { minPlayout, PlayoutPruned } from "../src/backtracking.ts";
+import { minPlayout, Pruned } from "../src/backtracking.ts";
 import Arbitrary, { ArbitraryCallback } from "../src/arbitrary_class.ts";
 import { SearchTree } from "../src/search_tree.ts";
 
@@ -104,7 +104,7 @@ describe("Arbitrary", () => {
       const arb = Arbitrary.from((pick) => {
         const n = pick(roll);
         if (n === 3) {
-          throw new PlayoutPruned("try again");
+          throw new Pruned("try again");
         }
         return n;
       });
@@ -186,7 +186,7 @@ describe("Arbitrary", () => {
     it("handles PlayoutPruned", () => {
       const notTwo = Arbitrary.from((pick) => {
         const n = pick(new PickRequest(1, 3));
-        if (n === 2) throw new PlayoutPruned("skip 2");
+        if (n === 2) throw new Pruned("skip 2");
         return n;
       });
       assertEquals(notTwo.takeAll(), [1, 3]);

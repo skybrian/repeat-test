@@ -1,12 +1,15 @@
 import { alwaysPickMin, IntPicker, PickList, PickRequest } from "./picks.ts";
 
 /**
- * This playout was cancelled, perhaps because it was filtered out.
+ * Indicates that a sequence of picks didn't result in generating a value.
  *
- * Typically, the exception will be caught somewhere and then
- * {@link RetryPicker.backTo} can be called to try again with the next playout.
+ * This can happen due to filtering or a partial search.
+ *
+ * Sometimes recovery is possible by backtracking and picking again. (See
+ * {@link RetryPicker.backTo}.) It won't be possible when a search has exhausted
+ * all possible pick sequences.
  */
-export class PlayoutPruned extends Error {
+export class Pruned extends Error {
   constructor(msg: string) {
     super(msg);
   }
@@ -22,7 +25,7 @@ export interface RetryPicker {
    *
    * If successful, the pick is recorded and the depth is incremented.
    *
-   * Throws {@link PlayoutPruned} if the current playout is cancelled.
+   * Throws {@link Pruned} if the current playout is cancelled.
    */
   maybePick(req: PickRequest): number;
 

@@ -1,6 +1,6 @@
 import { alwaysPickMin, IntPicker, PickList, PickRequest } from "./picks.ts";
 
-import { PlayoutPruned, RetryPicker } from "./backtracking.ts";
+import { Pruned, RetryPicker } from "./backtracking.ts";
 
 /** Indicates that the subtree rooted at a branch has been fully explored. */
 const PRUNED = Symbol("pruned");
@@ -282,7 +282,7 @@ export class Cursor implements RetryPicker {
 
     const modified = this.replaceRequest(this.depth, req);
     if (!modified) {
-      throw new PlayoutPruned("pruned by replaceRequest");
+      throw new Pruned("filtered by replaceRequest");
     }
 
     const node = this.nextNode(modified);

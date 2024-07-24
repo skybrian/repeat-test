@@ -2,7 +2,7 @@ import { AnyRecord } from "./types.ts";
 import { PickList, PickRequest } from "./picks.ts";
 import {
   minPlayout,
-  PlayoutPruned,
+  Pruned,
   RetryPicker,
   rotatePicks,
 } from "./backtracking.ts";
@@ -40,7 +40,7 @@ export type RecordShape<T> = {
  * Picks a value given a PickRequest, an Arbitrary, or a record shape containing
  * multiple Arbitraries.
  *
- * Throws {@link PlayoutPruned} if the current playout is cancelled.
+ * Throws {@link Pruned} if the value couldn't be generated.
  */
 export interface PickFunction {
   (req: PickRequest): number;
@@ -61,7 +61,7 @@ export type ArbitraryOpts = {
  *
  * The result should be deterministic, depending only on what `pick` returns.
  *
- * It may throw {@link PlayoutPruned} to indicate that generation failed for
+ * It may throw {@link Pruned} to indicate that generation failed for
  * sequence of picks it got from the pick function. (For example, it was
  * filtered out.)
  */
@@ -175,7 +175,7 @@ export default class Arbitrary<T> {
           return new Generated(this, picker.getPicks(), log.getSpans(), val);
         }
       } catch (e) {
-        if (!(e instanceof PlayoutPruned)) {
+        if (!(e instanceof Pruned)) {
           throw e;
         }
       }
@@ -206,9 +206,7 @@ export default class Arbitrary<T> {
         return val;
       }
       if (!log.cancelSpan(level)) {
-        throw new PlayoutPruned(
-          `Couldn't find a playout that generates ${this}`,
-        );
+        throw new Pruned("filter");
       }
     }
   }
