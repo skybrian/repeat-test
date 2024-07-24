@@ -163,8 +163,6 @@ export function runReps<T>(
   return success();
 }
 
-const defaultReps = 1000;
-
 /**
  * Options to {@link repeatTest}.
  */
@@ -190,25 +188,38 @@ function getStartKey(opts?: RepeatOptions): Success<RepKey> | Failure {
 }
 
 /**
- * Runs a test function repeatedly, using the given arbitrary to generate input.
+ * Runs a test function repeatedly.
  *
- * If there are fewer test inputs than the number of repetitions wanted, it will
- * run the test function with every possible input. Otherwise, it will run the
- * test function with the default value and then randomly generated inputs.
+ * If the test input is an array, the test will be run once for each item, in
+ * the order given. Similarly for a small Arbitrary (less than 1000 items).
+ * Otherwise, a thousand inputs will be chosen randomly. The number of
+ * repetitions can be overridden using {@link RepeatOptions.reps}.
  *
- * @param input An arbitrary used to generate input.
+ * If the test is considered to have failed if the test function throws. In that
+ * case, the test will be run repeatedly to find the smallest input that causes
+ * the failure.
+ *
+ * Information about the test failure and how to rerun the test will be printed
+ * to the console.
+ *
+ * @param input Either a list of test inputs to run in order, or an Arbitrary
+ * that will generate inputs.
  * @param test A test function that requires input.
  */
 export function repeatTest<T>(
-  input: Arbitrary<T>,
+  input: T[] | Arbitrary<T>,
   test: TestFunction<T>,
   opts?: RepeatOptions,
 ): void {
+  let expectedPlayouts = opts?.reps ?? 1000;
+  if (Array.isArray(input)) {
+    expectedPlayouts = input.length;
+    input = Arbitrary.from(input);
+  }
   const start = getStartKey(opts);
   if (!start.ok) throw new Error(start.message ?? "can't get start key");
   const key = start.val;
 
-  const expectedPlayouts = opts?.reps ?? defaultReps;
   const runAll = input.maxSize !== undefined &&
     input.maxSize <= expectedPlayouts;
 

@@ -197,6 +197,14 @@ describe("repeatTest", () => {
     repeatTest(Arbitrary.of(1, 2, 3), collect);
     assertEquals(inputs, [1, 2, 3]);
   });
+  it("accepts a list of test arguments", () => {
+    const inputs: number[] = [];
+    const collect = (val: number) => {
+      inputs.push(val);
+    };
+    repeatTest([1, 2, 3], collect);
+    assertEquals(inputs, [1, 2, 3]);
+  });
   it("stops running the test function after the limit given by `reps`", () => {
     for (let expected = 0; expected < 100; expected++) {
       let actual = 0;
