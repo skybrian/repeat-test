@@ -1,19 +1,26 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
+
 import * as arb from "../../src/arbitraries.ts";
 import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 
 import * as dom from "../../src/domains.ts";
 
+describe("of", () => {
+  it("rejects items not passed in as arguments", () => {
+    assertThrows(() => dom.of(1, 2, 3).pickify(4), Error, "not in the list");
+  });
+});
+
 describe("boolean", () => {
+  const bool = dom.boolean();
   it("encodes booleans", () => {
-    assertEncoding(dom.boolean(), [0], false);
-    assertEncoding(dom.boolean(), [1], true);
+    assertEncoding(bool, [0], false);
+    assertEncoding(bool, [1], true);
   });
   it("rejects non-booleans", () => {
-    assertEquals(dom.boolean().maybePickify(undefined), undefined);
-    assertEquals(dom.boolean().maybePickify(0), undefined);
+    assertThrows(() => bool.parse(undefined), Error, "not a boolean");
   });
 });
 
@@ -33,8 +40,9 @@ describe("int", () => {
   it("rejects integers outside the given range", () => {
     repeatTest(arb.intRange({ minMin: -100 }), ({ min, max }) => {
       const ints = dom.int(min, max);
-      assertEquals(ints.maybePickify(min - 1), undefined);
-      assertEquals(ints.maybePickify(max + 1), undefined);
+      assertThrows(() => ints.parse("hi"), Error, "not a safe integer");
+      assertThrows(() => ints.parse(min - 1), Error, "not in range");
+      assertThrows(() => ints.parse(max + 1), Error, "not in range");
     });
   });
 
@@ -79,23 +87,24 @@ describe("record", () => {
       Error,
     );
   });
+  const empty = dom.record({});
   it("rejects a non-record", () => {
-    assertEquals(dom.record({}).maybePickify(undefined), undefined);
+    assertThrows(() => empty.parse(undefined), Error, "not an object");
   });
   it("rejects a record with an extra field", () => {
-    assertEquals(dom.record({}).maybePickify({ a: 0 }), undefined);
+    assertThrows(() => empty.parse({ a: 0 }), Error, "extra field: a");
   });
   it("rejects a record with a missing field", () => {
-    assertEquals(
-      dom.record({ a: dom.int(0, 1) }).maybePickify({}),
-      undefined,
+    const pair = dom.record({ a: dom.int(0, 1), b: dom.int(0, 1) });
+    assertThrows(
+      () => pair.parse({ a: 0 }),
+      Error,
+      "b: not a safe integer",
     );
   });
   it("rejects a record with an invalid field", () => {
-    assertEquals(
-      dom.record({ a: dom.int(0, 1) }).maybePickify({ a: 2 }),
-      undefined,
-    );
+    const rec = dom.record({ a: dom.int(0, 1) });
+    assertThrows(() => rec.parse({ a: 2 }), Error, "a: not in range");
   });
   it("round-trips records", () => {
     const shape = {
@@ -128,14 +137,24 @@ describe("array", () => {
       assertEncoding(arr, [1, 2, 1, 3, 0], [2, 3]);
     });
     it("rejects non-arrays", () => {
-      assertEquals(arr.maybePickify(undefined), undefined);
-      assertEquals(arr.maybePickify(0), undefined);
+      assertThrows(() => arr.parse(undefined), Error, "not an array");
+      assertThrows(() => arr.parse(0), Error, "not an array");
+    });
+    it("rejects arrays with an invalid item", () => {
+      assertThrows(() => arr.parse([1, 0]), Error, "1: not in range");
     });
   });
   describe("for a fixed-length array", () => {
     const arr = dom.array(dom.int(1, 3), { min: 2, max: 2 });
     it("encodes the items without prefixes", () => {
       assertEncoding(arr, [2, 3], [2, 3]);
+    });
+    it("rejects arrays of the wrong length", () => {
+      assertThrows(() => arr.parse([]), Error, "not in range");
+      assertThrows(() => arr.parse([1, 2, 3]), Error, "not in range");
+    });
+    it("rejects arrays with an invalid item", () => {
+      assertThrows(() => arr.parse([2, 0]), Error, "1: not in range");
     });
   });
 });
@@ -144,16 +163,28 @@ describe("oneOf", () => {
   it("throws when given an empty array", () => {
     assertThrows(() => dom.oneOf([]), Error);
   });
-  it("encodes a single case the same way as the child domain", () => {
-    repeatTest(arb.minMaxVal(), ({ min, max, val }) => {
-      const child = dom.int(min, max);
+  describe("for a single-case oneOf", () => {
+    it("encodes it the same way as the child domain", () => {
+      repeatTest(arb.minMaxVal(), ({ min, max, val }) => {
+        const child = dom.int(min, max);
+        const oneWay = dom.oneOf([child]);
+        assertEncoding(oneWay, child.pickify(val), val);
+      });
+    });
+    it("rejects values that don't match", () => {
+      const child = dom.int(1, 3);
       const oneWay = dom.oneOf([child]);
-      assertEncoding(oneWay, child.pickify(val), val);
+      assertThrows(() => oneWay.parse(0), Error, "not in range");
     });
   });
-  it("encodes distinct cases by putting the case index first", () => {
+  describe("for a multi-case oneOf", () => {
     const multiWay = dom.oneOf([dom.int(1, 3), dom.int(4, 6)]);
-    assertEncoding(multiWay, [0, 2], 2);
-    assertEncoding(multiWay, [1, 5], 5);
+    it("encodes distinct cases by putting the case index first", () => {
+      assertEncoding(multiWay, [0, 2], 2);
+      assertEncoding(multiWay, [1, 5], 5);
+    });
+    it("rejects values that don't match any case", () => {
+      assertThrows(() => multiWay.parse(0), Error, "no case matched");
+    });
   });
 });

@@ -1,38 +1,45 @@
 import { PlaybackPicker } from "./picks.ts";
 import Arbitrary, { Generated } from "./arbitrary_class.ts";
 import { onePlayout } from "./backtracking.ts";
+import { Failure, failure, Success, success } from "./results.ts";
 
-export type EncodeCallback = (val: unknown) => number[] | undefined;
+export type PickifyCallback = (
+  val: unknown,
+  sendErr: (msg: string) => void,
+) => number[] | undefined;
 
 /**
  * A domain can both validate and generate a set of values.
  */
 export default class Domain<T> {
   #generator: Arbitrary<T>;
-  #callback: EncodeCallback;
+  #callback: PickifyCallback;
 
   constructor(
     generator: Arbitrary<T>,
-    callback: EncodeCallback,
+    callback: PickifyCallback,
   ) {
     this.#generator = generator;
     this.#callback = callback;
 
     // Verify that we can round-trip the default value.
     const def = generator.default();
-    const picks = this.#callback(def);
-    if (picks === undefined) {
-      throw new Error("callback can't parse the domain's default value");
+
+    const picks = this.maybePickify(def);
+    if (!picks.ok) {
+      const error = picks.message ?? "callback returned undefined";
+      throw new Error(`can't pickify domain's default value: ${error}`);
     }
+
     const gen = this.#generator.generate(
-      onePlayout(new PlaybackPicker(picks)),
+      onePlayout(new PlaybackPicker(picks.val)),
     );
     if (gen === undefined) {
-      throw new Error(
-        "can't round-trip the generator's default value: calback's picks weren't accepted",
-      );
+      throw new Error("can't regenerate domain's default value");
     } else if (!gen.isDefault()) {
-      throw new Error("can't round-trip the generator's default value");
+      throw new Error(
+        "regenerating domain's default value got a different value",
+      );
     }
   }
 
@@ -43,7 +50,18 @@ export default class Domain<T> {
 
   /** Returns true if the value is a member of this domain. */
   has(val: unknown): val is T {
-    return this.#callback(val) !== undefined;
+    const ignoreError = () => {};
+    return this.#callback(val, ignoreError) !== undefined;
+  }
+
+  /**
+   * Validates a value, returning a copy created by regenerating it.
+   *
+   * @throws an Error if the value is not a member of this domain.
+   */
+  parse(val: unknown): T {
+    const picks = this.pickify(val as T);
+    return this.parsePicks(picks);
   }
 
   /**
@@ -51,20 +69,34 @@ export default class Domain<T> {
    * @throws an Error if the value is not a member of this domain.
    */
   pickify(val: T): number[] {
-    const result = this.#callback(val);
-    if (result === undefined) throw new Error("Invalid value");
-    return result;
+    const picks = this.maybePickify(val);
+    if (!picks.ok) {
+      const error = picks.message ?? "can't pickify value";
+      throw new Error(error);
+    }
+    return picks.val;
   }
 
-  maybePickify(val: unknown): number[] | undefined {
-    return this.#callback(val);
+  maybePickify(val: unknown): Success<number[]> | Failure {
+    let firstError: string | undefined = undefined;
+    const sendErr = (msg: string) => {
+      if (firstError === undefined) {
+        firstError = msg;
+      }
+    };
+    const picks = this.#callback(val, sendErr);
+    if (picks === undefined) {
+      const err = firstError ?? "can't pickify value";
+      return failure(err);
+    }
+    return success(picks);
   }
 
   /**
-   * Given some picks, returns corresponding value.
+   * Given some picks, returns the corresponding value.
    * @throws an Error if the picks don't encode a member of this domain.
    */
-  parse(picks: number[]): T {
+  parsePicks(picks: number[]): T {
     const picker = new PlaybackPicker(picks);
     const gen = this.generator.generate(onePlayout(picker));
     if (picker.error) {
@@ -79,8 +111,8 @@ export default class Domain<T> {
   /** Makes a copy of a value by converting it to picks and back again. */
   regenerate(val: T): Generated<T> | undefined {
     const picks = this.maybePickify(val);
-    if (picks === undefined) return undefined;
-    return this.#generator.generate(onePlayout(new PlaybackPicker(picks)));
+    if (!picks.ok) return undefined;
+    return this.#generator.generate(onePlayout(new PlaybackPicker(picks.val)));
   }
 
   asFunction() {

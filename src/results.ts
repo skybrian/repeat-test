@@ -14,6 +14,6 @@ export interface Failure {
   message?: string;
 }
 
-export function fail(message: string): Failure {
+export function failure(message: string): Failure {
   return { ok: false, message };
 }

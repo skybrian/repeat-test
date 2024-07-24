@@ -1,7 +1,7 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
 import { SearchTree } from "./search_tree.ts";
 import Arbitrary, { Generated } from "./arbitrary_class.ts";
-import { fail, Failure, Success, success } from "./results.ts";
+import { Failure, failure, Success, success } from "./results.ts";
 import { alwaysPickMin } from "./picks.ts";
 import { shrink } from "./shrink.ts";
 
@@ -16,14 +16,14 @@ export type RepKey = {
 
 export function parseRepKey(key: string): Success<RepKey> | Failure {
   const fields = key.split(":");
-  if (fields.length !== 2) return fail("invalid key format");
+  if (fields.length !== 2) return failure("invalid key format");
   const [seed, index] = fields.map((x) => parseInt(x));
 
   if (!Number.isSafeInteger(seed) || (seed | 0) !== seed) {
-    return fail("invalid seed in key");
+    return failure("invalid seed in key");
   }
   if (!Number.isSafeInteger(index) || index < 0) {
-    return fail("invalid index in key");
+    return failure("invalid index in key");
   }
   return success({ seed, index });
 }
@@ -185,7 +185,7 @@ function getStartKey(opts?: RepeatOptions): Success<RepKey> | Failure {
     });
   }
   const parsed = parseRepKey(opts.only);
-  if (!parsed.ok) return fail("can't parse 'only' parameter");
+  if (!parsed.ok) return failure("can't parse 'only' parameter");
   return success(parsed.val);
 }
 

@@ -1,5 +1,5 @@
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals } from "@std/assert";
+import { assertThrows } from "@std/assert";
 import * as arb from "../../src/arbitraries.ts";
 import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
@@ -34,6 +34,10 @@ describe("anyString", () => {
   it("encodes an unpaired surrogate", () => {
     assertEncoding(dom.anyString(), [1, 0xD800, 0], "\uD800");
   });
+  it("rejects non-strings", () => {
+    const str = dom.anyString();
+    assertThrows(() => str.parse(null), Error, "not a string");
+  });
 });
 
 const surrogateGap = 0xdfff - 0xd800 + 1;
@@ -44,11 +48,13 @@ describe("wellFormedString", () => {
       assertRoundTrip(dom.wellFormedString(), val);
     });
   });
+  it("rejects non-strings", () => {
+    const str = dom.wellFormedString();
+    assertThrows(() => str.parse(null), Error, "not a string");
+  });
   it("rejects unpaired surrogates", () => {
-    assertEquals(
-      dom.wellFormedString().maybePickify("\uD800"),
-      undefined,
-    );
+    const str = dom.wellFormedString();
+    assertThrows(() => str.parse("\uD800"), Error, "not a well-formed string");
   });
   it("parses an array of ints using our modified ascii table", () => {
     assertEncoding(dom.wellFormedString(), [1, 0, 1, 1, 0], "ab");

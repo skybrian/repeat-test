@@ -25,8 +25,11 @@ const maxStringLength = 2 ** 32 - 1;
 
 export const anyString = new Domain(
   arb.anyString({ min: 0, max: maxStringLength }),
-  (val) => {
-    if (typeof val !== "string") return undefined;
+  (val, sendErr) => {
+    if (typeof val !== "string") {
+      sendErr("not a string");
+      return undefined;
+    }
     const out: number[] = [];
     for (let i = 0; i < val.length; i++) {
       const picks = char16().pickify(val.charAt(i));
@@ -39,26 +42,35 @@ export const anyString = new Domain(
   },
 ).asFunction();
 
-export const wellFormedString = new Domain(arb.wellFormedString(), (val) => {
-  if (typeof val !== "string") return undefined;
-  if (!isWellFormed(val)) return undefined;
-
-  const out: number[] = [];
-  for (const char of val) {
-    const code = char.codePointAt(0);
-    if (code === undefined || unicode.isSurrogate(code)) {
+export const wellFormedString = new Domain(
+  arb.wellFormedString(),
+  (val, sendErr) => {
+    if (typeof val !== "string") {
+      sendErr("not a string");
       return undefined;
     }
-    out.push(1);
-    if (code < 128) {
-      out.push(...asciiChar().pickify(char));
-    } else {
-      const pick = code < unicode.surrogateMin
-        ? code
-        : code - unicode.surrogateGap;
-      out.push(pick);
+    if (!isWellFormed(val)) {
+      sendErr("not a well-formed string");
+      return undefined;
     }
-  }
-  out.push(0);
-  return out;
-}).asFunction();
+
+    const out: number[] = [];
+    for (const char of val) {
+      const code = char.codePointAt(0);
+      if (code === undefined || unicode.isSurrogate(code)) {
+        return undefined;
+      }
+      out.push(1);
+      if (code < 128) {
+        out.push(...asciiChar().pickify(char));
+      } else {
+        const pick = code < unicode.surrogateMin
+          ? code
+          : code - unicode.surrogateGap;
+        out.push(pick);
+      }
+    }
+    out.push(0);
+    return out;
+  },
+).asFunction();

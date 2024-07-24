@@ -10,8 +10,12 @@ export function assertRoundTrip<T>(dom: Domain<T>, val: T) {
 }
 
 export function assertEncoding<T>(dom: Domain<T>, picks: number[], val: T) {
-  assertEquals(dom.parse(picks), val, `dom.parse(${picks}) failed`);
-  assertEquals(dom.pickify(val), picks, `dom.pickify(${val}) failed`);
+  assertEquals(
+    dom.parsePicks(picks),
+    val,
+    `dom.parsePicks(${picks}) didn't match`,
+  );
+  assertEquals(dom.pickify(val), picks, `dom.pickify(${val}) didn't match`);
 }
 
 export function assertSameExamples<T>(
