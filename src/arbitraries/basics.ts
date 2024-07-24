@@ -66,8 +66,9 @@ export const defaultArrayLimit = 1000;
 
 export function array<T>(
   item: Arbitrary<T>,
-  opts?: { min?: number; max?: number },
+  opts?: { min?: number; max?: number; label?: string },
 ): Arbitrary<T[]> {
+  const label = opts?.label ?? "array";
   const min = opts?.min ?? 0;
   const max = opts?.max ?? defaultArrayLimit;
   const bit = new PickRequest(0, 1);
@@ -93,5 +94,5 @@ export function array<T>(
       i++;
     }
     return result;
-  });
+  }, { label });
 }
