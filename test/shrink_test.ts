@@ -90,6 +90,32 @@ describe("shrink", () => {
       assertShrinks(dom.anyString(), (s) => s.endsWith("z"), "xyz", "z");
     });
   });
+  describe("for a record", () => {
+    it("can't shrink an empty record", () => {
+      assertNoChange(dom.record({}), () => true, {});
+    });
+    const pair = dom.record({ a: dom.int32(), b: dom.anyString() });
+    it("can't shrink when there's no alternative", () => {
+      repeatTest(pair.generator, ({ a, b }) => {
+        assertNoChange(pair, (r) => r.a === a && r.b === b, { a, b });
+      });
+    });
+    it("shrinks all fields to their minimums", () => {
+      repeatTest(pair.generator, (start) => {
+        assertShrinks(pair, (_r) => true, start, { a: 0, b: "" });
+      });
+    });
+    it("shrinks the first field if the second is held constant", () => {
+      repeatTest(pair.generator, ({ a, b }) => {
+        assertShrinks(pair, (r) => r.b === b, { a, b }, { a: 0, b });
+      });
+    });
+    it("shrinks the second field if the first is held constant", () => {
+      repeatTest(pair.generator, ({ a, b }) => {
+        assertShrinks(pair, (r) => r.a === a, { a, b }, { a, b: "" });
+      });
+    });
+  });
 });
 
 describe("shrinkLength", () => {

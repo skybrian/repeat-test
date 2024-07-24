@@ -49,8 +49,6 @@ export function int(
   }
 }
 
-export const bit = int(0, 1).asFunction();
-
 /**
  * Creates an Arbitrary for a record with the given shape.
  */
