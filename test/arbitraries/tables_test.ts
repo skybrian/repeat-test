@@ -1,8 +1,9 @@
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 
 import * as arb from "../../src/arbitraries.ts";
-import { assertValues } from "../../src/asserts.ts";
+import { assertFirstValues, assertValues } from "../../src/asserts.ts";
+import { repeatTest } from "../../src/runner.ts";
 
 describe("uniqueArray", () => {
   const bools = arb.uniqueArray(arb.boolean());
@@ -18,6 +19,13 @@ describe("uniqueArray", () => {
       [false, true],
     ]);
   });
+  it("rejects impossible filters", () => {
+    assertThrows(
+      () => bools.filter((v) => v.length > 2),
+      Error,
+      "filter didn't accept any values",
+    );
+  });
   it("has a label", () => {
     assertEquals(bools.label, "uniqueArray");
   });
@@ -28,18 +36,70 @@ describe("uniqueArray", () => {
 });
 
 describe("table", () => {
-  const table = arb.table({
-    k: arb.int32(),
-    v: arb.anyString(),
+  describe("with one column and no unique key", () => {
+    const table = arb.table({ v: arb.boolean() });
+    it("defaults to zero rows", () => {
+      assertEquals(table.default(), []);
+    });
+    it("generates every combination of a boolean", () => {
+      const combos: boolean[][] = [];
+      for (const rows of table.generateAll()) {
+        const val = rows.val;
+        if (val.length < 2) {
+          continue;
+        }
+        if (val.length > 2) {
+          break;
+        }
+        const bools = rows.val.map((row) => row.v);
+        combos.push(bools);
+      }
+      assertEquals(combos, [
+        [false, false],
+        [true, false],
+        [false, true],
+        [true, true],
+      ]);
+    });
+    it("has a label", () => {
+      assertEquals(table.label, "table");
+    });
+    it("can be configured with a label", () => {
+      const table = arb.table({ k: arb.int32() }, { label: "my table" });
+      assertEquals(table.label, "my table");
+    });
   });
-  it("defaults to zero rows", () => {
-    assertEquals(table.default(), []);
+  describe("with one column that's a unique key", () => {
+    const table = arb.table({ v: arb.boolean() }, { uniqueKey: "v" });
+    it("defaults to zero rows", () => {
+      assertEquals(table.default(), []);
+    });
+    it("generates the same values as uniqueArray", () => {
+      const expected = arb.uniqueArray(arb.boolean()).takeAll();
+      const actual = table.map((rows) => rows.map((row) => row.v)).takeAll();
+      assertEquals(actual, expected);
+    });
   });
-  it("has a label", () => {
-    assertEquals(table.label, "table");
-  });
-  it("can be configured with a label", () => {
-    const table = arb.table({ k: arb.int32() }, { label: "my table" });
-    assertEquals(table.label, "my table");
+  describe("of key-value pairs", () => {
+    const table = arb.table({
+      k: arb.boolean(),
+      v: arb.boolean(),
+    }, { uniqueKey: "k" });
+    it("starts with zero and one-row tables", () => {
+      assertFirstValues(table, [
+        [],
+        [{ k: false, v: false }],
+        [{ k: true, v: false }],
+        [{ k: false, v: true }],
+        [{ k: true, v: true }],
+        [{ k: true, v: false }, { k: false, v: false }],
+      ]);
+    });
+    it("never generates duplicate keys", () => {
+      repeatTest(table.filter((t) => t.length > 1), (rows) => {
+        const keys = new Set(rows.map((row) => row.k));
+        assertEquals(keys.size, rows.length);
+      });
+    });
   });
 });
