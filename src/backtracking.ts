@@ -1,3 +1,4 @@
+import { Success, success } from "./results.ts";
 import { alwaysPickMin, IntPicker, PickList, PickRequest } from "./picks.ts";
 
 /**
@@ -10,6 +11,7 @@ import { alwaysPickMin, IntPicker, PickList, PickRequest } from "./picks.ts";
  * all possible pick sequences.
  */
 export class Pruned extends Error {
+  readonly ok = false;
   constructor(msg: string) {
     super(msg);
   }
@@ -27,7 +29,7 @@ export interface RetryPicker {
    *
    * Throws {@link Pruned} if the current playout is cancelled.
    */
-  maybePick(req: PickRequest): number;
+  maybePick(req: PickRequest): Success<number> | Pruned;
 
   /**
    * Tells the picker that no more picks are needed.
@@ -81,7 +83,7 @@ export function onePlayoutPicker(picker: IntPicker): RetryPicker {
       }
       const pick = picker.pick(req);
       picks.push(req, pick);
-      return pick;
+      return success(pick);
     },
     finishPlayout: function (): boolean {
       done = true;
@@ -120,18 +122,20 @@ export function rotatePicks(
     maybePick(req) {
       const depth = wrapped.depth;
       const oldPick = wrapped.maybePick(req);
+      if (!oldPick.ok) return oldPick;
+
       if (depth >= defaultPlayout.length) {
-        picks.push(req, oldPick);
+        picks.push(req, oldPick.val);
         return oldPick;
       }
 
       const def = defaultPlayout[depth];
-      let pick = oldPick - req.min + def;
+      let pick = oldPick.val - req.min + def;
       while (pick > req.max) {
         pick -= req.size;
       }
       picks.push(req, pick);
-      return pick;
+      return success(pick);
     },
     backTo(depth: number): boolean {
       if (!wrapped.backTo(depth)) {

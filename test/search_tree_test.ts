@@ -22,6 +22,7 @@ import {
   SearchTree,
 } from "../src/search_tree.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
+import { Success, success } from "../src/results.ts";
 
 const bit = new PickRequest(0, 1);
 
@@ -47,7 +48,10 @@ describe("SearchTree", () => {
         const pickers = tree.pickers(alwaysPickMin);
         for (const p of pickers) {
           assertEquals(p.depth, 0);
-          assertEquals(p.maybePick(new PickRequest(0, 3)), count);
+          assertEquals(p.maybePick(new PickRequest(0, 3)), {
+            ok: true,
+            val: count,
+          });
           assertEquals(p.depth, 1);
           count++;
           if (count % 2 == 0) break;
@@ -66,7 +70,7 @@ describe("Cursor", () => {
       const tree = new SearchTree(1);
       const picker = tree.makePicker(alwaysPickMin);
       assert(picker !== undefined);
-      assertEquals(picker.maybePick(bit), 0);
+      assertEquals(picker.maybePick(bit), { ok: true, val: 0 });
       assertEquals(picker.depth, 1);
       assertEquals(picker.getPicks().reqs(), [bit]);
       assertEquals(picker.getPicks().replies(), [0]);
@@ -77,7 +81,7 @@ describe("Cursor", () => {
       const tree = new SearchTree(1);
       const picker = tree.makePicker(alwaysPickMin);
       assert(picker !== undefined);
-      assertEquals(picker.maybePick(bit), 0);
+      assertEquals(picker.maybePick(bit), { ok: true, val: 0 });
       picker.backTo(0);
       assertThrows(() => picker.maybePick(new PickRequest(-1, 0)), Error);
     });
@@ -141,7 +145,9 @@ describe("Cursor", () => {
           other: 0,
         };
         for (let i = 0; i < 1000; i++) {
-          if (picker.maybePick(bit)) {
+          const pick = picker.maybePick(bit);
+          assert(pick.ok);
+          if (pick.val == 1) {
             picker.maybePick(new PickRequest(1, 2 ** 40));
             counts.other++;
           } else {
@@ -166,7 +172,7 @@ describe("Cursor", () => {
 
         assertEquals(
           picker.maybePick(new PickRequest(0, 1)),
-          1,
+          { ok: true, val: 1 },
         );
         assertFalse(picker.backTo(0));
       });
@@ -209,7 +215,7 @@ describe("Cursor", () => {
       it("goes to a different child after a fork", () => {
         picker.maybePick(bit);
         picker.backTo(0);
-        assertEquals(picker.maybePick(bit), 1);
+        assertEquals(picker.maybePick(bit), { ok: true, val: 1 });
       });
 
       it("ends the search when both sides of a fork were visited", () => {
@@ -231,7 +237,7 @@ describe("Cursor", () => {
         picker.maybePick(bit);
         picker.backTo(1);
 
-        assertEquals(picker.maybePick(bit), 1);
+        assertEquals(picker.maybePick(bit), { ok: true, val: 1 });
         assertFalse(
           picker.backTo(1),
           "should fail because picks are exhausted",
@@ -247,7 +253,10 @@ describe("Cursor", () => {
       });
       assert(picker !== undefined);
 
-      assertEquals(picker.maybePick(new PickRequest(0, 1)), 0);
+      assertEquals(picker.maybePick(new PickRequest(0, 1)), {
+        ok: true,
+        val: 0,
+      });
       assertFalse(picker.backTo(0));
     });
   });
@@ -272,7 +281,8 @@ describe("Cursor", () => {
         const picks: number[] = [];
         for (let j = 0; j < 3; j++) {
           const pick = picker.maybePick(digit);
-          picks.push(pick);
+          assert(pick.ok);
+          picks.push(pick.val);
         }
         assert(picker.tracked, "playout wasn't tracked");
         const key = JSON.stringify(picks);
@@ -329,17 +339,23 @@ const anyTree = Arbitrary.from((pick) => {
   return result;
 });
 
-function randomWalk<T>(tree: Tree<T>, picker: RetryPicker): T {
+function randomWalk<T>(
+  tree: Tree<T>,
+  picker: RetryPicker,
+): Success<T> | Pruned {
   while (
     tree.children.length > 0
   ) {
     const pick = picker.maybePick(new PickRequest(0, tree.children.length));
-    if (pick === tree.children.length) {
-      return tree.val;
+    if (!pick.ok) {
+      return pick;
     }
-    tree = tree.children[pick];
+    if (pick.val === tree.children.length) {
+      return success(tree.val);
+    }
+    tree = tree.children[pick.val];
   }
-  return tree.val;
+  return success(tree.val);
 }
 
 class Maze {
@@ -350,25 +366,21 @@ class Maze {
   constructor(readonly tree: Tree<number>) {}
 
   visit(picker: RetryPicker) {
-    try {
-      const val = randomWalk(this.tree, picker);
-      const picks = JSON.stringify(picker.getPicks().replies());
-      if (picker.finishPlayout()) {
-        if (this.accepted.has(picks)) {
-          fail(`duplicate picks: ${picks}`);
-        }
-        // console.log(`accepted: ${picks} -> ${val}`);
-        this.accepted.set(picks, val);
-      } else {
-        // console.log(`rejected: ${picks} -> ${val}`);
-        this.rejected.set(picks, val);
+    const val = randomWalk(this.tree, picker);
+    if (!val.ok) {
+      this.pruneCount++;
+      return;
+    }
+    const picks = JSON.stringify(picker.getPicks().replies());
+    if (picker.finishPlayout()) {
+      if (this.accepted.has(picks)) {
+        fail(`duplicate picks: ${picks}`);
       }
-    } catch (e) {
-      if (e instanceof Pruned) {
-        this.pruneCount++;
-      } else {
-        throw e;
-      }
+      // console.log(`accepted: ${picks} -> ${val}`);
+      this.accepted.set(picks, val.val);
+    } else {
+      // console.log(`rejected: ${picks} -> ${val}`);
+      this.rejected.set(picks, val.val);
     }
   }
 
@@ -431,7 +443,11 @@ const one = new PickRequest(1, 1);
 function walkUnaryTree(picker: RetryPicker): string | undefined {
   let result = "";
   for (let i = 0; i < 8; i++) {
-    if (picker.maybePick(one)) {
+    const pick = picker.maybePick(one);
+    if (!pick.ok) {
+      return undefined;
+    }
+    if (pick.val) {
       result += "1";
     } else {
       result += "0";
@@ -453,7 +469,11 @@ function walkBinaryTree(...stops: string[]) {
         }
         return result;
       }
-      if (picker.maybePick(bit)) {
+      const pick = picker.maybePick(bit);
+      if (!pick.ok) {
+        return undefined;
+      }
+      if (pick.val) {
         result += "1";
       } else {
         result += "0";

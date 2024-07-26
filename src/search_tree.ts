@@ -1,3 +1,4 @@
+import { Success, success } from "./results.ts";
 import { alwaysPickMin, IntPicker, PickList, PickRequest } from "./picks.ts";
 
 import { Pruned, RetryPicker } from "./backtracking.ts";
@@ -277,12 +278,12 @@ export class Cursor implements RetryPicker {
     return node;
   }
 
-  maybePick(req: PickRequest): number {
+  maybePick(req: PickRequest): Success<number> | Pruned {
     if (this.done) throw new Error("cannot pick after finishPlayout");
 
     const modified = this.replaceRequest(this.depth, req);
     if (!modified) {
-      throw new Pruned("filtered by replaceRequest");
+      return new Pruned("filtered by replaceRequest");
     }
 
     const node = this.nextNode(modified);
@@ -295,7 +296,7 @@ export class Cursor implements RetryPicker {
     this.originalReqs.push(req);
     this.modifiedReqs.push(modified);
     this.picks.push(pick);
-    return pick;
+    return success(pick);
   }
 
   finishPlayout(): boolean {

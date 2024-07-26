@@ -547,7 +547,9 @@ export default class Arbitrary<T> {
       }
 
       if (req instanceof PickRequest) {
-        return picker.maybePick(req);
+        const pick = picker.maybePick(req);
+        if (!pick.ok) throw new Pruned(pick.message);
+        return pick.val;
       } else if (req instanceof Arbitrary) {
         const accept = opts?.accept;
         if (accept !== undefined) {
