@@ -37,6 +37,17 @@ export type RecordShape<T> = {
 };
 
 /**
+ * A function that generates an value, given some picks.
+ *
+ * The result should be deterministic, depending only on what `pick` returns.
+ *
+ * It may throw {@link Pruned} to indicate that generation failed for
+ * sequence of picks it got from the pick function. (For example, it was
+ * filtered out.)
+ */
+export type ArbitraryCallback<T> = (pick: PickFunction) => T;
+
+/**
  * Picks a value given a PickRequest, an Arbitrary, or a record shape containing
  * multiple Arbitraries.
  *
@@ -45,6 +56,7 @@ export type RecordShape<T> = {
 export interface PickFunction {
   (req: PickRequest): number;
   <T>(req: Arbitrary<T>, opts?: PickFunctionOptions<T>): T;
+  <T>(req: ArbitraryCallback<T>): T;
   <T extends AnyRecord>(reqs: RecordShape<T>, opts?: PickFunctionOptions<T>): T;
 }
 
@@ -55,17 +67,6 @@ export type ArbitraryOpts = {
    */
   label?: string;
 };
-
-/**
- * A function that generates an value, given some picks.
- *
- * The result should be deterministic, depending only on what `pick` returns.
- *
- * It may throw {@link Pruned} to indicate that generation failed for
- * sequence of picks it got from the pick function. (For example, it was
- * filtered out.)
- */
-export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 
 /**
  * Holds a generated value along with the picks that were used to generate it.
@@ -535,7 +536,7 @@ export default class Arbitrary<T> {
     defaultPicker: RetryPicker,
   ): PickFunction {
     const dispatch = <T>(
-      req: PickRequest | Arbitrary<T> | RecordShape<T>,
+      req: PickRequest | Arbitrary<T> | ArbitraryCallback<T> | RecordShape<T>,
       opts?: PickFunctionOptions<T>,
     ): number | T => {
       let picker = defaultPicker;
@@ -557,6 +558,11 @@ export default class Arbitrary<T> {
         } else {
           return req.innerPick(log, pick);
         }
+      } else if (typeof req === "function") {
+        const level = log.startSpan();
+        const val = req(pick);
+        log.endSpan(level);
+        return val;
       } else if (typeof req !== "object") {
         throw new Error("pick called with invalid argument");
       } else {

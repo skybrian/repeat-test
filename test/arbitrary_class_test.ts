@@ -22,9 +22,10 @@ describe("Arbitrary", () => {
       assertThrows(() => Arbitrary.from(callback));
     });
     it("throws an Error if given a callback that calls pick incorrectly", () => {
-      function f() {}
       type Pick = (arg: unknown) => number;
-      const callback = ((pick: Pick) => pick(f)) as ArbitraryCallback<number>;
+      const callback = ((pick: Pick) => pick("hello")) as ArbitraryCallback<
+        number
+      >;
       assertThrows(() => Arbitrary.from(callback), Error);
     });
   });
@@ -89,6 +90,14 @@ describe("Arbitrary", () => {
       const arb = Arbitrary.from((pick) => pick(req));
       const gen = arb.generate(minPlayout());
       assertEquals(gen?.val, "hi");
+    });
+    it("accepts an ArbitraryCallback", () => {
+      const choose: ArbitraryCallback<number> = (pick) => {
+        return pick(new PickRequest(1, 2));
+      };
+      const arb = Arbitrary.from((pick) => pick(choose));
+      const gen = arb.generate(minPlayout());
+      assertEquals(gen?.val, 1);
     });
     it("accepts a record shape", () => {
       const req = {
