@@ -1,5 +1,5 @@
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 
 import * as arb from "../../src/arbitraries.ts";
 import { assertFirstValues, assertValues } from "../../src/asserts.ts";
@@ -18,6 +18,23 @@ describe("uniqueArray", () => {
       [true, false],
       [false, true],
     ]);
+  });
+  it("generates unique ids within an integer range", () => {
+    const example = arb.from((pick) => {
+      const { min, max } = pick(arb.intRange());
+      const ids = pick(arb.uniqueArray(arb.int(min, max)));
+      return { min, max, ids };
+    });
+    repeatTest(example, ({ min, max, ids }) => {
+      assertEquals(ids.length, new Set(ids).size);
+      assert(ids.every((id) => id >= min && id <= max));
+    });
+  });
+  it("generates string identifiers", () => {
+    const ids = arb.uniqueArray(arb.wellFormedString({ min: 2, max: 3 }));
+    repeatTest(ids, (ids) => {
+      assertEquals(ids.length, new Set(ids).size);
+    });
   });
   it("rejects impossible filters", () => {
     assertThrows(
