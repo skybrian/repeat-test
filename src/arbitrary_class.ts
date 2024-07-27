@@ -536,9 +536,9 @@ export default class Arbitrary<T> {
    *
    * (For testing.)
    */
-  static runCallback<T>(
-    callback: ArbitraryCallback<T>,
+  static runWithPicks<T>(
     picks: number[],
+    callback: ArbitraryCallback<T>,
   ): Generated<T> {
     const picker = onePlayoutPicker(new PlaybackPicker(picks));
     const log = new SpanLog(picker);

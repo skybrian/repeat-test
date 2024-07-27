@@ -12,26 +12,31 @@ describe("Jar", () => {
     });
     it("returns true after taking the only value from a constant", () => {
       const jar = new Jar(Arbitrary.of("hi"));
-      Arbitrary.runCallback((p) => jar.pickUnused(p), [0]);
+      Arbitrary.runWithPicks([], (p) => jar.pickUnused(p));
       assert(jar.isEmpty());
     });
     it("returns true after taking both values of a boolean", () => {
       const jar = new Jar(Arbitrary.of(false, true));
-      Arbitrary.runCallback((p) => jar.pickUnused(p), [0]);
+      Arbitrary.runWithPicks([], (p) => jar.pickUnused(p));
       assertFalse(jar.isEmpty());
-      Arbitrary.runCallback((p) => jar.pickUnused(p), [1]);
+      Arbitrary.runWithPicks([1], (p) => jar.pickUnused(p));
       assert(jar.isEmpty());
     });
   });
   describe("pickUnused", () => {
-    const jar = new Jar(Arbitrary.of("hi"));
     it("returns the only value from a constant", () => {
-      const gen = Arbitrary.runCallback((p) => jar.pickUnused(p), [0]);
+      const jar = new Jar(Arbitrary.of("hi"));
+      const gen = Arbitrary.runWithPicks([], (p) => jar.pickUnused(p));
       assertEquals(gen?.val, "hi");
     });
     it("throws Pruned if the same playout was seen twice", () => {
+      const jar = new Jar(Arbitrary.of("hi"));
+      assertEquals(
+        Arbitrary.runWithPicks([], (p) => jar.pickUnused(p)).val,
+        "hi",
+      );
       assertThrows(
-        () => Arbitrary.runCallback((p) => jar.pickUnused(p), [0]),
+        () => Arbitrary.runWithPicks([], (p) => jar.pickUnused(p)),
         Pruned,
       );
     });
