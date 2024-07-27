@@ -32,33 +32,25 @@ export function table<R extends AnyRecord>(
   const label = opts?.label ?? "table";
 
   return arb.from((pick) => {
-    const used = uniqueKey ? new Set<R[typeof uniqueKey]>() : undefined;
-    const addToUsed = (row: R) => {
-      if (used && uniqueKey) {
-        used.add(row[uniqueKey]);
-      }
-    };
-
-    // Hack: creating `row` in advance bypasses the check that a filter has a
-    // default value. (Because we mutate `seen` after creating the filter.) We
-    // need a different way to keep track of what's been used.
-    const row = arb.record(shape).filter((row) => {
-      if (used && uniqueKey) {
-        return !used.has(row[uniqueKey]);
-      }
-      return true;
-    });
+    const jar = uniqueKey ? new Jar(shape[uniqueKey]) : undefined;
 
     const addRow: Arbitrary<R | undefined> = arb.from((pick) => {
-      if (!pick(arb.boolean())) {
+      if (jar?.isEmpty() || !pick(arb.boolean())) {
         return undefined;
       }
-      return pick(row);
+      const row: Record<string, unknown> = {};
+      for (const key of Object.keys(shape)) {
+        if (jar && key === uniqueKey) {
+          row[key] = jar.pickUnused(pick);
+        } else {
+          row[key] = pick(shape[key]);
+        }
+      }
+      return row as R;
     });
 
     const rows: R[] = [];
     for (let row = pick(addRow); row !== undefined; row = pick(addRow)) {
-      addToUsed(row);
       rows.push(row);
     }
     return rows;
