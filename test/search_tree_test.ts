@@ -29,8 +29,8 @@ const bit = new PickRequest(0, 1);
 describe("SearchTree", () => {
   describe("makePicker", () => {
     it("starts a playout with no picks", () => {
-      const tree = new SearchTree(1);
-      const picker = tree.makePicker(alwaysPickMin);
+      const search = new SearchTree(1);
+      const picker = search.makePicker(alwaysPickMin);
       assert(picker !== undefined);
       assertEquals(picker.depth, 0);
       assertEquals(picker.getPicks().reqs(), []);
@@ -41,11 +41,11 @@ describe("SearchTree", () => {
 
   describe("pickers", () => {
     it("starts a new playout each time", () => {
-      const tree = new SearchTree(4);
+      const search = new SearchTree(4);
 
       let count = 0;
       for (let i = 0; i < 2; i++) {
-        const pickers = tree.pickers(alwaysPickMin);
+        const pickers = search.pickers(alwaysPickMin);
         for (const p of pickers) {
           assertEquals(p.depth, 0);
           assertEquals(p.maybePick(new PickRequest(0, 3)), {
@@ -57,9 +57,16 @@ describe("SearchTree", () => {
           if (count % 2 == 0) break;
         }
       }
-      const empty = tree.pickers(alwaysPickMin);
+      const empty = search.pickers(alwaysPickMin);
       assert(empty.next().done);
       assertEquals(count, 4);
+    });
+  });
+
+  describe("searchDone", () => {
+    it("returns false by default", () => {
+      const search = new SearchTree(1);
+      assertFalse(search.searchDone);
     });
   });
 });
@@ -67,8 +74,8 @@ describe("SearchTree", () => {
 describe("Cursor", () => {
   describe("pick", () => {
     it("takes a pick from the underlying picker", () => {
-      const tree = new SearchTree(1);
-      const picker = tree.makePicker(alwaysPickMin);
+      const search = new SearchTree(1);
+      const picker = search.makePicker(alwaysPickMin);
       assert(picker !== undefined);
       assertEquals(picker.maybePick(bit), { ok: true, val: 0 });
       assertEquals(picker.depth, 1);
@@ -78,8 +85,8 @@ describe("Cursor", () => {
     });
 
     it("requires the same range as last time", () => {
-      const tree = new SearchTree(1);
-      const picker = tree.makePicker(alwaysPickMin);
+      const search = new SearchTree(1);
+      const picker = search.makePicker(alwaysPickMin);
       assert(picker !== undefined);
       assertEquals(picker.maybePick(bit), { ok: true, val: 0 });
       picker.backTo(0);
@@ -90,8 +97,8 @@ describe("Cursor", () => {
 
     describe("when using a non-random underlying picker", () => {
       it("continues tracking beneath a wide node", () => {
-        const tree = new SearchTree(1);
-        const picker = tree.makePicker(alwaysPickMin);
+        const search = new SearchTree(1);
+        const picker = search.makePicker(alwaysPickMin);
         assert(picker !== undefined);
         picker.maybePick(uint32);
         assert(picker.tracked);
@@ -100,8 +107,8 @@ describe("Cursor", () => {
 
     describe("when using a random underlying picker", () => {
       it("stops tracking if there aren't enough playouts to get to every branch", () => {
-        const tree = new SearchTree(1);
-        const picker = tree.makePicker(randomPicker(123));
+        const search = new SearchTree(1);
+        const picker = search.makePicker(randomPicker(123));
         assert(picker !== undefined);
         picker.maybePick(new PickRequest(1, 6));
         assertFalse(picker.tracked);
@@ -112,8 +119,8 @@ describe("Cursor", () => {
           "playouts": arb.int(2, 1000),
         });
         repeatTest(example, ({ playouts }) => {
-          const tree = new SearchTree(playouts);
-          const picker = tree.makePicker(randomPicker(123));
+          const search = new SearchTree(playouts);
+          const picker = search.makePicker(randomPicker(123));
           assert(picker !== undefined);
           picker.maybePick(new PickRequest(1, playouts));
           assert(picker.tracked);
@@ -126,8 +133,8 @@ describe("Cursor", () => {
         repeatTest(
           arb.of(0, 1, 1000, 10 ** 6, 10 ** 9, 2 ** 30),
           (playouts) => {
-            const tree = new SearchTree(playouts);
-            const picker = tree.makePicker(randomPicker(123));
+            const search = new SearchTree(playouts);
+            const picker = search.makePicker(randomPicker(123));
             assert(picker !== undefined);
             picker.maybePick(uint32);
             assertFalse(picker.tracked);
@@ -136,8 +143,8 @@ describe("Cursor", () => {
       });
 
       it("doesn't revisit a constant in an unbalanced tree", () => {
-        const tree = new SearchTree(1000);
-        const picker = tree.makePicker(randomPicker(123));
+        const search = new SearchTree(1000);
+        const picker = search.makePicker(randomPicker(123));
         assert(picker !== undefined);
 
         const counts = {
@@ -164,8 +171,8 @@ describe("Cursor", () => {
       });
 
       it("picks using a replaced request", () => {
-        const tree = new SearchTree(1000);
-        const picker = tree.makePicker(alwaysPickMin, {
+        const search = new SearchTree(1000);
+        const picker = search.makePicker(alwaysPickMin, {
           replaceRequest: (_, req) => new PickRequest(req.max, req.max),
         });
         assert(picker !== undefined);
@@ -182,8 +189,8 @@ describe("Cursor", () => {
   describe("backTo", () => {
     describe("for a depth-first search", () => {
       function makePicker(): Cursor {
-        const tree = new SearchTree(0);
-        const picker = tree.makePicker(alwaysPickMin);
+        const search = new SearchTree(0);
+        const picker = search.makePicker(alwaysPickMin);
         assert(picker !== undefined);
         return picker;
       }
@@ -247,8 +254,8 @@ describe("Cursor", () => {
     });
 
     it("skips a filtered-out branch", () => {
-      const tree = new SearchTree(1000);
-      const picker = tree.makePicker(alwaysPickMin, {
+      const search = new SearchTree(1000);
+      const picker = search.makePicker(alwaysPickMin, {
         replaceRequest: (_, req) => new PickRequest(req.min, req.min),
       });
       assert(picker !== undefined);
@@ -272,8 +279,8 @@ describe("Cursor", () => {
 
     repeatTest(underlyingPickers, (underlying) => {
       const digit = new PickRequest(0, 9);
-      const tree = new SearchTree(2000);
-      const picker = tree.makePicker(underlying);
+      const search = new SearchTree(2000);
+      const picker = search.makePicker(underlying);
       assert(picker !== undefined);
 
       const seen = new Set<string>();

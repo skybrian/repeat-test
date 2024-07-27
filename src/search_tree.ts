@@ -4,7 +4,7 @@ import { alwaysPickMin, IntPicker, PickList, PickRequest } from "./picks.ts";
 import { Pruned, RetryPicker } from "./backtracking.ts";
 
 /** Indicates that the subtree rooted at a branch has been fully explored. */
-const PRUNED = Symbol("pruned");
+export const PRUNED = Symbol("pruned");
 
 /**
  * The state of a subtree.
@@ -22,7 +22,7 @@ type Branch = undefined | Node | typeof PRUNED;
  * Invariant: `branchesLeft >= 1` for nodes in the tree. (Otherwise, the node
  * should have been removed.)
  */
-class Node {
+export class Node {
   [key: number]: Branch;
 
   #reqMin: number;
@@ -216,6 +216,13 @@ export class Cursor implements RetryPicker {
     return false;
   }
 
+  isOnlyPlayout(): boolean {
+    for (const node of this.getNodes()) {
+      if (node.branchesLeft > 1) return false;
+    }
+    return true;
+  }
+
   /**
    * Recomputes the odds after taking a branch.
    * @param branchCount the number of branches that could have been taken.
@@ -301,14 +308,21 @@ export class Cursor implements RetryPicker {
 
   finishPlayout(): boolean {
     this.tree.checkAlive(this.version);
+    let accepted = false;
+    if (this.depth === 0) {
+      accepted = this.acceptEmptyPlayout;
+    } else {
+      const lastReq = this.modifiedReqs[this.modifiedReqs.length - 1];
+      const lastDepth = this.modifiedReqs.length - 2;
+      accepted = this.acceptPlayout(lastDepth, lastReq);
+    }
+
     this.done = true;
     this.tree.endPlayout();
-    if (this.depth === 0) {
-      return this.acceptEmptyPlayout;
+    if (this.isOnlyPlayout()) {
+      this.tree.endSearch();
     }
-    const lastReq = this.modifiedReqs[this.modifiedReqs.length - 1];
-    const lastDepth = this.modifiedReqs.length - 2;
-    return this.acceptPlayout(lastDepth, lastReq);
+    return accepted;
   }
 
   /**
