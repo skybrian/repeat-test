@@ -75,8 +75,12 @@ describe("table", () => {
       assertEquals(table.default(), []);
     });
     it("generates the same values as uniqueArray", () => {
-      const expected = arb.uniqueArray(arb.boolean()).takeAll();
-      const actual = table.map((rows) => rows.map((row) => row.v)).takeAll();
+      const expected = arb.uniqueArray(arb.boolean()).map((r) =>
+        JSON.stringify(r)
+      ).takeAll();
+      const actual = table.map((rows) => rows.map((row) => row.v)).map((r) =>
+        JSON.stringify(r)
+      ).takeAll();
       assertEquals(actual, expected);
     });
   });

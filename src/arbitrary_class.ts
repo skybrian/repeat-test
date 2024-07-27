@@ -1,7 +1,8 @@
 import { AnyRecord } from "./types.ts";
-import { PickList, PickRequest } from "./picks.ts";
+import { PickList, PickRequest, PlaybackPicker } from "./picks.ts";
 import {
   minPlayout,
+  onePlayoutPicker,
   Pruned,
   RetryPicker,
   rotatePicks,
@@ -13,12 +14,16 @@ export type PickFunctionOptions<T> = {
   /**
    * Filters out values that don't pass the given filter.
    *
-   * @param accept a function that returns true if the picked value
-   * should be accepted.
+   * Returns true if the picked value should be accepted.
    *
    * It should always return true for an arbitrary's default value.
    */
   accept?: (val: T) => boolean;
+
+  /**
+   * A filter for the picks that were used to generate an Arbitrary.
+   */
+  acceptPicks?: (picks: PickList) => boolean;
 
   /**
    * If set, default picks in requests will be replaced with the given picks for
@@ -72,26 +77,22 @@ export type ArbitraryOpts = {
  * Holds a generated value along with the picks that were used to generate it.
  */
 export class Generated<T> {
-  #generator: Arbitrary<T>;
   #picks: PickList;
   #spans: SpanList;
   #val: T;
 
   constructor(
-    generator: Arbitrary<T>,
     picks: PickList,
     spans: SpanList,
     val: T,
   ) {
-    this.#generator = generator;
     this.#picks = picks;
     this.#spans = spans;
     this.#val = val;
   }
 
-  /** The arbitrary that generated this value. */
-  get generator(): Arbitrary<T> {
-    return this.#generator;
+  get ok(): true {
+    return true;
   }
 
   get val() {
@@ -173,7 +174,7 @@ export default class Arbitrary<T> {
         const pick = Arbitrary.makePickFunction(log, picker);
         const val = this.#callback(pick);
         if (picker.finishPlayout()) {
-          return new Generated(this, picker.getPicks(), log.getSpans(), val);
+          return new Generated(picker.getPicks(), log.getSpans(), val);
         }
       } catch (e) {
         if (!(e instanceof Pruned)) {
@@ -237,7 +238,6 @@ export default class Arbitrary<T> {
    */
   generateAll(): IterableIterator<Generated<T>> {
     function* listGenerator(
-      arb: Arbitrary<T>,
       items: T[],
     ): IterableIterator<Generated<T>> {
       const req = new PickRequest(0, listGenerator.length - 1);
@@ -245,7 +245,7 @@ export default class Arbitrary<T> {
       for (let i = 0; i < items.length; i++) {
         const val = items[i];
         const picks = new PickList([req], [i]);
-        yield new Generated(arb, picks, spans, val);
+        yield new Generated(picks, spans, val);
       }
     }
 
@@ -269,7 +269,7 @@ export default class Arbitrary<T> {
     }
 
     if (this.#examples) {
-      return listGenerator(this, this.#examples);
+      return listGenerator(this.#examples);
     } else {
       return callbackGenerator(this);
     }
@@ -531,6 +531,22 @@ export default class Arbitrary<T> {
     return Arbitrary.from(examples, { label: "of" });
   }
 
+  /**
+   * Returns the result of running a callback with some picks.
+   *
+   * (For testing.)
+   */
+  static runCallback<T>(
+    callback: ArbitraryCallback<T>,
+    picks: number[],
+  ): Generated<T> {
+    const picker = onePlayoutPicker(new PlaybackPicker(picks));
+    const log = new SpanLog(picker);
+    const pick = Arbitrary.makePickFunction(log, picker);
+    const val = callback(pick);
+    return new Generated(picker.getPicks(), log.getSpans(), val);
+  }
+
   private static makePickFunction<T>(
     log: SpanLog,
     defaultPicker: RetryPicker,
@@ -552,11 +568,23 @@ export default class Arbitrary<T> {
         if (!pick.ok) throw new Pruned(pick.message);
         return pick.val;
       } else if (req instanceof Arbitrary) {
-        const accept = opts?.accept;
+        const { accept, acceptPicks } = opts ?? {};
         if (accept !== undefined) {
+          if (acceptPicks !== undefined) {
+            throw new Error("accept and acceptPick cannot be used together");
+          }
           return req.innerPickWithFilter(log, pick, accept);
         } else {
-          return req.innerPick(log, pick);
+          const depthBefore = picker.depth;
+          const result = req.innerPick(log, pick);
+          if (acceptPicks !== undefined) {
+            const picks = picker.getPicks();
+            picks.splice(0, depthBefore);
+            if (!acceptPicks(picks)) {
+              throw new Pruned("picks not accepted");
+            }
+          }
+          return result;
         }
       } else if (typeof req === "function") {
         const level = log.startSpan();

@@ -1,6 +1,7 @@
 import { AnyRecord } from "../types.ts";
 import Arbitrary, { RecordShape } from "../arbitrary_class.ts";
 import * as arb from "./basics.ts";
+import { Urn } from "../urn_class.ts";
 
 export function uniqueArray<T>(
   item: Arbitrary<T>,
@@ -8,14 +9,12 @@ export function uniqueArray<T>(
 ): Arbitrary<T[]> {
   const label = opts?.label ?? "uniqueArray";
   return arb.from((pick) => {
-    const items = new Set<T>();
-    // Hack: items is mutable, which bypasses the check that an arbitrary has a
-    // default value.
-    const filtered = item.filter((v) => !items.has(v));
-    while (pick(arb.boolean())) {
-      items.add(pick(filtered));
+    const urn = new Urn(item);
+    const out: T[] = [];
+    while (!urn.isEmpty() && pick(arb.boolean())) {
+      out.push(urn.takeOne(pick));
     }
-    return Array.from(items);
+    return out;
   }, { label });
 }
 
