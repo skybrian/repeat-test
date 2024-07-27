@@ -132,6 +132,7 @@ export function runRep<T>(rep: Rep<T>): Success<void> | TestFailure<T> {
   if (!interesting(rep.arg.val)) {
     return success();
   }
+  console.log("\nTest failed. Shrinking...");
   const shrunk = shrink(rep.arb, interesting, rep.arg);
   try {
     rep.test(shrunk.val);

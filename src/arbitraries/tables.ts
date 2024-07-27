@@ -20,27 +20,36 @@ export function uniqueArray<T>(
 
 export type TableOpts<T extends AnyRecord> = {
   label?: string;
-  uniqueKey?: keyof T;
+  uniqueKeys?: (keyof T & string)[];
 };
 
 export function table<R extends AnyRecord>(
   shape: RecordShape<R>,
   opts?: TableOpts<R>,
 ): Arbitrary<R[]> {
-  const uniqueKey = opts?.uniqueKey;
+  const uniqueKeys = opts?.uniqueKeys ?? [];
 
   const label = opts?.label ?? "table";
 
   return arb.from((pick) => {
-    const jar = uniqueKey ? new Jar(shape[uniqueKey]) : undefined;
+    const jars: Record<string, Jar<unknown>> = {};
+    for (const key of uniqueKeys) {
+      jars[key] = new Jar(shape[key]);
+    }
 
     const addRow: Arbitrary<R | undefined> = arb.from((pick) => {
-      if (jar?.isEmpty() || !pick(arb.boolean())) {
+      for (const jar of Object.values(jars)) {
+        if (jar?.isEmpty()) {
+          return undefined;
+        }
+      }
+      if (!pick(arb.boolean())) {
         return undefined;
       }
       const row: Record<string, unknown> = {};
       for (const key of Object.keys(shape)) {
-        if (jar && key === uniqueKey) {
+        const jar = jars[key];
+        if (jar) {
           row[key] = jar.pickUnused(pick);
         } else {
           row[key] = pick(shape[key]);

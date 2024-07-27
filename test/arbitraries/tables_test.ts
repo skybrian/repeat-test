@@ -86,8 +86,8 @@ describe("table", () => {
       assertEquals(table.label, "my table");
     });
   });
-  describe("with one column that's a unique key", () => {
-    const table = arb.table({ v: arb.boolean() }, { uniqueKey: "v" });
+  describe("with one unique column", () => {
+    const table = arb.table({ v: arb.boolean() }, { uniqueKeys: ["v"] });
     it("defaults to zero rows", () => {
       assertEquals(table.default(), []);
     });
@@ -105,7 +105,7 @@ describe("table", () => {
     const table = arb.table({
       k: arb.boolean(),
       v: arb.boolean(),
-    }, { uniqueKey: "k" });
+    }, { uniqueKeys: ["k"] });
     it("starts with zero and one-row tables", () => {
       assertFirstValues(table, [
         [],
@@ -120,6 +120,20 @@ describe("table", () => {
       repeatTest(table.filter((t) => t.length > 1), (rows) => {
         const keys = new Set(rows.map((row) => row.k));
         assertEquals(keys.size, rows.length);
+      });
+    });
+  });
+  describe("with two unique columns", () => {
+    const table = arb.table({
+      ids: arb.asciiLetter(),
+      ranks: arb.int(1, 5),
+    }, { uniqueKeys: ["ids", "ranks"] });
+    it("generates unique ids and ranks", () => {
+      repeatTest(table, (rows) => {
+        const ids = new Set(rows.map((row) => row.ids));
+        assertEquals(ids.size, rows.length, "ids should be unique");
+        const ranks = new Set(rows.map((row) => row.ranks));
+        assertEquals(ranks.size, rows.length, "ranks should be unique");
       });
     });
   });
