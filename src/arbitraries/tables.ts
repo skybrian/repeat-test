@@ -1,18 +1,18 @@
 import { AnyRecord } from "../types.ts";
 import Arbitrary, { RecordShape } from "../arbitrary_class.ts";
 import * as arb from "./basics.ts";
-import { Urn } from "../urn_class.ts";
+import { Jar } from "../urn_class.ts";
 
 export function uniqueArray<T>(
-  item: Arbitrary<T>,
+  choices: Arbitrary<T>,
   opts?: { label?: string },
 ): Arbitrary<T[]> {
   const label = opts?.label ?? "uniqueArray";
   return arb.from((pick) => {
-    const urn = new Urn(item);
+    const jar = new Jar(choices);
     const out: T[] = [];
-    while (!urn.isEmpty() && pick(arb.boolean())) {
-      out.push(urn.takeOne(pick));
+    while (!jar.isEmpty() && pick(arb.boolean())) {
+      out.push(jar.pickUnused(pick));
     }
     return out;
   }, { label });
