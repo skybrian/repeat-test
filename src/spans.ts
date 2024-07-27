@@ -60,7 +60,7 @@ export function nestedPicks(replies: number[], spans: SpanList): NestedPicks {
  * This log can be used along with a {@link RetryPicker} to record spans within
  * which picks were requested. The starts and ends of spans are recorded based
  * on how many picks were recorded. The {@link cancelSpan} method must be called
- * instead of {@link RetryPicker.backTo}.
+ * instead of {@link RetryPicker.startAt}.
  *
  * Spans must nest to form a tree. Spans with less than two picks aren't
  * recorded. A span's *level* is the number of spans are still open when it's
@@ -120,7 +120,7 @@ export class SpanLog {
     this.starts.splice(idx);
     this.ends.splice(idx);
 
-    return this.picker.backTo(start);
+    return this.picker.startAt(start);
   }
 
   /**

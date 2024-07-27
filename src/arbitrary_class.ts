@@ -168,13 +168,17 @@ export default class Arbitrary<T> {
    */
   generate(pickers: Iterable<RetryPicker>): Generated<T> | undefined {
     for (const picker of pickers) {
+      if (!picker.startAt(0)) {
+        throw new Error("startAt failed");
+      }
       const log = new SpanLog(picker);
 
       try {
         const pick = Arbitrary.makePickFunction(log, picker);
         const val = this.#callback(pick);
-        if (picker.finishPlayout()) {
-          return new Generated(picker.getPicks(), log.getSpans(), val);
+        const picks = picker.finishPlayout();
+        if (picks.ok) {
+          return new Generated(picks, log.getSpans(), val);
         }
       } catch (e) {
         if (!(e instanceof Pruned)) {
@@ -543,6 +547,9 @@ export default class Arbitrary<T> {
     const picker = onePlayoutPicker(new PlaybackPicker(picks));
     const log = new SpanLog(picker);
     const pick = Arbitrary.makePickFunction(log, picker);
+    if (!picker.startAt(0)) {
+      throw new Error("couldn't start playout");
+    }
     const val = callback(pick);
     return new Generated(picker.getPicks(), log.getSpans(), val);
   }

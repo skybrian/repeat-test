@@ -143,6 +143,8 @@ export function alwaysPick(n: number) {
 }
 
 export class PickList {
+  readonly ok = true; // Can be used as a success response.
+
   #reqs: PickRequest[];
   #replies: number[];
 

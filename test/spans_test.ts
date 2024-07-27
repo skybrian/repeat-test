@@ -111,6 +111,7 @@ describe("SpanLog", () => {
     const tree = new SearchTree(0);
     const picker = tree.makePicker(alwaysPickMin);
     assert(picker !== undefined);
+    assert(picker.startAt(0));
     return picker;
   }
   let picker = makePicker();

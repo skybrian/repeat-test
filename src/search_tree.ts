@@ -138,6 +138,8 @@ export type SearchOpts = {
 };
 
 export class Cursor implements RetryPicker {
+  #state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
+
   /* Invariant: `nodes.length === reqs.length === picks.length` */
 
   /**
@@ -158,8 +160,6 @@ export class Cursor implements RetryPicker {
   private readonly replaceRequest: RequestFilter;
   private readonly acceptPlayout: PlayoutFilter;
   private readonly acceptEmptyPlayout: boolean;
-
-  private done = false;
 
   /**
    * The odds that a playout other than the one we're on would have been picked
@@ -188,6 +188,10 @@ export class Cursor implements RetryPicker {
     this.acceptEmptyPlayout = opts.acceptEmptyPlayout ?? true;
   }
 
+  get state() {
+    return this.#state;
+  }
+
   getNodes(): Node[] {
     this.tree.checkAlive(this.version);
     return this.nodes;
@@ -199,28 +203,60 @@ export class Cursor implements RetryPicker {
   }
 
   /**
-   * Prunes the current playout if the last fork is at the given depth or higher.
-   *
-   * If it returns false, the last fork is at a lower depth.
+   * Prunes the current playout and any ancestors that have only one branch left.
+   * Returns the new depth, or -1 if the search is over.
    */
-  prune(depth: number) {
+  prune(): number {
     const nodes = this.getNodes();
     const picks = this.picks;
-    for (let i = nodes.length - 1; i > depth; i--) {
-      const parent = nodes[i];
-      if (parent.branchesLeft > 1) {
-        parent.prune(picks[i]);
-        return true;
+    // Prune at the last node with more than one branch.
+    for (let i = nodes.length - 1; i > 0; i--) {
+      const n = nodes[i];
+      if (n.branchesLeft > 1) {
+        n.prune(picks[i]);
+        // This node should be removed from the stack so we take a different branch.
+        return i - 1;
       }
     }
-    return false;
+    // No branches. Prune the last playout of the search.
+    nodes[0].prune(picks[0]);
+    return -1;
   }
 
-  isOnlyPlayout(): boolean {
-    for (const node of this.getNodes()) {
-      if (node.branchesLeft > 1) return false;
+  private trimStack(depth: number): boolean {
+    if (depth < 0) {
+      throw new Error("depth must be >= 0");
+    } else if (depth + 1 > this.nodes.length) {
+      return false;
+    } else if (depth + 1 === this.nodes.length) {
+      return true;
+    }
+    this.nodes.length = depth + 1;
+    this.originalReqs.length = depth + 1;
+    this.modifiedReqs.length = depth + 1;
+    this.picks.length = depth + 1;
+    if (this.wrapped.isRandom) {
+      this.notTakenOdds = 0;
+      for (const node of this.getNodes()) {
+        this.updateOdds(node.branchesLeft);
+      }
     }
     return true;
+  }
+
+  private removePlayout() {
+    const newDepth = this.prune();
+    if (newDepth === -1) {
+      this.tree.endSearch();
+      this.#state = "searchDone";
+      return;
+    }
+    if (!this.trimStack(newDepth)) {
+      throw new Error("internal error: stack was not trimmed");
+    }
+
+    this.#state = "playoutDone";
+    this.tree.endPlayout();
   }
 
   /**
@@ -232,15 +268,6 @@ export class Cursor implements RetryPicker {
 
     if (branchCount < 1) throw new Error("branchCount must be at least 1");
     this.notTakenOdds = this.notTakenOdds * branchCount + (branchCount - 1);
-  }
-
-  private recalculateOdds() {
-    if (!this.wrapped.isRandom) return;
-
-    this.notTakenOdds = 0;
-    for (const node of this.getNodes()) {
-      this.updateOdds(node.branchesLeft);
-    }
   }
 
   private nextNode(req: PickRequest) {
@@ -285,8 +312,30 @@ export class Cursor implements RetryPicker {
     return node;
   }
 
+  startAt(depth: number): boolean {
+    this.tree.checkAlive(this.version);
+    if (this.#state === "ready") {
+      this.#state = "picking";
+      return true;
+    } else if (this.#state === "picking") {
+      this.removePlayout(); // should change state
+    }
+    if (this.#state !== "playoutDone") {
+      return false;
+    }
+    if (!this.trimStack(depth)) {
+      return false;
+    }
+    this.#state = "picking";
+    return true;
+  }
+
   maybePick(req: PickRequest): Success<number> | Pruned {
-    if (this.done) throw new Error("cannot pick after finishPlayout");
+    if (this.#state !== "picking") {
+      throw new Error(
+        `maybePick called in the wrong state. Wanted "picking"; got "${this.#state}"`,
+      );
+    }
 
     const modified = this.replaceRequest(this.depth, req);
     if (!modified) {
@@ -306,51 +355,28 @@ export class Cursor implements RetryPicker {
     return success(pick);
   }
 
-  finishPlayout(): boolean {
+  finishPlayout(): PickList | Pruned {
     this.tree.checkAlive(this.version);
-    let accepted = false;
+    if (this.#state !== "picking") {
+      throw new Error(
+        `finishPlayout called in the wrong state. Wanted "picking"; got "${this.#state}"`,
+      );
+    }
+    let result: PickList | Pruned = new Pruned("filtered out");
     if (this.depth === 0) {
-      accepted = this.acceptEmptyPlayout;
+      if (this.acceptEmptyPlayout) {
+        result = this.getPicks();
+      }
     } else {
       const lastReq = this.modifiedReqs[this.modifiedReqs.length - 1];
       const lastDepth = this.modifiedReqs.length - 2;
-      accepted = this.acceptPlayout(lastDepth, lastReq);
-    }
-
-    this.done = true;
-    this.tree.endPlayout();
-    if (this.isOnlyPlayout()) {
-      this.tree.endSearch();
-    }
-    return accepted;
-  }
-
-  /**
-   * Returns true if there is a playout to try at the given depth. Otherwise,
-   * the caller should backtrack more.
-   */
-  backTo(depth: number): boolean {
-    const nodes = this.getNodes();
-    if (depth < 0 || depth > nodes.length - 1) {
-      throw new Error(
-        "depth must be between 0 and " + (nodes.length - 1),
-      );
-    }
-    if (!this.prune(depth)) {
-      if (depth === 0) {
-        this.tree.endSearch();
+      if (this.acceptPlayout(lastDepth, lastReq)) {
+        result = this.getPicks();
       }
-      return false;
     }
-    nodes.splice(depth + 1);
-    this.originalReqs.splice(depth + 1);
-    this.modifiedReqs.splice(depth + 1);
-    this.picks.splice(depth + 1);
-    if (!this.done) {
-      this.tree.endPlayout();
-    }
-    this.recalculateOdds();
-    return true;
+
+    this.removePlayout();
+    return result;
   }
 
   get depth(): number {
@@ -457,8 +483,8 @@ export class SearchTree {
 
   makePicker(wrapped: IntPicker, opts?: SearchOpts): Cursor | undefined {
     if (this.cursor) {
-      if (!this.searchDone) {
-        this.cursor.backTo(0);
+      if (this.cursor.state === "picking") {
+        this.cursor.finishPlayout();
       }
       this.cursor = undefined;
     }
@@ -482,7 +508,7 @@ export class SearchTree {
  * should always be the same (there is only one root), and subsequent picks
  * should only depend on the reply to the previous pick request.
  *
- * The next playout can be started either by calling {@link RetryPicker.backTo}
+ * The next playout can be started either by calling {@link RetryPicker.startAt}
  * (if successful) or by taking the next value from the iterator.
  */
 export function depthFirstSearch(opts?: SearchOpts): Iterable<RetryPicker> {

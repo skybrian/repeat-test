@@ -11,6 +11,7 @@ const bit = new PickRequest(0, 1);
 describe("onePlayoutPicker", () => {
   it("records one playout", () => {
     const picker = onePlayoutPicker(randomPicker(123));
+    assert(picker.startAt(0));
     const first = picker.maybePick(bit);
     assert(first.ok);
     const second = picker.maybePick(bit);
@@ -18,13 +19,14 @@ describe("onePlayoutPicker", () => {
     assertEquals(picker.getPicks().reqs(), [bit, bit]);
     assertEquals(picker.getPicks().replies(), [first.val, second.val]);
     assertEquals(picker.depth, 2);
-    assertEquals(picker.backTo(0), false);
+    assertEquals(picker.startAt(0), false);
   });
 });
 
 describe("rotatePicks", () => {
   it("returns the new defaults instead of a minimum value", () => {
     const picker = rotatePicks(onePlayoutPicker(alwaysPickMin), [1, 2]);
+    assert(picker.startAt(0));
 
     const bit = new PickRequest(0, 1);
     assertEquals(picker.maybePick(bit), { ok: true, val: 1 });
@@ -49,6 +51,7 @@ describe("rotatePicks", () => {
     const playouts: string[] = [];
     for (let picker of depthFirstSearch()) {
       picker = rotatePicks(picker, [1, 1]);
+      assert(picker.startAt(0));
       for (let i = 0; i < 3; i++) {
         picker.maybePick(bit);
       }
@@ -71,11 +74,12 @@ describe("rotatePicks", () => {
     const playouts: string[] = [];
     for (let picker of breadthFirstSearch()) {
       picker = rotatePicks(picker, [1, 1]);
+      assert(picker.startAt(0));
       for (let i = 0; i < 3; i++) {
         picker.maybePick(bit);
       }
       assertEquals(picker.depth, 3);
-      if (picker.finishPlayout()) {
+      if (picker.finishPlayout().ok) {
         playouts.push(JSON.stringify(picker.getPicks().replies()));
       }
     }

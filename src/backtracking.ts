@@ -6,9 +6,9 @@ import { alwaysPickMin, IntPicker, PickList, PickRequest } from "./picks.ts";
  *
  * This can happen due to filtering or a partial search.
  *
- * Sometimes recovery is possible by backtracking and picking again. (See
- * {@link RetryPicker.backTo}.) It won't be possible when a search has exhausted
- * all possible pick sequences.
+ * Sometimes recovery is possible by starting a new playout and picking again.
+ * (See {@link RetryPicker.startAt}.) It won't be possible when a search has
+ * visited every playout.
  */
 export class Pruned extends Error {
   readonly ok = false;
@@ -23,6 +23,19 @@ export class Pruned extends Error {
  */
 export interface RetryPicker {
   /**
+   * Starts a new playout, possibly by backtracking.
+   *
+   * It implicitly cancels any playout in progress.
+   *
+   * If it returns false, there's no next playout at the given depth, and the
+   * caller should try again with a lower depth.
+   *
+   * If `startAt(0)` returns false, there are no more playouts and the search is
+   * over.
+   */
+  startAt(depth: number): boolean;
+
+  /**
    * Picks an integer within the range of the given request.
    *
    * If successful, the pick is recorded and the depth is incremented.
@@ -32,24 +45,14 @@ export interface RetryPicker {
   maybePick(req: PickRequest): Success<number> | Pruned;
 
   /**
-   * Tells the picker that no more picks are needed.
+   * Ends a playout.
    *
-   * Returns false if the current playout is cancelled.
+   * Returns either the picks for the finished playout or @{link Pruned} if the
+   * search filtered it out.
+   *
    * It's an error to call {@link maybePick} after finishing the playout.
    */
-  finishPlayout(): boolean;
-
-  /**
-   * Returns to a previous point in the pick sequence.
-   *
-   * This implicitly cancels the current playout and starts a new playout.
-   *
-   * If it fails, there's no next playout at the given depth, and the caller
-   * should try again with a lower depth.
-   *
-   * If `backTo(0)` returns false, the entire tree has been searched.
-   */
-  backTo(depth: number): boolean;
+  finishPlayout(): PickList | Pruned;
 
   /**
    * The number of picks so far. (Corresponds to the current depth in a search
@@ -69,28 +72,41 @@ export interface RetryPicker {
  * It just logs the picks.
  */
 export function onePlayoutPicker(picker: IntPicker): RetryPicker {
+  let state: "ready" | "picking" | "done" = "ready";
   const picks = new PickList();
-  let done = false;
 
   return {
-    get depth() {
-      return picks.length;
+    startAt: function (depth: number): boolean {
+      if (state !== "ready" || depth !== 0) {
+        return false;
+      }
+      state = "picking";
+      return true;
     },
 
     maybePick(req) {
-      if (done) {
-        throw new Error("maybePick called after the playout finished");
+      if (state !== "picking") {
+        throw new Error(
+          `maybePick called in the wrong state. Wanted "running"; got "${state}"`,
+        );
       }
       const pick = picker.pick(req);
       picks.push(req, pick);
       return success(pick);
     },
-    finishPlayout: function (): boolean {
-      done = true;
-      return true;
+
+    finishPlayout: function (): PickList | Pruned {
+      if (state !== "picking") {
+        throw new Error(
+          `finishPlayout called in the wrong state. Wanted "running"; got "${state}"`,
+        );
+      }
+      state = "done";
+      return picks.slice();
     },
-    backTo: function (): boolean {
-      return false;
+
+    get depth() {
+      return picks.length;
     },
 
     getPicks: function (): PickList {
@@ -119,6 +135,17 @@ export function rotatePicks(
   const picks = new PickList();
 
   const picker: RetryPicker = {
+    startAt(depth: number): boolean {
+      if (depth < 0 || depth > defaultPlayout.length) {
+        return false;
+      }
+      if (!wrapped.startAt(depth)) {
+        return false;
+      }
+      picks.length = depth;
+      return true;
+    },
+
     maybePick(req) {
       const depth = wrapped.depth;
       const oldPick = wrapped.maybePick(req);
@@ -137,20 +164,18 @@ export function rotatePicks(
       picks.push(req, pick);
       return success(pick);
     },
-    backTo(depth: number): boolean {
-      if (!wrapped.backTo(depth)) {
-        return false;
-      }
-      picks.length = depth;
-      return true;
-    },
-    finishPlayout(): boolean {
-      return wrapped.finishPlayout();
+
+    finishPlayout(): PickList | Pruned {
+      const wrappedPicks = wrapped.finishPlayout();
+      if (!wrappedPicks.ok) return wrappedPicks;
+      picks.length = wrappedPicks.length;
+      return picks.slice();
     },
 
     get depth() {
       return picks.length;
     },
+
     getPicks(): PickList {
       return picks.slice();
     },
