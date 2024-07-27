@@ -1,5 +1,5 @@
 import { describe, it } from "@std/testing/bdd";
-import { Jar } from "../src/urn_class.ts";
+import { Jar } from "../src/jar_class.ts";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import Arbitrary from "../src/arbitrary_class.ts";
 import { Pruned } from "../src/backtracking.ts";

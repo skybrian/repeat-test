@@ -1,7 +1,7 @@
 import { AnyRecord } from "../types.ts";
 import Arbitrary, { RecordShape } from "../arbitrary_class.ts";
 import * as arb from "./basics.ts";
-import { Jar } from "../urn_class.ts";
+import { Jar } from "../jar_class.ts";
 
 export function uniqueArray<T>(
   choices: Arbitrary<T>,
