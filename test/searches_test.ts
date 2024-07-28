@@ -475,13 +475,12 @@ function runPass(
   const playouts = new Set<string>();
   let pruneCalls = 0;
   let prunedPlayouts = 0;
-  for (
-    const picker of breadthFirstPass(idx, () => {
-      pruneCalls++;
-    })
-  ) {
+  const search = breadthFirstPass(idx, () => {
+    pruneCalls++;
+  });
+  while (!search.done) {
     try {
-      const playout = walk(picker);
+      const playout = walk(search);
       if (playout === undefined) {
         prunedPlayouts++;
         continue;

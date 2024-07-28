@@ -404,7 +404,8 @@ export class PlayoutSearch implements PlayoutPicker {
     }
 
     const modified = this.replaceRequest(this.depth, req);
-    if (!modified) {
+    if (modified === undefined) {
+      this.removePlayout();
       return new Pruned("filtered by replaceRequest");
     }
 
@@ -455,10 +456,10 @@ export class PlayoutSearch implements PlayoutPicker {
  * @param passIdx the number of previous passes that were run.
  * @param more called if more passes are needed.
  */
-export function* breadthFirstPass(
+export function breadthFirstPass(
   passIdx: number,
   more: () => void,
-): Iterable<PlayoutPicker> {
+): PlayoutSearch {
   let moreSent = false;
   function pruned() {
     if (!moreSent) {
@@ -484,17 +485,11 @@ export function* breadthFirstPass(
     return lastDepth >= passIdx - 1;
   };
 
-  const search = new PlayoutSearch({
+  return new PlayoutSearch({
     replaceRequest,
     acceptPlayout,
     acceptEmptyPlayout: passIdx === 0,
   });
-  while (!search.done) {
-    yield search;
-    if (search.picking) {
-      search.finishPlayout();
-    }
-  }
 }
 
 /**
@@ -510,9 +505,15 @@ export function* breadthFirstSearch(): Iterable<PlayoutPicker> {
   let pruned = true;
   while (pruned) {
     pruned = false;
-    yield* breadthFirstPass(maxDepth, () => {
+    const search = breadthFirstPass(maxDepth, () => {
       pruned = true;
     });
+    while (!search.done) {
+      yield search;
+      if (search.picking) {
+        search.finishPlayout();
+      }
+    }
     maxDepth++;
   }
 }

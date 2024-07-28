@@ -46,7 +46,7 @@ export interface PlayoutPicker {
    *
    * If successful, the pick is recorded and the depth is incremented.
    *
-   * Throws {@link Pruned} if the current playout is cancelled.
+   * Returns {@link Pruned} if the current playout is cancelled.
    */
   maybePick(req: PickRequest): Success<number> | Pruned;
 
