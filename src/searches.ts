@@ -157,8 +157,13 @@ class PickStack {
     return this.nodes[this.nodes.length - 1].tracked;
   }
 
-  getPicks(): PickList {
-    return new PickList(this.originalReqs.slice(1), this.picks.slice(1));
+  getPicks(start?: number, end?: number): PickList {
+    start = start ? start + 1 : 1;
+    end = end ? end + 1 : this.picks.length;
+    return new PickList(
+      this.originalReqs.slice(start, end),
+      this.picks.slice(start, end),
+    );
   }
 
   nextNode(req: PickRequest, playoutsLeft: number): Node {
@@ -441,13 +446,13 @@ export class PlayoutSearch implements PlayoutPicker {
     return this.stack.depth;
   }
 
-  getPicks(): PickList {
+  getPicks(start?: number, end?: number): PickList {
     if (this.state !== "picking") {
       throw new Error(
         `getPicks called in the wrong state. Wanted "picking"; got "${this.state}"`,
       );
     }
-    return this.stack.getPicks();
+    return this.stack.getPicks(start, end);
   }
 }
 

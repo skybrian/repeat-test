@@ -67,11 +67,11 @@ export interface PlayoutPicker {
   get depth(): number;
 
   /**
-   * Returns the picks made so far.
+   * Returns a slice of the picks made so far.
    *
    * Available only between {@link startAt} and {@link finishPlayout}.
    */
-  getPicks(): PickList;
+  getPicks(start?: number, end?: number): PickList;
 }
 
 /**
@@ -82,7 +82,7 @@ export function onePlayout(picker: IntPicker): PlayoutPicker {
   const picks = new PickList();
 
   return {
-    startAt: function (depth: number): boolean {
+    startAt(depth: number): boolean {
       if (state !== "ready" || depth !== 0) {
         return false;
       }
@@ -101,7 +101,7 @@ export function onePlayout(picker: IntPicker): PlayoutPicker {
       return success(pick);
     },
 
-    finishPlayout: function (): boolean {
+    finishPlayout(): boolean {
       if (state !== "picking") {
         throw new Error(
           `finishPlayout called in the wrong state. Wanted "picking"; got "${state}"`,
@@ -115,13 +115,13 @@ export function onePlayout(picker: IntPicker): PlayoutPicker {
       return picks.length;
     },
 
-    getPicks: function (): PickList {
+    getPicks(start?: number, end?: number): PickList {
       if (state !== "picking") {
         throw new Error(
           `getPicks called in the wrong state. Wanted "picking"; got "${state}"`,
         );
       }
-      return picks.slice();
+      return picks.slice(start, end);
     },
   };
 }
@@ -188,11 +188,11 @@ export function rotatePicks(
       return picks.length;
     },
 
-    getPicks(): PickList {
+    getPicks(start?: number, end?: number): PickList {
       if (!picking) {
         throw new Error("getPicks called in the wrong state");
       }
-      return picks.slice();
+      return picks.slice(start, end);
     },
   };
   return picker;

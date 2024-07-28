@@ -575,8 +575,7 @@ export default class Arbitrary<T> {
           const depthBefore = picker.depth;
           const result = req.innerPick(log, pick);
           if (acceptPicks !== undefined) {
-            const picks = picker.getPicks();
-            picks.splice(0, depthBefore);
+            const picks = picker.getPicks(depthBefore);
             if (!acceptPicks(picks)) {
               throw new Pruned("picks not accepted");
             }
