@@ -522,19 +522,15 @@ export class SearchTree {
 }
 
 /**
- * Generates every possible playout in depth-first order.
- *
- * The caller defines the search tree by calling the {@link PlayoutPicker.maybePick}
- * function. Each pick determins the number of branches at a node. For example,
- * the first pick in each playout is always the root. The first call to pick
- * should always be the same (there is only one root), and subsequent picks
- * should only depend on the reply to the previous pick request.
- *
- * The next playout can be started either by calling {@link PlayoutPicker.startAt}
- * (if successful) or by taking the next value from the iterator.
+ * Generates every possible playout in depth-first order, starting from picking
+ * all minimums.
  */
-export function depthFirstSearch(opts?: SearchOpts): Iterable<PlayoutPicker> {
-  return new SearchTree(0).pickers(alwaysPickMin, opts);
+export function depthFirstSearch(opts?: SearchOpts): PlayoutPicker {
+  const picker = new SearchTree(0).makePicker(alwaysPickMin, opts);
+  if (picker === undefined) {
+    throw new Error("internal error: no playouts");
+  }
+  return picker;
 }
 
 /**

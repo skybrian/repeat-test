@@ -49,9 +49,9 @@ describe("rotatePicks", () => {
   it("works with depth-first search", () => {
     const bit = new PickRequest(0, 1);
     const playouts: string[] = [];
-    for (let picker of depthFirstSearch()) {
-      picker = rotatePicks(picker, [1, 1]);
-      assert(picker.startAt(0));
+    const wrapped = depthFirstSearch();
+    while (wrapped.startAt(0)) {
+      const picker = rotatePicks(wrapped, [1, 1]);
       for (let i = 0; i < 3; i++) {
         picker.maybePick(bit);
       }

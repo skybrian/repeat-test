@@ -411,21 +411,21 @@ class Maze {
   constructor(readonly tree: Tree<number>) {}
 
   visit(picker: PlayoutPicker) {
-    picker.startAt(0);
-    const val = randomWalk(this.tree, picker);
-    if (!val.ok) {
-      this.pruneCount++;
-      return;
-    }
-    const picks = JSON.stringify(picker.getPicks().replies());
-    if (picker.finishPlayout()) {
-      if (this.accepted.has(picks)) {
-        fail(`duplicate picks: ${picks}`);
+    while (picker.startAt(0)) {
+      const val = randomWalk(this.tree, picker);
+      if (!val.ok) {
+        this.pruneCount++;
+        continue;
       }
-      this.accepted.set(picks, val.val);
-    } else {
-      // console.log(`rejected: ${picks} -> ${val}`);
-      this.rejected.set(picks, val.val);
+      const picks = JSON.stringify(picker.getPicks().replies());
+      if (picker.finishPlayout()) {
+        if (this.accepted.has(picks)) {
+          fail(`duplicate picks: ${picks}`);
+        }
+        this.accepted.set(picks, val.val);
+      } else {
+        this.rejected.set(picks, val.val);
+      }
     }
   }
 
@@ -437,9 +437,7 @@ class Maze {
 
   static depthFirstSearch(tree: Tree<number>, opts: SearchOpts) {
     const maze = new Maze(tree);
-    for (const picker of depthFirstSearch(opts)) {
-      maze.visit(picker);
-    }
+    maze.visit(depthFirstSearch(opts));
     return maze;
   }
 }
@@ -453,9 +451,16 @@ describe("depthFirstSearch", () => {
     const maze = Maze.depthFirstSearch(tree, {
       replaceRequest: (depth, req) => depth < 1 ? req : undefined,
     });
-    assertEquals(Array.from(maze.accepted.keys()), ["[1]", "[2]"]);
-    assertEquals(Array.from(maze.rejected.keys()), []);
-    assertEquals(maze.pruneCount, 1);
+    const actual = {
+      accepted: Array.from(maze.accepted.keys()),
+      rejected: Array.from(maze.rejected.keys()),
+      pruneCount: maze.pruneCount,
+    };
+    assertEquals(actual, {
+      accepted: ["[1]", "[2]"],
+      rejected: [],
+      pruneCount: 1,
+    });
   });
   it("filters by last request depth === 0", () => {
     const maze = Maze.depthFirstSearch(tree, {
