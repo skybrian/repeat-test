@@ -473,14 +473,6 @@ describe("depthFirstSearch", () => {
     assertEquals(Array.from(maze.rejected.keys()), ["[1]", "[2]"]);
     assertEquals(maze.pruneCount, 0);
   });
-  it("filters by last request size", () => {
-    const maze = Maze.depthFirstSearch(tree, {
-      acceptPlayout: (_, req) => req.size === 3,
-    });
-    assertEquals(Array.from(maze.accepted.keys()), ["[1]", "[2]"]);
-    assertEquals(Array.from(maze.rejected.keys()), ["[0,0]", "[0,1]"]);
-    assertEquals(maze.pruneCount, 0);
-  });
 });
 
 const one = new PickRequest(1, 1);

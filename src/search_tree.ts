@@ -124,7 +124,7 @@ type RequestFilter = (
   req: PickRequest,
 ) => PickRequest | undefined;
 
-type PlayoutFilter = (depth: number, req: PickRequest) => boolean;
+type PlayoutFilter = (depth: number) => boolean;
 
 export type SearchOpts = {
   /**
@@ -137,11 +137,8 @@ export type SearchOpts = {
   acceptEmptyPlayout?: boolean;
 };
 
-export class Cursor implements PlayoutPicker {
-  #state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
-
+class PickStack {
   /* Invariant: `nodes.length === reqs.length === picks.length` */
-
   /**
    * The nodes used in the current playout. The 'start' node is at index 0, and
    * it points to the root at index 1.
@@ -157,10 +154,6 @@ export class Cursor implements PlayoutPicker {
    */
   private readonly picks: number[];
 
-  private readonly replaceRequest: RequestFilter;
-  private readonly acceptPlayout: PlayoutFilter;
-  private readonly acceptEmptyPlayout: boolean;
-
   /**
    * The odds that a playout other than the one we're on would have been picked
    * instead, assuming available branches were picked from a uniform
@@ -170,31 +163,18 @@ export class Cursor implements PlayoutPicker {
    * odds are 0:1, or 0%. A value of 1 means the odds are 1:1 or a 50%
    * probability.
    */
-  private notTakenOdds = 0;
+  private notTakenOdds: number | undefined;
 
-  constructor(
-    private readonly tree: CursorParent,
-    private readonly wrapped: IntPicker,
-    private readonly version: number,
-    start: Node,
-    opts: SearchOpts = {},
-  ) {
+  constructor(start: Node, opts: { trackOdds: boolean }) {
     this.nodes = [start];
     this.originalReqs = [new PickRequest(0, 0)];
     this.modifiedReqs = [new PickRequest(0, 0)];
     this.picks = [0];
-    this.replaceRequest = opts.replaceRequest ?? ((_, req) => req);
-    this.acceptPlayout = opts.acceptPlayout ?? (() => true);
-    this.acceptEmptyPlayout = opts.acceptEmptyPlayout ?? true;
+    this.notTakenOdds = opts.trackOdds ? 0 : undefined;
   }
 
-  get state() {
-    return this.#state;
-  }
-
-  getNodes(): Node[] {
-    this.tree.checkAlive(this.version);
-    return this.nodes;
+  get depth(): number {
+    return this.nodes.length - 1;
   }
 
   /** Returns true if the current playout is tracked so far. */
@@ -202,76 +182,12 @@ export class Cursor implements PlayoutPicker {
     return this.nodes[this.nodes.length - 1].tracked;
   }
 
-  /**
-   * Prunes the current playout and any ancestors that have only one branch left.
-   * Returns the new depth, or -1 if the search is over.
-   */
-  prune(): number {
-    const nodes = this.getNodes();
-    const picks = this.picks;
-    // Prune at the last node with more than one branch.
-    for (let i = nodes.length - 1; i > 0; i--) {
-      const n = nodes[i];
-      if (n.branchesLeft > 1) {
-        n.prune(picks[i]);
-        // This node should be removed from the stack so we take a different branch.
-        return i - 1;
-      }
-    }
-    // No branches. Prune the last playout of the search.
-    nodes[0].prune(picks[0]);
-    return -1;
+  getPicks(): PickList {
+    return new PickList(this.originalReqs.slice(1), this.picks.slice(1));
   }
 
-  private trimStack(depth: number): boolean {
-    if (depth < 0) {
-      throw new Error("depth must be >= 0");
-    } else if (depth + 1 > this.nodes.length) {
-      return false;
-    } else if (depth + 1 === this.nodes.length) {
-      return true;
-    }
-    this.nodes.length = depth + 1;
-    this.originalReqs.length = depth + 1;
-    this.modifiedReqs.length = depth + 1;
-    this.picks.length = depth + 1;
-    if (this.wrapped.isRandom) {
-      this.notTakenOdds = 0;
-      for (const node of this.getNodes()) {
-        this.updateOdds(node.branchesLeft);
-      }
-    }
-    return true;
-  }
-
-  private removePlayout() {
-    const newDepth = this.prune();
-    if (newDepth === -1) {
-      this.tree.endSearch();
-      this.#state = "searchDone";
-      return;
-    }
-    if (!this.trimStack(newDepth)) {
-      throw new Error("internal error: stack was not trimmed");
-    }
-
-    this.#state = "playoutDone";
-    this.tree.endPlayout();
-  }
-
-  /**
-   * Recomputes the odds after taking a branch.
-   * @param branchCount the number of branches that could have been taken.
-   */
-  private updateOdds(branchCount: number) {
-    if (!this.wrapped.isRandom) return;
-
-    if (branchCount < 1) throw new Error("branchCount must be at least 1");
-    this.notTakenOdds = this.notTakenOdds * branchCount + (branchCount - 1);
-  }
-
-  private nextNode(req: PickRequest) {
-    const nodes = this.getNodes();
+  nextNode(req: PickRequest, playoutsLeft: number): Node {
+    const nodes = this.nodes;
     const parent = nodes[nodes.length - 1];
     if (!parent.tracked) {
       return Node.untracked(req);
@@ -294,13 +210,13 @@ export class Cursor implements PlayoutPicker {
       return node;
     }
 
-    if (this.wrapped.isRandom) {
+    if (this.notTakenOdds !== undefined) {
       // See if we should create an untracked node.
       // (This is pushed to the stack but doesn't get added to the tree.)
       // If picking the same playout twice is unlikely, it's not worth tracking.
 
       this.updateOdds(req.size);
-      const willReturnProbability = this.tree.playoutsLeft /
+      const willReturnProbability = playoutsLeft /
         (1 + this.notTakenOdds);
       if (willReturnProbability < 0.5) {
         return Node.untracked(req);
@@ -310,6 +226,113 @@ export class Cursor implements PlayoutPicker {
     node = Node.tracked(req);
     parent.setBranch(parentPick, node);
     return node;
+  }
+
+  push(n: Node, req: PickRequest, modified: PickRequest, pick: number): void {
+    this.nodes.push(n);
+    this.originalReqs.push(req);
+    this.modifiedReqs.push(modified);
+    this.picks.push(pick);
+  }
+
+  /**
+   * Prunes the current playout and any ancestors that have only one branch left.
+   * Returns the new depth, or -1 if the search is over.
+   */
+  prune(): number {
+    const nodes = this.nodes;
+    const picks = this.picks;
+    // Prune at the last node with more than one branch.
+    for (let i = nodes.length - 1; i > 0; i--) {
+      const n = nodes[i];
+      if (n.branchesLeft > 1) {
+        n.prune(picks[i]);
+        // This node should be removed from the stack so we take a different branch.
+        return i - 1;
+      }
+    }
+    // No branches. Prune the last playout of the search.
+    nodes[0].prune(picks[0]);
+    return -1;
+  }
+
+  trim(depth: number): boolean {
+    if (depth < 0) {
+      throw new Error("depth must be >= 0");
+    } else if (depth + 1 > this.nodes.length) {
+      return false;
+    } else if (depth + 1 === this.nodes.length) {
+      return true;
+    }
+    this.nodes.length = depth + 1;
+    this.originalReqs.length = depth + 1;
+    this.modifiedReqs.length = depth + 1;
+    this.picks.length = depth + 1;
+    if (this.notTakenOdds !== undefined) {
+      this.notTakenOdds = 0;
+      for (const node of this.nodes) {
+        this.updateOdds(node.branchesLeft);
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Recomputes the odds after taking a branch.
+   * @param branchCount the number of branches that could have been taken.
+   */
+  private updateOdds(branchCount: number) {
+    if (this.notTakenOdds === undefined) return;
+
+    if (branchCount < 1) throw new Error("branchCount must be at least 1");
+    this.notTakenOdds = this.notTakenOdds * branchCount + (branchCount - 1);
+  }
+}
+
+export class Cursor implements PlayoutPicker {
+  #state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
+
+  private readonly stack;
+
+  private readonly replaceRequest: RequestFilter;
+  private readonly acceptPlayout: PlayoutFilter;
+  private readonly acceptEmptyPlayout: boolean;
+
+  constructor(
+    private readonly tree: CursorParent,
+    private readonly wrapped: IntPicker,
+    private readonly version: number,
+    start: Node,
+    opts: SearchOpts = {},
+  ) {
+    this.stack = new PickStack(start, { trackOdds: wrapped.isRandom });
+    this.replaceRequest = opts.replaceRequest ?? ((_, req) => req);
+    this.acceptPlayout = opts.acceptPlayout ?? (() => true);
+    this.acceptEmptyPlayout = opts.acceptEmptyPlayout ?? true;
+  }
+
+  get state() {
+    return this.#state;
+  }
+
+  /** Returns true if the current playout is tracked so far. */
+  get tracked(): boolean {
+    return this.stack.tracked;
+  }
+
+  private removePlayout() {
+    const newDepth = this.stack.prune();
+    if (newDepth === -1) {
+      this.tree.endSearch();
+      this.#state = "searchDone";
+      return;
+    }
+    if (!this.stack.trim(newDepth)) {
+      throw new Error("internal error: stack was not trimmed");
+    }
+
+    this.#state = "playoutDone";
+    this.tree.endPlayout();
   }
 
   startAt(depth: number): boolean {
@@ -323,7 +346,7 @@ export class Cursor implements PlayoutPicker {
     if (this.#state !== "playoutDone") {
       return false;
     }
-    if (!this.trimStack(depth)) {
+    if (!this.stack.trim(depth)) {
       return false;
     }
     this.#state = "picking";
@@ -331,6 +354,7 @@ export class Cursor implements PlayoutPicker {
   }
 
   maybePick(req: PickRequest): Success<number> | Pruned {
+    this.tree.checkAlive(this.version);
     if (this.#state !== "picking") {
       throw new Error(
         `maybePick called in the wrong state. Wanted "picking"; got "${this.#state}"`,
@@ -342,16 +366,13 @@ export class Cursor implements PlayoutPicker {
       return new Pruned("filtered by replaceRequest");
     }
 
-    const node = this.nextNode(modified);
+    const node = this.stack.nextNode(modified, this.tree.playoutsLeft);
     const firstChoice = this.wrapped.pick(modified);
     const pick = node.filterPick(firstChoice);
     if (pick === undefined) {
       throw new Error("internal error: node has no unpruned picks");
     }
-    this.getNodes().push(node);
-    this.originalReqs.push(req);
-    this.modifiedReqs.push(modified);
-    this.picks.push(pick);
+    this.stack.push(node, req, modified, pick);
     return success(pick);
   }
 
@@ -363,12 +384,11 @@ export class Cursor implements PlayoutPicker {
       );
     }
     let accepted = false;
-    if (this.depth === 0) {
+    if (this.stack.depth === 0) {
       accepted = this.acceptEmptyPlayout;
     } else {
-      const lastReq = this.modifiedReqs[this.modifiedReqs.length - 1];
-      const lastDepth = this.modifiedReqs.length - 2;
-      accepted = this.acceptPlayout(lastDepth, lastReq);
+      const lastDepth = this.stack.depth - 1;
+      accepted = this.acceptPlayout(lastDepth);
     }
 
     this.removePlayout();
@@ -376,16 +396,18 @@ export class Cursor implements PlayoutPicker {
   }
 
   get depth(): number {
-    return this.getNodes().length - 1;
+    this.tree.checkAlive(this.version);
+    return this.stack.depth;
   }
 
   getPicks(): PickList {
+    this.tree.checkAlive(this.version);
     if (this.#state !== "picking") {
       throw new Error(
         `getPicks called in the wrong state. Wanted "picking"; got "${this.#state}"`,
       );
     }
-    return new PickList(this.originalReqs.slice(1), this.picks.slice(1));
+    return this.stack.getPicks();
   }
 }
 
@@ -546,7 +568,7 @@ export function* breadthFirstPass(
     return req;
   };
 
-  const acceptPlayout = (lastDepth: number, _req: PickRequest) => {
+  const acceptPlayout = (lastDepth: number) => {
     return lastDepth >= passIdx - 1;
   };
 
