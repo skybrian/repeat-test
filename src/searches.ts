@@ -112,37 +112,6 @@ export class Node {
   }
 }
 
-type RequestFilter = (
-  depth: number,
-  req: PickRequest,
-) => PickRequest | undefined;
-
-type PlayoutFilter = (depth: number) => boolean;
-
-export type SearchOpts = {
-  /**
-   * Used when deciding which branch to take in the search tree.
-   *
-   * Note that sometimes the picked branch has been pruned, in which case a
-   * different pick will be used.
-   */
-  pickSource?: IntPicker;
-
-  /**
-   * Used to decide whether track nodes when the pickSource is random.
-   */
-  expectedPlayouts?: number;
-
-  /**
-   * Replaces each incoming pick request with a new one. The new request might
-   * have a narrower range. If the callback returns undefined, the playout will
-   * be cancelled.
-   */
-  replaceRequest?: RequestFilter;
-  acceptPlayout?: PlayoutFilter;
-  acceptEmptyPlayout?: boolean;
-};
-
 class PickStack {
   /* Invariant: `nodes.length === reqs.length === picks.length` */
   /**
@@ -304,6 +273,37 @@ class PickStack {
   }
 }
 
+type RequestFilter = (
+  depth: number,
+  req: PickRequest,
+) => PickRequest | undefined;
+
+type PlayoutFilter = (depth: number) => boolean;
+
+export type SearchOpts = {
+  /**
+   * Used when deciding which branch to take in the search tree.
+   *
+   * Note that sometimes the picked branch has been pruned, in which case a
+   * different pick will be used.
+   */
+  pickSource?: IntPicker;
+
+  /**
+   * Used to decide whether track nodes when the pickSource is random.
+   */
+  expectedPlayouts?: number;
+
+  /**
+   * Replaces each incoming pick request with a new one. The new request might
+   * have a narrower range. If the callback returns undefined, the playout will
+   * be cancelled.
+   */
+  replaceRequest?: RequestFilter;
+  acceptPlayout?: PlayoutFilter;
+  acceptEmptyPlayout?: boolean;
+};
+
 /**
  * A search over all possible pick sequences (playouts).
  *
@@ -321,16 +321,15 @@ class PickStack {
  * increased to do more tracking during a large search.
  */
 export class PlayoutSearch implements PlayoutPicker {
-  #state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
-
+  private state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
   private readonly stack;
+  private playoutsLeft = 1000;
 
   private pickSource: IntPicker = alwaysPickMin;
+
   private replaceRequest: RequestFilter = (_parent, req) => req;
   private acceptPlayout: PlayoutFilter = () => true;
   private acceptEmptyPlayout = true;
-
-  private playoutsLeft = 1000;
 
   constructor(opts?: SearchOpts) {
     this.stack = new PickStack({ trackOdds: this.pickSource.isRandom });
@@ -338,7 +337,7 @@ export class PlayoutSearch implements PlayoutPicker {
   }
 
   setOptions(opts: SearchOpts): boolean {
-    if (this.#state === "searchDone") {
+    if (this.state === "searchDone") {
       return false;
     }
     this.pickSource = opts.pickSource ?? this.pickSource;
@@ -351,12 +350,14 @@ export class PlayoutSearch implements PlayoutPicker {
     return true;
   }
 
-  get state() {
-    return this.#state;
+  /** Returns true if a playout is in progress. */
+  get picking() {
+    return this.state === "picking";
   }
 
+  /** Returns true if no more playouts are available and the search is done. */
   get done() {
-    return this.#state === "searchDone";
+    return this.state === "searchDone";
   }
 
   /** Returns true if the current playout is tracked so far. */
@@ -366,39 +367,39 @@ export class PlayoutSearch implements PlayoutPicker {
 
   private removePlayout() {
     if (this.stack.prune()) {
-      this.#state = "playoutDone";
+      this.state = "playoutDone";
       if (this.playoutsLeft > 0) {
         this.playoutsLeft--;
       }
     } else {
-      this.#state = "searchDone";
+      this.state = "searchDone";
     }
   }
 
   startAt(depth: number): boolean {
-    if (this.#state === "searchDone") {
+    if (this.state === "searchDone") {
       return false;
     }
-    if (this.#state === "ready") {
-      this.#state = "picking";
+    if (this.state === "ready") {
+      this.state = "picking";
       return true;
-    } else if (this.#state === "picking") {
+    } else if (this.state === "picking") {
       this.removePlayout(); // should change state
     }
-    if (this.#state !== "playoutDone") {
+    if (this.state !== "playoutDone") {
       return false;
     }
     if (!this.stack.trim(depth)) {
       return false;
     }
-    this.#state = "picking";
+    this.state = "picking";
     return true;
   }
 
   maybePick(req: PickRequest): Success<number> | Pruned {
-    if (this.#state !== "picking") {
+    if (this.state !== "picking") {
       throw new Error(
-        `maybePick called in the wrong state. Wanted "picking"; got "${this.#state}"`,
+        `maybePick called in the wrong state. Wanted "picking"; got "${this.state}"`,
       );
     }
 
@@ -418,9 +419,9 @@ export class PlayoutSearch implements PlayoutPicker {
   }
 
   finishPlayout(): boolean {
-    if (this.#state !== "picking") {
+    if (this.state !== "picking") {
       throw new Error(
-        `finishPlayout called in the wrong state. Wanted "picking"; got "${this.#state}"`,
+        `finishPlayout called in the wrong state. Wanted "picking"; got "${this.state}"`,
       );
     }
     let accepted = false;
@@ -440,21 +441,13 @@ export class PlayoutSearch implements PlayoutPicker {
   }
 
   getPicks(): PickList {
-    if (this.#state !== "picking") {
+    if (this.state !== "picking") {
       throw new Error(
-        `getPicks called in the wrong state. Wanted "picking"; got "${this.#state}"`,
+        `getPicks called in the wrong state. Wanted "picking"; got "${this.state}"`,
       );
     }
     return this.stack.getPicks();
   }
-}
-
-/**
- * Generates every possible playout in depth-first order, starting from picking
- * all minimums.
- */
-export function depthFirstSearch(): PlayoutSearch {
-  return new PlayoutSearch();
 }
 
 /**
@@ -498,7 +491,7 @@ export function* breadthFirstPass(
   });
   while (!search.done) {
     yield search;
-    if (search.state === "picking") {
+    if (search.picking) {
       search.finishPlayout();
     }
   }

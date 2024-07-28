@@ -6,22 +6,22 @@ import {
   assertThrows,
   fail,
 } from "@std/assert";
-import { repeatTest } from "../src/runner.ts";
 
+import { Success, success } from "../src/results.ts";
 import { alwaysPick, alwaysPickMin, PickRequest } from "../src/picks.ts";
 import { PlayoutPicker, Pruned } from "../src/backtracking.ts";
 import { randomPicker } from "../src/random.ts";
 
+import Arbitrary from "../src/arbitrary_class.ts";
+import * as arb from "../src/arbitraries/basics.ts";
+import { repeatTest } from "../src/runner.ts";
+
 import {
   breadthFirstPass,
   breadthFirstSearch,
-  depthFirstSearch,
   PlayoutSearch,
   SearchOpts,
 } from "../src/searches.ts";
-import Arbitrary from "../src/arbitrary_class.ts";
-import * as arb from "../src/arbitraries/basics.ts";
-import { Success, success } from "../src/results.ts";
 
 const bit = new PickRequest(0, 1);
 
@@ -372,7 +372,7 @@ class Maze {
 
   static depthFirstSearch(tree: Tree<number>, opts: SearchOpts) {
     const maze = new Maze(tree);
-    const search = depthFirstSearch();
+    const search = new PlayoutSearch();
     search.setOptions(opts);
     maze.visit(search);
     return maze;

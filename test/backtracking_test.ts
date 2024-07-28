@@ -4,7 +4,7 @@ import { randomPicker } from "../src/random.ts";
 
 import { PickRequest } from "../src/picks.ts";
 import { minPlayout, onePlayout, rotatePicks } from "../src/backtracking.ts";
-import { breadthFirstSearch, depthFirstSearch } from "../src/searches.ts";
+import { breadthFirstSearch, PlayoutSearch } from "../src/searches.ts";
 
 const bit = new PickRequest(0, 1);
 
@@ -49,7 +49,7 @@ describe("rotatePicks", () => {
   it("works with depth-first search", () => {
     const bit = new PickRequest(0, 1);
     const playouts: string[] = [];
-    const wrapped = depthFirstSearch();
+    const wrapped = new PlayoutSearch();
     while (wrapped.startAt(0)) {
       const picker = rotatePicks(wrapped, [1, 1]);
       for (let i = 0; i < 3; i++) {
