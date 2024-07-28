@@ -10,6 +10,7 @@ import Arbitrary, { PickFunction } from "./arbitrary_class.ts";
  */
 export class Jar<T> {
   private start: Node = Node.tracked(new PickRequest(0, 0));
+  private acceptPicks = this.prune.bind(this);
 
   constructor(readonly arb: Arbitrary<T>) {}
 
@@ -27,50 +28,29 @@ export class Jar<T> {
    * @throws {@link Pruned} if the picks were used already.
    */
   pickUnused(pick: PickFunction): T {
-    let lastPicks: PickList | undefined = undefined;
-
-    const acceptPicks = (picks: PickList) => {
-      lastPicks = picks;
-      return !this.isPruned(picks);
-    };
-
-    const val = pick(this.arb, { acceptPicks });
-    if (lastPicks === undefined) {
-      throw new Error("lastPicks should be defined");
-    }
-    this.prune(lastPicks);
-    return val;
+    return pick(this.arb, { acceptPicks: this.acceptPicks });
   }
 
-  private isPruned(picks: PickList): boolean {
-    const replies = picks.replies();
-    let branch = this.start.getBranch(0);
-    let i = 0;
-    while (true) {
-      if (branch == PRUNED) {
-        return true;
-      } else if (branch === undefined) {
-        // unexplored
-        return false;
-      } else if (i === replies.length) {
-        return false;
-      }
-      branch = branch.getBranch(replies[i]);
-      i++;
-    }
-  }
-
-  private prune(picks: PickList) {
+  /**
+   * Remembers that a pick sequence was visited.
+   *
+   * Returns true if this was the first time the pick sequence was seen, or
+   * false if it was already recorded.
+   */
+  private prune(picks: PickList): boolean {
     const reqs = picks.reqs();
     const replies = picks.replies();
+
     let parent = this.start;
     let parentPick = 0;
     const nodePath: Node[] = [];
     const pickPath: number[] = [];
+
+    // walk the tree, adding nodes where needed.
     for (let i = 0; i < reqs.length; i++) {
       let branch = parent.getBranch(parentPick);
       if (branch == PRUNED) {
-        return;
+        return false; // aleady added
       }
       nodePath.push(parent);
       pickPath.push(parentPick);
@@ -86,11 +66,17 @@ export class Jar<T> {
       }
       i++;
     }
+
+    if (parent.getBranch(parentPick) === PRUNED) {
+      return false; // aleady added
+    }
     parent.prune(parentPick);
+
+    // remove ancestors that are now empty
     while (parent.branchesLeft === 0) {
       const parent = nodePath.pop();
       if (parent === undefined) {
-        return;
+        return true; // pruned the last playout
       }
       const parentPick = pickPath.pop();
       if (parentPick === undefined) {
@@ -98,5 +84,7 @@ export class Jar<T> {
       }
       parent.prune(parentPick);
     }
+
+    return true;
   }
 }
