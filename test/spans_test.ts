@@ -7,7 +7,7 @@ import { repeatTest } from "../src/runner.ts";
 import { PickRequest } from "../src/picks.ts";
 
 import { NestedPicks, nestedPicks, SpanLog } from "../src/spans.ts";
-import { SearchTree } from "../src/search_tree.ts";
+import { PlayoutSearch } from "../src/search_tree.ts";
 
 type NestedPickOpts = {
   minSpanSize?: number;
@@ -107,23 +107,17 @@ describe("nestedPicks", () => {
 });
 
 describe("SpanLog", () => {
-  function makePicker() {
-    const tree = new SearchTree(0);
-    const picker = tree.makePicker();
-    assert(picker !== undefined);
-    assert(picker.startAt(0));
-    return picker;
-  }
-  let picker = makePicker();
-  let log = new SpanLog(picker);
+  let search = new PlayoutSearch();
+  let log = new SpanLog(search);
 
   beforeEach(() => {
-    picker = makePicker();
-    log = new SpanLog(picker);
+    search = new PlayoutSearch();
+    assert(search.startAt(0));
+    log = new SpanLog(search);
   });
 
   function checkNestedPicks(expected: NestedPicks) {
-    const nested = nestedPicks(picker.getPicks().replies(), log.getSpans());
+    const nested = nestedPicks(search.getPicks().replies(), log.getSpans());
     assertEquals(nested, expected);
   }
 
@@ -141,7 +135,7 @@ describe("SpanLog", () => {
 
   it("ignores a single-pick span", () => {
     log.startSpan();
-    picker.maybePick(req);
+    search.maybePick(req);
     log.endSpan(1);
     checkNestedPicks([1]);
   });
@@ -149,8 +143,8 @@ describe("SpanLog", () => {
   it("ignores a span that contains only a single subspan", () => {
     log.startSpan();
     log.startSpan();
-    picker.maybePick(req);
-    picker.maybePick(req);
+    search.maybePick(req);
+    search.maybePick(req);
     log.endSpan(2);
     log.endSpan(1);
     checkNestedPicks([[1, 1]]);

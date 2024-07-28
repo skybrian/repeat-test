@@ -112,13 +112,6 @@ export class Node {
   }
 }
 
-interface CursorParent {
-  checkAlive(version: number): void;
-  get playoutsLeft(): number;
-  endPlayout(): void;
-  endSearch(): void;
-}
-
 type RequestFilter = (
   depth: number,
   req: PickRequest,
@@ -134,6 +127,12 @@ export type SearchOpts = {
    * different pick will be used.
    */
   pickSource?: IntPicker;
+
+  /**
+   * Used to decide whether track nodes when the pickSource is random.
+   */
+  expectedPlayouts?: number;
+
   /**
    * Replaces each incoming pick request with a new one. The new request might
    * have a narrower range. If the callback returns undefined, the playout will
@@ -172,8 +171,8 @@ class PickStack {
    */
   private notTakenOdds: number | undefined;
 
-  constructor(start: Node, opts: { trackOdds: boolean }) {
-    this.nodes = [start];
+  constructor(opts: { trackOdds: boolean }) {
+    this.nodes = [Node.tracked(new PickRequest(0, 0))];
     this.originalReqs = [new PickRequest(0, 0)];
     this.modifiedReqs = [new PickRequest(0, 0)];
     this.picks = [0];
@@ -305,7 +304,23 @@ class PickStack {
   }
 }
 
-export class Cursor implements PlayoutPicker {
+/**
+ * A search over all possible pick sequences (playouts).
+ *
+ * It avoids duplicate playouts by recording each pick in a search tree. For
+ * small search trees where every pick is recorded, eventually every playout
+ * will be eliminated and the search will end.
+ *
+ * The default search is depth-first, but it can also be configured to pick
+ * randomly using {@link SearchOpts.pickSource}. For a breadth-first search, see
+ * {@link breadthFirstSearch}.
+ *
+ * Duplicates may happen with small probability when doing a random search,
+ * because visits to nodes with many branches won't be tracked.  The heuristic
+ * depends on the {@link SearchOpts.expectedPlayouts} setting, which can be
+ * increased to do more tracking during a large search.
+ */
+export class PlayoutSearch implements PlayoutPicker {
   #state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
 
   private readonly stack;
@@ -315,12 +330,11 @@ export class Cursor implements PlayoutPicker {
   private acceptPlayout: PlayoutFilter = () => true;
   private acceptEmptyPlayout = true;
 
-  constructor(
-    private readonly tree: CursorParent,
-    private readonly version: number,
-    start: Node,
-  ) {
-    this.stack = new PickStack(start, { trackOdds: this.pickSource.isRandom });
+  private playoutsLeft = 1000;
+
+  constructor(opts?: SearchOpts) {
+    this.stack = new PickStack({ trackOdds: this.pickSource.isRandom });
+    if (opts) this.setOptions(opts);
   }
 
   setOptions(opts: SearchOpts): boolean {
@@ -328,6 +342,7 @@ export class Cursor implements PlayoutPicker {
       return false;
     }
     this.pickSource = opts.pickSource ?? this.pickSource;
+    this.playoutsLeft = opts.expectedPlayouts ?? this.playoutsLeft;
     this.stack.recalculateOdds(this.pickSource.isRandom);
     this.replaceRequest = opts.replaceRequest ?? this.replaceRequest;
     this.acceptPlayout = opts.acceptPlayout ?? this.acceptPlayout;
@@ -340,6 +355,10 @@ export class Cursor implements PlayoutPicker {
     return this.#state;
   }
 
+  get done() {
+    return this.#state === "searchDone";
+  }
+
   /** Returns true if the current playout is tracked so far. */
   get tracked(): boolean {
     return this.stack.tracked;
@@ -348,10 +367,11 @@ export class Cursor implements PlayoutPicker {
   private removePlayout() {
     if (this.stack.prune()) {
       this.#state = "playoutDone";
-      this.tree.endPlayout();
+      if (this.playoutsLeft > 0) {
+        this.playoutsLeft--;
+      }
     } else {
       this.#state = "searchDone";
-      this.tree.endSearch();
     }
   }
 
@@ -359,7 +379,6 @@ export class Cursor implements PlayoutPicker {
     if (this.#state === "searchDone") {
       return false;
     }
-    this.tree.checkAlive(this.version);
     if (this.#state === "ready") {
       this.#state = "picking";
       return true;
@@ -377,7 +396,6 @@ export class Cursor implements PlayoutPicker {
   }
 
   maybePick(req: PickRequest): Success<number> | Pruned {
-    this.tree.checkAlive(this.version);
     if (this.#state !== "picking") {
       throw new Error(
         `maybePick called in the wrong state. Wanted "picking"; got "${this.#state}"`,
@@ -389,7 +407,7 @@ export class Cursor implements PlayoutPicker {
       return new Pruned("filtered by replaceRequest");
     }
 
-    const node = this.stack.nextNode(modified, this.tree.playoutsLeft);
+    const node = this.stack.nextNode(modified, this.playoutsLeft);
     const firstChoice = this.pickSource.pick(modified);
     const pick = node.filterPick(firstChoice);
     if (pick === undefined) {
@@ -400,7 +418,6 @@ export class Cursor implements PlayoutPicker {
   }
 
   finishPlayout(): boolean {
-    this.tree.checkAlive(this.version);
     if (this.#state !== "picking") {
       throw new Error(
         `finishPlayout called in the wrong state. Wanted "picking"; got "${this.#state}"`,
@@ -419,12 +436,10 @@ export class Cursor implements PlayoutPicker {
   }
 
   get depth(): number {
-    this.tree.checkAlive(this.version);
     return this.stack.depth;
   }
 
   getPicks(): PickList {
-    this.tree.checkAlive(this.version);
     if (this.#state !== "picking") {
       throw new Error(
         `getPicks called in the wrong state. Wanted "picking"; got "${this.#state}"`,
@@ -435,88 +450,11 @@ export class Cursor implements PlayoutPicker {
 }
 
 /**
- * Creates pickers that avoid duplicate playouts.
- *
- * A playout is a sequence of picks, ending with a successful call to
- * {@link backTo}, which starts the next playout, or by creating a new picker.
- *
- * Duplicates are only avoided when a playout is tracked to the end. Whether
- * this happens depends on the picker: For non-random pickers (where
- * {@link IntPicker.isRandom} is false), tracking is always turned on. Random
- * pickers will often avoid duplicates on their own, so tracking is turned on
- * based on a heuristic.
- */
-export class SearchTree {
-  private start: Node | undefined = Node.tracked(new PickRequest(0, 0));
-
-  #pickerCount = 0;
-
-  private cursor: Cursor | undefined;
-
-  private callbacks: CursorParent;
-
-  /**
-   * @param expectedPlayouts the number of playouts that are expected. This is
-   * used for determining whether random playouts will be tracked. If set to
-   * zero, tracking for random pickers is disabled.
-   */
-  constructor(expectedPlayouts: number) {
-    const checkAlive = (version: number) => {
-      if (version !== this.#pickerCount) {
-        throw new Error("picker accessed after another playout started");
-      }
-      if (this.start === undefined) {
-        throw new Error("picker accessed after the search ended");
-      }
-    };
-
-    let playoutsLeft = expectedPlayouts;
-
-    this.callbacks = {
-      checkAlive,
-      get playoutsLeft() {
-        return playoutsLeft;
-      },
-      endPlayout: () => {
-        if (playoutsLeft > 0) {
-          playoutsLeft--;
-        }
-      },
-      endSearch: () => {
-        this.start = undefined;
-        playoutsLeft = 0;
-      },
-    };
-  }
-
-  makePicker(): Cursor | undefined {
-    if (this.cursor) {
-      if (this.cursor.state === "picking") {
-        this.cursor.finishPlayout();
-      }
-      this.cursor = undefined;
-    }
-
-    const start = this.start;
-    if (start === undefined) return undefined;
-
-    const version = ++this.#pickerCount;
-
-    this.cursor = new Cursor(this.callbacks, version, start);
-    return this.cursor;
-  }
-}
-
-/**
  * Generates every possible playout in depth-first order, starting from picking
  * all minimums.
  */
-export function depthFirstSearch(): Cursor {
-  const picker = new SearchTree(0).makePicker();
-  if (picker === undefined) {
-    throw new Error("internal error: no playouts");
-  }
-  return picker;
+export function depthFirstSearch(): PlayoutSearch {
+  return new PlayoutSearch();
 }
 
 /**
@@ -553,16 +491,16 @@ export function* breadthFirstPass(
     return lastDepth >= passIdx - 1;
   };
 
-  const tree = new SearchTree(0);
-  while (true) {
-    const picker = tree.makePicker();
-    if (picker === undefined) break;
-    picker.setOptions({
-      replaceRequest,
-      acceptPlayout,
-      acceptEmptyPlayout: passIdx === 0,
-    });
-    yield picker;
+  const search = new PlayoutSearch({
+    replaceRequest,
+    acceptPlayout,
+    acceptEmptyPlayout: passIdx === 0,
+  });
+  while (!search.done) {
+    yield search;
+    if (search.state === "picking") {
+      search.finishPlayout();
+    }
   }
 }
 

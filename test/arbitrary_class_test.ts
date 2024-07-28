@@ -6,7 +6,7 @@ import { repeatTest } from "../src/runner.ts";
 import { alwaysPick, PickRequest } from "../src/picks.ts";
 import { minPlayout, Pruned } from "../src/backtracking.ts";
 import Arbitrary, { ArbitraryCallback } from "../src/arbitrary_class.ts";
-import { SearchTree } from "../src/search_tree.ts";
+import { PlayoutSearch } from "../src/search_tree.ts";
 
 describe("Arbitrary", () => {
   describe("from", () => {
@@ -117,11 +117,8 @@ describe("Arbitrary", () => {
         }
         return n;
       });
-      const tree = new SearchTree(0);
-      const picker = tree.makePicker();
-      assert(picker);
-      picker.setOptions({ pickSource: alwaysPick(3) });
-      const gen = arb.generate(picker);
+      const search = new PlayoutSearch({ pickSource: alwaysPick(3) });
+      const gen = arb.generate(search);
       assertEquals(gen?.val, 4);
     });
   });
