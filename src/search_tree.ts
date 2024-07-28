@@ -332,6 +332,9 @@ export class Cursor implements PlayoutPicker {
   }
 
   startAt(depth: number): boolean {
+    if (this.#state === "searchDone") {
+      return false;
+    }
     this.tree.checkAlive(this.version);
     if (this.#state === "ready") {
       this.#state = "picking";

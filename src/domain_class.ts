@@ -1,6 +1,6 @@
 import { PlaybackPicker } from "./picks.ts";
 import Arbitrary, { Generated } from "./arbitrary_class.ts";
-import { onePlayout } from "./backtracking.ts";
+import { onePlayout, playback } from "./backtracking.ts";
 import { Failure, failure, Success, success } from "./results.ts";
 
 export type PickifyCallback = (
@@ -31,9 +31,7 @@ export default class Domain<T> {
       throw new Error(`can't pickify domain's default value: ${error}`);
     }
 
-    const gen = this.#generator.generate(
-      onePlayout(new PlaybackPicker(picks.val)),
-    );
+    const gen = this.#generator.generate(playback(picks.val));
     if (gen === undefined) {
       throw new Error("can't regenerate domain's default value");
     } else if (!gen.isDefault()) {
@@ -112,7 +110,7 @@ export default class Domain<T> {
   regenerate(val: T): Generated<T> | undefined {
     const picks = this.maybePickify(val);
     if (!picks.ok) return undefined;
-    return this.#generator.generate(onePlayout(new PlaybackPicker(picks.val)));
+    return this.#generator.generate(playback(picks.val));
   }
 
   asFunction() {

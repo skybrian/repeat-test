@@ -1,5 +1,11 @@
 import { Success, success } from "./results.ts";
-import { alwaysPickMin, IntPicker, PickList, PickRequest } from "./picks.ts";
+import {
+  alwaysPickMin,
+  IntPicker,
+  PickList,
+  PickRequest,
+  PlaybackPicker,
+} from "./picks.ts";
 
 /**
  * Indicates that a sequence of picks didn't result in generating a value.
@@ -71,7 +77,7 @@ export interface PlayoutPicker {
 /**
  * A picker that only does one playout.
  */
-export function onePlayoutPicker(picker: IntPicker): PlayoutPicker {
+export function onePlayout(picker: IntPicker): PlayoutPicker {
   let state: "ready" | "picking" | "done" = "ready";
   const picks = new PickList();
 
@@ -120,13 +126,14 @@ export function onePlayoutPicker(picker: IntPicker): PlayoutPicker {
   };
 }
 
-export function onePlayout(picker: IntPicker): Iterable<PlayoutPicker> {
-  return [onePlayoutPicker(picker)].values();
+/** A playout that always picks the minimum */
+export function minPlayout(): PlayoutPicker {
+  return onePlayout(alwaysPickMin);
 }
 
-/** An iterable that provides one playout that always picks the minimum. */
-export function minPlayout(): Iterable<PlayoutPicker> {
-  return onePlayout(alwaysPickMin);
+/** A playout that plays back the given picks. */
+export function playback(picks: number[]): PlayoutPicker {
+  return onePlayout(new PlaybackPicker(picks));
 }
 
 /**

@@ -2,15 +2,15 @@ import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals } from "@std/assert";
 import { randomPicker } from "../src/random.ts";
 
-import { alwaysPickMin, PickRequest } from "../src/picks.ts";
-import { onePlayoutPicker, rotatePicks } from "../src/backtracking.ts";
+import { PickRequest } from "../src/picks.ts";
+import { minPlayout, onePlayout, rotatePicks } from "../src/backtracking.ts";
 import { breadthFirstSearch, depthFirstSearch } from "../src/search_tree.ts";
 
 const bit = new PickRequest(0, 1);
 
 describe("onePlayoutPicker", () => {
   it("records one playout", () => {
-    const picker = onePlayoutPicker(randomPicker(123));
+    const picker = onePlayout(randomPicker(123));
     assert(picker.startAt(0));
     const first = picker.maybePick(bit);
     assert(first.ok);
@@ -25,7 +25,7 @@ describe("onePlayoutPicker", () => {
 
 describe("rotatePicks", () => {
   it("returns the new defaults instead of a minimum value", () => {
-    const picker = rotatePicks(onePlayoutPicker(alwaysPickMin), [1, 2]);
+    const picker = rotatePicks(minPlayout(), [1, 2]);
     assert(picker.startAt(0));
 
     const bit = new PickRequest(0, 1);

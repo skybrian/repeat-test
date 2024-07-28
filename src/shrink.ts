@@ -1,5 +1,5 @@
-import { PickList, PlaybackPicker } from "./picks.ts";
-import { onePlayout } from "./backtracking.ts";
+import { PickList } from "./picks.ts";
+import { playback } from "./backtracking.ts";
 import Arbitrary, { Generated } from "./arbitrary_class.ts";
 
 /**
@@ -52,8 +52,7 @@ function runStrategy<T>(
 ): Generated<T> | undefined {
   let worked: Generated<T> | undefined = undefined;
   for (const guess of strategy(start.picks())) {
-    const picker = new PlaybackPicker(guess);
-    const shrunk = arb.generate(onePlayout(picker));
+    const shrunk = arb.generate(playback(guess));
     if (!shrunk || !interesting(shrunk.val)) {
       return worked;
     }

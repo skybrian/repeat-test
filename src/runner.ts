@@ -71,7 +71,8 @@ export function* randomReps<T>(
 
   // Make sure that the default picks work.
   // (And records them in the tree, so we don't test the default again.)
-  const arg = arb.generate(tree.pickers(alwaysPickMin));
+  const picker = tree.makePicker(alwaysPickMin);
+  const arg = picker && arb.generate(picker);
   if (arg === undefined) {
     throw new Error("can't generate default value of supplied arbitrary");
   }
@@ -87,7 +88,8 @@ export function* randomReps<T>(
 
     const random = pickers.next().value;
     try {
-      const arg = arb.generate(tree.pickers(random));
+      const picker = tree.makePicker(random);
+      const arg = picker && arb.generate(picker);
       if (arg === undefined) {
         return; // No more test args to generate.
       }

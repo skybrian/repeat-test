@@ -1,8 +1,8 @@
 import { AnyRecord } from "./types.ts";
-import { PickList, PickRequest, PlaybackPicker } from "./picks.ts";
+import { PickList, PickRequest } from "./picks.ts";
 import {
   minPlayout,
-  onePlayoutPicker,
+  playback,
   PlayoutPicker,
   Pruned,
   rotatePicks,
@@ -166,11 +166,8 @@ export default class Arbitrary<T> {
    *
    * Returns undefined if it ran out of playouts without generating anything.
    */
-  generate(pickers: Iterable<PlayoutPicker>): Generated<T> | undefined {
-    for (const picker of pickers) {
-      if (!picker.startAt(0)) {
-        throw new Error("startAt failed");
-      }
+  generate(picker: PlayoutPicker): Generated<T> | undefined {
+    while (picker.startAt(0)) {
       const log = new SpanLog(picker);
 
       try {
@@ -186,7 +183,6 @@ export default class Arbitrary<T> {
         }
       }
     }
-    return undefined;
   }
 
   private innerPick(
@@ -256,19 +252,13 @@ export default class Arbitrary<T> {
     function* callbackGenerator(
       arb: Arbitrary<T>,
     ): IterableIterator<Generated<T>> {
-      const it = breadthFirstSearch()[Symbol.iterator]();
-      // `generate` will exit early, as soon as it generates a value.
-      // Resume the same iteration after each value is generated.
-      const resumable: IterableIterator<PlayoutPicker> = {
-        [Symbol.iterator]: () => resumable,
-        next: function (): IteratorResult<PlayoutPicker> {
-          return it.next();
-        },
-      };
-      let val = arb.generate(resumable);
-      while (val) {
-        yield val;
-        val = arb.generate(resumable);
+      for (const picker of breadthFirstSearch()) {
+        // Keep using the same picker until it's finished.
+        let gen = arb.generate(picker);
+        while (gen) {
+          yield gen;
+          gen = arb.generate(picker);
+        }
       }
     }
 
@@ -544,7 +534,7 @@ export default class Arbitrary<T> {
     picks: number[],
     callback: ArbitraryCallback<T>,
   ): Generated<T> {
-    const picker = onePlayoutPicker(new PlaybackPicker(picks));
+    const picker = playback(picks);
     const log = new SpanLog(picker);
     const pick = Arbitrary.makePickFunction(log, picker);
     if (!picker.startAt(0)) {
