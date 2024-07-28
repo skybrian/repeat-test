@@ -8,7 +8,7 @@ import {
   rotatePicks,
 } from "./backtracking.ts";
 import { nestedPicks, SpanList, SpanLog } from "./spans.ts";
-import { breadthFirstSearch } from "./search_tree.ts";
+import { breadthFirstSearch } from "./searches.ts";
 
 export type PickFunctionOptions<T> = {
   /**

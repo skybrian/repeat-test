@@ -7,7 +7,7 @@ import { repeatTest } from "../src/runner.ts";
 import { PickRequest } from "../src/picks.ts";
 
 import { NestedPicks, nestedPicks, SpanLog } from "../src/spans.ts";
-import { PlayoutSearch } from "../src/search_tree.ts";
+import { PlayoutSearch } from "../src/searches.ts";
 
 type NestedPickOpts = {
   minSpanSize?: number;

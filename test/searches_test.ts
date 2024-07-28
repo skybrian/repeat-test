@@ -18,7 +18,7 @@ import {
   depthFirstSearch,
   PlayoutSearch,
   SearchOpts,
-} from "../src/search_tree.ts";
+} from "../src/searches.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 import * as arb from "../src/arbitraries/basics.ts";
 import { Success, success } from "../src/results.ts";

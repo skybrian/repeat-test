@@ -4,7 +4,7 @@ import { randomPicker } from "../src/random.ts";
 
 import { PickRequest } from "../src/picks.ts";
 import { minPlayout, onePlayout, rotatePicks } from "../src/backtracking.ts";
-import { breadthFirstSearch, depthFirstSearch } from "../src/search_tree.ts";
+import { breadthFirstSearch, depthFirstSearch } from "../src/searches.ts";
 
 const bit = new PickRequest(0, 1);
 

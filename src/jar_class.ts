@@ -1,5 +1,5 @@
 import { PickList, PickRequest } from "./picks.ts";
-import { Node, PRUNED } from "./search_tree.ts";
+import { Node, PRUNED } from "./searches.ts";
 import Arbitrary, { PickFunction } from "./arbitrary_class.ts";
 
 /**

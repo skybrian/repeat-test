@@ -6,7 +6,7 @@ import { repeatTest } from "../src/runner.ts";
 import { alwaysPick, PickRequest } from "../src/picks.ts";
 import { minPlayout, Pruned } from "../src/backtracking.ts";
 import Arbitrary, { ArbitraryCallback } from "../src/arbitrary_class.ts";
-import { PlayoutSearch } from "../src/search_tree.ts";
+import { PlayoutSearch } from "../src/searches.ts";
 
 describe("Arbitrary", () => {
   describe("from", () => {

@@ -1,5 +1,5 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
-import { PlayoutSearch } from "./search_tree.ts";
+import { PlayoutSearch } from "./searches.ts";
 import Arbitrary, { Generated } from "./arbitrary_class.ts";
 import { Failure, failure, Success, success } from "./results.ts";
 import { shrink } from "./shrink.ts";
@@ -72,7 +72,7 @@ export function* randomReps<T>(
   let index = 0;
 
   // Make sure that the default picks work.
-  // (And records them in the tree, so we don't test the default again.)
+  // (Since this is part of the same search, we won't test the default again.)
   const arg = arb.generate(search);
   if (arg === undefined) {
     throw new Error("can't generate default value of supplied arbitrary");
