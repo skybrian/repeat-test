@@ -1,4 +1,4 @@
-import { RetryPicker } from "./backtracking.ts";
+import { PlayoutPicker } from "./backtracking.ts";
 
 export type SpanList = {
   starts: number[];
@@ -57,10 +57,10 @@ export function nestedPicks(replies: number[], spans: SpanList): NestedPicks {
 /**
  * Provides methods to record spans of picks.
  *
- * This log can be used along with a {@link RetryPicker} to record spans within
+ * This log can be used along with a {@link PlayoutPicker} to record spans within
  * which picks were requested. The starts and ends of spans are recorded based
  * on how many picks were recorded. The {@link cancelSpan} method must be called
- * instead of {@link RetryPicker.startAt}.
+ * instead of {@link PlayoutPicker.startAt}.
  *
  * Spans must nest to form a tree. Spans with less than two picks aren't
  * recorded. A span's *level* is the number of spans are still open when it's
@@ -79,7 +79,7 @@ export class SpanLog {
   /** The offset of each incomplete span, in the order created.  */
   private readonly openSpans: number[] = [];
 
-  constructor(private readonly picker: RetryPicker) {}
+  constructor(private readonly picker: PlayoutPicker) {}
 
   get level(): number {
     return this.openSpans.length;

@@ -86,7 +86,6 @@ export function* randomReps<T>(
     const key = { seed, index };
 
     const random = pickers.next().value;
-    // const picker = retryPicker(random, filterLimit);
     try {
       const arg = arb.generate(tree.pickers(random));
       if (arg === undefined) {

@@ -1,7 +1,7 @@
 import { Success, success } from "./results.ts";
 import { alwaysPickMin, IntPicker, PickList, PickRequest } from "./picks.ts";
 
-import { Pruned, RetryPicker } from "./backtracking.ts";
+import { PlayoutPicker, Pruned } from "./backtracking.ts";
 
 /** Indicates that the subtree rooted at a branch has been fully explored. */
 export const PRUNED = Symbol("pruned");
@@ -137,7 +137,7 @@ export type SearchOpts = {
   acceptEmptyPlayout?: boolean;
 };
 
-export class Cursor implements RetryPicker {
+export class Cursor implements PlayoutPicker {
   #state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
 
   /* Invariant: `nodes.length === reqs.length === picks.length` */
@@ -464,12 +464,12 @@ export class SearchTree {
   pickers(
     wrapped: IntPicker,
     opts?: SearchOpts,
-  ): IterableIterator<RetryPicker> {
-    const pickers: IterableIterator<RetryPicker> = {
+  ): IterableIterator<PlayoutPicker> {
+    const pickers: IterableIterator<PlayoutPicker> = {
       [Symbol.iterator]() {
         return pickers;
       },
-      next: (): IteratorResult<RetryPicker, void> => {
+      next: (): IteratorResult<PlayoutPicker, void> => {
         const value = this.makePicker(wrapped, opts);
         const done = value === undefined;
         if (done) {
@@ -503,16 +503,16 @@ export class SearchTree {
 /**
  * Generates every possible playout in depth-first order.
  *
- * The caller defines the search tree by calling the {@link RetryPicker.maybePick}
+ * The caller defines the search tree by calling the {@link PlayoutPicker.maybePick}
  * function. Each pick determins the number of branches at a node. For example,
  * the first pick in each playout is always the root. The first call to pick
  * should always be the same (there is only one root), and subsequent picks
  * should only depend on the reply to the previous pick request.
  *
- * The next playout can be started either by calling {@link RetryPicker.startAt}
+ * The next playout can be started either by calling {@link PlayoutPicker.startAt}
  * (if successful) or by taking the next value from the iterator.
  */
-export function depthFirstSearch(opts?: SearchOpts): Iterable<RetryPicker> {
+export function depthFirstSearch(opts?: SearchOpts): Iterable<PlayoutPicker> {
   return new SearchTree(0).pickers(alwaysPickMin, opts);
 }
 
@@ -524,7 +524,7 @@ export function depthFirstSearch(opts?: SearchOpts): Iterable<RetryPicker> {
 export function* breadthFirstPass(
   passIdx: number,
   more: () => void,
-): Iterable<RetryPicker> {
+): Iterable<PlayoutPicker> {
   let moreSent = false;
   function pruned() {
     if (!moreSent) {
@@ -568,9 +568,9 @@ export function* breadthFirstPass(
  * (The iterable can only be iterated over once.)
  *
  * Note: to avoid duplicate playouts, the return value of
- * {@link RetryPicker.finishPlayout} must be used to filter them.
+ * {@link PlayoutPicker.finishPlayout} must be used to filter them.
  */
-export function* breadthFirstSearch(): Iterable<RetryPicker> {
+export function* breadthFirstSearch(): Iterable<PlayoutPicker> {
   let maxDepth = 0;
   let pruned = true;
   while (pruned) {

@@ -3,8 +3,8 @@ import { PickList, PickRequest, PlaybackPicker } from "./picks.ts";
 import {
   minPlayout,
   onePlayoutPicker,
+  PlayoutPicker,
   Pruned,
-  RetryPicker,
   rotatePicks,
 } from "./backtracking.ts";
 import { nestedPicks, SpanList, SpanLog } from "./spans.ts";
@@ -166,7 +166,7 @@ export default class Arbitrary<T> {
    *
    * Returns undefined if it ran out of playouts without generating anything.
    */
-  generate(pickers: Iterable<RetryPicker>): Generated<T> | undefined {
+  generate(pickers: Iterable<PlayoutPicker>): Generated<T> | undefined {
     for (const picker of pickers) {
       if (!picker.startAt(0)) {
         throw new Error("startAt failed");
@@ -259,9 +259,9 @@ export default class Arbitrary<T> {
       const it = breadthFirstSearch()[Symbol.iterator]();
       // `generate` will exit early, as soon as it generates a value.
       // Resume the same iteration after each value is generated.
-      const resumable: IterableIterator<RetryPicker> = {
+      const resumable: IterableIterator<PlayoutPicker> = {
         [Symbol.iterator]: () => resumable,
-        next: function (): IteratorResult<RetryPicker> {
+        next: function (): IteratorResult<PlayoutPicker> {
           return it.next();
         },
       };
@@ -556,7 +556,7 @@ export default class Arbitrary<T> {
 
   private static makePickFunction<T>(
     log: SpanLog,
-    defaultPicker: RetryPicker,
+    defaultPicker: PlayoutPicker,
   ): PickFunction {
     const dispatch = <T>(
       req: PickRequest | Arbitrary<T> | ArbitraryCallback<T> | RecordShape<T>,

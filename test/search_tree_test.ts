@@ -9,7 +9,7 @@ import {
 import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPick, alwaysPickMin, PickRequest } from "../src/picks.ts";
-import { Pruned, RetryPicker } from "../src/backtracking.ts";
+import { PlayoutPicker, Pruned } from "../src/backtracking.ts";
 import { randomPicker } from "../src/random.ts";
 
 import {
@@ -386,7 +386,7 @@ const anyTree = Arbitrary.from((pick) => {
 
 function randomWalk<T>(
   tree: Tree<T>,
-  picker: RetryPicker,
+  picker: PlayoutPicker,
 ): Success<T> | Pruned {
   while (
     tree.children.length > 0
@@ -410,7 +410,7 @@ class Maze {
 
   constructor(readonly tree: Tree<number>) {}
 
-  visit(picker: RetryPicker) {
+  visit(picker: PlayoutPicker) {
     picker.startAt(0);
     const val = randomWalk(this.tree, picker);
     if (!val.ok) {
@@ -485,7 +485,7 @@ describe("depthFirstSearch", () => {
 
 const one = new PickRequest(1, 1);
 
-function walkUnaryTree(picker: RetryPicker): string | undefined {
+function walkUnaryTree(picker: PlayoutPicker): string | undefined {
   assert(picker.startAt(0));
   let result = "";
   for (let i = 0; i < 8; i++) {
@@ -506,7 +506,7 @@ function walkUnaryTree(picker: RetryPicker): string | undefined {
 }
 
 function walkBinaryTree(...stops: string[]) {
-  function walk(picker: RetryPicker): string | undefined {
+  function walk(picker: PlayoutPicker): string | undefined {
     assert(picker.startAt(0));
     let result = "";
     for (let i = 0; i < 8; i++) {
@@ -536,7 +536,7 @@ function walkBinaryTree(...stops: string[]) {
 
 function runPass(
   idx: number,
-  walk: (picker: RetryPicker) => string | undefined,
+  walk: (picker: PlayoutPicker) => string | undefined,
 ) {
   const playouts = new Set<string>();
   let pruneCalls = 0;

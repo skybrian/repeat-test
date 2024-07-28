@@ -7,7 +7,7 @@ import { alwaysPickMin, IntPicker, PickList, PickRequest } from "./picks.ts";
  * This can happen due to filtering or a partial search.
  *
  * Sometimes recovery is possible by starting a new playout and picking again.
- * (See {@link RetryPicker.startAt}.) It won't be possible when a search has
+ * (See {@link PlayoutPicker.startAt}.) It won't be possible when a search has
  * visited every playout.
  */
 export class Pruned extends Error {
@@ -21,7 +21,7 @@ export class Pruned extends Error {
  * A picker that can back up to a previous point in a pick sequence and try a
  * different path.
  */
-export interface RetryPicker {
+export interface PlayoutPicker {
   /**
    * Starts a new playout, possibly by backtracking.
    *
@@ -69,11 +69,9 @@ export interface RetryPicker {
 }
 
 /**
- * Converts an IntPicker to a RetryPicker, without support for backtracking.
- *
- * It just logs the picks.
+ * A picker that only does one playout.
  */
-export function onePlayoutPicker(picker: IntPicker): RetryPicker {
+export function onePlayoutPicker(picker: IntPicker): PlayoutPicker {
   let state: "ready" | "picking" | "done" = "ready";
   const picks = new PickList();
 
@@ -122,12 +120,12 @@ export function onePlayoutPicker(picker: IntPicker): RetryPicker {
   };
 }
 
-export function onePlayout(picker: IntPicker): Iterable<RetryPicker> {
+export function onePlayout(picker: IntPicker): Iterable<PlayoutPicker> {
   return [onePlayoutPicker(picker)].values();
 }
 
 /** An iterable that provides one playout that always picks the minimum. */
-export function minPlayout(): Iterable<RetryPicker> {
+export function minPlayout(): Iterable<PlayoutPicker> {
   return onePlayout(alwaysPickMin);
 }
 
@@ -136,13 +134,13 @@ export function minPlayout(): Iterable<RetryPicker> {
  * minimum value, it picks a default value instead.
  */
 export function rotatePicks(
-  wrapped: RetryPicker,
+  wrapped: PlayoutPicker,
   defaultPlayout: number[],
-): RetryPicker {
+): PlayoutPicker {
   let picking = true; // Wrapped picker is already picking.
   const picks = new PickList();
 
-  const picker: RetryPicker = {
+  const picker: PlayoutPicker = {
     startAt(depth: number): boolean {
       if (depth < 0 || depth > defaultPlayout.length) {
         return false;
