@@ -118,8 +118,9 @@ describe("Arbitrary", () => {
         return n;
       });
       const tree = new SearchTree(0);
-      const picker = tree.makePicker(alwaysPick(3));
+      const picker = tree.makePicker();
       assert(picker);
+      picker.setOptions({ pickSource: alwaysPick(3) });
       const gen = arb.generate(picker);
       assertEquals(gen?.val, 4);
     });

@@ -4,7 +4,7 @@ import * as arb from "../src/arbitraries.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import { alwaysPickMin, PickRequest } from "../src/picks.ts";
+import { PickRequest } from "../src/picks.ts";
 
 import { NestedPicks, nestedPicks, SpanLog } from "../src/spans.ts";
 import { SearchTree } from "../src/search_tree.ts";
@@ -109,7 +109,7 @@ describe("nestedPicks", () => {
 describe("SpanLog", () => {
   function makePicker() {
     const tree = new SearchTree(0);
-    const picker = tree.makePicker(alwaysPickMin);
+    const picker = tree.makePicker();
     assert(picker !== undefined);
     assert(picker.startAt(0));
     return picker;

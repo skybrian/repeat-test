@@ -128,6 +128,13 @@ type PlayoutFilter = (depth: number) => boolean;
 
 export type SearchOpts = {
   /**
+   * Used when deciding which branch to take in the search tree.
+   *
+   * Note that sometimes the picked branch has been pruned, in which case a
+   * different pick will be used.
+   */
+  pickSource?: IntPicker;
+  /**
    * Replaces each incoming pick request with a new one. The new request might
    * have a narrower range. If the callback returns undefined, the playout will
    * be cancelled.
@@ -269,13 +276,19 @@ class PickStack {
     this.originalReqs.length = depth + 1;
     this.modifiedReqs.length = depth + 1;
     this.picks.length = depth + 1;
-    if (this.notTakenOdds !== undefined) {
+    this.recalculateOdds();
+    return true;
+  }
+
+  recalculateOdds(track?: boolean) {
+    if (track ?? this.notTakenOdds !== undefined) {
       this.notTakenOdds = 0;
       for (const node of this.nodes) {
         this.updateOdds(node.branchesLeft);
       }
+    } else {
+      this.notTakenOdds = undefined;
     }
-    return true;
   }
 
   /**
@@ -285,7 +298,9 @@ class PickStack {
   private updateOdds(branchCount: number) {
     if (this.notTakenOdds === undefined) return;
 
-    if (branchCount < 1) throw new Error("branchCount must be at least 1");
+    if (branchCount < 1) {
+      throw new Error("branchCount must be at least 1");
+    }
     this.notTakenOdds = this.notTakenOdds * branchCount + (branchCount - 1);
   }
 }
@@ -295,21 +310,30 @@ export class Cursor implements PlayoutPicker {
 
   private readonly stack;
 
-  private readonly replaceRequest: RequestFilter;
-  private readonly acceptPlayout: PlayoutFilter;
-  private readonly acceptEmptyPlayout: boolean;
+  private pickSource: IntPicker = alwaysPickMin;
+  private replaceRequest: RequestFilter = (_parent, req) => req;
+  private acceptPlayout: PlayoutFilter = () => true;
+  private acceptEmptyPlayout = true;
 
   constructor(
     private readonly tree: CursorParent,
-    private readonly wrapped: IntPicker,
     private readonly version: number,
     start: Node,
-    opts: SearchOpts = {},
   ) {
-    this.stack = new PickStack(start, { trackOdds: wrapped.isRandom });
-    this.replaceRequest = opts.replaceRequest ?? ((_, req) => req);
-    this.acceptPlayout = opts.acceptPlayout ?? (() => true);
-    this.acceptEmptyPlayout = opts.acceptEmptyPlayout ?? true;
+    this.stack = new PickStack(start, { trackOdds: this.pickSource.isRandom });
+  }
+
+  setOptions(opts: SearchOpts): boolean {
+    if (this.#state === "searchDone") {
+      return false;
+    }
+    this.pickSource = opts.pickSource ?? this.pickSource;
+    this.stack.recalculateOdds(this.pickSource.isRandom);
+    this.replaceRequest = opts.replaceRequest ?? this.replaceRequest;
+    this.acceptPlayout = opts.acceptPlayout ?? this.acceptPlayout;
+    this.acceptEmptyPlayout = opts.acceptEmptyPlayout ??
+      this.acceptEmptyPlayout;
+    return true;
   }
 
   get state() {
@@ -366,7 +390,7 @@ export class Cursor implements PlayoutPicker {
     }
 
     const node = this.stack.nextNode(modified, this.tree.playoutsLeft);
-    const firstChoice = this.wrapped.pick(modified);
+    const firstChoice = this.pickSource.pick(modified);
     const pick = node.filterPick(firstChoice);
     if (pick === undefined) {
       throw new Error("internal error: node has no unpruned picks");
@@ -441,7 +465,7 @@ export class SearchTree {
       if (version !== this.#pickerCount) {
         throw new Error("picker accessed after another playout started");
       }
-      if (this.searchDone) {
+      if (this.start === undefined) {
         throw new Error("picker accessed after the search ended");
       }
     };
@@ -465,45 +489,7 @@ export class SearchTree {
     };
   }
 
-  /**
-   * The number of pickers constructed.
-   * (Also, the version number of the picker currently being used.)
-   */
-  get pickersCreated(): number {
-    return this.#pickerCount;
-  }
-
-  get searchDone(): boolean {
-    return this.start === undefined;
-  }
-
-  /**
-   * Returns a sequence of pickers, each of which will usually pick a different playout.
-   *
-   * (If it's iterated over more than once, it will resume where it left off.)
-   */
-  pickers(
-    wrapped: IntPicker,
-    opts?: SearchOpts,
-  ): IterableIterator<PlayoutPicker> {
-    const pickers: IterableIterator<PlayoutPicker> = {
-      [Symbol.iterator]() {
-        return pickers;
-      },
-      next: (): IteratorResult<PlayoutPicker, void> => {
-        const value = this.makePicker(wrapped, opts);
-        const done = value === undefined;
-        if (done) {
-          return { done, value: undefined };
-        } else {
-          return { done, value };
-        }
-      },
-    };
-    return pickers;
-  }
-
-  makePicker(wrapped: IntPicker, opts?: SearchOpts): Cursor | undefined {
+  makePicker(): Cursor | undefined {
     if (this.cursor) {
       if (this.cursor.state === "picking") {
         this.cursor.finishPlayout();
@@ -516,7 +502,7 @@ export class SearchTree {
 
     const version = ++this.#pickerCount;
 
-    this.cursor = new Cursor(this.callbacks, wrapped, version, start, opts);
+    this.cursor = new Cursor(this.callbacks, version, start);
     return this.cursor;
   }
 }
@@ -525,8 +511,8 @@ export class SearchTree {
  * Generates every possible playout in depth-first order, starting from picking
  * all minimums.
  */
-export function depthFirstSearch(opts?: SearchOpts): PlayoutPicker {
-  const picker = new SearchTree(0).makePicker(alwaysPickMin, opts);
+export function depthFirstSearch(): Cursor {
+  const picker = new SearchTree(0).makePicker();
   if (picker === undefined) {
     throw new Error("internal error: no playouts");
   }
@@ -569,12 +555,13 @@ export function* breadthFirstPass(
 
   const tree = new SearchTree(0);
   while (true) {
-    const picker = tree.makePicker(alwaysPickMin, {
+    const picker = tree.makePicker();
+    if (picker === undefined) break;
+    picker.setOptions({
       replaceRequest,
       acceptPlayout,
       acceptEmptyPlayout: passIdx === 0,
     });
-    if (picker === undefined) break;
     yield picker;
   }
 }

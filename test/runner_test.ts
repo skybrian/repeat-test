@@ -85,7 +85,10 @@ describe("randomReps", () => {
 
       const picks = new Set<number>();
       for (const rep of reps) {
-        assert(rep.ok);
+        if (!rep.ok) {
+          console.log(rep.caught);
+          fail(`failed to generate rep: ${rep.caught}`);
+        }
         assertEquals(rep.key, { seed, index: picks.size });
         assertEquals(rep.test, test);
         assertFalse(picks.has(rep.arg.val));

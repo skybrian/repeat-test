@@ -2,7 +2,6 @@ import { pickRandomSeed, randomPickers } from "./random.ts";
 import { SearchTree } from "./search_tree.ts";
 import Arbitrary, { Generated } from "./arbitrary_class.ts";
 import { Failure, failure, Success, success } from "./results.ts";
-import { alwaysPickMin } from "./picks.ts";
 import { shrink } from "./shrink.ts";
 
 /** A function that runs a test, using generated input. */
@@ -71,8 +70,11 @@ export function* randomReps<T>(
 
   // Make sure that the default picks work.
   // (And records them in the tree, so we don't test the default again.)
-  const picker = tree.makePicker(alwaysPickMin);
-  const arg = picker && arb.generate(picker);
+  const picker = tree.makePicker();
+  if (picker === undefined) {
+    throw new Error("can't make picker");
+  }
+  const arg = arb.generate(picker);
   if (arg === undefined) {
     throw new Error("can't generate default value of supplied arbitrary");
   }
@@ -88,8 +90,10 @@ export function* randomReps<T>(
 
     const random = pickers.next().value;
     try {
-      const picker = tree.makePicker(random);
-      const arg = picker && arb.generate(picker);
+      if (!picker.setOptions({ pickSource: random })) {
+        return; // Search done; no more test args.
+      }
+      const arg = arb.generate(picker);
       if (arg === undefined) {
         return; // No more test args to generate.
       }
