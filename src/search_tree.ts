@@ -237,9 +237,9 @@ class PickStack {
 
   /**
    * Prunes the current playout and any ancestors that have only one branch left.
-   * Returns the new depth, or -1 if the search is over.
+   * Returns true if more playouts are available.
    */
-  prune(): number {
+  prune(): boolean {
     const nodes = this.nodes;
     const picks = this.picks;
     // Prune at the last node with more than one branch.
@@ -247,13 +247,14 @@ class PickStack {
       const n = nodes[i];
       if (n.branchesLeft > 1) {
         n.prune(picks[i]);
-        // This node should be removed from the stack so we take a different branch.
-        return i - 1;
+        // Remove this node from the stack so we take a different branch.
+        this.trim(i - 1);
+        return true;
       }
     }
     // No branches. Prune the last playout of the search.
     nodes[0].prune(picks[0]);
-    return -1;
+    return false;
   }
 
   trim(depth: number): boolean {
@@ -321,18 +322,13 @@ export class Cursor implements PlayoutPicker {
   }
 
   private removePlayout() {
-    const newDepth = this.stack.prune();
-    if (newDepth === -1) {
-      this.tree.endSearch();
+    if (this.stack.prune()) {
+      this.#state = "playoutDone";
+      this.tree.endPlayout();
+    } else {
       this.#state = "searchDone";
-      return;
+      this.tree.endSearch();
     }
-    if (!this.stack.trim(newDepth)) {
-      throw new Error("internal error: stack was not trimmed");
-    }
-
-    this.#state = "playoutDone";
-    this.tree.endPlayout();
   }
 
   startAt(depth: number): boolean {
