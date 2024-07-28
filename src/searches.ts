@@ -95,27 +95,37 @@ export class Node {
     return undefined;
   }
 
+  /**
+   * Returns true if the pick was pruned by this call.
+   * (That is, it wasn't previously pruned.)
+   */
   prune(pick: number): boolean {
     if (pick === this.#min && pick < this.#max) {
-      this.#min++;
-      this.#branchesLeft--;
+      // Prune by increasing #min. (It might have previously been pruned by
+      // setting the branch.)
+      const wasPruned = this[pick] === PRUNED;
+      if (!wasPruned) {
+        this.#branchesLeft--;
+      }
       delete this[pick];
-      return true;
-    }
-    if (!this.#tracked) {
+      this.#min++;
+      return !wasPruned;
+    } else if (pick < this.#min || pick > this.#max) {
       return false;
-    } else {
-      this[pick] = PRUNED;
-      this.#branchesLeft--;
-      return true;
+    } else if (!this.#tracked) {
+      return false;
+    } else if (this[pick] === PRUNED) {
+      return false;
     }
+    this[pick] = PRUNED;
+    this.#branchesLeft--;
+    return true;
   }
 
   /**
    * Remembers that a pick sequence was visited.
    *
-   * Returns true if this was the first time the pick sequence was seen, or
-   * false if it was already recorded.
+   * Returns true if the pick was pruned by this call.
    */
   static prunePlayout(parent: Node, picks: PickList): boolean {
     const reqs = picks.reqs();
@@ -146,10 +156,9 @@ export class Node {
       i++;
     }
 
-    if (parent.getBranch(parentPick) === PRUNED) {
-      return false; // aleady added
+    if (!parent.prune(parentPick)) {
+      return false; // already pruned
     }
-    parent.prune(parentPick);
 
     // remove ancestors that are now empty
     while (parent.branchesLeft === 0) {
@@ -437,6 +446,16 @@ export class PlayoutSearch implements PlayoutPicker {
     }
   }
 
+  /**
+   * Removes any picks from the stack so that only startAt(0) will work.
+   */
+  clearPicks() {
+    if (this.state === "picking") {
+      this.removePlayout();
+    }
+    this.stack.trim(0);
+  }
+
   startAt(depth: number): boolean {
     if (this.state === "searchDone") {
       return false;
@@ -573,6 +592,7 @@ export function* breadthFirstSearch(): Iterable<PlayoutPicker> {
       yield search;
       if (search.picking) {
         search.finishPlayout();
+        search.clearPicks();
       }
     }
     maxDepth++;

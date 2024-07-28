@@ -19,9 +19,73 @@ import { repeatTest } from "../src/runner.ts";
 import {
   breadthFirstPass,
   breadthFirstSearch,
+  Node,
   PlayoutSearch,
+  PRUNED,
   SearchOpts,
 } from "../src/searches.ts";
+
+describe("Node", () => {
+  describe("prune", () => {
+    it("sets a branch to PRUNED", () => {
+      repeatTest(arb.int(1, 6), (toPrune) => {
+        const node = Node.tracked(new PickRequest(1, 6));
+        assertEquals(node.branchesLeft, 6);
+        assert(node.prune(toPrune));
+        assertEquals(node.branchesLeft, 5);
+        assertEquals(node.getBranch(toPrune), PRUNED);
+      });
+    });
+    it("returns false if the pick is out of range", () => {
+      const node = Node.tracked(new PickRequest(1, 2));
+      assertEquals(node.branchesLeft, 2);
+      assertFalse(node.prune(0));
+      assertEquals(node.branchesLeft, 2);
+    });
+    it("returns false if the branch is already pruned", () => {
+      repeatTest(arb.int(1, 6), (toPrune) => {
+        const node = Node.tracked(new PickRequest(1, 6));
+        assert(node.prune(toPrune));
+        assertEquals(node.branchesLeft, 5);
+        assertFalse(node.prune(toPrune));
+        assertEquals(node.branchesLeft, 5);
+      });
+    });
+    it("returns false if the branch was pruned and later became the minimum", () => {
+      const node = Node.tracked(new PickRequest(1, 6));
+      assert(node.prune(2));
+      assertEquals(node.branchesLeft, 5);
+      assert(node.prune(1));
+      assertEquals(node.branchesLeft, 4);
+      assertFalse(node.prune(2));
+    });
+    it("works for multiple prunes", () => {
+      const example = arb.from((pick) => {
+        const min = pick(arb.int(0, 2));
+        const max = pick(arb.int(min + 2, min + 5));
+        const req = arb.int(min, max);
+        const first = pick(req);
+        const secondArb = req.filter((p) => p !== first);
+        const second = pick(secondArb);
+        const third = pick(req.filter((p) => p !== first && p !== second));
+        return { min, max, picks: [first, second, third] };
+      });
+      repeatTest(example, ({ min, max, picks }) => {
+        const node = Node.tracked(new PickRequest(min, max));
+        let expectRemaining = max - min + 1;
+        for (let i = 0; i < picks.length; i++) {
+          assert(node.prune(picks[i]));
+          expectRemaining--;
+          assertEquals(node.branchesLeft, expectRemaining);
+        }
+        for (let i = 0; i < picks.length; i++) {
+          assertFalse(node.prune(picks[i]));
+          assertEquals(node.branchesLeft, expectRemaining);
+        }
+      });
+    });
+  });
+});
 
 const bit = new PickRequest(0, 1);
 

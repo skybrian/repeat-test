@@ -2,7 +2,7 @@ import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals } from "@std/assert";
 import { randomPicker } from "../src/random.ts";
 
-import { PickRequest } from "../src/picks.ts";
+import { alwaysPick, PickRequest } from "../src/picks.ts";
 import { minPlayout, onePlayout, rotatePicks } from "../src/backtracking.ts";
 import { breadthFirstSearch, PlayoutSearch } from "../src/searches.ts";
 
@@ -24,9 +24,32 @@ describe("onePlayoutPicker", () => {
 });
 
 describe("rotatePicks", () => {
+  it("can wrap a picker that's in the middle of a playout", () => {
+    const req = new PickRequest(1, 6);
+    const wrapped = onePlayout(alwaysPick(3));
+    wrapped.startAt(0);
+    wrapped.maybePick(req);
+    wrapped.maybePick(req);
+    // rotate 1 (min) to 2 - that is, add one
+    const rotated = rotatePicks(wrapped, [2]);
+    assertEquals(rotated.depth, 2);
+    assertEquals(rotated.getPicks().replies(), [3, 3]);
+    assertEquals(rotated.maybePick(req), { ok: true, val: 4 });
+
+    assertEquals(rotated.getPicks().replies(), [3, 3, 4]);
+    assertEquals(wrapped.getPicks().replies(), [3, 3, 3]);
+
+    assertEquals(rotated.depth, 3);
+    assertEquals(wrapped.depth, 3);
+
+    assertEquals(rotated.maybePick(req), { ok: true, val: 3 });
+    assertEquals(rotated.depth, 4);
+  });
+
   it("returns the new defaults instead of a minimum value", () => {
-    const picker = rotatePicks(minPlayout(), [1, 2]);
-    assert(picker.startAt(0));
+    const wrapped = minPlayout();
+    wrapped.startAt(0);
+    const picker = rotatePicks(wrapped, [1, 2]);
 
     const bit = new PickRequest(0, 1);
     assertEquals(picker.maybePick(bit), { ok: true, val: 1 });
@@ -73,10 +96,11 @@ describe("rotatePicks", () => {
     const bit = new PickRequest(0, 1);
     const playouts: string[] = [];
     for (let picker of breadthFirstSearch()) {
-      picker = rotatePicks(picker, [1, 1]);
       assert(picker.startAt(0));
+      picker = rotatePicks(picker, [1, 1]);
+      assertEquals(picker.depth, 0);
       for (let i = 0; i < 3; i++) {
-        picker.maybePick(bit);
+        assert(picker.maybePick(bit).ok);
       }
       assertEquals(picker.depth, 3);
       const picks = JSON.stringify(picker.getPicks().replies());

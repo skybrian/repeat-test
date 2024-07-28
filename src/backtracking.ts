@@ -139,38 +139,56 @@ export function playback(picks: number[]): PlayoutPicker {
 /**
  * A picker that rotates each reply so that when the underlying picker picks a
  * minimum value, it picks a default value instead.
+ *
+ * @param wrapped a picker that is currently picking. The rotated picks will
+ * start at whatever depth it's currently at.
  */
 export function rotatePicks(
   wrapped: PlayoutPicker,
   defaultPlayout: number[],
 ): PlayoutPicker {
   let picking = true; // Wrapped picker is already picking.
-  const picks = new PickList();
+
+  const picks = wrapped.getPicks();
+  if (wrapped.depth !== picks.length) {
+    throw new Error("wrapped depth is inconsistent with getPicks");
+  }
+
+  const rotateStart = picks.length;
+
+  const trimToWrapped = () => {
+    const newDepth = wrapped.depth;
+    if (newDepth > picks.length) {
+      throw new Error("wrapped depth increased unexpectedly");
+    }
+    picks.length = wrapped.depth;
+  };
 
   const picker: PlayoutPicker = {
     startAt(depth: number): boolean {
-      if (depth < 0 || depth > defaultPlayout.length) {
+      if (depth < 0 || depth > picks.length) {
         return false;
       }
       if (!wrapped.startAt(depth)) {
         return false;
       }
-      picks.length = depth;
+      trimToWrapped();
       picking = true;
       return true;
     },
 
     maybePick(req) {
-      const depth = wrapped.depth;
+      trimToWrapped();
+      const oldDepth = picks.length;
       const oldPick = wrapped.maybePick(req);
       if (!oldPick.ok) return oldPick;
 
-      if (depth >= defaultPlayout.length) {
+      if (oldDepth >= rotateStart + defaultPlayout.length) {
         picks.push(req, oldPick.val);
         return oldPick;
       }
 
-      const def = defaultPlayout[depth];
+      const def = defaultPlayout[oldDepth - rotateStart];
       let pick = oldPick.val - req.min + def;
       while (pick > req.max) {
         pick -= req.size;
@@ -181,17 +199,20 @@ export function rotatePicks(
 
     finishPlayout(): boolean {
       picking = false;
-      return wrapped.finishPlayout();
+      const result = wrapped.finishPlayout();
+      trimToWrapped();
+      return result;
     },
 
     get depth() {
-      return picks.length;
+      return wrapped.depth;
     },
 
     getPicks(start?: number, end?: number): PickList {
       if (!picking) {
         throw new Error("getPicks called in the wrong state");
       }
+      trimToWrapped();
       return picks.slice(start, end);
     },
   };
