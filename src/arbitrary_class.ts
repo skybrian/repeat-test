@@ -176,8 +176,8 @@ export default class Arbitrary<T> {
       try {
         const pick = Arbitrary.makePickFunction(log, picker);
         const val = this.#callback(pick);
-        const picks = picker.finishPlayout();
-        if (picks.ok) {
+        const picks = picker.getPicks();
+        if (picker.finishPlayout()) {
           return new Generated(picks, log.getSpans(), val);
         }
       } catch (e) {

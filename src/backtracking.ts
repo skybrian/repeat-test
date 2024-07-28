@@ -52,7 +52,7 @@ export interface RetryPicker {
    *
    * It's an error to call {@link maybePick} after finishing the playout.
    */
-  finishPlayout(): PickList | Pruned;
+  finishPlayout(): boolean;
 
   /**
    * The number of picks so far. (Corresponds to the current depth in a search
@@ -97,14 +97,14 @@ export function onePlayoutPicker(picker: IntPicker): RetryPicker {
       return success(pick);
     },
 
-    finishPlayout: function (): PickList | Pruned {
+    finishPlayout: function (): boolean {
       if (state !== "picking") {
         throw new Error(
           `finishPlayout called in the wrong state. Wanted "picking"; got "${state}"`,
         );
       }
       state = "done";
-      return picks.slice();
+      return true;
     },
 
     get depth() {
@@ -174,12 +174,9 @@ export function rotatePicks(
       return success(pick);
     },
 
-    finishPlayout(): PickList | Pruned {
+    finishPlayout(): boolean {
       picking = false;
-      const wrappedPicks = wrapped.finishPlayout();
-      if (!wrappedPicks.ok) return wrappedPicks;
-      picks.length = wrappedPicks.length;
-      return picks.slice();
+      return wrapped.finishPlayout();
     },
 
     get depth() {

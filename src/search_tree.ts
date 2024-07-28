@@ -355,28 +355,24 @@ export class Cursor implements RetryPicker {
     return success(pick);
   }
 
-  finishPlayout(): PickList | Pruned {
+  finishPlayout(): boolean {
     this.tree.checkAlive(this.version);
     if (this.#state !== "picking") {
       throw new Error(
         `finishPlayout called in the wrong state. Wanted "picking"; got "${this.#state}"`,
       );
     }
-    let result: PickList | Pruned = new Pruned("filtered out");
+    let accepted = false;
     if (this.depth === 0) {
-      if (this.acceptEmptyPlayout) {
-        result = this.getPicks();
-      }
+      accepted = this.acceptEmptyPlayout;
     } else {
       const lastReq = this.modifiedReqs[this.modifiedReqs.length - 1];
       const lastDepth = this.modifiedReqs.length - 2;
-      if (this.acceptPlayout(lastDepth, lastReq)) {
-        result = this.getPicks();
-      }
+      accepted = this.acceptPlayout(lastDepth, lastReq);
     }
 
     this.removePlayout();
-    return result;
+    return accepted;
   }
 
   get depth(): number {

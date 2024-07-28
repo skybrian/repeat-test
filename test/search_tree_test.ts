@@ -209,9 +209,8 @@ describe("Cursor", () => {
       assert(picker.startAt(0));
       assert(picker.maybePick(bit).ok);
       assert(picker.maybePick(new PickRequest(0, 0)).ok);
-      const picks = picker.finishPlayout();
-      assert(picks.ok);
-      assertEquals(picks.replies(), [0, 0]);
+      assertEquals(picker.getPicks().replies(), [0, 0]);
+      assert(picker.finishPlayout());
       assertThrows(() => picker.getPicks(), Error);
     });
   });
@@ -419,7 +418,7 @@ class Maze {
       return;
     }
     const picks = JSON.stringify(picker.getPicks().replies());
-    if (picker.finishPlayout().ok) {
+    if (picker.finishPlayout()) {
       if (this.accepted.has(picks)) {
         fail(`duplicate picks: ${picks}`);
       }
@@ -500,7 +499,7 @@ function walkUnaryTree(picker: RetryPicker): string | undefined {
       result += "0";
     }
   }
-  if (!picker.finishPlayout().ok) {
+  if (!picker.finishPlayout()) {
     return undefined;
   }
   return result;
@@ -512,7 +511,7 @@ function walkBinaryTree(...stops: string[]) {
     let result = "";
     for (let i = 0; i < 8; i++) {
       if (stops.includes(result)) {
-        if (!picker.finishPlayout().ok) {
+        if (!picker.finishPlayout()) {
           return undefined;
         }
         return result;
@@ -527,7 +526,7 @@ function walkBinaryTree(...stops: string[]) {
         result += "0";
       }
     }
-    if (!picker.finishPlayout().ok) {
+    if (!picker.finishPlayout()) {
       return undefined;
     }
     return result;
@@ -733,8 +732,8 @@ describe("breadthFirstSearch", () => {
     for (const picker of breadthFirstSearch()) {
       assert(picker.startAt(0));
       picker.maybePick(new PickRequest(0, 2));
-      const picks = picker.finishPlayout();
-      if (picks.ok) {
+      const picks = picker.getPicks();
+      if (picker.finishPlayout()) {
         accepted.add(JSON.stringify(picks.replies()));
       }
     }
