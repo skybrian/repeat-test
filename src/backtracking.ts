@@ -62,6 +62,8 @@ export interface RetryPicker {
 
   /**
    * Returns the picks made so far.
+   *
+   * Available only between {@link startAt} and {@link finishPlayout}.
    */
   getPicks(): PickList;
 }
@@ -87,7 +89,7 @@ export function onePlayoutPicker(picker: IntPicker): RetryPicker {
     maybePick(req) {
       if (state !== "picking") {
         throw new Error(
-          `maybePick called in the wrong state. Wanted "running"; got "${state}"`,
+          `maybePick called in the wrong state. Wanted "picking"; got "${state}"`,
         );
       }
       const pick = picker.pick(req);
@@ -98,7 +100,7 @@ export function onePlayoutPicker(picker: IntPicker): RetryPicker {
     finishPlayout: function (): PickList | Pruned {
       if (state !== "picking") {
         throw new Error(
-          `finishPlayout called in the wrong state. Wanted "running"; got "${state}"`,
+          `finishPlayout called in the wrong state. Wanted "picking"; got "${state}"`,
         );
       }
       state = "done";
@@ -110,6 +112,11 @@ export function onePlayoutPicker(picker: IntPicker): RetryPicker {
     },
 
     getPicks: function (): PickList {
+      if (state !== "picking") {
+        throw new Error(
+          `getPicks called in the wrong state. Wanted "picking"; got "${state}"`,
+        );
+      }
       return picks.slice();
     },
   };
@@ -132,6 +139,7 @@ export function rotatePicks(
   wrapped: RetryPicker,
   defaultPlayout: number[],
 ): RetryPicker {
+  let picking = true; // Wrapped picker is already picking.
   const picks = new PickList();
 
   const picker: RetryPicker = {
@@ -143,6 +151,7 @@ export function rotatePicks(
         return false;
       }
       picks.length = depth;
+      picking = true;
       return true;
     },
 
@@ -166,6 +175,7 @@ export function rotatePicks(
     },
 
     finishPlayout(): PickList | Pruned {
+      picking = false;
       const wrappedPicks = wrapped.finishPlayout();
       if (!wrappedPicks.ok) return wrappedPicks;
       picks.length = wrappedPicks.length;
@@ -177,6 +187,9 @@ export function rotatePicks(
     },
 
     getPicks(): PickList {
+      if (!picking) {
+        throw new Error("getPicks called in the wrong state");
+      }
       return picks.slice();
     },
   };

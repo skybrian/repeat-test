@@ -79,8 +79,9 @@ describe("rotatePicks", () => {
         picker.maybePick(bit);
       }
       assertEquals(picker.depth, 3);
-      if (picker.finishPlayout().ok) {
-        playouts.push(JSON.stringify(picker.getPicks().replies()));
+      const picks = picker.finishPlayout();
+      if (picks.ok) {
+        playouts.push(JSON.stringify(picks.replies()));
       }
     }
     assertEquals(playouts, [

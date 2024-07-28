@@ -384,6 +384,11 @@ export class Cursor implements RetryPicker {
   }
 
   getPicks(): PickList {
+    if (this.#state !== "picking") {
+      throw new Error(
+        `getPicks called in the wrong state. Wanted "picking"; got "${this.#state}"`,
+      );
+    }
     return new PickList(this.originalReqs.slice(1), this.picks.slice(1));
   }
 }

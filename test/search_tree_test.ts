@@ -28,13 +28,11 @@ const bit = new PickRequest(0, 1);
 
 describe("SearchTree", () => {
   describe("makePicker", () => {
-    it("starts a playout with no picks", () => {
+    it("creates a picker", () => {
       const search = new SearchTree(1);
       const picker = search.makePicker(alwaysPickMin);
       assert(picker !== undefined);
       assertEquals(picker.depth, 0);
-      assertEquals(picker.getPicks().reqs(), []);
-      assertEquals(picker.getPicks().replies(), []);
       assert(picker.tracked);
     });
   });
@@ -207,14 +205,14 @@ describe("Cursor", () => {
       picker = makePicker();
     });
 
-    it("removes the returned playout from the stack", () => {
+    it("disallows calling getPicks afterwards", () => {
       assert(picker.startAt(0));
       assert(picker.maybePick(bit).ok);
       assert(picker.maybePick(new PickRequest(0, 0)).ok);
       const picks = picker.finishPlayout();
       assert(picks.ok);
       assertEquals(picks.replies(), [0, 0]);
-      assertEquals(picker.getPicks().replies(), []); // must take the other branch
+      assertThrows(() => picker.getPicks(), Error);
     });
   });
 
