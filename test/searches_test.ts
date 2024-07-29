@@ -8,7 +8,12 @@ import {
 } from "@std/assert";
 
 import { Success, success } from "../src/results.ts";
-import { alwaysPick, alwaysPickMin, PickRequest } from "../src/picks.ts";
+import {
+  alwaysPick,
+  alwaysPickMin,
+  PickList,
+  PickRequest,
+} from "../src/picks.ts";
 import { PlayoutPicker, Pruned } from "../src/backtracking.ts";
 import { randomPicker } from "../src/random.ts";
 
@@ -82,6 +87,40 @@ describe("Node", () => {
           assertFalse(node.prune(picks[i]));
           assertEquals(node.branchesLeft, expectRemaining);
         }
+      });
+    });
+  });
+  describe("prunePlayout", () => {
+    const bit = new PickRequest(0, 1);
+    it("prunes the entire tree", () => {
+      const start = Node.makeStart();
+      assert(Node.prunePlayout(start, new PickList([], [])));
+      assertEquals(start.branchesLeft, 0);
+    });
+    it("prunes a child of the root node", () => {
+      repeatTest([0, 1], (pick) => {
+        const start = Node.makeStart();
+        assert(Node.prunePlayout(start, new PickList([bit], [pick])));
+        const root = start.getBranch(0);
+        assert(root instanceof Node);
+        assertEquals(root.branchesLeft, 1);
+        assertEquals(root.getBranch(pick), PRUNED);
+      });
+    });
+    it("prunes a child at arbitrary depth", () => {
+      const example = arb.from((pick) => {
+        const min = pick(arb.int(1, 2));
+        const max = pick(arb.int(min, min + 5));
+        const path = pick(arb.array(arb.int(min, max)));
+        return { min, max, path };
+      });
+      repeatTest(example, ({ min, max, path }) => {
+        const start = Node.makeStart();
+        const req = new PickRequest(min, max);
+        const reqs = path.map((_) => req);
+        const picks = new PickList(reqs, path);
+        assert(Node.prunePlayout(start, picks));
+        assert(Node.isPrunedPlayout(start, path), "not pruned");
       });
     });
   });

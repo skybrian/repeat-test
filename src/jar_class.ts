@@ -1,4 +1,4 @@
-import { PickList, PickRequest } from "./picks.ts";
+import { PickList } from "./picks.ts";
 import { Node } from "./searches.ts";
 import Arbitrary, { PickFunction } from "./arbitrary_class.ts";
 
@@ -9,7 +9,7 @@ import Arbitrary, { PickFunction } from "./arbitrary_class.ts";
  * This can be used to generate permutations.
  */
 export class Jar<T> {
-  private start: Node = Node.from(new PickRequest(0, 0));
+  private start: Node = Node.makeStart();
   private acceptPicks = (picks: PickList) =>
     Node.prunePlayout(this.start, picks);
 

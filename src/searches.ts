@@ -31,22 +31,27 @@ export class Node {
 
   #branchesLeft: number;
 
+  /** A dummy node for pointing to the root of a tree. */
+  static makeStart(): Node {
+    return new Node(0, 0);
+  }
+
   static from(req: PickRequest): Node {
-    return new Node(req.min, req.max, req.size);
+    return new Node(req.min, req.max);
   }
 
   private constructor(
     min: number,
     max: number,
-    branchCount: number,
   ) {
     this.#reqMin = min;
     this.#min = min;
     this.#max = max;
-    this.#branchesLeft = branchCount;
+    this.#branchesLeft = max - min + 1;
   }
 
-  check(req: PickRequest): boolean {
+  /** Returns true if the range matches the one used to create the node. */
+  checkRange(req: PickRequest): boolean {
     return this.#reqMin === req.min && this.#max === req.max;
   }
 
@@ -55,9 +60,10 @@ export class Node {
     return this[pick];
   }
 
-  setBranch(pick: number, node: Node): boolean {
+  addChild(pick: number, req: PickRequest): Node {
+    const node = Node.from(req);
     this[pick] = node;
-    return true;
+    return node;
   }
 
   /** The number of unpruned branches. */
@@ -65,7 +71,11 @@ export class Node {
     return this.#branchesLeft;
   }
 
-  filterPick(
+  /**
+   * Returns the next unpruned pick, or undefined if they are all pruned. (Wraps
+   * around if firstChoice isn't the minimum value.)
+   */
+  findUnpruned(
     firstChoice: number,
   ): number | undefined {
     let pick = firstChoice;
@@ -82,8 +92,10 @@ export class Node {
   }
 
   /**
-   * Returns true if the pick was pruned by this call.
-   * (That is, it wasn't previously pruned.)
+   * Sets the branch at the given pick to pruned.
+   *
+   * Returns true if the pick was pruned by this call. (That is, it wasn't
+   * previously pruned.)
    */
   prune(pick: number): boolean {
     if (pick === this.#min && pick < this.#max) {
@@ -108,8 +120,12 @@ export class Node {
     return true;
   }
 
-  static isPrunedPlayout(root: Node, picks: number[]): boolean {
-    let parent = root;
+  /**
+   * Given a start node (with a single branch), returns true if the
+   * branch corresponding to the given playout was pruned.
+   */
+  static isPrunedPlayout(start: Node, picks: number[]): boolean {
+    let parent = start;
     let parentPick = 0;
     for (let i = 0; i < picks.length; i++) {
       const branch = parent.getBranch(parentPick);
@@ -125,22 +141,25 @@ export class Node {
   }
 
   /**
-   * Remembers that a pick sequence was visited.
+   * Given a start node (with a single branch), sets the branch corresponding to
+   * the given pick sequence to pruned.
    *
-   * Returns true if the pick was pruned by this call.
+   * Returns true if the pick was pruned by this call. (That is, it wasn't
+   * previously pruned.)
    */
-  static prunePlayout(root: Node, picks: PickList): boolean {
+  static prunePlayout(start: Node, picks: PickList): boolean {
     const reqs = picks.reqs();
     const replies = picks.replies();
 
-    let parent = root;
+    let parent = start;
     let parentPick = 0;
+
     const nodePath: Node[] = [];
     const pickPath: number[] = [];
 
     // walk the tree, adding nodes where needed.
     for (let i = 0; i < reqs.length; i++) {
-      let branch = parent.getBranch(parentPick);
+      const branch = parent.getBranch(parentPick);
       if (branch == PRUNED) {
         return false; // aleady added
       }
@@ -148,15 +167,12 @@ export class Node {
       pickPath.push(parentPick);
       if (branch === undefined) {
         // unexplored; add node
-        branch = Node.from(reqs[i]);
-        parent.setBranch(0, branch);
-        parent = branch;
+        parent = parent.addChild(parentPick, reqs[i]);
         parentPick = replies[i];
       } else {
         parent = branch;
         parentPick = replies[i];
       }
-      i++;
     }
 
     if (!parent.prune(parentPick)) {
@@ -209,7 +225,7 @@ class PickStack {
   private notTakenOdds: number | undefined;
 
   constructor(opts: { trackOdds: boolean }) {
-    this.nodes = [Node.from(new PickRequest(0, 0))];
+    this.nodes = [Node.makeStart()];
     this.originalReqs = [new PickRequest(0, 0)];
     this.modifiedReqs = [new PickRequest(0, 0)];
     this.picks = [0];
@@ -239,13 +255,13 @@ class PickStack {
 
     const picks = this.picks;
     const parentPick = picks[picks.length - 1];
-    let node = parent.getBranch(parentPick);
+    const node = parent.getBranch(parentPick);
 
     if (node === PRUNED) {
       throw new Error("internal error: parent picked a pruned branch");
     } else if (node !== undefined) {
       // Visit existing node.
-      if (!node.check(req)) {
+      if (!node.checkRange(req)) {
         throw new Error(
           `pick request range doesn't match a previous visit`,
         );
@@ -269,9 +285,7 @@ class PickStack {
       }
     }
 
-    node = Node.from(req);
-    parent.setBranch(parentPick, node);
-    return node;
+    return parent.addChild(parentPick, req);
   }
 
   push(n: Node, req: PickRequest, modified: PickRequest, pick: number): void {
@@ -495,7 +509,7 @@ export class PlayoutSearch implements PlayoutPicker {
 
     const node = this.stack.nextNode(modified, this.playoutsLeft);
     const firstChoice = this.pickSource.pick(modified);
-    const pick = node.filterPick(firstChoice);
+    const pick = node.findUnpruned(firstChoice);
     if (pick === undefined) {
       throw new Error("internal error: node has no unpruned picks");
     }
