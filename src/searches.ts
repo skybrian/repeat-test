@@ -7,7 +7,7 @@ import { PlayoutPicker, Pruned } from "./backtracking.ts";
 export const PRUNED = Symbol("pruned");
 
 /**
- * The state of a subtree.
+ * The state of a branch in a {@link Node}.
  *
  * An undefined branch is not being tracked (yet). Either it hasn't been
  * visited, or the probability of a duplicate is too low to be worth tracking.
@@ -15,18 +15,22 @@ export const PRUNED = Symbol("pruned");
 type Branch = undefined | Node | typeof PRUNED;
 
 /**
- * A search tree node for keeping track of which playouts already happened.
+ * A search tree node corresponding to one {@link PickRequest} in a playout.
  *
- * Invariant: branchesLeft is the count of branches not set to PRUNED.
- *
- * Invariant: `branchesLeft >= 1` for nodes in the tree. (Otherwise, the node
- * should have been removed.)
+ * It has a branch for each possible pick in the PickRequest's range. When all
+ * possibilities have been exhausted for a pick, it can be set to {@link PRUNED}
+ * to avoid needlessly visiting it again.
  */
 export class Node {
   [key: number]: Branch;
 
+  /** Invariant: reqMin <= min <= max */
+
+  /** The original minimum from the pick request. */
   #reqMin: number;
+  /** The minimum unpruned branch. All picks less than min are considered pruned. */
   #min: number;
+  /** The maximum from the pick request. */
   #max: number;
 
   #branchesLeft: number;
@@ -196,6 +200,9 @@ export class Node {
   }
 }
 
+/**
+ * Holds the search tree and the current playout.
+ */
 class PickStack {
   /* Invariant: `nodes.length === reqs.length === picks.length` */
 
@@ -203,15 +210,15 @@ class PickStack {
    * The nodes used in the current playout. The 'start' node is at index 0, and
    * it points to the root at index 1.
    */
-  private readonly nodes: Node[];
+  private readonly nodes: Node[] = [Node.makeStart()];
 
-  private readonly reqs: PickRequest[];
+  private readonly reqs: PickRequest[] = [new PickRequest(0, 0)];
 
   /**
    * The picks made in the current playout. The pick at index 0 is always 0,
    * pointing to the root node.
    */
-  private readonly picks: number[];
+  private readonly picks: number[] = [0];
 
   /**
    * The odds that a playout other than the one we're on would have been picked
@@ -222,14 +229,9 @@ class PickStack {
    * odds are 0:1, or 0%. A value of 1 means the odds are 1:1 or a 50%
    * probability.
    */
-  private notTakenOdds: number | undefined;
+  private notTakenOdds: number | undefined = undefined;
 
-  constructor(opts: { trackOdds: boolean }) {
-    this.nodes = [Node.makeStart()];
-    this.reqs = [new PickRequest(0, 0)];
-    this.picks = [0];
-    this.notTakenOdds = opts.trackOdds ? 0 : undefined;
-  }
+  constructor() {}
 
   get depth(): number {
     return this.nodes.length - 1;
@@ -410,7 +412,7 @@ export type SearchOpts = {
  */
 export class PlayoutSearch implements PlayoutPicker {
   private state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
-  private readonly stack;
+  private readonly stack = new PickStack();
   private playoutsLeft = 1000;
 
   private pickSource: IntPicker = alwaysPickMin;
@@ -420,7 +422,6 @@ export class PlayoutSearch implements PlayoutPicker {
   private acceptEmptyPlayout = true;
 
   constructor(opts?: SearchOpts) {
-    this.stack = new PickStack({ trackOdds: this.pickSource.isRandom });
     if (opts) this.setOptions(opts);
   }
 
