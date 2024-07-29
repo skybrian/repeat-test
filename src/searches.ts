@@ -101,15 +101,17 @@ export class Node {
    */
   prune(pick: number): boolean {
     if (pick === this.#min && pick < this.#max) {
-      // Prune by increasing #min. (It might have previously been pruned by
-      // setting the branch.)
-      const wasPruned = this[pick] === PRUNED;
-      if (!wasPruned) {
-        this.#branchesLeft--;
-      }
+      // Prune by increasing #min.
+      this.#branchesLeft--;
       delete this[pick];
       this.#min++;
-      return !wasPruned;
+      // Consolidate with previous prunes. This preserves the invariant that
+      // #min isn't pruned unless it's the only branch.
+      while (this.#min < this.#max && this[this.#min] === PRUNED) {
+        delete this[this.#min];
+        this.#min++;
+      }
+      return true;
     } else if (pick < this.#min || pick > this.#max) {
       return false;
     } else if (!this.#tracked) {
