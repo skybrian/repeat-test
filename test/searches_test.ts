@@ -29,7 +29,7 @@ describe("Node", () => {
   describe("prune", () => {
     it("sets a branch to PRUNED", () => {
       repeatTest(arb.int(1, 6), (toPrune) => {
-        const node = Node.tracked(new PickRequest(1, 6));
+        const node = Node.from(new PickRequest(1, 6));
         assertEquals(node.branchesLeft, 6);
         assert(node.prune(toPrune));
         assertEquals(node.branchesLeft, 5);
@@ -37,14 +37,14 @@ describe("Node", () => {
       });
     });
     it("returns false if the pick is out of range", () => {
-      const node = Node.tracked(new PickRequest(1, 2));
+      const node = Node.from(new PickRequest(1, 2));
       assertEquals(node.branchesLeft, 2);
       assertFalse(node.prune(0));
       assertEquals(node.branchesLeft, 2);
     });
     it("returns false if the branch is already pruned", () => {
       repeatTest(arb.int(1, 6), (toPrune) => {
-        const node = Node.tracked(new PickRequest(1, 6));
+        const node = Node.from(new PickRequest(1, 6));
         assert(node.prune(toPrune));
         assertEquals(node.branchesLeft, 5);
         assertFalse(node.prune(toPrune));
@@ -52,7 +52,7 @@ describe("Node", () => {
       });
     });
     it("returns false if the branch was pruned and later became the minimum", () => {
-      const node = Node.tracked(new PickRequest(1, 6));
+      const node = Node.from(new PickRequest(1, 6));
       assert(node.prune(2));
       assertEquals(node.branchesLeft, 5);
       assert(node.prune(1));
@@ -71,7 +71,7 @@ describe("Node", () => {
         return { min, max, picks: [first, second, third] };
       });
       repeatTest(example, ({ min, max, picks }) => {
-        const node = Node.tracked(new PickRequest(min, max));
+        const node = Node.from(new PickRequest(min, max));
         let expectRemaining = max - min + 1;
         for (let i = 0; i < picks.length; i++) {
           assert(node.prune(picks[i]));
@@ -99,25 +99,30 @@ describe("Search", () => {
   describe("constructor", () => {
     it("starts with default settings", () => {
       assertEquals(search.depth, 0);
-      assert(search.tracked);
       assertFalse(search.done);
     });
   });
   describe("maybePick", () => {
     it("picks the minimum value by default", () => {
       assert(search.startAt(0));
-      assertEquals(search.maybePick(bit), { ok: true, val: 0 });
+      const pick = search.maybePick(bit);
+      assert(pick.ok);
+      assertEquals(pick.val, 0);
       assertEquals(search.depth, 1);
       assertEquals(search.getPicks().reqs(), [bit]);
       assertEquals(search.getPicks().replies(), [0]);
-      assert(search.tracked);
+      assert(search.finishPlayout());
+      assert(search.isPruned([pick.val]), "not pruned");
     });
 
-    it("continues tracking beneath a wide node", () => {
+    it("prunes a pick in a wide node", () => {
       assert(search.startAt(0));
       const uint32 = new PickRequest(0, 2 ** 32 - 1);
-      search.maybePick(uint32);
-      assert(search.tracked);
+      const pick = search.maybePick(uint32);
+      assert(pick.ok);
+      assertEquals(pick.val, 0);
+      assert(search.finishPlayout());
+      assert(search.isPruned([pick.val]), "not pruned");
     });
 
     it("requires the same range as last time", () => {
@@ -131,14 +136,16 @@ describe("Search", () => {
       beforeEach(() => {
         search.setOptions({ pickSource: randomPicker(123) });
       });
-      it("stops tracking if there aren't enough playouts to get to every branch", () => {
+      it("doesn't prune if there aren't enough playouts to get to every branch", () => {
         search.setOptions({ expectedPlayouts: 1 });
         assert(search.startAt(0));
-        search.maybePick(new PickRequest(1, 6));
-        assertFalse(search.tracked);
+        const pick = search.maybePick(new PickRequest(1, 6));
+        assert(pick.ok);
+        assert(search.finishPlayout());
+        assertFalse(search.isPruned([pick.val]));
       });
 
-      it("tracks if there are enough playouts to get to every branch", () => {
+      it("prunes if there are enough playouts to get to every branch", () => {
         repeatTest(arb.int(2, 1000), (playouts) => {
           const search = new PlayoutSearch();
           search.setOptions({
@@ -146,12 +153,14 @@ describe("Search", () => {
             expectedPlayouts: playouts,
           });
           assert(search.startAt(0));
-          search.maybePick(new PickRequest(1, playouts));
-          assert(search.tracked);
+          const pick = search.maybePick(new PickRequest(1, playouts));
+          assert(pick.ok);
+          assert(search.finishPlayout());
+          assert(search.isPruned([pick.val]));
         });
       });
 
-      it("doesn't track a very wide node", () => {
+      it("doesn't prune a very wide node", () => {
         const uint32 = new PickRequest(0, 2 ** 32 - 1);
         assertEquals(uint32.size, 2 ** 32);
 
@@ -164,8 +173,10 @@ describe("Search", () => {
               pickSource: randomPicker(123),
             });
             assert(search.startAt(0));
-            search.maybePick(uint32);
-            assertFalse(search.tracked);
+            const pick = search.maybePick(uint32);
+            assert(pick.ok);
+            assert(search.finishPlayout());
+            assertFalse(search.isPruned([pick.val]));
           },
         );
       });
@@ -328,7 +339,8 @@ describe("Search", () => {
           assert(pick.ok);
           picks.push(pick.val);
         }
-        assert(search.tracked, "playout wasn't tracked");
+        assert(search.finishPlayout());
+        assert(search.isPruned(picks));
         const key = JSON.stringify(picks);
         if (seen.has(key)) {
           fail(`duplicate picks: ${key}`);

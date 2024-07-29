@@ -29,27 +29,20 @@ export class Node {
   #min: number;
   #max: number;
 
-  #tracked: boolean;
   #branchesLeft: number;
 
-  static untracked(req: PickRequest): Node {
-    return new Node(req.min, req.max, false, req.size);
-  }
-
-  static tracked(req: PickRequest): Node {
-    return new Node(req.min, req.max, true, req.size);
+  static from(req: PickRequest): Node {
+    return new Node(req.min, req.max, req.size);
   }
 
   private constructor(
     min: number,
     max: number,
-    track: boolean,
     branchCount: number,
   ) {
     this.#reqMin = min;
     this.#min = min;
     this.#max = max;
-    this.#tracked = track;
     this.#branchesLeft = branchCount;
   }
 
@@ -57,18 +50,12 @@ export class Node {
     return this.#reqMin === req.min && this.#max === req.max;
   }
 
-  get tracked(): boolean {
-    return this.#tracked;
-  }
-
   getBranch(pick: number): Branch {
     if (pick < this.#min || pick > this.#max) return PRUNED;
-    if (!this.#tracked) return undefined;
     return this[pick];
   }
 
   setBranch(pick: number, node: Node): boolean {
-    if (!this.#tracked) return false;
     this[pick] = node;
     return true;
   }
@@ -83,7 +70,6 @@ export class Node {
   ): number | undefined {
     let pick = firstChoice;
     if (pick < this.#min) pick = this.#min;
-    if (!this.#tracked) return pick;
     const size = this.#max - this.#min + 1;
     for (let i = 0; i < size; i++) {
       if (this[pick] !== PRUNED) {
@@ -114,8 +100,6 @@ export class Node {
       return true;
     } else if (pick < this.#min || pick > this.#max) {
       return false;
-    } else if (!this.#tracked) {
-      return false;
     } else if (this[pick] === PRUNED) {
       return false;
     }
@@ -124,15 +108,32 @@ export class Node {
     return true;
   }
 
+  static isPrunedPlayout(root: Node, picks: number[]): boolean {
+    let parent = root;
+    let parentPick = 0;
+    for (let i = 0; i < picks.length; i++) {
+      const branch = parent.getBranch(parentPick);
+      if (branch == PRUNED) {
+        return true;
+      } else if (branch === undefined) {
+        return false; // unexplored
+      }
+      parent = branch;
+      parentPick = picks[i];
+    }
+    return parent.getBranch(parentPick) === PRUNED;
+  }
+
   /**
    * Remembers that a pick sequence was visited.
    *
    * Returns true if the pick was pruned by this call.
    */
-  static prunePlayout(parent: Node, picks: PickList): boolean {
+  static prunePlayout(root: Node, picks: PickList): boolean {
     const reqs = picks.reqs();
     const replies = picks.replies();
 
+    let parent = root;
     let parentPick = 0;
     const nodePath: Node[] = [];
     const pickPath: number[] = [];
@@ -147,7 +148,7 @@ export class Node {
       pickPath.push(parentPick);
       if (branch === undefined) {
         // unexplored; add node
-        branch = Node.tracked(reqs[i]);
+        branch = Node.from(reqs[i]);
         parent.setBranch(0, branch);
         parent = branch;
         parentPick = replies[i];
@@ -208,7 +209,7 @@ class PickStack {
   private notTakenOdds: number | undefined;
 
   constructor(opts: { trackOdds: boolean }) {
-    this.nodes = [Node.tracked(new PickRequest(0, 0))];
+    this.nodes = [Node.from(new PickRequest(0, 0))];
     this.originalReqs = [new PickRequest(0, 0)];
     this.modifiedReqs = [new PickRequest(0, 0)];
     this.picks = [0];
@@ -219,9 +220,8 @@ class PickStack {
     return this.nodes.length - 1;
   }
 
-  /** Returns true if the current playout is tracked so far. */
-  get tracked(): boolean {
-    return this.nodes[this.nodes.length - 1].tracked;
+  isPruned(picks: number[]): boolean {
+    return Node.isPrunedPlayout(this.nodes[0], picks);
   }
 
   getPicks(start?: number, end?: number): PickList {
@@ -236,9 +236,6 @@ class PickStack {
   nextNode(req: PickRequest, playoutsLeft: number): Node {
     const nodes = this.nodes;
     const parent = nodes[nodes.length - 1];
-    if (!parent.tracked) {
-      return Node.untracked(req);
-    }
 
     const picks = this.picks;
     const parentPick = picks[picks.length - 1];
@@ -266,11 +263,13 @@ class PickStack {
       const willReturnProbability = playoutsLeft /
         (1 + this.notTakenOdds);
       if (willReturnProbability < 0.5) {
-        return Node.untracked(req);
+        // It's not added to the parent, so it's effectively untracked.
+        // (The node will be forgotten when popping the stack.)
+        return Node.from(req);
       }
     }
 
-    node = Node.tracked(req);
+    node = Node.from(req);
     parent.setBranch(parentPick, node);
     return node;
   }
@@ -432,11 +431,6 @@ export class PlayoutSearch implements PlayoutPicker {
     return this.state === "searchDone";
   }
 
-  /** Returns true if the current playout is tracked so far. */
-  get tracked(): boolean {
-    return this.stack.tracked;
-  }
-
   private removePlayout() {
     if (this.stack.prune()) {
       this.state = "playoutDone";
@@ -456,6 +450,14 @@ export class PlayoutSearch implements PlayoutPicker {
       this.removePlayout();
     }
     this.stack.trim(0);
+  }
+
+  /**
+   * Returns true if the pick sequence was pruned due to previously being
+   * visited.
+   */
+  isPruned(picks: number[]): boolean {
+    return this.stack.isPruned(picks);
   }
 
   startAt(depth: number): boolean {

@@ -9,7 +9,7 @@ import Arbitrary, { PickFunction } from "./arbitrary_class.ts";
  * This can be used to generate permutations.
  */
 export class Jar<T> {
-  private start: Node = Node.tracked(new PickRequest(0, 0));
+  private start: Node = Node.from(new PickRequest(0, 0));
   private acceptPicks = (picks: PickList) =>
     Node.prunePlayout(this.start, picks);
 
