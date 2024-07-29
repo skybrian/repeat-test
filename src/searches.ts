@@ -424,12 +424,16 @@ export class PlayoutSearch implements PlayoutPicker {
     if (opts) this.setOptions(opts);
   }
 
-  setOptions(opts: SearchOpts): boolean {
-    if (this.state === "searchDone") {
-      return false;
+  setOptions(opts: SearchOpts) {
+    if (this.state !== "ready" && this.state !== "playoutDone") {
+      throw new Error(
+        "setOptions called in the wrong state; wanted 'ready' or 'playoutDone', got '" +
+          this.state + "'",
+      );
     }
     this.pickSource = opts.pickSource ?? this.pickSource;
     this.playoutsLeft = opts.expectedPlayouts ?? this.playoutsLeft;
+    this.stack.trim(0);
     this.stack.recalculateOdds(this.pickSource.isRandom);
     this.replaceRequest = opts.replaceRequest ?? this.replaceRequest;
     this.acceptPlayout = opts.acceptPlayout ?? this.acceptPlayout;

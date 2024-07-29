@@ -84,14 +84,11 @@ export function* randomReps<T>(
   index++;
 
   // Generate each rep with a different picker.
-  while (true) {
+  while (!search.done) {
     const key = { seed, index };
-
     const random = pickers.next().value;
+    search.setOptions({ pickSource: random });
     try {
-      if (!search.setOptions({ pickSource: random })) {
-        return; // Search done; no more test args.
-      }
       const arg = arb.generate(search);
       if (arg === undefined) {
         return; // No more test args to generate.
