@@ -201,6 +201,44 @@ export class Node {
 }
 
 /**
+ * A set of possible pick sequences.
+ */
+export class PickTree {
+  private readonly start = Node.makeStart();
+
+  /**
+   * Creates a new set containing all possible pick sequences.
+   */
+  constructor() {}
+
+  /**
+   * Removes some possible playouts.
+   *
+   * Each PickRequest is recorded. Anything outside its range is pruned. Also,
+   * the playout at the end the pick sequence is pruned.
+   *
+   * Returns true if the playout was previously available.
+   */
+  prune(picks: PickList): boolean {
+    return Node.prunePlayout(this.start, picks);
+  }
+
+  /**
+   * Returns true if the pick sequence hasn't been pruned yet.
+   */
+  available(picks: number[]): boolean {
+    return !Node.isPrunedPlayout(this.start, picks);
+  }
+
+  /**
+   * Returns true if every playout was pruned.
+   */
+  done(): boolean {
+    return this.start.branchesLeft === 0;
+  }
+}
+
+/**
  * Holds the search tree and the current playout.
  */
 class PickStack {

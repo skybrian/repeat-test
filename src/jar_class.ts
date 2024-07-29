@@ -1,5 +1,5 @@
 import { PickList } from "./picks.ts";
-import { Node } from "./searches.ts";
+import { PickTree } from "./searches.ts";
 import Arbitrary, { PickFunction } from "./arbitrary_class.ts";
 
 /**
@@ -9,9 +9,9 @@ import Arbitrary, { PickFunction } from "./arbitrary_class.ts";
  * This can be used to generate permutations.
  */
 export class Jar<T> {
-  private start: Node = Node.makeStart();
-  private acceptPicks = (picks: PickList) =>
-    Node.prunePlayout(this.start, picks);
+  private readonly remaining = new PickTree();
+
+  private acceptPicks = (picks: PickList) => this.remaining.prune(picks);
 
   constructor(readonly arb: Arbitrary<T>) {}
 
@@ -19,7 +19,7 @@ export class Jar<T> {
    * Returns true if there are any values left that haven't been used.
    */
   isEmpty(): boolean {
-    return this.start.branchesLeft === 0;
+    return this.remaining.done();
   }
 
   /**
