@@ -198,14 +198,14 @@ export class Node {
 
 class PickStack {
   /* Invariant: `nodes.length === reqs.length === picks.length` */
+
   /**
    * The nodes used in the current playout. The 'start' node is at index 0, and
    * it points to the root at index 1.
    */
   private readonly nodes: Node[];
 
-  private readonly originalReqs: PickRequest[];
-  private readonly modifiedReqs: PickRequest[];
+  private readonly reqs: PickRequest[];
 
   /**
    * The picks made in the current playout. The pick at index 0 is always 0,
@@ -226,8 +226,7 @@ class PickStack {
 
   constructor(opts: { trackOdds: boolean }) {
     this.nodes = [Node.makeStart()];
-    this.originalReqs = [new PickRequest(0, 0)];
-    this.modifiedReqs = [new PickRequest(0, 0)];
+    this.reqs = [new PickRequest(0, 0)];
     this.picks = [0];
     this.notTakenOdds = opts.trackOdds ? 0 : undefined;
   }
@@ -244,12 +243,18 @@ class PickStack {
     start = start ? start + 1 : 1;
     end = end ? end + 1 : this.picks.length;
     return new PickList(
-      this.originalReqs.slice(start, end),
+      this.reqs.slice(start, end),
       this.picks.slice(start, end),
     );
   }
 
-  nextNode(req: PickRequest, playoutsLeft: number): Node {
+  /**
+   * Returns the node corresponding to a new pick request.
+   *
+   * If any previous playout made the same request, it checks that the range
+   * matches.
+   */
+  visitNode(req: PickRequest, playoutsLeft: number): Node {
     const nodes = this.nodes;
     const parent = nodes[nodes.length - 1];
 
@@ -288,10 +293,9 @@ class PickStack {
     return parent.addChild(parentPick, req);
   }
 
-  push(n: Node, req: PickRequest, modified: PickRequest, pick: number): void {
+  push(n: Node, req: PickRequest, pick: number): void {
     this.nodes.push(n);
-    this.originalReqs.push(req);
-    this.modifiedReqs.push(modified);
+    this.reqs.push(req);
     this.picks.push(pick);
   }
 
@@ -326,8 +330,7 @@ class PickStack {
       return true;
     }
     this.nodes.length = depth + 1;
-    this.originalReqs.length = depth + 1;
-    this.modifiedReqs.length = depth + 1;
+    this.reqs.length = depth + 1;
     this.picks.length = depth + 1;
     this.recalculateOdds();
     return true;
@@ -501,19 +504,19 @@ export class PlayoutSearch implements PlayoutPicker {
       );
     }
 
-    const modified = this.replaceRequest(this.depth, req);
-    if (modified === undefined) {
+    const replaced = this.replaceRequest(this.depth, req);
+    if (replaced === undefined) {
       this.removePlayout();
       return new Pruned("filtered by replaceRequest");
     }
 
-    const node = this.stack.nextNode(modified, this.playoutsLeft);
-    const firstChoice = this.pickSource.pick(modified);
+    const node = this.stack.visitNode(replaced, this.playoutsLeft);
+    const firstChoice = this.pickSource.pick(replaced);
     const pick = node.findUnpruned(firstChoice);
     if (pick === undefined) {
       throw new Error("internal error: node has no unpruned picks");
     }
-    this.stack.push(node, req, modified, pick);
+    this.stack.push(node, req, pick);
     return success(pick);
   }
 
