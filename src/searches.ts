@@ -125,23 +125,28 @@ export class Node {
   }
 
   /**
-   * Given a start node (with a single branch), returns true if the
-   * branch corresponding to the given playout was pruned.
+   * Returns the Node at the given path, if created and not pruned.
    */
-  static isPrunedPlayout(start: Node, picks: number[]): boolean {
+  static at(start: Node, picks: number[]): Branch {
     let parent = start;
     let parentPick = 0;
     for (let i = 0; i < picks.length; i++) {
       const branch = parent.getBranch(parentPick);
-      if (branch == PRUNED) {
-        return true;
-      } else if (branch === undefined) {
-        return false; // unexplored
+      if (branch == PRUNED || branch === undefined) {
+        return branch;
       }
       parent = branch;
       parentPick = picks[i];
     }
-    return parent.getBranch(parentPick) === PRUNED;
+    return parent.getBranch(parentPick);
+  }
+
+  /**
+   * Given a start node (with a single branch), returns true if the
+   * branch corresponding to the given playout was pruned.
+   */
+  static isPrunedPlayout(start: Node, picks: number[]): boolean {
+    return Node.at(start, picks) === PRUNED;
   }
 }
 
@@ -219,7 +224,18 @@ export class PickTree {
    * Returns true if the pick sequence hasn't been pruned yet.
    */
   available(picks: number[]): boolean {
-    return !Node.isPrunedPlayout(this.start, picks);
+    return Node.at(this.start, picks) !== PRUNED;
+  }
+
+  branchesLeft(picks: number[]): number | undefined {
+    const branch = Node.at(this.start, picks);
+    if (branch === undefined) {
+      return undefined;
+    } else if (branch === PRUNED) {
+      return 0;
+    } else {
+      return branch.branchesLeft;
+    }
   }
 
   /**
@@ -374,7 +390,7 @@ class PickStack {
   }
 
   isPruned(picks: number[]): boolean {
-    return Node.isPrunedPlayout(this.nodes[0], picks);
+    return Node.at(this.nodes[0], picks) === PRUNED;
   }
 
   getPicks(start?: number, end?: number): PickList {

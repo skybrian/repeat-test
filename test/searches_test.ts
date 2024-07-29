@@ -65,31 +65,6 @@ describe("Node", () => {
       assertEquals(node.branchesLeft, 4);
       assertFalse(node.prune(2));
     });
-    it("works for multiple prunes", () => {
-      const example = arb.from((pick) => {
-        const min = pick(arb.int(0, 2));
-        const max = pick(arb.int(min + 2, min + 5));
-        const req = arb.int(min, max);
-        const first = pick(req);
-        const secondArb = req.filter((p) => p !== first);
-        const second = pick(secondArb);
-        const third = pick(req.filter((p) => p !== first && p !== second));
-        return { min, max, picks: [first, second, third] };
-      });
-      repeatTest(example, ({ min, max, picks }) => {
-        const node = Node.from(new PickRequest(min, max));
-        let expectRemaining = max - min + 1;
-        for (let i = 0; i < picks.length; i++) {
-          assert(node.prune(picks[i]));
-          expectRemaining--;
-          assertEquals(node.branchesLeft, expectRemaining);
-        }
-        for (let i = 0; i < picks.length; i++) {
-          assertFalse(node.prune(picks[i]));
-          assertEquals(node.branchesLeft, expectRemaining);
-        }
-      });
-    });
   });
 });
 
@@ -99,13 +74,15 @@ describe("PickTree", () => {
     it("prunes entire tree when given an empty playout", () => {
       const tree = new PickTree();
       assert(tree.prune(new PickList([], [])));
+      assertFalse(tree.available([]));
       assert(tree.done);
     });
     it("prunes a child of the root node", () => {
       repeatTest([0, 1], (pick) => {
         const tree = new PickTree();
         assert(tree.prune(new PickList([bit], [pick])));
-        assert(!tree.available([pick]));
+        assertFalse(tree.available([pick]));
+        assertEquals(tree.branchesLeft([]), 1);
       });
     });
     it("prunes a child at arbitrary depth", () => {
@@ -121,7 +98,37 @@ describe("PickTree", () => {
         const reqs = path.map((_) => req);
         const picks = new PickList(reqs, path);
         assert(tree.prune(picks));
-        assert(!tree.available(path), "not pruned");
+        assertFalse(tree.available(path), "not pruned");
+        if (path.length > 1) {
+          assertEquals(tree.branchesLeft(path.slice(0, -1)), req.size - 1);
+        }
+      });
+    });
+    it("removes three picks from the same node", () => {
+      const example = arb.from((pick) => {
+        const min = pick(arb.int(0, 2));
+        const max = pick(arb.int(min + 2, min + 5));
+        const req = arb.int(min, max);
+        const first = pick(req);
+        const secondArb = req.filter((p) => p !== first);
+        const second = pick(secondArb);
+        const third = pick(req.filter((p) => p !== first && p !== second));
+        return { min, max, picks: [first, second, third] };
+      });
+      repeatTest(example, ({ min, max, picks }) => {
+        const req = new PickRequest(min, max);
+        const path = (pick: number) => new PickList([req], [pick]);
+        const tree = new PickTree();
+        let expectRemaining = max - min + 1;
+        for (const pick of picks) {
+          assert(tree.prune(path(pick)));
+          expectRemaining--;
+          assertEquals(tree.branchesLeft([]), expectRemaining);
+        }
+        for (const pick of picks) {
+          assertFalse(tree.prune(path(pick)));
+          assertEquals(tree.branchesLeft([]), expectRemaining);
+        }
       });
     });
   });
