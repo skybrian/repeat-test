@@ -289,6 +289,18 @@ describe("Arbitrary", () => {
         "[0,1]",
       ]);
     });
+    it("works when embedded in another Arbitrary", () => {
+      const not3 = sixSided.filter((n) => n !== 3);
+      const example = Arbitrary.from((pick) => {
+        const roll = pick(sixSided);
+        const rollNot3 = pick(not3);
+        return { roll, rollNot3 };
+      });
+      repeatTest(example, ({ roll, rollNot3 }) => {
+        assert(roll >= 1 && roll <= 6, `want: 1-6, got ${roll}}`);
+        assert(rollNot3 !== 3, `want: not 3`);
+      });
+    });
     it("has a label by default", () => {
       const original = Arbitrary.of(1, 2, 3);
       const filtered = original.filter(
