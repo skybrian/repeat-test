@@ -25,6 +25,7 @@ import {
   breadthFirstPass,
   breadthFirstSearch,
   Node,
+  PickTree,
   PlayoutSearch,
   PRUNED,
   SearchOpts,
@@ -90,21 +91,21 @@ describe("Node", () => {
       });
     });
   });
-  describe("prunePlayout", () => {
+});
+
+describe("PickTree", () => {
+  describe("prune", () => {
     const bit = new PickRequest(0, 1);
-    it("prunes the entire tree", () => {
-      const start = Node.makeStart();
-      assert(Node.prunePlayout(start, new PickList([], [])));
-      assertEquals(start.branchesLeft, 0);
+    it("prunes entire tree when given an empty playout", () => {
+      const tree = new PickTree();
+      assert(tree.prune(new PickList([], [])));
+      assert(tree.done);
     });
     it("prunes a child of the root node", () => {
       repeatTest([0, 1], (pick) => {
-        const start = Node.makeStart();
-        assert(Node.prunePlayout(start, new PickList([bit], [pick])));
-        const root = start.getBranch(0);
-        assert(root instanceof Node);
-        assertEquals(root.branchesLeft, 1);
-        assertEquals(root.getBranch(pick), PRUNED);
+        const tree = new PickTree();
+        assert(tree.prune(new PickList([bit], [pick])));
+        assert(!tree.available([pick]));
       });
     });
     it("prunes a child at arbitrary depth", () => {
@@ -115,12 +116,12 @@ describe("Node", () => {
         return { min, max, path };
       });
       repeatTest(example, ({ min, max, path }) => {
-        const start = Node.makeStart();
+        const tree = new PickTree();
         const req = new PickRequest(min, max);
         const reqs = path.map((_) => req);
         const picks = new PickList(reqs, path);
-        assert(Node.prunePlayout(start, picks));
-        assert(Node.isPrunedPlayout(start, path), "not pruned");
+        assert(tree.prune(picks));
+        assert(!tree.available(path), "not pruned");
       });
     });
   });

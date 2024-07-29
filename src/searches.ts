@@ -143,19 +143,34 @@ export class Node {
     }
     return parent.getBranch(parentPick) === PRUNED;
   }
+}
+
+/**
+ * A set of possible pick sequences.
+ */
+export class PickTree {
+  private readonly start = Node.makeStart();
 
   /**
-   * Given a start node (with a single branch), sets the branch corresponding to
-   * the given pick sequence to pruned.
-   *
-   * Returns true if the pick was pruned by this call. (That is, it wasn't
-   * previously pruned.)
+   * Creates a new set containing all possible pick sequences.
    */
-  static prunePlayout(start: Node, picks: PickList): boolean {
+  constructor() {}
+
+  /**
+   * Prunes a possible playout.
+   *
+   * If a previous playout had the same prefix, each PickRequest in the prefix
+   * is checked to ensure that it has the same range as before.
+   *
+   * Returns true if the playout was available before being pruned.
+   *
+   * Throws an error if a PickRequest's range doesn't match a previous playout.
+   */
+  prune(picks: PickList): boolean {
     const reqs = picks.reqs();
     const replies = picks.replies();
 
-    let parent = start;
+    let parent = this.start;
     let parentPick = 0;
 
     const nodePath: Node[] = [];
@@ -174,6 +189,7 @@ export class Node {
         parent = parent.addChild(parentPick, reqs[i]);
         parentPick = replies[i];
       } else {
+        branch.checkRange(reqs[i]);
         parent = branch;
         parentPick = replies[i];
       }
@@ -197,30 +213,6 @@ export class Node {
     }
 
     return true;
-  }
-}
-
-/**
- * A set of possible pick sequences.
- */
-export class PickTree {
-  private readonly start = Node.makeStart();
-
-  /**
-   * Creates a new set containing all possible pick sequences.
-   */
-  constructor() {}
-
-  /**
-   * Removes some possible playouts.
-   *
-   * Each PickRequest is recorded. Anything outside its range is pruned. Also,
-   * the playout at the end the pick sequence is pruned.
-   *
-   * Returns true if the playout was previously available.
-   */
-  prune(picks: PickList): boolean {
-    return Node.prunePlayout(this.start, picks);
   }
 
   /**
