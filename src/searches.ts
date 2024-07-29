@@ -263,21 +263,28 @@ class PickStack {
 
   constructor() {}
 
-  get depth(): number {
-    return this.nodes.length - 1;
+  reset(opts?: { trackOdds?: boolean }) {
+    this.trim(0);
+    this.recalculateOdds(opts);
   }
 
-  isPruned(picks: number[]): boolean {
-    return Node.isPrunedPlayout(this.nodes[0], picks);
-  }
+  pushUnprunedPick(
+    original: PickRequest,
+    narrowed: PickRequest,
+    picker: IntPicker,
+    playoutsLeft: number,
+  ): number {
+    const node = this.visitNode(narrowed, playoutsLeft);
+    const firstChoice = picker.pick(narrowed);
+    const pick = node.findUnpruned(firstChoice);
+    if (pick === undefined) {
+      throw new Error("internal error: node has no unpruned picks");
+    }
 
-  getPicks(start?: number, end?: number): PickList {
-    start = start ? start + 1 : 1;
-    end = end ? end + 1 : this.picks.length;
-    return new PickList(
-      this.reqs.slice(start, end),
-      this.picks.slice(start, end),
-    );
+    this.nodes.push(node);
+    this.reqs.push(original);
+    this.picks.push(pick);
+    return pick;
   }
 
   /**
@@ -286,7 +293,7 @@ class PickStack {
    * If any previous playout made the same request, it checks that the range
    * matches.
    */
-  visitNode(req: PickRequest, playoutsLeft: number): Node {
+  private visitNode(req: PickRequest, playoutsLeft: number): Node {
     const nodes = this.nodes;
     const parent = nodes[nodes.length - 1];
 
@@ -325,12 +332,6 @@ class PickStack {
     return parent.addChild(parentPick, req);
   }
 
-  push(n: Node, req: PickRequest, pick: number): void {
-    this.nodes.push(n);
-    this.reqs.push(req);
-    this.picks.push(pick);
-  }
-
   /**
    * Prunes the current playout and any ancestors that have only one branch left.
    * Returns true if more playouts are available.
@@ -356,9 +357,9 @@ class PickStack {
   trim(depth: number): boolean {
     if (depth < 0) {
       throw new Error("depth must be >= 0");
-    } else if (depth + 1 > this.nodes.length) {
+    } else if (depth > this.depth) {
       return false;
-    } else if (depth + 1 === this.nodes.length) {
+    } else if (depth === this.depth) {
       return true;
     }
     this.nodes.length = depth + 1;
@@ -368,8 +369,28 @@ class PickStack {
     return true;
   }
 
-  recalculateOdds(track?: boolean) {
-    if (track ?? this.notTakenOdds !== undefined) {
+  get depth(): number {
+    return this.nodes.length - 1;
+  }
+
+  isPruned(picks: number[]): boolean {
+    return Node.isPrunedPlayout(this.nodes[0], picks);
+  }
+
+  getPicks(start?: number, end?: number): PickList {
+    if (start && start < 0) throw new Error("start must be >= 0");
+    if (end && end < 0) throw new Error("end must be >= 0");
+    start = start ? start + 1 : 1;
+    end = end ? end + 1 : this.picks.length;
+    return new PickList(
+      this.reqs.slice(start, end),
+      this.picks.slice(start, end),
+    );
+  }
+
+  private recalculateOdds(opts?: { trackOdds?: boolean }) {
+    const track = opts?.trackOdds ?? this.notTakenOdds !== undefined;
+    if (track) {
       this.notTakenOdds = 0;
       for (const node of this.nodes) {
         this.updateOdds(node.branchesLeft);
@@ -464,8 +485,7 @@ export class PlayoutSearch implements PlayoutPicker {
     }
     this.pickSource = opts.pickSource ?? this.pickSource;
     this.playoutsLeft = opts.expectedPlayouts ?? this.playoutsLeft;
-    this.stack.trim(0);
-    this.stack.recalculateOdds(this.pickSource.isRandom);
+    this.stack.reset({ trackOdds: this.pickSource.isRandom });
     this.replaceRequest = opts.replaceRequest ?? this.replaceRequest;
     this.acceptPlayout = opts.acceptPlayout ?? this.acceptPlayout;
     this.acceptEmptyPlayout = opts.acceptEmptyPlayout ??
@@ -545,13 +565,13 @@ export class PlayoutSearch implements PlayoutPicker {
       return new Pruned("filtered by replaceRequest");
     }
 
-    const node = this.stack.visitNode(replaced, this.playoutsLeft);
-    const firstChoice = this.pickSource.pick(replaced);
-    const pick = node.findUnpruned(firstChoice);
-    if (pick === undefined) {
-      throw new Error("internal error: node has no unpruned picks");
-    }
-    this.stack.push(node, req, pick);
+    const pick = this.stack.pushUnprunedPick(
+      req,
+      replaced,
+      this.pickSource,
+      this.playoutsLeft,
+    );
+
     return success(pick);
   }
 
