@@ -140,14 +140,6 @@ class Node {
     }
     return parent.getBranch(parentPick);
   }
-
-  /**
-   * Given a start node (with a single branch), returns true if the
-   * branch corresponding to the given playout was pruned.
-   */
-  static isPrunedPlayout(start: Node, picks: number[]): boolean {
-    return Node.at(start, picks) === PRUNED;
-  }
 }
 
 /**
@@ -268,6 +260,8 @@ class PickStack {
    */
   private readonly picks: number[] = [0];
 
+  private playoutsLeft: number | undefined = undefined;
+
   /**
    * The odds that a playout other than the one we're on would have been picked
    * instead, assuming available branches were picked from a uniform
@@ -281,19 +275,27 @@ class PickStack {
 
   constructor() {}
 
-  reset(opts?: { trackOdds?: boolean }) {
+  reset(opts?: { trackOdds?: boolean; playoutsLeft?: number }) {
     this.trim(0);
     this.recalculateOdds(opts);
+    this.playoutsLeft = opts?.playoutsLeft ?? this.playoutsLeft;
   }
 
-  pushUnprunedPick(
+  /**
+   * Searches for an unpruned pick and adds it to the pick sequence.
+   *
+   * @param original the original request, to be returned by {@link getPicks}.
+   * @param narrowed the range of picks to be allowed in the search tree
+   * @param firstChoice the pick that the search should start from
+   *
+   * Returns the new pick.
+   */
+  pickUnpruned(
     original: PickRequest,
     narrowed: PickRequest,
-    picker: IntPicker,
-    playoutsLeft: number,
+    firstChoice: number,
   ): number {
-    const node = this.visitNode(narrowed, playoutsLeft);
-    const firstChoice = picker.pick(narrowed);
+    const node = this.visitNode(narrowed);
     const pick = node.findUnpruned(firstChoice);
     if (pick === undefined) {
       throw new Error("internal error: node has no unpruned picks");
@@ -311,7 +313,7 @@ class PickStack {
    * If any previous playout made the same request, it checks that the range
    * matches.
    */
-  private visitNode(req: PickRequest, playoutsLeft: number): Node {
+  private visitNode(req: PickRequest): Node {
     const nodes = this.nodes;
     const parent = nodes[nodes.length - 1];
 
@@ -332,13 +334,13 @@ class PickStack {
       return node;
     }
 
-    if (this.notTakenOdds !== undefined) {
+    if (this.notTakenOdds !== undefined && this.playoutsLeft !== undefined) {
       // See if we should create an untracked node.
       // (This is pushed to the stack but doesn't get added to the tree.)
       // If picking the same playout twice is unlikely, it's not worth tracking.
 
       this.updateOdds(req.size);
-      const willReturnProbability = playoutsLeft /
+      const willReturnProbability = this.playoutsLeft /
         (1 + this.notTakenOdds);
       if (willReturnProbability < 0.5) {
         // It's not added to the parent, so it's effectively untracked.
@@ -355,6 +357,9 @@ class PickStack {
    * Returns true if more playouts are available.
    */
   prune(): boolean {
+    if (this.playoutsLeft !== undefined && this.playoutsLeft > 0) {
+      this.playoutsLeft--;
+    }
     const nodes = this.nodes;
     const picks = this.picks;
     // Prune at the last node with more than one branch.
@@ -482,7 +487,6 @@ export type SearchOpts = {
 export class PlayoutSearch implements PlayoutPicker {
   private state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
   private readonly stack = new PickStack();
-  private playoutsLeft = 1000;
 
   private pickSource: IntPicker = alwaysPickMin;
 
@@ -491,7 +495,8 @@ export class PlayoutSearch implements PlayoutPicker {
   private acceptEmptyPlayout = true;
 
   constructor(opts?: SearchOpts) {
-    if (opts) this.setOptions(opts);
+    opts = { ...opts, expectedPlayouts: 1000 };
+    this.setOptions(opts);
   }
 
   setOptions(opts: SearchOpts) {
@@ -502,8 +507,10 @@ export class PlayoutSearch implements PlayoutPicker {
       );
     }
     this.pickSource = opts.pickSource ?? this.pickSource;
-    this.playoutsLeft = opts.expectedPlayouts ?? this.playoutsLeft;
-    this.stack.reset({ trackOdds: this.pickSource.isRandom });
+    this.stack.reset({
+      trackOdds: this.pickSource.isRandom,
+      playoutsLeft: opts.expectedPlayouts,
+    });
     this.replaceRequest = opts.replaceRequest ?? this.replaceRequest;
     this.acceptPlayout = opts.acceptPlayout ?? this.acceptPlayout;
     this.acceptEmptyPlayout = opts.acceptEmptyPlayout ??
@@ -524,9 +531,6 @@ export class PlayoutSearch implements PlayoutPicker {
   private removePlayout() {
     if (this.stack.prune()) {
       this.state = "playoutDone";
-      if (this.playoutsLeft > 0) {
-        this.playoutsLeft--;
-      }
     } else {
       this.state = "searchDone";
     }
@@ -583,12 +587,8 @@ export class PlayoutSearch implements PlayoutPicker {
       return new Pruned("filtered by replaceRequest");
     }
 
-    const pick = this.stack.pushUnprunedPick(
-      req,
-      replaced,
-      this.pickSource,
-      this.playoutsLeft,
-    );
+    const firstChoice = this.pickSource.pick(replaced);
+    const pick = this.stack.pickUnpruned(req, replaced, firstChoice);
 
     return success(pick);
   }
