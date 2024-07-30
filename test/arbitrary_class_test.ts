@@ -259,8 +259,6 @@ describe("Arbitrary", () => {
       const filtered = sixSided.filter(keepEvens);
       assertEquals(filtered.default(), 2);
       assertEquals(filtered.takeAll(), [2, 4, 6]);
-      const gen = filtered.generate(minPlayout());
-      assertEquals(gen?.val, 2);
     });
     it("filters out values that don't satisfy the predicate", () => {
       const not3 = sixSided.filter((n) => n !== 3);

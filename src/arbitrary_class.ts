@@ -1,12 +1,6 @@
 import { AnyRecord } from "./types.ts";
 import { PickList, PickRequest } from "./picks.ts";
-import {
-  minPlayout,
-  playback,
-  PlayoutPicker,
-  Pruned,
-  rotatePicks,
-} from "./backtracking.ts";
+import { playback, PlayoutPicker, Pruned } from "./backtracking.ts";
 import { nestedPicks, SpanList, SpanLog } from "./spans.ts";
 import { breadthFirstSearch } from "./searches.ts";
 
@@ -24,12 +18,6 @@ export type PickFunctionOptions<T> = {
    * A filter for the picks that were used to generate an Arbitrary.
    */
   acceptPicks?: (picks: PickList) => boolean;
-
-  /**
-   * If set, default picks in requests will be replaced with the given picks for
-   * requests that follow the given playout.
-   */
-  defaultPlayout?: number[];
 };
 
 /**
@@ -213,20 +201,21 @@ export default class Arbitrary<T> {
     }
   }
 
-  /** The default value of this Arbitrary. */
+  /**
+   * The default value of an Arbitrary is the first value it generates.
+   */
   default(): T {
     if (this.#examples) {
       // assume it's immutable
       return this.#examples[0];
     }
     // make a clone, in case it's mutable
-    const gen = this.generate(minPlayout());
-    if (gen === undefined) {
-      throw new Error(
-        "couldn't generate a default value because default picks weren't accepted",
-      );
+    for (const gen of this.generateAll()) {
+      return gen.val;
     }
-    return gen.val;
+    throw new Error(
+      "couldn't generate a default value",
+    );
   }
 
   /**
@@ -377,7 +366,7 @@ export default class Arbitrary<T> {
       if (gen === undefined) {
         throw new Error("filter didn't accept any values");
       }
-      pickOpts.defaultPlayout = gen.replies();
+      //pickOpts.defaultPlayout = gen.replies();
     }
 
     const label = opts?.label ?? "filter";
@@ -546,20 +535,12 @@ export default class Arbitrary<T> {
 
   private static makePickFunction<T>(
     log: SpanLog,
-    defaultPicker: PlayoutPicker,
+    picker: PlayoutPicker,
   ): PickFunction {
     const dispatch = <T>(
       req: PickRequest | Arbitrary<T> | ArbitraryCallback<T> | RecordShape<T>,
       opts?: PickFunctionOptions<T>,
     ): number | T => {
-      let picker = defaultPicker;
-      let pick: PickFunction = dispatch;
-      const newDefaults = opts?.defaultPlayout;
-      if (newDefaults !== undefined) {
-        picker = rotatePicks(picker, newDefaults);
-        pick = Arbitrary.makePickFunction(log, picker);
-      }
-
       if (req instanceof PickRequest) {
         const pick = picker.maybePick(req);
         if (!pick.ok) throw new Pruned(pick.message);
@@ -570,10 +551,10 @@ export default class Arbitrary<T> {
           if (acceptPicks !== undefined) {
             throw new Error("accept and acceptPick cannot be used together");
           }
-          return req.innerPickWithFilter(log, pick, accept);
+          return req.innerPickWithFilter(log, dispatch, accept);
         } else {
           const depthBefore = picker.depth;
-          const result = req.innerPick(log, pick);
+          const result = req.innerPick(log, dispatch);
           if (acceptPicks !== undefined) {
             const picks = picker.getPicks(depthBefore);
             if (!acceptPicks(picks)) {
@@ -584,13 +565,13 @@ export default class Arbitrary<T> {
         }
       } else if (typeof req === "function") {
         const level = log.startSpan();
-        const val = req(pick);
+        const val = req(dispatch);
         log.endSpan(level);
         return val;
       } else if (typeof req !== "object") {
         throw new Error("pick called with invalid argument");
       } else {
-        return Arbitrary.pickRecord(req, log, pick);
+        return Arbitrary.pickRecord(req, log, dispatch);
       }
     };
     return dispatch;
