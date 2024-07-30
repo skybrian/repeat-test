@@ -1,42 +1,45 @@
 import { describe, it } from "@std/testing/bdd";
-import { Jar } from "../src/jar_class.ts";
+
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
-import Arbitrary from "../src/arbitrary_class.ts";
 import { Pruned } from "../src/backtracking.ts";
+import Arbitrary from "../src/arbitrary_class.ts";
+import * as dom from "../src/domains.ts";
+
+import { Jar } from "../src/jar_class.ts";
 
 describe("Jar", () => {
   describe("isEmpty", () => {
     it("returns false when nothing has been taken yet", () => {
-      const urn = new Jar(Arbitrary.of("hi"));
-      assertFalse(urn.isEmpty());
+      const remaining = new Jar(dom.of("hi"));
+      assertFalse(remaining.isEmpty());
     });
     it("returns true after taking the only value from a constant", () => {
-      const jar = new Jar(Arbitrary.of("hi"));
-      Arbitrary.runWithPicks([], (p) => jar.pickUnused(p));
-      assert(jar.isEmpty());
+      const remaining = new Jar(dom.of("hi"));
+      Arbitrary.runWithPicks([], (p) => remaining.pickUnused(p));
+      assert(remaining.isEmpty());
     });
     it("returns true after taking both values of a boolean", () => {
-      const jar = new Jar(Arbitrary.of(false, true));
-      Arbitrary.runWithPicks([], (p) => jar.pickUnused(p));
-      assertFalse(jar.isEmpty());
-      Arbitrary.runWithPicks([1], (p) => jar.pickUnused(p));
-      assert(jar.isEmpty());
+      const remaining = new Jar(dom.of(false, true));
+      Arbitrary.runWithPicks([], (p) => remaining.pickUnused(p));
+      assertFalse(remaining.isEmpty());
+      Arbitrary.runWithPicks([1], (p) => remaining.pickUnused(p));
+      assert(remaining.isEmpty());
     });
   });
   describe("pickUnused", () => {
     it("returns the only value from a constant", () => {
-      const jar = new Jar(Arbitrary.of("hi"));
-      const gen = Arbitrary.runWithPicks([], (p) => jar.pickUnused(p));
+      const remaining = new Jar(dom.of("hi"));
+      const gen = Arbitrary.runWithPicks([], (p) => remaining.pickUnused(p));
       assertEquals(gen?.val, "hi");
     });
     it("throws Pruned if the same playout was seen twice", () => {
-      const jar = new Jar(Arbitrary.of("hi"));
+      const remaining = new Jar(dom.of("hi"));
       assertEquals(
-        Arbitrary.runWithPicks([], (p) => jar.pickUnused(p)).val,
+        Arbitrary.runWithPicks([], (p) => remaining.pickUnused(p)).val,
         "hi",
       );
       assertThrows(
-        () => Arbitrary.runWithPicks([], (p) => jar.pickUnused(p)),
+        () => Arbitrary.runWithPicks([], (p) => remaining.pickUnused(p)),
         Pruned,
       );
     });

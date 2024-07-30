@@ -3,11 +3,18 @@ import * as arb from "../arbitraries.ts";
 import { isWellFormed } from "../workarounds.ts";
 import * as unicode from "../unicode.ts";
 
-export const asciiChar = new Domain(arb.asciiChar(), (val) => {
+const asciiDom = new Domain(arb.asciiChar(), (val) => {
   const gen = arb.asciiChar().findGenerated((s) => s === val);
   if (!gen) return undefined;
   return gen.replies();
-}).asFunction();
+});
+
+export function asciiChar(regexp?: RegExp): Domain<string> {
+  if (!regexp) return asciiDom;
+  return asciiDom.filter((val) => regexp.test(val));
+}
+
+export const asciiLetter = asciiChar(/[a-zA-Z]/).asFunction();
 
 export const char16 = new Domain(arb.char16(), (val) => {
   if (typeof val !== "string") return undefined;

@@ -1,10 +1,12 @@
 import { AnyRecord } from "../types.ts";
-import Arbitrary, { RecordShape } from "../arbitrary_class.ts";
+import Arbitrary from "../arbitrary_class.ts";
 import * as arb from "./basics.ts";
+import * as dom from "../domains/basics.ts";
 import { Jar } from "../jar_class.ts";
+import Domain from "../domain_class.ts";
 
 export function uniqueArray<T>(
-  choices: Arbitrary<T>,
+  choices: Domain<T>,
   opts?: { label?: string },
 ): Arbitrary<T[]> {
   const label = opts?.label ?? "uniqueArray";
@@ -24,7 +26,7 @@ export type TableOpts<T extends AnyRecord> = {
 };
 
 export function table<R extends AnyRecord>(
-  shape: RecordShape<R>,
+  shape: dom.RecordShape<R>,
   opts?: TableOpts<R>,
 ): Arbitrary<R[]> {
   const uniqueKeys = opts?.uniqueKeys ?? [];
@@ -52,7 +54,7 @@ export function table<R extends AnyRecord>(
         if (jar) {
           row[key] = jar.pickUnused(pick);
         } else {
-          row[key] = pick(shape[key]);
+          row[key] = pick(shape[key].generator);
         }
       }
       return row as R;

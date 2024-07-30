@@ -2,11 +2,12 @@ import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 
 import * as arb from "../../src/arbitraries.ts";
+import * as dom from "../../src/domains.ts";
 import { assertFirstValues, assertValues } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 
 describe("uniqueArray", () => {
-  const bools = arb.uniqueArray(arb.boolean());
+  const bools = arb.uniqueArray(dom.boolean());
   it("defaults to an empty array", () => {
     assertEquals(bools.default(), []);
   });
@@ -22,7 +23,7 @@ describe("uniqueArray", () => {
   it("generates unique ids within an integer range", () => {
     const example = arb.from((pick) => {
       const { min, max } = pick(arb.intRange());
-      const ids = pick(arb.uniqueArray(arb.int(min, max)));
+      const ids = pick(arb.uniqueArray(dom.int(min, max)));
       return { min, max, ids };
     });
     repeatTest(example, ({ min, max, ids }) => {
@@ -31,7 +32,7 @@ describe("uniqueArray", () => {
     });
   });
   it("generates string identifiers", () => {
-    const ids = arb.uniqueArray(arb.wellFormedString({ min: 2, max: 3 }));
+    const ids = arb.uniqueArray(dom.wellFormedString());
     repeatTest(ids, (ids) => {
       assertEquals(ids.length, new Set(ids).size);
     });
@@ -47,14 +48,14 @@ describe("uniqueArray", () => {
     assertEquals(bools.label, "uniqueArray");
   });
   it("can be configured with a label", () => {
-    const array = arb.uniqueArray(arb.int(1, 3), { label: "my array" });
+    const array = arb.uniqueArray(dom.int(1, 3), { label: "my array" });
     assertEquals(array.label, "my array");
   });
 });
 
 describe("table", () => {
   describe("with one column and no unique key", () => {
-    const table = arb.table({ v: arb.boolean() });
+    const table = arb.table({ v: dom.boolean() });
     it("defaults to zero rows", () => {
       assertEquals(table.default(), []);
     });
@@ -82,17 +83,17 @@ describe("table", () => {
       assertEquals(table.label, "table");
     });
     it("can be configured with a label", () => {
-      const table = arb.table({ k: arb.int32() }, { label: "my table" });
+      const table = arb.table({ k: dom.int32() }, { label: "my table" });
       assertEquals(table.label, "my table");
     });
   });
   describe("with one unique column", () => {
-    const table = arb.table({ v: arb.boolean() }, { uniqueKeys: ["v"] });
+    const table = arb.table({ v: dom.boolean() }, { uniqueKeys: ["v"] });
     it("defaults to zero rows", () => {
       assertEquals(table.default(), []);
     });
     it("generates the same values as uniqueArray", () => {
-      const expected = arb.uniqueArray(arb.boolean()).map((r) =>
+      const expected = arb.uniqueArray(dom.boolean()).map((r) =>
         JSON.stringify(r)
       ).takeAll();
       const actual = table.map((rows) => rows.map((row) => row.v)).map((r) =>
@@ -103,8 +104,8 @@ describe("table", () => {
   });
   describe("of key-value pairs", () => {
     const table = arb.table({
-      k: arb.boolean(),
-      v: arb.boolean(),
+      k: dom.boolean(),
+      v: dom.boolean(),
     }, { uniqueKeys: ["k"] });
     it("starts with zero and one-row tables", () => {
       assertFirstValues(table, [
@@ -125,8 +126,8 @@ describe("table", () => {
   });
   describe("with two unique columns", () => {
     const table = arb.table({
-      ids: arb.asciiLetter(),
-      ranks: arb.int(1, 5),
+      ids: dom.asciiLetter(),
+      ranks: dom.int(1, 5),
     }, { uniqueKeys: ["ids", "ranks"] });
     it("generates unique ids and ranks", () => {
       repeatTest(table, (rows) => {

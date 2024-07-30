@@ -107,10 +107,25 @@ export default class Domain<T> {
   }
 
   /** Makes a copy of a value by converting it to picks and back again. */
-  regenerate(val: T): Generated<T> | undefined {
+  regenerate(val: unknown): Generated<T> | undefined {
     const picks = this.maybePickify(val);
     if (!picks.ok) return undefined;
     return this.#generator.generate(playback(picks.val));
+  }
+
+  filter(accept: (val: T) => boolean): Domain<T> {
+    return new Domain<T>(this.generator.filter(accept), (val, sendErr) => {
+      const picks = this.#callback(val, sendErr);
+      if (picks === undefined) return undefined;
+
+      // Filter using a copy so that we know it's the right type.
+      if (!accept(this.parsePicks(picks))) {
+        sendErr("filter rejected value");
+        return undefined;
+      }
+
+      return picks;
+    });
   }
 
   asFunction() {
