@@ -2,46 +2,52 @@ import { describe, it } from "@std/testing/bdd";
 
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import { Pruned } from "../src/backtracking.ts";
-import Arbitrary from "../src/arbitrary_class.ts";
 import * as dom from "../src/domains.ts";
 
 import { Jar } from "../src/jar_class.ts";
 
 describe("Jar", () => {
-  describe("isEmpty", () => {
-    it("returns false when nothing has been taken yet", () => {
-      const remaining = new Jar(dom.of("hi"));
-      assertFalse(remaining.isEmpty());
-    });
-    it("returns true after taking the only value from a constant", () => {
-      const remaining = new Jar(dom.of("hi"));
-      Arbitrary.runWithPicks([], (p) => remaining.pickUnused(p));
-      assert(remaining.isEmpty());
-    });
-    it("returns true after taking both values of a boolean", () => {
-      const remaining = new Jar(dom.of(false, true));
-      Arbitrary.runWithPicks([], (p) => remaining.pickUnused(p));
-      assertFalse(remaining.isEmpty());
-      Arbitrary.runWithPicks([1], (p) => remaining.pickUnused(p));
-      assert(remaining.isEmpty());
-    });
-  });
-  describe("pickUnused", () => {
+  describe("take", () => {
     it("returns the only value from a constant", () => {
-      const remaining = new Jar(dom.of("hi"));
-      const gen = Arbitrary.runWithPicks([], (p) => remaining.pickUnused(p));
-      assertEquals(gen?.val, "hi");
+      const jar = new Jar(dom.of("hi"));
+      assertEquals(jar.take([0]), "hi");
     });
     it("throws Pruned if the same playout was seen twice", () => {
-      const remaining = new Jar(dom.of("hi"));
-      assertEquals(
-        Arbitrary.runWithPicks([], (p) => remaining.pickUnused(p)).val,
-        "hi",
-      );
-      assertThrows(
-        () => Arbitrary.runWithPicks([], (p) => remaining.pickUnused(p)),
-        Pruned,
-      );
+      const jar = new Jar(dom.of("hi"));
+      jar.take([0]);
+      assertThrows(() => jar.take([0]), Pruned);
+    });
+    it("picks values from an overlapping oneOf", () => {
+      const overlap = dom.oneOf([dom.of(1, 2), dom.of(2, 3)]);
+      const jar = new Jar(overlap);
+      assertEquals(jar.take([0, 0]), 1);
+      assertEquals(jar.take([0, 1]), 2);
+      assertEquals(jar.take([1, 0]), 2);
+      assertEquals(jar.take([1, 1]), 3);
+      assert(jar.isEmpty());
+    });
+  });
+  describe("isEmpty", () => {
+    it("returns false when nothing has been taken yet", () => {
+      const jar = new Jar(dom.of("hi"));
+      assertFalse(jar.isEmpty());
+    });
+    it("returns true after taking the only value from a constant", () => {
+      const jar = new Jar(dom.of("hi"));
+      jar.take([0]);
+      assert(jar.isEmpty());
+    });
+    it("returns true after taking both values of a boolean", () => {
+      const jar = new Jar(dom.of(false, true));
+      jar.take([0]);
+      assertFalse(jar.isEmpty());
+      jar.take([1]);
+      assert(jar.isEmpty());
+    });
+  });
+  describe("takeAll", () => {
+    it("returns the only value from a constant", () => {
+      assertEquals(Jar.takeAll(dom.of("hi")), ["hi"]);
     });
   });
 });
