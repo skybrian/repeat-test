@@ -101,7 +101,7 @@ export default class Domain<T> {
       throw new Error(picker.error);
     }
     if (gen === undefined) {
-      throw new Error("picks not accepted");
+      throw new Error("domain's generator didn't accept picks");
     }
     return gen.val;
   }

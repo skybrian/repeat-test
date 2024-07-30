@@ -517,6 +517,8 @@ export default class Arbitrary<T> {
   /**
    * Returns the result of running a callback with some picks.
    *
+   * Throws {@link Pruned} if the picks don't correspond to a value.
+   *
    * (For testing.)
    */
   static runWithPicks<T>(
@@ -558,7 +560,7 @@ export default class Arbitrary<T> {
           if (acceptPicks !== undefined) {
             const picks = picker.getPicks(depthBefore);
             if (!acceptPicks(picks)) {
-              throw new Pruned("picks not accepted");
+              throw new Pruned("acceptPicks returned false");
             }
           }
           return result;
