@@ -21,7 +21,7 @@ type Branch = undefined | Node | typeof PRUNED;
  * possibilities have been exhausted for a pick, it can be set to {@link PRUNED}
  * to avoid needlessly visiting it again.
  */
-export class Node {
+class Node {
   [key: number]: Branch;
 
   /** Invariant: reqMin <= min <= max */
@@ -55,7 +55,7 @@ export class Node {
   }
 
   /** Returns true if the range matches the one used to create the node. */
-  checkRange(req: PickRequest): boolean {
+  rangeMatches(req: PickRequest): boolean {
     return this.#reqMin === req.min && this.#max === req.max;
   }
 
@@ -194,7 +194,9 @@ export class PickTree {
         parent = parent.addChild(parentPick, reqs[i]);
         parentPick = replies[i];
       } else {
-        branch.checkRange(reqs[i]);
+        if (!branch.rangeMatches(reqs[i])) {
+          throw new Error("pick request range doesn't match previous playout");
+        }
         parent = branch;
         parentPick = replies[i];
       }
@@ -321,7 +323,7 @@ class PickStack {
       throw new Error("internal error: parent picked a pruned branch");
     } else if (node !== undefined) {
       // Visit existing node.
-      if (!node.checkRange(req)) {
+      if (!node.rangeMatches(req)) {
         throw new Error(
           `pick request range doesn't match a previous visit`,
         );

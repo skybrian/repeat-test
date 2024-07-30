@@ -24,54 +24,15 @@ import { repeatTest } from "../src/runner.ts";
 import {
   breadthFirstPass,
   breadthFirstSearch,
-  Node,
   PickTree,
   PlayoutSearch,
-  PRUNED,
   SearchOpts,
 } from "../src/searches.ts";
-
-describe("Node", () => {
-  describe("prune", () => {
-    it("sets a branch to PRUNED", () => {
-      repeatTest(arb.int(1, 6), (toPrune) => {
-        const node = Node.from(new PickRequest(1, 6));
-        assertEquals(node.branchesLeft, 6);
-        assert(node.prune(toPrune));
-        assertEquals(node.branchesLeft, 5);
-        assertEquals(node.getBranch(toPrune), PRUNED);
-      });
-    });
-    it("returns false if the pick is out of range", () => {
-      const node = Node.from(new PickRequest(1, 2));
-      assertEquals(node.branchesLeft, 2);
-      assertFalse(node.prune(0));
-      assertEquals(node.branchesLeft, 2);
-    });
-    it("returns false if the branch is already pruned", () => {
-      repeatTest(arb.int(1, 6), (toPrune) => {
-        const node = Node.from(new PickRequest(1, 6));
-        assert(node.prune(toPrune));
-        assertEquals(node.branchesLeft, 5);
-        assertFalse(node.prune(toPrune));
-        assertEquals(node.branchesLeft, 5);
-      });
-    });
-    it("returns false if the branch was pruned and later became the minimum", () => {
-      const node = Node.from(new PickRequest(1, 6));
-      assert(node.prune(2));
-      assertEquals(node.branchesLeft, 5);
-      assert(node.prune(1));
-      assertEquals(node.branchesLeft, 4);
-      assertFalse(node.prune(2));
-    });
-  });
-});
 
 describe("PickTree", () => {
   describe("prune", () => {
     const bit = new PickRequest(0, 1);
-    it("prunes entire tree when given an empty playout", () => {
+    it("prunes the entire tree when given an empty playout", () => {
       const tree = new PickTree();
       assert(tree.prune(new PickList([], [])));
       assertFalse(tree.available([]));
@@ -130,6 +91,16 @@ describe("PickTree", () => {
           assertEquals(tree.branchesLeft([]), expectRemaining);
         }
       });
+    });
+    it("throws an Error if a PickRequest's range doesn't match the tree", () => {
+      const tree = new PickTree();
+      const bit = new PickRequest(0, 1);
+      assert(tree.prune(new PickList([bit, bit], [0, 0])));
+      const roll = new PickRequest(1, 6);
+      assertThrows(
+        () => tree.prune(new PickList([roll], [3])),
+        Error,
+      );
     });
   });
 });
