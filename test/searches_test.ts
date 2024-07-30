@@ -65,6 +65,18 @@ describe("PickTree", () => {
         }
       });
     });
+    it("removes picks in order", () => {
+      const tree = new PickTree();
+      const bit = new PickRequest(0, 1);
+      assert(tree.prune(new PickList([bit, bit], [0, 0])));
+      assertEquals(tree.branchesLeft([]), 2);
+      assert(tree.prune(new PickList([bit, bit], [0, 1])));
+      assertEquals(tree.branchesLeft([]), 1);
+      assert(tree.prune(new PickList([bit, bit], [1, 0])));
+      assertEquals(tree.branchesLeft([]), 1);
+      assert(tree.prune(new PickList([bit, bit], [1, 1])));
+      assertEquals(tree.branchesLeft([]), 0);
+    });
     it("removes three picks from the same node", () => {
       const example = arb.from((pick) => {
         const min = pick(arb.int(0, 2));

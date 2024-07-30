@@ -199,7 +199,8 @@ export class PickTree {
     }
 
     // remove ancestors that are now empty
-    while (parent.branchesLeft === 0) {
+    let child = parent;
+    while (child.branchesLeft === 0) {
       const parent = nodePath.pop();
       if (parent === undefined) {
         return true; // pruned the last playout
@@ -209,6 +210,7 @@ export class PickTree {
         throw new Error("nodePath and pickPath should be the same length");
       }
       parent.prune(parentPick);
+      child = parent;
     }
 
     return true;
