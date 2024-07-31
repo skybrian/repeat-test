@@ -16,15 +16,6 @@ export type PickFunctionOptions<T> = {
 };
 
 /**
- * Specifies a record to be generated.
- *
- * Each field will be independently generated from a different Arbitrary.
- */
-export type RecordShape<T> = {
-  [K in keyof T]: Arbitrary<T[K]>;
-};
-
-/**
  * A function that generates an value, given some picks.
  *
  * The result should be deterministic, depending only on what `pick` returns.
@@ -35,9 +26,21 @@ export type RecordShape<T> = {
  */
 export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 
-export abstract class HasGenerator<T> {
-  abstract generator(): Arbitrary<T>;
+/**
+ * A set of values that can generated either in order or randomly.
+ */
+export abstract class PickSet<T> {
+  abstract arbitrary(): Arbitrary<T>;
 }
+
+/**
+ * Specifies a record to be generated.
+ *
+ * Each field will be independently generated from a different Arbitrary.
+ */
+export type RecordShape<T> = {
+  [K in keyof T]: PickSet<T[K]>;
+};
 
 /**
  * Picks a value given a PickRequest, an Arbitrary, or a record shape containing
@@ -47,9 +50,8 @@ export abstract class HasGenerator<T> {
  */
 export interface PickFunction {
   (req: PickRequest): number;
-  <T>(req: Arbitrary<T>, opts?: PickFunctionOptions<T>): T;
-  <T>(req: HasGenerator<T>): T;
-  <T extends AnyRecord>(reqs: RecordShape<T>, opts?: PickFunctionOptions<T>): T;
+  <T>(req: PickSet<T>, opts?: PickFunctionOptions<T>): T;
+  <T extends AnyRecord>(req: RecordShape<T>, opts?: PickFunctionOptions<T>): T;
 }
 
 export type ArbitraryOpts = {
@@ -112,7 +114,7 @@ export class Generated<T> {
  *
  * The values can be iterated over using {@link generateAll}.
  */
-export default class Arbitrary<T> {
+export default class Arbitrary<T> extends PickSet<T> {
   readonly #label: string;
   readonly #callback: ArbitraryCallback<T>;
 
@@ -127,11 +129,16 @@ export default class Arbitrary<T> {
       maxSize?: number;
     },
   ) {
+    super();
     this.#label = label;
     this.#callback = callback;
     this.#examples = opts?.examples;
     this.#maxSize = opts?.maxSize;
     this.default(); // dry run
+  }
+
+  arbitrary(): Arbitrary<T> {
+    return this;
   }
 
   /** A label indicating what kind of Arbitrary this is, for debugging. */
@@ -178,7 +185,7 @@ export default class Arbitrary<T> {
     pick: PickFunction,
     accept?: (val: T, picks: PickList) => boolean,
   ): T {
-    if (accept === undefined) {
+    const generate = () => {
       while (true) {
         const level = log.startSpan();
         try {
@@ -194,11 +201,14 @@ export default class Arbitrary<T> {
           }
         }
       }
+    };
+    if (accept === undefined) {
+      return generate();
     } else {
       while (true) {
         const level = log.startSpan();
         const depthBefore = picker.depth;
-        const val = this.#callback(pick);
+        const val = generate();
         const picks = picker.getPicks(depthBefore);
         if (accept(val, picks)) {
           log.endSpan(level);
@@ -465,7 +475,7 @@ export default class Arbitrary<T> {
     let maxSize: number | undefined = 1;
     const keys = Object.keys(shape) as (keyof T)[];
     for (const key of keys) {
-      const size = shape[key].maxSize;
+      const size = shape[key].arbitrary().maxSize;
       if (size === undefined) {
         maxSize = undefined;
         break;
@@ -482,26 +492,33 @@ export default class Arbitrary<T> {
   /**
    * Creates an arbitrary that picks one of the given arbitaries and then returns it.
    */
-  static oneOf<T>(cases: Arbitrary<T>[], opts?: ArbitraryOpts): Arbitrary<T> {
+  static oneOf<T>(
+    cases: PickSet<T>[],
+    opts?: ArbitraryOpts,
+  ): Arbitrary<T> {
     if (cases.length === 0) {
       throw new Error("oneOf must be called with at least one alternative");
     }
     if (cases.length === 1) {
-      return cases[0];
+      return cases[0].arbitrary();
     }
+
+    const arbCases = cases.map((c) => c.arbitrary());
+
     let maxSize: number | undefined = 0;
-    for (const c of cases) {
-      if (c.maxSize === undefined) {
+    for (const arb of arbCases) {
+      const caseSize = arb.maxSize;
+      if (caseSize === undefined) {
         maxSize = undefined;
         break;
       }
-      maxSize += c.maxSize;
+      maxSize += caseSize;
     }
 
     const req = new PickRequest(0, cases.length - 1);
     const callback: ArbitraryCallback<T> = (pick) => {
       const i = pick(req);
-      return cases[i].#callback(pick);
+      return arbCases[i].#callback(pick);
     };
     const label = opts?.label ?? "oneOf";
     return new Arbitrary(label, callback, { maxSize });
@@ -550,17 +567,15 @@ export default class Arbitrary<T> {
     picker: PlayoutPicker,
   ): PickFunction {
     const dispatch = <T>(
-      req: PickRequest | Arbitrary<T> | HasGenerator<T> | RecordShape<T>,
+      req: PickRequest | PickSet<T> | RecordShape<T>,
       opts?: PickFunctionOptions<T>,
     ): number | T => {
       if (req instanceof PickRequest) {
         const pick = picker.maybePick(req);
         if (!pick.ok) throw new Pruned(pick.message);
         return pick.val;
-      } else if (req instanceof Arbitrary) {
-        return req.innerPick(log, picker, dispatch, opts?.accept);
-      } else if (req instanceof HasGenerator) {
-        return req.generator().innerPick(log, picker, dispatch, opts?.accept);
+      } else if (req instanceof PickSet) {
+        return req.arbitrary().innerPick(log, picker, dispatch, opts?.accept);
       } else if (typeof req !== "object") {
         throw new Error("pick called with invalid argument");
       } else {
@@ -570,7 +585,7 @@ export default class Arbitrary<T> {
         }
         const result = {} as Partial<T>;
         for (const key of keys) {
-          result[key] = req[key].innerPick(log, picker, dispatch);
+          result[key] = req[key].arbitrary().innerPick(log, picker, dispatch);
         }
         return result as T;
       }

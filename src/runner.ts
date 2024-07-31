@@ -1,6 +1,6 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
 import { PlayoutSearch } from "./searches.ts";
-import Arbitrary, { Generated, HasGenerator } from "./arbitrary_class.ts";
+import Arbitrary, { Generated, PickSet } from "./arbitrary_class.ts";
 import { Failure, failure, Success, success } from "./results.ts";
 import { shrink } from "./shrink.ts";
 
@@ -209,30 +209,29 @@ function getStartKey(opts?: RepeatOptions): Success<RepKey> | Failure {
  * @param test A test function that requires input.
  */
 export function repeatTest<T>(
-  input: T[] | Arbitrary<T> | HasGenerator<T>,
+  input: T[] | PickSet<T>,
   test: TestFunction<T>,
   opts?: RepeatOptions,
 ): void {
   let expectedPlayouts = opts?.reps ?? 1000;
   if (Array.isArray(input)) {
     expectedPlayouts = input.length;
-    input = Arbitrary.from(input);
-  } else if (input instanceof HasGenerator) {
-    input = input.generator();
   }
+
+  const arb = Array.isArray(input) ? Arbitrary.from(input) : input.arbitrary();
 
   const start = getStartKey(opts);
   if (!start.ok) throw new Error(start.message ?? "can't get start key");
   const key = start.val;
 
-  const runAll = input.maxSize !== undefined &&
-    input.maxSize <= expectedPlayouts;
+  const runAll = arb.maxSize !== undefined &&
+    arb.maxSize <= expectedPlayouts;
 
   const genOpts: RandomRepsOpts = { expectedPlayouts };
 
   const reps = runAll
-    ? depthFirstReps(input, test)
-    : randomReps(key.seed, input, test, genOpts);
+    ? depthFirstReps(arb, test)
+    : randomReps(key.seed, arb, test, genOpts);
 
   // Skip to the iteration that we want to run.
   for (let i = 0; i < key.index; i++) {

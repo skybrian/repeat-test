@@ -1,7 +1,5 @@
 import { AnyRecord } from "../types.ts";
-import Arbitrary, {
-  RecordShape as ArbRecordShape,
-} from "../arbitrary_class.ts";
+import Arbitrary from "../arbitrary_class.ts";
 import * as arb from "../arbitraries.ts";
 import Domain from "../domain_class.ts";
 
@@ -68,11 +66,7 @@ export function record<T extends AnyRecord>(
   fields: RecordShape<T>,
 ): Domain<T> {
   const fieldKeys = Object.keys(fields) as (keyof T)[];
-  const fieldGens: Partial<ArbRecordShape<T>> = {};
-  for (const key of fieldKeys) {
-    fieldGens[key] = fields[key].generator();
-  }
-  const gen = arb.record(fieldGens as ArbRecordShape<T>);
+  const gen = arb.record(fields);
 
   return new Domain(
     gen,
@@ -108,7 +102,7 @@ export function array<T>(
   item: Domain<T>,
   opts?: { min?: number; max?: number },
 ): Domain<T[]> {
-  const gen = arb.array(item.generator(), opts);
+  const gen = arb.array(item.arbitrary(), opts);
   const min = opts?.min ?? 0;
   const max = opts?.max ?? arb.defaultArrayLimit;
 
@@ -178,7 +172,7 @@ export function oneOf<T>(cases: Domain<T>[]): Domain<T> {
     return cases[0];
   }
 
-  const gen = arb.oneOf(cases.map((c) => c.generator()));
+  const gen = arb.oneOf(cases.map((c) => c.arbitrary()));
 
   return new Domain(gen, (val, sendErr) => {
     for (const [i, c] of cases.entries()) {

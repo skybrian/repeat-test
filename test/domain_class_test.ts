@@ -96,7 +96,7 @@ describe("Domain", () => {
         },
       });
       it("parses every number it generates", () => {
-        repeatTest(even.generator(), (n) => {
+        repeatTest(even, (n) => {
           even.parse(n);
         });
       });

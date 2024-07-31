@@ -69,7 +69,7 @@ export function table<R extends AnyRecord>(
         if (jar) {
           row[key] = jar.pickUnused(pick);
         } else {
-          row[key] = pick(shape[key].generator());
+          row[key] = pick(shape[key]);
         }
       }
       return row as R;

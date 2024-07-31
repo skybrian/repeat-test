@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import Arbitrary from "./arbitrary_class.ts";
+import Arbitrary, { PickSet } from "./arbitrary_class.ts";
 import { NestedPicks } from "./spans.ts";
 
 import Domain from "./domain_class.ts";
@@ -74,8 +74,8 @@ export function assertFirstValues<T>(
 }
 
 export function assertValues<T>(
-  arb: Arbitrary<T>,
+  set: PickSet<T>,
   expected: T[],
 ) {
-  assertEquals(arb.take(expected.length + 5), expected);
+  assertEquals(set.arbitrary().take(expected.length + 5), expected);
 }
