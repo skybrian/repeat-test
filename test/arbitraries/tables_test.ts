@@ -93,7 +93,7 @@ describe("table", () => {
       assertEquals(table.default(), []);
     });
     it("generates the same values as uniqueArray", () => {
-      const expected = arb.uniqueArray(dom.boolean()).arbitrary.map((r) =>
+      const expected = arb.uniqueArray(dom.boolean()).map((r) =>
         JSON.stringify(r)
       ).takeAll();
       const actual = table.map((rows) => rows.map((row) => row.v)).map((r) =>

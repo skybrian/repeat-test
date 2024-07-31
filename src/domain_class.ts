@@ -43,7 +43,7 @@ export default class Domain<T> extends PickSet<T> {
   }
 
   /** The Arbitrary that generates values for this domain. */
-  get arbitrary(): Arbitrary<T> {
+  get arb(): Arbitrary<T> {
     return this.#arb;
   }
 
@@ -120,11 +120,11 @@ export default class Domain<T> extends PickSet<T> {
   regenerate(val: unknown): Generated<T> | undefined {
     const picks = this.maybePickify(val);
     if (!picks.ok) return undefined;
-    return this.arbitrary.generate(playback(picks.val));
+    return this.arb.generate(playback(picks.val));
   }
 
   filter(accept: (val: T) => boolean): Domain<T> {
-    return new Domain<T>(this.arbitrary.filter(accept), (val, sendErr) => {
+    return new Domain<T>(this.arb.filter(accept), (val, sendErr) => {
       const picks = this.#callback(val, sendErr);
       if (picks === undefined) return undefined;
 

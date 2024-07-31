@@ -30,7 +30,7 @@ export type ArbitraryCallback<T> = (pick: PickFunction) => T;
  * A set of values that can be generated on demand.
  */
 export abstract class PickSet<T> {
-  abstract get arbitrary(): Arbitrary<T>;
+  abstract get arb(): Arbitrary<T>;
 }
 
 /**
@@ -137,7 +137,7 @@ export default class Arbitrary<T> extends PickSet<T> {
     this.default(); // dry run
   }
 
-  get arbitrary(): Arbitrary<T> {
+  get arb(): Arbitrary<T> {
     return this;
   }
 
@@ -482,7 +482,7 @@ export default class Arbitrary<T> extends PickSet<T> {
     let maxSize: number | undefined = 1;
     const keys = Object.keys(shape) as (keyof T)[];
     for (const key of keys) {
-      const size = shape[key].arbitrary.maxSize;
+      const size = shape[key].arb.maxSize;
       if (size === undefined) {
         maxSize = undefined;
         break;
@@ -507,10 +507,10 @@ export default class Arbitrary<T> extends PickSet<T> {
       throw new Error("oneOf must be called with at least one alternative");
     }
     if (cases.length === 1) {
-      return cases[0].arbitrary;
+      return cases[0].arb;
     }
 
-    const arbCases = cases.map((c) => c.arbitrary);
+    const arbCases = cases.map((c) => c.arb);
 
     let maxSize: number | undefined = 0;
     for (const arb of arbCases) {
@@ -582,7 +582,7 @@ export default class Arbitrary<T> extends PickSet<T> {
         if (!pick.ok) throw new Pruned(pick.message);
         return pick.val;
       } else if (req instanceof PickSet) {
-        return req.arbitrary.innerPick(log, picker, dispatch, opts?.accept);
+        return req.arb.innerPick(log, picker, dispatch, opts?.accept);
       } else if (typeof req !== "object") {
         throw new Error("pick called with invalid argument");
       } else {
@@ -592,7 +592,7 @@ export default class Arbitrary<T> extends PickSet<T> {
         }
         const result = {} as Partial<T>;
         for (const key of keys) {
-          result[key] = req[key].arbitrary.innerPick(log, picker, dispatch);
+          result[key] = req[key].arb.innerPick(log, picker, dispatch);
         }
         return result as T;
       }

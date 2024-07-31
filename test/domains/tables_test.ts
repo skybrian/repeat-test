@@ -23,7 +23,7 @@ describe("uniqueArray", () => {
   it("rejects an array with an unexpected item", () => {
     const badList = Arbitrary.from((pick) => {
       const list = pick(
-        bools.arbitrary.filter((v) => v.length > 0),
+        bools.arb.filter((v) => v.length > 0),
       ) as unknown[];
       const badIndex = pick(dom.int(0, list.length - 1));
       list[badIndex] = undefined;
@@ -39,7 +39,7 @@ describe("uniqueArray", () => {
     }, { only: "568396397:6" });
   });
   it("rejects an array with a duplicate item", () => {
-    const badList = bools.arbitrary.filter((v) => v.length > 0).map((
+    const badList = bools.arb.filter((v) => v.length > 0).map((
       v,
     ) => [
       ...v,

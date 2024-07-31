@@ -2,6 +2,7 @@ import { AnyRecord } from "../types.ts";
 import Arbitrary, {
   ArbitraryCallback,
   ArbitraryOpts,
+  PickSet,
   RecordShape,
 } from "../arbitrary_class.ts";
 import { PickRequest } from "../picks.ts";
@@ -58,14 +59,14 @@ export function record<T extends AnyRecord>(
   return Arbitrary.record(shape);
 }
 
-export function oneOf<T>(cases: Arbitrary<T>[]): Arbitrary<T> {
+export function oneOf<T>(cases: PickSet<T>[]): Arbitrary<T> {
   return Arbitrary.oneOf(cases);
 }
 
 export const defaultArrayLimit = 1000;
 
 export function array<T>(
-  item: Arbitrary<T>,
+  item: PickSet<T>,
   opts?: { min?: number; max?: number; label?: string },
 ): Arbitrary<T[]> {
   const label = opts?.label ?? "array";
