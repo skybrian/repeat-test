@@ -8,6 +8,11 @@ export type PickifyCallback = (
   sendErr: (msg: string) => void,
 ) => number[] | undefined;
 
+export interface Mapper<T, U> {
+  map: (val: T) => U;
+  parse: (val: unknown, sendErr: (msg: string) => void) => T | undefined;
+}
+
 /**
  * A domain can both validate and generate a set of values.
  */
@@ -111,6 +116,17 @@ export default class Domain<T> {
     const picks = this.maybePickify(val);
     if (!picks.ok) return undefined;
     return this.#generator.generate(playback(picks.val));
+  }
+
+  map<U>(mapper: Mapper<T, U>): Domain<U> {
+    return new Domain<U>(
+      this.generator.map((v: T) => mapper.map(v)),
+      (val, sendErr) => {
+        const parsed = mapper.parse(val, sendErr);
+        if (parsed === undefined) return undefined;
+        return this.pickify(parsed);
+      },
+    );
   }
 
   filter(accept: (val: T) => boolean): Domain<T> {
