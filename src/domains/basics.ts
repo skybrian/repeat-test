@@ -183,3 +183,23 @@ export function oneOf<T>(cases: Domain<T>[]): Domain<T> {
     return undefined;
   });
 }
+
+export interface Codec<In, Out> {
+  parse: (val: unknown, sendErr: (msg: string) => void) => Out | undefined;
+  unparse: (val: Out) => In;
+}
+
+/**
+ * Creates a domain that parses by lowering to another domain, instead of
+ * parsing all the way to picks.
+ */
+export function mapped<T, L>(lower: Domain<L>, mapper: Codec<T, L>): Domain<T> {
+  return new Domain<T>(
+    lower.arbitrary.map((val: L) => mapper.unparse(val)),
+    (val, sendErr) => {
+      const parsed = mapper.parse(val, sendErr);
+      if (parsed === undefined) return undefined;
+      return lower.pickify(parsed);
+    },
+  );
+}
