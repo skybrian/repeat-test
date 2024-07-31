@@ -22,7 +22,7 @@ function assertShrinks<T>(
   const gen = dom.regenerate(start);
   assert(gen, "couldn't regenerate the starting value");
 
-  const smaller = shrink(dom.arbitrary(), interesting, gen);
+  const smaller = shrink(dom.arbitrary, interesting, gen);
   assert(smaller, "didn't find the expected smaller value");
   assertEquals(smaller.val, result);
 }

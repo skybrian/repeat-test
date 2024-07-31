@@ -218,7 +218,7 @@ export function repeatTest<T>(
     expectedPlayouts = input.length;
   }
 
-  const arb = Array.isArray(input) ? Arbitrary.from(input) : input.arbitrary();
+  const arb = Array.isArray(input) ? Arbitrary.from(input) : input.arbitrary;
 
   const start = getStartKey(opts);
   if (!start.ok) throw new Error(start.message ?? "can't get start key");

@@ -77,5 +77,5 @@ export function assertValues<T>(
   set: PickSet<T>,
   expected: T[],
 ) {
-  assertEquals(set.arbitrary().take(expected.length + 5), expected);
+  assertEquals(set.arbitrary.take(expected.length + 5), expected);
 }

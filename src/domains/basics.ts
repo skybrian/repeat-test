@@ -102,7 +102,7 @@ export function array<T>(
   item: Domain<T>,
   opts?: { min?: number; max?: number },
 ): Domain<T[]> {
-  const gen = arb.array(item.arbitrary(), opts);
+  const gen = arb.array(item.arbitrary, opts);
   const min = opts?.min ?? 0;
   const max = opts?.max ?? arb.defaultArrayLimit;
 
@@ -172,7 +172,7 @@ export function oneOf<T>(cases: Domain<T>[]): Domain<T> {
     return cases[0];
   }
 
-  const gen = arb.oneOf(cases.map((c) => c.arbitrary()));
+  const gen = arb.oneOf(cases.map((c) => c.arbitrary));
 
   return new Domain(gen, (val, sendErr) => {
     for (const [i, c] of cases.entries()) {

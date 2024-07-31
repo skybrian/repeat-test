@@ -147,7 +147,7 @@ function makeRep<T>(input: Domain<T>, arg: T, test: TestFunction<T>): Rep<T> {
   const rep: Rep<T> = {
     ok: true,
     key: { seed: 1, index: 1 },
-    arb: input.arbitrary(),
+    arb: input.arbitrary,
     arg: gen,
     test,
   };
