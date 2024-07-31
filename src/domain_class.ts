@@ -1,5 +1,5 @@
 import { PlaybackPicker } from "./picks.ts";
-import Arbitrary, { Generated } from "./arbitrary_class.ts";
+import Arbitrary, { Generated, HasGenerator } from "./arbitrary_class.ts";
 import { onePlayout, playback } from "./backtracking.ts";
 import { Failure, failure, Success, success } from "./results.ts";
 
@@ -16,7 +16,7 @@ export interface Mapper<T, U> {
 /**
  * A domain can both validate and generate a set of values.
  */
-export default class Domain<T> {
+export default class Domain<T> extends HasGenerator<T> {
   #generator: Arbitrary<T>;
   #callback: PickifyCallback;
 
@@ -24,6 +24,7 @@ export default class Domain<T> {
     generator: Arbitrary<T>,
     callback: PickifyCallback,
   ) {
+    super();
     this.#generator = generator;
     this.#callback = callback;
 
@@ -47,7 +48,7 @@ export default class Domain<T> {
   }
 
   /** The Arbitrary that generates values for this domain. */
-  get generator(): Arbitrary<T> {
+  generator(): Arbitrary<T> {
     return this.#generator;
   }
 
@@ -101,7 +102,7 @@ export default class Domain<T> {
    */
   parsePicks(picks: number[]): T {
     const picker = new PlaybackPicker(picks);
-    const gen = this.generator.generate(onePlayout(picker));
+    const gen = this.generator().generate(onePlayout(picker));
     if (picker.error) {
       throw new Error(picker.error);
     }
@@ -120,7 +121,7 @@ export default class Domain<T> {
 
   map<U>(mapper: Mapper<T, U>): Domain<U> {
     return new Domain<U>(
-      this.generator.map((v: T) => mapper.map(v)),
+      this.generator().map((v: T) => mapper.map(v)),
       (val, sendErr) => {
         const parsed = mapper.parse(val, sendErr);
         if (parsed === undefined) return undefined;
@@ -130,7 +131,7 @@ export default class Domain<T> {
   }
 
   filter(accept: (val: T) => boolean): Domain<T> {
-    return new Domain<T>(this.generator.filter(accept), (val, sendErr) => {
+    return new Domain<T>(this.generator().filter(accept), (val, sendErr) => {
       const picks = this.#callback(val, sendErr);
       if (picks === undefined) return undefined;
 

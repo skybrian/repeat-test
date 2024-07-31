@@ -22,7 +22,7 @@ function assertShrinks<T>(
   const gen = dom.regenerate(start);
   assert(gen, "couldn't regenerate the starting value");
 
-  const smaller = shrink(dom.generator, interesting, gen);
+  const smaller = shrink(dom.generator(), interesting, gen);
   assert(smaller, "didn't find the expected smaller value");
   assertEquals(smaller.val, result);
 }
@@ -96,22 +96,22 @@ describe("shrink", () => {
     });
     const pair = dom.record({ a: dom.int32(), b: dom.anyString() });
     it("can't shrink when there's no alternative", () => {
-      repeatTest(pair.generator, ({ a, b }) => {
+      repeatTest(pair, ({ a, b }) => {
         assertNoChange(pair, (r) => r.a === a && r.b === b, { a, b });
       });
     });
     it("shrinks all fields to their minimums", () => {
-      repeatTest(pair.generator, (start) => {
+      repeatTest(pair, (start) => {
         assertShrinks(pair, (_r) => true, start, { a: 0, b: "" });
       });
     });
     it("shrinks the first field if the second is held constant", () => {
-      repeatTest(pair.generator, ({ a, b }) => {
+      repeatTest(pair, ({ a, b }) => {
         assertShrinks(pair, (r) => r.b === b, { a, b }, { a: 0, b });
       });
     });
     it("shrinks the second field if the first is held constant", () => {
-      repeatTest(pair.generator, ({ a, b }) => {
+      repeatTest(pair, ({ a, b }) => {
         assertShrinks(pair, (r) => r.a === a, { a, b }, { a, b: "" });
       });
     });

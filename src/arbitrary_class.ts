@@ -35,6 +35,10 @@ export type RecordShape<T> = {
  */
 export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 
+export abstract class HasGenerator<T> {
+  abstract generator(): Arbitrary<T>;
+}
+
 /**
  * Picks a value given a PickRequest, an Arbitrary, or a record shape containing
  * multiple Arbitraries.
@@ -44,7 +48,7 @@ export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 export interface PickFunction {
   (req: PickRequest): number;
   <T>(req: Arbitrary<T>, opts?: PickFunctionOptions<T>): T;
-  <T>(req: ArbitraryCallback<T>): T;
+  <T>(req: HasGenerator<T>): T;
   <T extends AnyRecord>(reqs: RecordShape<T>, opts?: PickFunctionOptions<T>): T;
 }
 
@@ -170,42 +174,39 @@ export default class Arbitrary<T> {
 
   private innerPick(
     log: SpanLog,
-    pick: PickFunction,
-  ): T {
-    while (true) {
-      const level = log.startSpan();
-      try {
-        const val = this.#callback(pick);
-        log.endSpan(level);
-        return val;
-      } catch (e) {
-        if (!(e instanceof Pruned)) {
-          throw e;
-        }
-        if (!log.cancelSpan(level)) {
-          throw e;
-        }
-      }
-    }
-  }
-
-  private innerPickWithFilter(
-    log: SpanLog,
     picker: PlayoutPicker,
     pick: PickFunction,
-    accept: (val: T, picks: PickList) => boolean,
+    accept?: (val: T, picks: PickList) => boolean,
   ): T {
-    while (true) {
-      const level = log.startSpan();
-      const depthBefore = picker.depth;
-      const val = this.#callback(pick);
-      const picks = picker.getPicks(depthBefore);
-      if (accept(val, picks)) {
-        log.endSpan(level);
-        return val;
+    if (accept === undefined) {
+      while (true) {
+        const level = log.startSpan();
+        try {
+          const val = this.#callback(pick);
+          log.endSpan(level);
+          return val;
+        } catch (e) {
+          if (!(e instanceof Pruned)) {
+            throw e;
+          }
+          if (!log.cancelSpan(level)) {
+            throw e;
+          }
+        }
       }
-      if (!log.cancelSpan(level)) {
-        throw new Pruned("accept function returned false");
+    } else {
+      while (true) {
+        const level = log.startSpan();
+        const depthBefore = picker.depth;
+        const val = this.#callback(pick);
+        const picks = picker.getPicks(depthBefore);
+        if (accept(val, picks)) {
+          log.endSpan(level);
+          return val;
+        }
+        if (!log.cancelSpan(level)) {
+          throw new Pruned("accept function returned false");
+        }
       }
     }
   }
@@ -549,7 +550,7 @@ export default class Arbitrary<T> {
     picker: PlayoutPicker,
   ): PickFunction {
     const dispatch = <T>(
-      req: PickRequest | Arbitrary<T> | ArbitraryCallback<T> | RecordShape<T>,
+      req: PickRequest | Arbitrary<T> | HasGenerator<T> | RecordShape<T>,
       opts?: PickFunctionOptions<T>,
     ): number | T => {
       if (req instanceof PickRequest) {
@@ -557,39 +558,23 @@ export default class Arbitrary<T> {
         if (!pick.ok) throw new Pruned(pick.message);
         return pick.val;
       } else if (req instanceof Arbitrary) {
-        const accept = opts?.accept;
-        if (accept !== undefined) {
-          return req.innerPickWithFilter(log, picker, dispatch, accept);
-        } else {
-          return req.innerPick(log, dispatch);
-        }
-      } else if (typeof req === "function") {
-        const level = log.startSpan();
-        const val = req(dispatch);
-        log.endSpan(level);
-        return val;
+        return req.innerPick(log, picker, dispatch, opts?.accept);
+      } else if (req instanceof HasGenerator) {
+        return req.generator().innerPick(log, picker, dispatch, opts?.accept);
       } else if (typeof req !== "object") {
         throw new Error("pick called with invalid argument");
       } else {
-        return Arbitrary.pickRecord(req, log, dispatch);
+        const keys = Object.keys(req) as (keyof T)[];
+        if (keys.length === 0) {
+          return {} as T;
+        }
+        const result = {} as Partial<T>;
+        for (const key of keys) {
+          result[key] = req[key].innerPick(log, picker, dispatch);
+        }
+        return result as T;
       }
     };
     return dispatch;
-  }
-
-  private static pickRecord<T>(
-    req: RecordShape<T>,
-    log: SpanLog,
-    pick: PickFunction,
-  ): T {
-    const keys = Object.keys(req) as (keyof T)[];
-    if (keys.length === 0) {
-      return {} as T;
-    }
-    const result = {} as Partial<T>;
-    for (const key of keys) {
-      result[key] = req[key].innerPick(log, pick);
-    }
-    return result as T;
   }
 }

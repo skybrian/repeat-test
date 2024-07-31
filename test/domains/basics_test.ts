@@ -112,7 +112,7 @@ describe("record", () => {
       b: dom.int(1, 6),
     };
     const rec = dom.record(shape);
-    repeatTest(rec.generator, (val) => {
+    repeatTest(rec, (val) => {
       assertRoundTrip(rec, val);
     });
   });

@@ -6,18 +6,32 @@ import { Jar } from "../jar_class.ts";
 import Domain from "../domain_class.ts";
 
 export function uniqueArray<T>(
-  choices: Domain<T>,
+  item: Domain<T>,
   opts?: { label?: string },
-): Arbitrary<T[]> {
+): Domain<T[]> {
   const label = opts?.label ?? "uniqueArray";
-  return arb.from((pick) => {
-    const jar = new Jar(choices);
+
+  const generator = arb.from((pick) => {
+    const jar = new Jar(item);
     const out: T[] = [];
     while (!jar.isEmpty() && pick(arb.boolean())) {
       out.push(jar.pickUnused(pick));
     }
     return out;
   }, { label });
+
+  return new Domain(generator, (val, sendErr) => {
+    const out: number[] = [];
+    for (const v of val as T[]) {
+      const picks = item.maybePickify(v);
+      if (!picks.ok) {
+        sendErr(picks.message ?? `can't parse item ${out.length} in array`);
+        return undefined;
+      }
+      out.push(...picks.val);
+    }
+    return out;
+  });
 }
 
 export type TableOpts<T extends AnyRecord> = {
@@ -55,7 +69,7 @@ export function table<R extends AnyRecord>(
         if (jar) {
           row[key] = jar.pickUnused(pick);
         } else {
-          row[key] = pick(shape[key].generator);
+          row[key] = pick(shape[key].generator());
         }
       }
       return row as R;

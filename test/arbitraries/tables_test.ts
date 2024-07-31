@@ -9,10 +9,10 @@ import { repeatTest } from "../../src/runner.ts";
 describe("uniqueArray", () => {
   const bools = arb.uniqueArray(dom.boolean());
   it("defaults to an empty array", () => {
-    assertEquals(bools.default(), []);
+    assertEquals(bools.generator().default(), []);
   });
   it("generates all combinations of a boolean", () => {
-    assertValues(bools, [
+    assertValues(bools.generator(), [
       [],
       [false],
       [true],
@@ -45,11 +45,11 @@ describe("uniqueArray", () => {
     );
   });
   it("has a label", () => {
-    assertEquals(bools.label, "uniqueArray");
+    assertEquals(bools.generator().label, "uniqueArray");
   });
   it("can be configured with a label", () => {
     const array = arb.uniqueArray(dom.int(1, 3), { label: "my array" });
-    assertEquals(array.label, "my array");
+    assertEquals(array.generator().label, "my array");
   });
 });
 
@@ -93,7 +93,7 @@ describe("table", () => {
       assertEquals(table.default(), []);
     });
     it("generates the same values as uniqueArray", () => {
-      const expected = arb.uniqueArray(dom.boolean()).map((r) =>
+      const expected = arb.uniqueArray(dom.boolean()).generator().map((r) =>
         JSON.stringify(r)
       ).takeAll();
       const actual = table.map((rows) => rows.map((row) => row.v)).map((r) =>

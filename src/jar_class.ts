@@ -41,7 +41,7 @@ export class Jar<T> {
    * @throws {@link Pruned} if the picks were used already.
    */
   pickUnused(pick: PickFunction): T {
-    return pick(this.dom.generator, { accept: this.accept });
+    return pick(this.dom.generator(), { accept: this.accept });
   }
 
   /**

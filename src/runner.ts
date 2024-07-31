@@ -1,6 +1,6 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
 import { PlayoutSearch } from "./searches.ts";
-import Arbitrary, { Generated } from "./arbitrary_class.ts";
+import Arbitrary, { Generated, HasGenerator } from "./arbitrary_class.ts";
 import { Failure, failure, Success, success } from "./results.ts";
 import { shrink } from "./shrink.ts";
 
@@ -209,7 +209,7 @@ function getStartKey(opts?: RepeatOptions): Success<RepKey> | Failure {
  * @param test A test function that requires input.
  */
 export function repeatTest<T>(
-  input: T[] | Arbitrary<T>,
+  input: T[] | Arbitrary<T> | HasGenerator<T>,
   test: TestFunction<T>,
   opts?: RepeatOptions,
 ): void {
@@ -217,7 +217,10 @@ export function repeatTest<T>(
   if (Array.isArray(input)) {
     expectedPlayouts = input.length;
     input = Arbitrary.from(input);
+  } else if (input instanceof HasGenerator) {
+    input = input.generator();
   }
+
   const start = getStartKey(opts);
   if (!start.ok) throw new Error(start.message ?? "can't get start key");
   const key = start.val;

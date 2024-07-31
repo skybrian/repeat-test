@@ -91,14 +91,6 @@ describe("Arbitrary", () => {
       const gen = arb.generate(minPlayout());
       assertEquals(gen?.val, "hi");
     });
-    it("accepts an ArbitraryCallback", () => {
-      const choose: ArbitraryCallback<number> = (pick) => {
-        return pick(new PickRequest(1, 2));
-      };
-      const arb = Arbitrary.from((pick) => pick(choose));
-      const gen = arb.generate(minPlayout());
-      assertEquals(gen?.val, 1);
-    });
     it("accepts a record shape", () => {
       const req = {
         a: Arbitrary.of("hi", "there"),
