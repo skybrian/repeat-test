@@ -11,7 +11,7 @@ export type PickifyCallback = (
 /**
  * A domain can both validate and generate a set of values.
  */
-export default class Domain<T> extends PickSet<T> {
+export default class Domain<T> implements PickSet<T> {
   #arb: Arbitrary<T>;
   #callback: PickifyCallback;
 
@@ -19,7 +19,6 @@ export default class Domain<T> extends PickSet<T> {
     arb: Arbitrary<T>,
     callback: PickifyCallback,
   ) {
-    super();
     this.#arb = arb;
     this.#callback = callback;
 

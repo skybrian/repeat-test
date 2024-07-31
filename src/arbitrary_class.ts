@@ -27,10 +27,10 @@ export type PickFunctionOptions<T> = {
 export type ArbitraryCallback<T> = (pick: PickFunction) => T;
 
 /**
- * A set of values that can be generated on demand.
+ * A set of values that can be generated using an Arbitrary.
  */
-export abstract class PickSet<T> {
-  abstract get arb(): Arbitrary<T>;
+export interface PickSet<T> {
+  get arb(): Arbitrary<T>;
 }
 
 /**
@@ -113,7 +113,7 @@ export class Generated<T> {
  *
  * The values can be iterated over using {@link generateAll}.
  */
-export default class Arbitrary<T> extends PickSet<T> {
+export default class Arbitrary<T> implements PickSet<T> {
   readonly #label: string;
   readonly #callback: ArbitraryCallback<T>;
 
@@ -128,7 +128,6 @@ export default class Arbitrary<T> extends PickSet<T> {
       maxSize?: number;
     },
   ) {
-    super();
     this.#label = label;
     this.#callback = callback;
     this.#examples = opts?.examples;
@@ -588,28 +587,19 @@ export default class Arbitrary<T> extends PickSet<T> {
     picker: PlayoutPicker,
   ): PickFunction {
     const dispatch = <T>(
-      req: PickRequest | PickSet<T> | RecordShape<T>,
+      req: PickRequest | PickSet<T>,
       opts?: PickFunctionOptions<T>,
     ): number | T => {
       if (req instanceof PickRequest) {
         const pick = picker.maybePick(req);
         if (!pick.ok) throw new Pruned(pick.message);
         return pick.val;
-      } else if (req instanceof PickSet) {
-        return req.arb.innerPick(log, picker, dispatch, opts?.accept);
-      } else if (typeof req !== "object") {
-        throw new Error("pick called with invalid argument");
-      } else {
-        const keys = Object.keys(req) as (keyof T)[];
-        if (keys.length === 0) {
-          return {} as T;
-        }
-        const result = {} as Partial<T>;
-        for (const key of keys) {
-          result[key] = req[key].arb.innerPick(log, picker, dispatch);
-        }
-        return result as T;
       }
+      const arb = req["arb"];
+      if (arb instanceof Arbitrary) {
+        return arb.innerPick(log, picker, dispatch, opts?.accept);
+      }
+      throw new Error("pick called with invalid argument");
     };
     return dispatch;
   }
