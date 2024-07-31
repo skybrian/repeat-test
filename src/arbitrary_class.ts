@@ -12,12 +12,7 @@ export type PickFunctionOptions<T> = {
    *
    * It should always return true for an arbitrary's default value.
    */
-  accept?: (val: T) => boolean;
-
-  /**
-   * A filter for the picks that were used to generate an Arbitrary.
-   */
-  acceptPicks?: (picks: PickList) => boolean;
+  accept?: (val: T, picks: PickList) => boolean;
 };
 
 /**
@@ -177,26 +172,40 @@ export default class Arbitrary<T> {
     log: SpanLog,
     pick: PickFunction,
   ): T {
-    const level = log.startSpan();
-    const val = this.#callback(pick);
-    log.endSpan(level);
-    return val;
+    while (true) {
+      const level = log.startSpan();
+      try {
+        const val = this.#callback(pick);
+        log.endSpan(level);
+        return val;
+      } catch (e) {
+        if (!(e instanceof Pruned)) {
+          throw e;
+        }
+        if (!log.cancelSpan(level)) {
+          throw e;
+        }
+      }
+    }
   }
 
   private innerPickWithFilter(
     log: SpanLog,
+    picker: PlayoutPicker,
     pick: PickFunction,
-    accept: (val: T) => boolean,
+    accept: (val: T, picks: PickList) => boolean,
   ): T {
     while (true) {
       const level = log.startSpan();
+      const depthBefore = picker.depth;
       const val = this.#callback(pick);
-      if (accept(val)) {
+      const picks = picker.getPicks(depthBefore);
+      if (accept(val, picks)) {
         log.endSpan(level);
         return val;
       }
       if (!log.cancelSpan(level)) {
-        throw new Pruned("filter");
+        throw new Pruned("accept function returned false");
       }
     }
   }
@@ -548,22 +557,11 @@ export default class Arbitrary<T> {
         if (!pick.ok) throw new Pruned(pick.message);
         return pick.val;
       } else if (req instanceof Arbitrary) {
-        const { accept, acceptPicks } = opts ?? {};
+        const accept = opts?.accept;
         if (accept !== undefined) {
-          if (acceptPicks !== undefined) {
-            throw new Error("accept and acceptPick cannot be used together");
-          }
-          return req.innerPickWithFilter(log, dispatch, accept);
+          return req.innerPickWithFilter(log, picker, dispatch, accept);
         } else {
-          const depthBefore = picker.depth;
-          const result = req.innerPick(log, dispatch);
-          if (acceptPicks !== undefined) {
-            const picks = picker.getPicks(depthBefore);
-            if (!acceptPicks(picks)) {
-              throw new Pruned("acceptPicks returned false");
-            }
-          }
-          return result;
+          return req.innerPick(log, dispatch);
         }
       } else if (typeof req === "function") {
         const level = log.startSpan();

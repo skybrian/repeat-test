@@ -22,7 +22,7 @@ describe("Jar", () => {
       const jar = new Jar(overlap);
       assertEquals(jar.take([0, 0]), 1);
       assertEquals(jar.take([0, 1]), 2);
-      assertEquals(jar.take([1, 0]), 2);
+      assertThrows(() => jar.take([1, 0]), Pruned); // not canonical
       assertEquals(jar.take([1, 1]), 3);
       assert(jar.isEmpty());
     });
@@ -48,6 +48,12 @@ describe("Jar", () => {
   describe("takeAll", () => {
     it("returns the only value from a constant", () => {
       assertEquals(Jar.takeAll(dom.of("hi")), ["hi"]);
+    });
+    it("removes duplicates in an overlapping oneOf", () => {
+      const overlap = dom.oneOf([dom.of(1, 2), dom.of(2, 3)]);
+      const vals = Jar.takeAll(overlap);
+      vals.sort();
+      assertEquals(vals, [1, 2, 3]);
     });
   });
 });

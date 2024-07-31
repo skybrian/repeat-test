@@ -36,7 +36,7 @@ export function table<R extends AnyRecord>(
   return arb.from((pick) => {
     const jars: Record<string, Jar<unknown>> = {};
     for (const key of uniqueKeys) {
-      jars[key] = new Jar(shape[key]);
+      jars[key] = new Jar<unknown>(shape[key]);
     }
 
     const addRow: Arbitrary<R | undefined> = arb.from((pick) => {

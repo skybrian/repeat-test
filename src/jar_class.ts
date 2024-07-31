@@ -11,7 +11,19 @@ import Domain from "./domain_class.ts";
 export class Jar<T> {
   private readonly remaining = new PickTree();
 
-  private acceptPicks = (picks: PickList) => this.remaining.prune(picks);
+  private accept = (val: T, picks: PickList): boolean => {
+    // Compare using the canonical picks.
+    const gen = this.dom.regenerate(val);
+    if (gen === undefined) {
+      return false;
+    }
+    const accept = this.remaining.prune(gen.picks());
+
+    // Also prune the non-canonical picks so we know when we're done.
+    this.remaining.prune(picks);
+
+    return accept;
+  };
 
   constructor(readonly dom: Domain<T>) {}
 
@@ -29,7 +41,7 @@ export class Jar<T> {
    * @throws {@link Pruned} if the picks were used already.
    */
   pickUnused(pick: PickFunction): T {
-    return pick(this.dom.generator, { acceptPicks: this.acceptPicks });
+    return pick(this.dom.generator, { accept: this.accept });
   }
 
   /**
@@ -43,14 +55,15 @@ export class Jar<T> {
   }
 
   /**
-   * Returns all the values in a domain, in default order.
+   * Returns all the values in a domain, in a deterministic but arbitrary order.
    */
   static takeAll<T>(dom: Domain<T>): T[] {
     const arb = Arbitrary.from((pick) => {
       const out: T[] = [];
       const jar = new Jar(dom);
       while (!jar.isEmpty()) {
-        out.push(jar.pickUnused(pick));
+        const val = jar.pickUnused(pick);
+        out.push(val);
       }
       return out;
     });
