@@ -91,15 +91,6 @@ describe("Arbitrary", () => {
       const gen = arb.generate(minPlayout());
       assertEquals(gen?.val, "hi");
     });
-    it("accepts a record shape", () => {
-      const req = {
-        a: Arbitrary.of("hi", "there"),
-        b: Arbitrary.of(1, 2),
-      };
-      const arb = Arbitrary.from((pick) => pick(req));
-      const gen = arb.generate(minPlayout());
-      assertEquals(gen?.val, { a: "hi", b: 1 });
-    });
     it("retries a pick with a different playout", () => {
       const roll = new PickRequest(1, 6);
       const arb = Arbitrary.from((pick) => {

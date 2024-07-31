@@ -51,7 +51,6 @@ export type RecordShape<T> = {
 export interface PickFunction {
   (req: PickRequest): number;
   <T>(req: PickSet<T>, opts?: PickFunctionOptions<T>): T;
-  <T extends AnyRecord>(req: RecordShape<T>, opts?: PickFunctionOptions<T>): T;
 }
 
 export type ArbitraryOpts = {
@@ -479,8 +478,9 @@ export default class Arbitrary<T> extends PickSet<T> {
     shape: RecordShape<T>,
     opts?: ArbitraryOpts,
   ): Arbitrary<T> {
-    let maxSize: number | undefined = 1;
     const keys = Object.keys(shape) as (keyof T)[];
+
+    let maxSize: number | undefined = 1;
     for (const key of keys) {
       const size = shape[key].arb.maxSize;
       if (size === undefined) {
@@ -489,10 +489,24 @@ export default class Arbitrary<T> extends PickSet<T> {
       }
       maxSize *= size;
     }
-    const callback = (pick: PickFunction) => {
-      return pick(shape) as T;
-    };
+
     const label = opts?.label ?? "record";
+
+    if (keys.length === 0) {
+      const callback: ArbitraryCallback<T> = () => {
+        return {} as T;
+      };
+      return new Arbitrary(label, callback, { maxSize });
+    }
+
+    const callback = (pick: PickFunction) => {
+      const result = {} as Partial<T>;
+      for (const key of keys) {
+        result[key] = pick(shape[key]);
+      }
+      return result as T;
+    };
+
     return new Arbitrary(label, callback, { maxSize });
   }
 
