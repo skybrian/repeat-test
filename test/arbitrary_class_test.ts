@@ -279,16 +279,19 @@ describe("Arbitrary", () => {
         "[0,1]",
       ]);
     });
-    it("works when embedded in another Arbitrary", () => {
-      const not3 = sixSided.filter((n) => n !== 3);
+    it("works when a filter is embedded in another filter", () => {
       const example = Arbitrary.from((pick) => {
-        const roll = pick(sixSided);
-        const rollNot3 = pick(not3);
-        return { roll, rollNot3 };
+        const fiveSided = Arbitrary.from((pick) =>
+          pick(sixSided.filter((n) => n !== 5))
+        );
+        const excluded = pick(fiveSided);
+        const filtered = fiveSided.filter((n) => n !== excluded);
+        const other = pick(filtered);
+        return { excluded, other };
       });
-      repeatTest(example, ({ roll, rollNot3 }) => {
-        assert(roll >= 1 && roll <= 6, `want: 1-6, got ${roll}}`);
-        assert(rollNot3 !== 3, `want: not 3`);
+      repeatTest(example, ({ excluded, other }) => {
+        assert(excluded >= 1 && excluded <= 6, `want: 1-6, got ${excluded}}`);
+        assert(other !== excluded, `want: not ${excluded}`);
       });
     });
     it("has a label by default", () => {
@@ -305,6 +308,16 @@ describe("Arbitrary", () => {
         { label: "two" },
       );
       assertEquals(filtered.label, "two");
+    });
+    it("recovers cleanly when the filtered arbitrary throws Pruned", () => {
+      const original = Arbitrary.from((pick) => {
+        const n = pick(new PickRequest(1, 3));
+        if (n === 2) throw new Pruned("skip 2");
+        return n;
+      });
+      const filtered = original.filter(() => true);
+      assertEquals(filtered.default(), 1);
+      assertEquals(filtered.takeAll(), [1, 3]);
     });
   });
 

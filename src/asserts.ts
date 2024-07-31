@@ -11,7 +11,7 @@ export function assertRoundTrip<T>(dom: Domain<T>, val: T) {
 
 export function assertEncoding<T>(dom: Domain<T>, picks: number[], val: T) {
   assertEquals(
-    dom.parsePicks(picks),
+    dom.parsePicks(picks).val,
     val,
     `dom.parsePicks(${picks}) didn't match`,
   );

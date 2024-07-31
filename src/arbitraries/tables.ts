@@ -4,34 +4,26 @@ import * as arb from "./basics.ts";
 import * as dom from "../domains/basics.ts";
 import { Jar } from "../jar_class.ts";
 import Domain from "../domain_class.ts";
+import { PickRequest } from "../picks.ts";
 
 export function uniqueArray<T>(
   item: Domain<T>,
   opts?: { label?: string },
-): Domain<T[]> {
+): Arbitrary<T[]> {
   const label = opts?.label ?? "uniqueArray";
 
-  const generator = arb.from((pick) => {
+  return arb.from((pick) => {
     const jar = new Jar(item);
     const out: T[] = [];
     while (!jar.isEmpty() && pick(arb.boolean())) {
       out.push(jar.pickUnused(pick));
     }
-    return out;
-  }, { label });
-
-  return new Domain(generator, (val, sendErr) => {
-    const out: number[] = [];
-    for (const v of val as T[]) {
-      const picks = item.maybePickify(v);
-      if (!picks.ok) {
-        sendErr(picks.message ?? `can't parse item ${out.length} in array`);
-        return undefined;
-      }
-      out.push(...picks.val);
+    if (jar.isEmpty()) {
+      // Add an ending pick to match a regular array.
+      pick(new PickRequest(0, 0));
     }
     return out;
-  });
+  }, { label });
 }
 
 export type TableOpts<T extends AnyRecord> = {

@@ -197,7 +197,7 @@ export default class Arbitrary<T> extends PickSet<T> {
             throw e;
           }
           if (!log.cancelSpan(level)) {
-            throw e;
+            throw e; // can't recover
           }
         }
       }
@@ -207,12 +207,19 @@ export default class Arbitrary<T> extends PickSet<T> {
     } else {
       while (true) {
         const level = log.startSpan();
-        const depthBefore = picker.depth;
-        const val = generate();
-        const picks = picker.getPicks(depthBefore);
-        if (accept(val, picks)) {
-          log.endSpan(level);
-          return val;
+        try {
+          const depthBefore = picker.depth;
+          const val = generate();
+          const picks = picker.getPicks(depthBefore);
+          if (accept(val, picks)) {
+            log.endSpan(level);
+            return val;
+          }
+        } catch (e) {
+          if (!(e instanceof Pruned)) {
+            throw e;
+          }
+          // Need to cancel the span even if recovering isn't possible.
         }
         if (!log.cancelSpan(level)) {
           throw new Pruned("accept function returned false");

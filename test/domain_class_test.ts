@@ -56,7 +56,7 @@ describe("Domain", () => {
     });
     it("returns the value from a successful parse", () => {
       for (let i = 1; i < 6; i++) {
-        assertEquals(dom.parsePicks([i]), i);
+        assertEquals(dom.parsePicks([i]).val, i);
       }
     });
   });

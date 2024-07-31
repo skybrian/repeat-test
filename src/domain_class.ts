@@ -12,19 +12,19 @@ export type PickifyCallback = (
  * A domain can both validate and generate a set of values.
  */
 export default class Domain<T> extends PickSet<T> {
-  #generator: Arbitrary<T>;
+  #arb: Arbitrary<T>;
   #callback: PickifyCallback;
 
   constructor(
-    generator: Arbitrary<T>,
+    arb: Arbitrary<T>,
     callback: PickifyCallback,
   ) {
     super();
-    this.#generator = generator;
+    this.#arb = arb;
     this.#callback = callback;
 
     // Verify that we can round-trip the default value.
-    const def = generator.default();
+    const def = arb.default();
 
     const picks = this.maybePickify(def);
     if (!picks.ok) {
@@ -32,7 +32,7 @@ export default class Domain<T> extends PickSet<T> {
       throw new Error(`can't pickify domain's default value: ${error}`);
     }
 
-    const gen = this.#generator.generate(playback(picks.val));
+    const gen = this.#arb.generate(playback(picks.val));
     if (gen === undefined) {
       throw new Error("can't regenerate domain's default value");
     } else if (!gen.isDefault()) {
@@ -44,7 +44,7 @@ export default class Domain<T> extends PickSet<T> {
 
   /** The Arbitrary that generates values for this domain. */
   get arbitrary(): Arbitrary<T> {
-    return this.#generator;
+    return this.#arb;
   }
 
   /** Returns true if the value is a member of this domain. */
@@ -59,8 +59,12 @@ export default class Domain<T> extends PickSet<T> {
    * @throws an Error if the value is not a member of this domain.
    */
   parse(val: unknown): T {
-    const picks = this.pickify(val as T);
-    return this.parsePicks(picks);
+    const picks = this.maybePickify(val);
+    if (!picks.ok) {
+      const error = picks.message ?? "can't pickify value";
+      throw new Error(error);
+    }
+    return this.parsePicks(picks.val).val;
   }
 
   /**
@@ -95,23 +99,28 @@ export default class Domain<T> extends PickSet<T> {
    * Given some picks, returns the corresponding value.
    * @throws an Error if the picks don't encode a member of this domain.
    */
-  parsePicks(picks: number[]): T {
+  parsePicks(picks: number[]): Generated<T> {
     const picker = new PlaybackPicker(picks);
-    const gen = this.arbitrary.generate(onePlayout(picker));
+    const gen = this.#arb.generate(onePlayout(picker));
     if (picker.error) {
+      if (gen === undefined) {
+        throw new Error(
+          `domain's generator stopped accepting picks; ${picker.error}`,
+        );
+      }
       throw new Error(picker.error);
     }
     if (gen === undefined) {
       throw new Error("domain's generator didn't accept picks");
     }
-    return gen.val;
+    return gen;
   }
 
   /** Makes a copy of a value by converting it to picks and back again. */
   regenerate(val: unknown): Generated<T> | undefined {
     const picks = this.maybePickify(val);
     if (!picks.ok) return undefined;
-    return this.#generator.generate(playback(picks.val));
+    return this.arbitrary.generate(playback(picks.val));
   }
 
   filter(accept: (val: T) => boolean): Domain<T> {
@@ -120,7 +129,8 @@ export default class Domain<T> extends PickSet<T> {
       if (picks === undefined) return undefined;
 
       // Filter using a copy so that we know it's the right type.
-      if (!accept(this.parsePicks(picks))) {
+      const gen = this.parsePicks(picks);
+      if (!accept(gen.val)) {
         sendErr("filter rejected value");
         return undefined;
       }
