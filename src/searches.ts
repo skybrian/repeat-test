@@ -146,12 +146,16 @@ class Node {
  * A set of possible pick sequences.
  */
 export class PickTree {
-  private readonly start = Node.makeStart();
+  private readonly startNode: Node;
+  private readonly startPick: number;
 
   /**
    * Creates a new set containing all possible pick sequences.
    */
-  constructor() {}
+  constructor(startNode?: Node, startPick?: number) {
+    this.startNode = startNode ?? Node.makeStart();
+    this.startPick = startPick ?? 0;
+  }
 
   /**
    * Prunes a possible playout.
@@ -167,8 +171,8 @@ export class PickTree {
     const reqs = picks.reqs();
     const replies = picks.replies();
 
-    let parent = this.start;
-    let parentPick = 0;
+    let parent = this.startNode;
+    let parentPick = this.startPick;
 
     const nodePath: Node[] = [];
     const pickPath: number[] = [];
@@ -220,11 +224,11 @@ export class PickTree {
    * Returns true if the pick sequence hasn't been pruned yet.
    */
   available(picks: number[]): boolean {
-    return Node.at(this.start, picks) !== PRUNED;
+    return Node.at(this.startNode, picks) !== PRUNED;
   }
 
   branchesLeft(picks: number[]): number | undefined {
-    const branch = Node.at(this.start, picks);
+    const branch = Node.at(this.startNode, picks);
     if (branch === undefined) {
       return undefined;
     } else if (branch === PRUNED) {
@@ -238,7 +242,7 @@ export class PickTree {
    * Returns true if every playout was pruned.
    */
   done(): boolean {
-    return this.start.branchesLeft === 0;
+    return this.startNode.branchesLeft === 0;
   }
 }
 
@@ -253,6 +257,8 @@ class PickStack {
    * it points to the root at index 1.
    */
   private readonly nodes: Node[] = [Node.makeStart()];
+
+  readonly tree: PickTree = new PickTree(this.nodes[0]);
 
   private readonly reqs: PickRequest[] = [new PickRequest(0, 0)];
 
@@ -359,10 +365,6 @@ class PickStack {
     return this.nodes.length - 1;
   }
 
-  isPruned(picks: number[]): boolean {
-    return Node.at(this.nodes[0], picks) === PRUNED;
-  }
-
   getPicks(start?: number, end?: number): PickList {
     if (start && start < 0) throw new Error("start must be >= 0");
     if (end && end < 0) throw new Error("end must be >= 0");
@@ -447,6 +449,13 @@ export class PlayoutSearch implements PlayoutPicker {
     return true;
   }
 
+  /**
+   * The tree that keeps track of pruned nodes for this search.
+   */
+  get tree(): PickTree {
+    return this.stack.tree;
+  }
+
   /** Returns true if a playout is in progress. */
   get picking() {
     return this.state === "picking";
@@ -473,14 +482,6 @@ export class PlayoutSearch implements PlayoutPicker {
       this.removePlayout();
     }
     this.stack.trim(0);
-  }
-
-  /**
-   * Returns true if the pick sequence was pruned due to previously being
-   * visited.
-   */
-  isPruned(picks: number[]): boolean {
-    return this.stack.isPruned(picks);
   }
 
   startAt(depth: number): boolean {

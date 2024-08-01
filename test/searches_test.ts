@@ -142,7 +142,7 @@ describe("Search", () => {
       assertEquals(search.getPicks().reqs(), [bit]);
       assertEquals(search.getPicks().replies(), [0]);
       assert(search.finishPlayout());
-      assert(search.isPruned([pick.val]), "not pruned");
+      assertFalse(search.tree.available([pick.val]));
     });
 
     it("prunes a pick in a wide node", () => {
@@ -152,7 +152,7 @@ describe("Search", () => {
       assert(pick.ok);
       assertEquals(pick.val, 0);
       assert(search.finishPlayout());
-      assert(search.isPruned([pick.val]), "not pruned");
+      assertFalse(search.tree.available([pick.val]), "not pruned");
     });
 
     it("requires the same range as last time", () => {
@@ -325,7 +325,7 @@ describe("Search", () => {
           picks.push(pick.val);
         }
         assert(search.finishPlayout());
-        assert(search.isPruned(picks));
+        assertFalse(search.tree.available(picks));
         const key = JSON.stringify(picks);
         if (seen.has(key)) {
           fail(`duplicate picks: ${key}`);
