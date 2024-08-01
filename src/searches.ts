@@ -273,56 +273,27 @@ class PickStack {
   /**
    * Searches for an unpruned pick and adds it to the pick sequence.
    *
+   * @param firstChoice the pick that the search should start from
    * @param original the original request, to be returned by {@link getPicks}.
    * @param narrowed the range of picks to be allowed in the search tree
-   * @param firstChoice the pick that the search should start from
    *
-   * Returns the new pick.
+   * Returns the new pick, or undefined if no playouts are available.
    */
-  pickUnpruned(
+  pushUnpruned(
+    firstChoice: number,
     original: PickRequest,
     narrowed: PickRequest,
-    firstChoice: number,
-  ): number {
-    const node = this.visitNode(narrowed);
+  ): number | undefined {
+    const node = this.nextNode(narrowed);
     const pick = node.findUnpruned(firstChoice);
     if (pick === undefined) {
-      throw new Error("internal error: node has no unpruned picks");
+      return undefined;
     }
 
     this.nodes.push(node);
     this.reqs.push(original);
     this.picks.push(pick);
     return pick;
-  }
-
-  /**
-   * Returns the node corresponding to a new pick request.
-   *
-   * If any previous playout made the same request, it checks that the range
-   * matches.
-   */
-  private visitNode(req: PickRequest): Node {
-    const nodes = this.nodes;
-    const parent = nodes[nodes.length - 1];
-
-    const picks = this.picks;
-    const parentPick = picks[picks.length - 1];
-    const node = parent.getBranch(parentPick);
-
-    if (node === PRUNED) {
-      throw new Error("internal error: parent picked a pruned branch");
-    } else if (node !== undefined) {
-      // Visit existing node.
-      if (!node.rangeMatches(req)) {
-        throw new Error(
-          `pick request range doesn't match a previous visit`,
-        );
-      }
-      return node;
-    }
-
-    return parent.addChild(parentPick, req);
   }
 
   /**
@@ -374,6 +345,35 @@ class PickStack {
       this.reqs.slice(start, end),
       this.picks.slice(start, end),
     );
+  }
+
+  /**
+   * Returns the next node that should be added to the playout.
+   *
+   * Creates it if needed. If not created, checks that pick request's range
+   * matches.
+   */
+  private nextNode(req: PickRequest): Node {
+    const nodes = this.nodes;
+    const parent = nodes[nodes.length - 1];
+
+    const picks = this.picks;
+    const parentPick = picks[picks.length - 1];
+    const node = parent.getBranch(parentPick);
+
+    if (node === PRUNED) {
+      throw new Error("internal error: parent picked a pruned branch");
+    } else if (node !== undefined) {
+      // Visit existing node.
+      if (!node.rangeMatches(req)) {
+        throw new Error(
+          `pick request range doesn't match a previous visit`,
+        );
+      }
+      return node;
+    }
+
+    return parent.addChild(parentPick, req);
   }
 }
 
@@ -518,7 +518,10 @@ export class PlayoutSearch implements PlayoutPicker {
     }
 
     const firstChoice = this.pickSource.pick(replaced);
-    const pick = this.stack.pickUnpruned(req, replaced, firstChoice);
+    const pick = this.stack.pushUnpruned(firstChoice, req, replaced);
+    if (pick === undefined) {
+      throw new Error("internal error: node has no unpruned picks");
+    }
 
     return success(pick);
   }
