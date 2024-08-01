@@ -1,7 +1,6 @@
 import { AnyRecord } from "./types.ts";
 import { PickList, PickRequest } from "./picks.ts";
 import { playback, PlayoutPicker, Pruned } from "./backtracking.ts";
-import { nestedPicks, SpanList, SpanLog } from "./spans.ts";
 import { breadthFirstSearch } from "./searches.ts";
 
 export type PickFunctionOptions<T> = {
@@ -66,16 +65,13 @@ export type ArbitraryOpts = {
  */
 export class Generated<T> {
   #picks: PickList;
-  #spans: SpanList;
   #val: T;
 
   constructor(
     picks: PickList,
-    spans: SpanList,
     val: T,
   ) {
     this.#picks = picks;
-    this.#spans = spans;
     this.#val = val;
   }
 
@@ -87,10 +83,6 @@ export class Generated<T> {
     return this.#val;
   }
 
-  isDefault() {
-    return this.#picks.isMinPlayout();
-  }
-
   picks() {
     return this.#picks.slice();
   }
@@ -99,8 +91,8 @@ export class Generated<T> {
     return this.#picks.replies();
   }
 
-  nestedPicks() {
-    return nestedPicks(this.replies(), this.#spans);
+  isDefault() {
+    return this.#picks.isMinPlayout();
   }
 }
 
@@ -160,14 +152,12 @@ export default class Arbitrary<T> implements PickSet<T> {
    */
   generate(picker: PlayoutPicker): Generated<T> | undefined {
     while (picker.startAt(0)) {
-      const log = new SpanLog(picker);
-
       try {
-        const pick = Arbitrary.makePickFunction(log, picker);
+        const pick = Arbitrary.makePickFunction(picker);
         const val = this.#callback(pick);
         const picks = picker.getPicks();
         if (picker.finishPlayout()) {
-          return new Generated(picks, log.getSpans(), val);
+          return new Generated(picks, val);
         }
       } catch (e) {
         if (!(e instanceof Pruned)) {
@@ -178,23 +168,21 @@ export default class Arbitrary<T> implements PickSet<T> {
   }
 
   private innerPick(
-    log: SpanLog,
     picker: PlayoutPicker,
     pick: PickFunction,
     accept?: (val: T, picks: PickList) => boolean,
   ): T {
     const generate = () => {
       while (true) {
-        const level = log.startSpan();
+        const depth = picker.depth;
         try {
           const val = this.#callback(pick);
-          log.endSpan(level);
           return val;
         } catch (e) {
           if (!(e instanceof Pruned)) {
             throw e;
           }
-          if (!log.cancelSpan(level)) {
+          if (!picker.startAt(depth)) {
             throw e; // can't recover
           }
         }
@@ -202,26 +190,19 @@ export default class Arbitrary<T> implements PickSet<T> {
     };
     if (accept === undefined) {
       return generate();
-    } else {
-      while (true) {
-        const level = log.startSpan();
-        try {
-          const depthBefore = picker.depth;
-          const val = generate();
-          const picks = picker.getPicks(depthBefore);
-          if (accept(val, picks)) {
-            log.endSpan(level);
-            return val;
-          }
-        } catch (e) {
-          if (!(e instanceof Pruned)) {
-            throw e;
-          }
-          // Need to cancel the span even if recovering isn't possible.
-        }
-        if (!log.cancelSpan(level)) {
-          throw new Pruned("accept function returned false");
-        }
+    }
+
+    // filtered pick
+    while (true) {
+      const depth = picker.depth;
+      const depthBefore = picker.depth;
+      const val = generate();
+      const picks = picker.getPicks(depthBefore);
+      if (accept(val, picks)) {
+        return val;
+      }
+      if (!picker.startAt(depth)) {
+        throw new Pruned("accept function didn't accept any playouts");
       }
     }
   }
@@ -255,11 +236,10 @@ export default class Arbitrary<T> implements PickSet<T> {
       items: T[],
     ): IterableIterator<Generated<T>> {
       const req = new PickRequest(0, listGenerator.length - 1);
-      const spans = { starts: [], ends: [] };
       for (let i = 0; i < items.length; i++) {
         const val = items[i];
         const picks = new PickList([req], [i]);
-        yield new Generated(picks, spans, val);
+        yield new Generated(picks, val);
       }
     }
 
@@ -573,17 +553,15 @@ export default class Arbitrary<T> implements PickSet<T> {
     callback: ArbitraryCallback<T>,
   ): Generated<T> {
     const picker = playback(picks);
-    const log = new SpanLog(picker);
-    const pick = Arbitrary.makePickFunction(log, picker);
+    const pick = Arbitrary.makePickFunction(picker);
     if (!picker.startAt(0)) {
       throw new Error("couldn't start playout");
     }
     const val = callback(pick);
-    return new Generated(picker.getPicks(), log.getSpans(), val);
+    return new Generated(picker.getPicks(), val);
   }
 
   private static makePickFunction<T>(
-    log: SpanLog,
     picker: PlayoutPicker,
   ): PickFunction {
     const dispatch = <T>(
@@ -597,7 +575,7 @@ export default class Arbitrary<T> implements PickSet<T> {
       }
       const arb = req["arb"];
       if (arb instanceof Arbitrary) {
-        return arb.innerPick(log, picker, dispatch, opts?.accept);
+        return arb.innerPick(picker, dispatch, opts?.accept);
       }
       throw new Error("pick called with invalid argument");
     };
