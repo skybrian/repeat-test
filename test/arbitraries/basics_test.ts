@@ -4,9 +4,9 @@ import { assertEquals } from "@std/assert";
 import * as arb from "../../src/arbitraries.ts";
 
 import {
-  assertFirstNested,
+  assertFirstGenerated,
   assertFirstValues,
-  assertNested,
+  assertGenerated,
   assertValues,
 } from "../../src/asserts.ts";
 
@@ -15,7 +15,7 @@ describe("boolean", () => {
     assertEquals(arb.boolean().default(), false);
   });
   it("generates both values", () => {
-    assertNested(arb.boolean(), [
+    assertGenerated(arb.boolean(), [
       { val: false, picks: [0] },
       { val: true, picks: [1] },
     ]);
@@ -68,7 +68,7 @@ describe("record", () => {
     const empty = arb.record({});
     it("creates empty records", () => {
       assertEquals(empty.default(), {});
-      assertNested(empty, [
+      assertGenerated(empty, [
         { val: {}, picks: [] },
       ]);
       assertEquals(empty.maxSize, 1);
@@ -80,7 +80,7 @@ describe("record", () => {
       b: arb.of(2),
     });
     it("doesn't make any picks", () => {
-      assertNested(example, [
+      assertGenerated(example, [
         { val: { a: 1, b: 2 }, picks: [] },
       ]);
     });
@@ -93,7 +93,7 @@ describe("record", () => {
       assertEquals(oneField.default(), { a: 1 });
     });
     it("makes one pick", () => {
-      assertNested(oneField, [
+      assertGenerated(oneField, [
         { val: { a: 1 }, picks: [1] },
         { val: { a: 2 }, picks: [2] },
       ]);
@@ -105,7 +105,7 @@ describe("record", () => {
       b: arb.int(3, 4),
     });
     it("reads picks ordered by the keys", () => {
-      assertNested(example, [
+      assertGenerated(example, [
         { val: { a: 1, b: 3 }, picks: [1, 3] },
         { val: { a: 2, b: 3 }, picks: [2, 3] },
         { val: { a: 1, b: 4 }, picks: [1, 4] },
@@ -138,7 +138,7 @@ describe("array", () => {
     });
     describe("generateAll", () => {
       it("returns each combination in increasing order", () => {
-        assertFirstNested(bools, [
+        assertFirstGenerated(bools, [
           { val: [], picks: [0] },
           { val: [false], picks: [1, 0, 0] },
           { val: [true], picks: [1, 1, 0] },

@@ -1,6 +1,6 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
-import { assertNested } from "../src/asserts.ts";
+import { assertGenerated } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
@@ -63,14 +63,14 @@ describe("Arbitrary", () => {
       const arb = Arbitrary.of("hi");
       assertEquals(arb.default(), "hi");
       assertEquals(arb.takeAll(), ["hi"]);
-      assertNested(arb, [{ val: "hi", picks: [] }]);
+      assertGenerated(arb, [{ val: "hi", picks: [] }]);
       assertEquals(arb.maxSize, 1);
     });
     it("creates an Arbitrary with multiple arguments", () => {
       const arb = Arbitrary.of("hi", "there");
       assertEquals(arb.default(), "hi");
       assertEquals(arb.takeAll(), ["hi", "there"]);
-      assertNested(arb, [
+      assertGenerated(arb, [
         { val: "hi", picks: [0] },
         { val: "there", picks: [1] },
       ]);
@@ -109,17 +109,17 @@ describe("Arbitrary", () => {
   describe("generateAll", () => {
     it("generates a single value for a constant", () => {
       const one = Arbitrary.from(() => 1);
-      assertNested(one, [{ val: 1, picks: [] }]);
+      assertGenerated(one, [{ val: 1, picks: [] }]);
     });
 
     it("generates a single value for a filtered constant", () => {
       const one = Arbitrary.from(() => 1).filter((val) => val === 1);
-      assertNested(one, [{ val: 1, picks: [] }]);
+      assertGenerated(one, [{ val: 1, picks: [] }]);
     });
 
     it("generates each value an integer range", () => {
       const oneTwoThree = Arbitrary.from(new PickRequest(1, 3));
-      assertNested(oneTwoThree, [
+      assertGenerated(oneTwoThree, [
         { val: 1, picks: [1] },
         { val: 2, picks: [2] },
         { val: 3, picks: [3] },
@@ -128,7 +128,7 @@ describe("Arbitrary", () => {
 
     it("generates both values for a boolean", () => {
       const boolean = Arbitrary.from(new PickRequest(0, 1)).map((b) => b === 1);
-      assertNested(boolean, [
+      assertGenerated(boolean, [
         { val: false, picks: [0] },
         { val: true, picks: [1] },
       ]);
@@ -137,7 +137,7 @@ describe("Arbitrary", () => {
     it("generates the accepted values from a filter", () => {
       const bit = Arbitrary.from(new PickRequest(0, 1))
         .filter((b) => b === 0);
-      assertNested(bit, [
+      assertGenerated(bit, [
         { val: 0, picks: [0] },
       ]);
     });
@@ -153,9 +153,9 @@ describe("Arbitrary", () => {
 
       const vals = Array.from(digits.generateAll());
       assertEquals(vals[0].val, 0);
-      assertEquals(vals[0].nestedPicks(), [0, 0, 0]);
+      assertEquals(vals[0].replies(), [0, 0, 0]);
       assertEquals(vals[999].val, 999);
-      assertEquals(vals[999].nestedPicks(), [9, 9, 9]);
+      assertEquals(vals[999].replies(), [9, 9, 9]);
     });
   });
 

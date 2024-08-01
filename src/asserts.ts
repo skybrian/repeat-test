@@ -1,6 +1,5 @@
 import { assertEquals } from "@std/assert";
 import Arbitrary, { PickSet } from "./arbitrary_class.ts";
-import { NestedPicks } from "./spans.ts";
 
 import Domain from "./domain_class.ts";
 
@@ -39,31 +38,27 @@ function take<T>(it: Iterator<T>, n: number): T[] {
   return result;
 }
 
-type Nested<T> = { val: T; picks: NestedPicks };
+type Gen<T> = { val: T; picks: number[] };
 
-function takeVals<T>(
-  arb: Arbitrary<T>,
-  n: number,
-): Nested<T>[] {
+function takeGen<T>(arb: Arbitrary<T>, n: number): Gen<T>[] {
   return take(arb.generateAll(), n).map((gen) => ({
     val: gen.val,
-    picks: gen.nestedPicks(),
+    picks: gen.replies(),
   }));
 }
 
-export function assertFirstNested<T>(
+export function assertFirstGenerated<T>(
   arb: Arbitrary<T>,
-  expected: Nested<T>[],
+  expected: Gen<T>[],
 ) {
-  assertEquals(takeVals(arb, expected.length), expected);
+  assertEquals(takeGen(arb, expected.length), expected);
 }
 
-export function assertNested<T>(
+export function assertGenerated<T>(
   arb: Arbitrary<T>,
-  expected: Nested<T>[],
+  expected: Gen<T>[],
 ) {
-  const actual = takeVals(arb, expected.length + 5);
-  assertEquals(actual, expected);
+  assertEquals(takeGen(arb, expected.length + 5), expected);
 }
 
 export function assertFirstValues<T>(
