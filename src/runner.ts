@@ -47,26 +47,15 @@ export interface TestFailure<T> extends Failure {
   caught: unknown;
 }
 
-// const defaultFilterLimit = 1000;
-
-export type RandomRepsOpts = {
-  expectedPlayouts: number;
-  // TODO: reenable, with tests:
-  // filterLimit?: number;
-};
-
 /** Returns a stream of reps, ready to run. */
 export function* randomReps<T>(
   seed: number,
   arb: Arbitrary<T>,
   test: TestFunction<T>,
-  opts: RandomRepsOpts,
 ): Generator<Rep<T> | TestFailure<unknown>> {
   // TODO: figure out how to skip ahead.
 
-  const search = new PlayoutSearch({
-    expectedPlayouts: opts.expectedPlayouts,
-  });
+  const search = new PlayoutSearch();
 
   const pickers = randomPickers(seed);
   let index = 0;
@@ -227,11 +216,9 @@ export function repeatTest<T>(
   const runAll = arb.maxSize !== undefined &&
     arb.maxSize <= expectedPlayouts;
 
-  const genOpts: RandomRepsOpts = { expectedPlayouts };
-
   const reps = runAll
     ? depthFirstReps(arb, test)
-    : randomReps(key.seed, arb, test, genOpts);
+    : randomReps(key.seed, arb, test);
 
   // Skip to the iteration that we want to run.
   for (let i = 0; i < key.index; i++) {

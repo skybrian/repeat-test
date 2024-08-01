@@ -262,26 +262,7 @@ class PickStack {
    */
   private readonly picks: number[] = [0];
 
-  private playoutsLeft: number | undefined = undefined;
-
-  /**
-   * The odds that a playout other than the one we're on would have been picked
-   * instead, assuming available branches were picked from a uniform
-   * distribution.
-   *
-   * For example, if set to 0, that means there was no alternative pick. The
-   * odds are 0:1, or 0%. A value of 1 means the odds are 1:1 or a 50%
-   * probability.
-   */
-  private notTakenOdds: number | undefined = undefined;
-
   constructor() {}
-
-  reset(opts?: { trackOdds?: boolean; playoutsLeft?: number }) {
-    this.trim(0);
-    this.recalculateOdds(opts);
-    this.playoutsLeft = opts?.playoutsLeft ?? this.playoutsLeft;
-  }
 
   /**
    * Searches for an unpruned pick and adds it to the pick sequence.
@@ -332,23 +313,7 @@ class PickStack {
           `pick request range doesn't match a previous visit`,
         );
       }
-      this.updateOdds(node.branchesLeft);
       return node;
-    }
-
-    if (this.notTakenOdds !== undefined && this.playoutsLeft !== undefined) {
-      // See if we should create an untracked node.
-      // (This is pushed to the stack but doesn't get added to the tree.)
-      // If picking the same playout twice is unlikely, it's not worth tracking.
-
-      this.updateOdds(req.size);
-      const willReturnProbability = this.playoutsLeft /
-        (1 + this.notTakenOdds);
-      if (willReturnProbability < 0.5) {
-        // It's not added to the parent, so it's effectively untracked.
-        // (The node will be forgotten when popping the stack.)
-        return Node.from(req);
-      }
     }
 
     return parent.addChild(parentPick, req);
@@ -359,9 +324,6 @@ class PickStack {
    * Returns true if more playouts are available.
    */
   prune(): boolean {
-    if (this.playoutsLeft !== undefined && this.playoutsLeft > 0) {
-      this.playoutsLeft--;
-    }
     const nodes = this.nodes;
     const picks = this.picks;
     // Prune at the last node with more than one branch.
@@ -390,7 +352,6 @@ class PickStack {
     this.nodes.length = depth + 1;
     this.reqs.length = depth + 1;
     this.picks.length = depth + 1;
-    this.recalculateOdds();
     return true;
   }
 
@@ -412,31 +373,6 @@ class PickStack {
       this.picks.slice(start, end),
     );
   }
-
-  private recalculateOdds(opts?: { trackOdds?: boolean }) {
-    const track = opts?.trackOdds ?? this.notTakenOdds !== undefined;
-    if (track) {
-      this.notTakenOdds = 0;
-      for (const node of this.nodes) {
-        this.updateOdds(node.branchesLeft);
-      }
-    } else {
-      this.notTakenOdds = undefined;
-    }
-  }
-
-  /**
-   * Recomputes the odds after taking a branch.
-   * @param branchCount the number of branches that could have been taken.
-   */
-  private updateOdds(branchCount: number) {
-    if (this.notTakenOdds === undefined) return;
-
-    if (branchCount < 1) {
-      throw new Error("branchCount must be at least 1");
-    }
-    this.notTakenOdds = this.notTakenOdds * branchCount + (branchCount - 1);
-  }
 }
 
 type RequestFilter = (
@@ -454,11 +390,6 @@ export type SearchOpts = {
    * different pick will be used.
    */
   pickSource?: IntPicker;
-
-  /**
-   * Used to decide whether track nodes when the pickSource is random.
-   */
-  expectedPlayouts?: number;
 
   /**
    * Replaces each incoming pick request with a new one. The new request might
@@ -497,8 +428,7 @@ export class PlayoutSearch implements PlayoutPicker {
   private acceptEmptyPlayout = true;
 
   constructor(opts?: SearchOpts) {
-    opts = { ...opts, expectedPlayouts: 1000 };
-    this.setOptions(opts);
+    this.setOptions(opts ?? {});
   }
 
   setOptions(opts: SearchOpts) {
@@ -509,10 +439,7 @@ export class PlayoutSearch implements PlayoutPicker {
       );
     }
     this.pickSource = opts.pickSource ?? this.pickSource;
-    this.stack.reset({
-      trackOdds: this.pickSource.isRandom,
-      playoutsLeft: opts.expectedPlayouts,
-    });
+    this.stack.trim(0);
     this.replaceRequest = opts.replaceRequest ?? this.replaceRequest;
     this.acceptPlayout = opts.acceptPlayout ?? this.acceptPlayout;
     this.acceptEmptyPlayout = opts.acceptEmptyPlayout ??

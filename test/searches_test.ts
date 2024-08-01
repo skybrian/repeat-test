@@ -166,53 +166,8 @@ describe("Search", () => {
       beforeEach(() => {
         search.setOptions({ pickSource: randomPicker(123) });
       });
-      it("doesn't prune if there aren't enough playouts to get to every branch", () => {
-        search.setOptions({ expectedPlayouts: 1 });
-        assert(search.startAt(0));
-        const pick = search.maybePick(new PickRequest(1, 6));
-        assert(pick.ok);
-        assert(search.finishPlayout());
-        assertFalse(search.isPruned([pick.val]));
-      });
-
-      it("prunes if there are enough playouts to get to every branch", () => {
-        repeatTest(arb.int(2, 1000), (playouts) => {
-          const search = new PlayoutSearch();
-          search.setOptions({
-            pickSource: randomPicker(123),
-            expectedPlayouts: playouts,
-          });
-          assert(search.startAt(0));
-          const pick = search.maybePick(new PickRequest(1, playouts));
-          assert(pick.ok);
-          assert(search.finishPlayout());
-          assert(search.isPruned([pick.val]));
-        });
-      });
-
-      it("doesn't prune a very wide node", () => {
-        const uint32 = new PickRequest(0, 2 ** 32 - 1);
-        assertEquals(uint32.size, 2 ** 32);
-
-        repeatTest(
-          arb.of(0, 1, 1000, 10 ** 6, 10 ** 9, 2 ** 30),
-          (expectedPlayouts) => {
-            const search = new PlayoutSearch();
-            search.setOptions({
-              expectedPlayouts,
-              pickSource: randomPicker(123),
-            });
-            assert(search.startAt(0));
-            const pick = search.maybePick(uint32);
-            assert(pick.ok);
-            assert(search.finishPlayout());
-            assertFalse(search.isPruned([pick.val]));
-          },
-        );
-      });
 
       it("doesn't revisit a constant in an unbalanced tree", () => {
-        search.setOptions({ expectedPlayouts: 2000 });
         const counts = {
           constants: 0,
           other: 0,

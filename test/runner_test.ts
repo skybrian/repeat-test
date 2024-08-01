@@ -81,7 +81,7 @@ describe("randomReps", () => {
 
       const test = () => {};
 
-      const reps = randomReps(seed, ten, test, { expectedPlayouts: 10 });
+      const reps = randomReps(seed, ten, test);
 
       const picks = new Set<number>();
       for (const rep of reps) {
@@ -111,9 +111,7 @@ describe("randomReps", () => {
     const test = () => {};
 
     repeatTest(arb.int32(), (seed) => {
-      const reps = randomReps(seed, rerollTwos, test, {
-        expectedPlayouts: 0,
-      });
+      const reps = randomReps(seed, rerollTwos, test);
 
       for (let i = 0; i < 4; i++) {
         const rep = reps.next().value;
