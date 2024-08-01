@@ -46,13 +46,17 @@ export function table<R extends AnyRecord>(
       jars[key] = jar;
     }
 
-    const addRow: Arbitrary<R | undefined> = arb.from((pick) => {
+    const emptyJar = () => {
       for (const jar of Object.values(jars)) {
-        if (jar?.isEmpty()) {
-          return undefined;
+        if (jar.isEmpty()) {
+          return true;
         }
       }
-      if (!pick(arb.boolean())) {
+      return false;
+    };
+
+    const addRow: Arbitrary<R | undefined> = arb.from((pick) => {
+      if (emptyJar() || !pick(arb.boolean())) {
         return undefined;
       }
       const row: Record<string, unknown> = {};
@@ -70,6 +74,10 @@ export function table<R extends AnyRecord>(
     const rows: R[] = [];
     for (let row = pick(addRow); row !== undefined; row = pick(addRow)) {
       rows.push(row);
+    }
+    if (emptyJar()) {
+      // Add an ending pick to match a regular array.
+      pick(new PickRequest(0, 0));
     }
     return rows;
   }, { label });

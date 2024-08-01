@@ -6,7 +6,7 @@ import Domain from "./domain_class.ts";
 /**
  * Picks from the possible values in a Domain, without replacement.
  *
- * This can be used to generate permutations.
+ * A jar can be used to generate permutations or unique ids.
  */
 export class Jar<T> {
   private readonly remaining = new PickTree();

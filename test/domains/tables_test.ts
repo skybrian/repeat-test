@@ -54,3 +54,85 @@ describe("uniqueArray", () => {
     });
   });
 });
+
+describe("table", () => {
+  describe("with a single unique column", () => {
+    const table = dom.table({
+      a: dom.boolean(),
+    }, { uniqueKeys: ["a"] });
+    it("encodes it the same way as a unique array", () => {
+      assertEncoding(table, [0], []);
+      assertEncoding(table, [1, 1, 0], [{ a: true }]);
+      assertEncoding(table, [1, 0, 1, 1, 0], [{ a: false }, { a: true }]);
+    });
+    it("round-trips generated tables", () => {
+      repeatTest(table, (rows) => {
+        assertRoundTrip(table, rows);
+      });
+    });
+
+    it("rejects non-arrays", () => {
+      assertThrows(() => table.parse(undefined), Error, "not an array");
+    });
+    const nonEmpty = table.arb.filter((v) => v.length > 0);
+    it("rejects an array with a non-record", () => {
+      const hasBadRow = Arbitrary.from((pick) => {
+        const list = pick(nonEmpty) as unknown[];
+        const badIndex = pick(dom.int(0, list.length - 1));
+        list[badIndex] = undefined;
+        return { list, badIndex };
+      });
+      repeatTest(hasBadRow, ({ list, badIndex }) => {
+        assertThrows(
+          () => table.parse(list),
+          Error,
+          `${badIndex}: not a record`,
+        );
+      });
+    });
+    it("rejects an array with a missing field", () => {
+      const hasBadRow = Arbitrary.from((pick) => {
+        const list = pick(nonEmpty) as unknown[];
+        const badIndex = pick(dom.int(0, list.length - 1));
+        list[badIndex] = {};
+        return { list, badIndex };
+      });
+      repeatTest(hasBadRow, ({ list, badIndex }) => {
+        assertThrows(
+          () => table.parse(list),
+          Error,
+          `${badIndex}.a: not a boolean`,
+        );
+      });
+    });
+    it("rejects an array with an extra field", () => {
+      const hasBadRow = Arbitrary.from((pick) => {
+        const list = pick(nonEmpty);
+        const badIndex = pick(dom.int(0, list.length - 1));
+        (list[badIndex] as { other?: unknown }).other = 1;
+        return { list, badIndex };
+      });
+      repeatTest(hasBadRow, ({ list, badIndex }) => {
+        assertThrows(
+          () => table.parse(list),
+          Error,
+          `${badIndex}: extra field: other`,
+        );
+      });
+    });
+    it("rejects an array with a duplicate field value", () => {
+      const hasBadRow = Arbitrary.from((pick) => {
+        const list = pick(table.arb.filter((v) => v.length === 2));
+        list[1].a = list[0].a;
+        return list;
+      });
+      repeatTest(hasBadRow, (rows) => {
+        assertThrows(
+          () => table.parse(rows),
+          Error,
+          `1.a: duplicate field value`,
+        );
+      });
+    });
+  });
+});
