@@ -4,7 +4,7 @@ import { isWellFormed } from "../workarounds.ts";
 import * as unicode from "../unicode.ts";
 
 const asciiDom = new Domain(arb.asciiChar(), (val) => {
-  const gen = arb.asciiChar().findGenerated((s) => s === val);
+  const gen = arb.asciiChar().findGenerated((s) => s === val, { limit: 1000 });
   if (!gen) return undefined;
   return gen.replies();
 });

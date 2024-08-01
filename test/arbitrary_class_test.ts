@@ -17,16 +17,30 @@ describe("Arbitrary", () => {
     });
     it("throws if given a callback that throws", () => {
       const callback = () => {
-        throw "oops";
+        throw new Error("oops");
       };
-      assertThrows(() => Arbitrary.from(callback));
+      assertThrows(() => Arbitrary.from(callback), Error, "oops");
+    });
+    it("throws an Error if the Arbitrary didn't generate any values", () => {
+      const callback = () => {
+        throw new Pruned("oops");
+      };
+      assertThrows(
+        () => Arbitrary.from(callback),
+        Error,
+        "callback didn't generate any values",
+      );
     });
     it("throws an Error if given a callback that calls pick incorrectly", () => {
       type Pick = (arg: unknown) => number;
       const callback = ((pick: Pick) => pick("hello")) as ArbitraryCallback<
         number
       >;
-      assertThrows(() => Arbitrary.from(callback), Error);
+      assertThrows(
+        () => Arbitrary.from(callback),
+        Error,
+        "pick called with invalid argument",
+      );
     });
   });
 
@@ -90,6 +104,25 @@ describe("Arbitrary", () => {
       const arb = Arbitrary.from((pick) => pick(req));
       const gen = arb.generate(minPlayout());
       assertEquals(gen?.val, "hi");
+    });
+    it("filters an Arbitrary", () => {
+      const req = Arbitrary.of("hi", "there");
+      const arb = Arbitrary.from((pick) =>
+        pick(req, { accept: (s) => s !== "hi" })
+      );
+      assertEquals(arb.generate(minPlayout()), undefined);
+      assertGenerated(arb, [{ val: "there", picks: [1] }]);
+    });
+    it("can filter out every value", () => {
+      const req = Arbitrary.of("hi", "there");
+      const arb = Arbitrary.from((pick) => {
+        if (pick(Arbitrary.of(false, true))) {
+          return "ok";
+        }
+        pick(req, { accept: () => false });
+      });
+      assertEquals(arb.generate(minPlayout()), undefined);
+      assertGenerated(arb, [{ val: "ok", picks: [1] }]);
     });
     it("retries a pick with a different playout", () => {
       const roll = new PickRequest(1, 6);
