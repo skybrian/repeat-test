@@ -1,5 +1,5 @@
 import { describe, it } from "@std/testing/bdd";
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 import { randomPicker } from "../src/random.ts";
 
 import { PickRequest } from "../src/picks.ts";
@@ -19,5 +19,29 @@ describe("onePlayoutPicker", () => {
     assertEquals(picker.getPicks().replies(), [first.val, second.val]);
     assertEquals(picker.depth, 2);
     assertEquals(picker.startAt(0), false);
+  });
+  describe("maybePick", () => {
+    it("throws if called without starting a playout", () => {
+      const picker = onePlayout(randomPicker(123));
+      assertThrows(() => {
+        picker.maybePick(bit);
+      }, Error);
+    });
+  });
+  describe("finishPlayout", () => {
+    it("throws if called without starting a playout", () => {
+      const picker = onePlayout(randomPicker(123));
+      assertThrows(() => {
+        picker.finishPlayout();
+      }, Error);
+    });
+  });
+  describe("getPicks", () => {
+    it("throws if called without starting a playout", () => {
+      const picker = onePlayout(randomPicker(123));
+      assertThrows(() => {
+        picker.getPicks();
+      }, Error);
+    });
   });
 });

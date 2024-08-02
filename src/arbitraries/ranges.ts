@@ -29,9 +29,7 @@ export function intRange(opts?: IntRangeOptions): Arbitrary<Range> {
   if (minSize < 1) throw new Error("minSize must be >= 1");
 
   const maxSize = opts?.maxSize ?? 10;
-  if (maxSize < 1) throw new Error("maxSize must be >= 1");
-
-  if (minSize > maxSize) throw new Error("minSize must be <= maxSize");
+  if (maxSize < minSize) throw new Error("maxSize must be >= minSize");
 
   const examples: Range[] = [];
   if (minMin <= 0) {
