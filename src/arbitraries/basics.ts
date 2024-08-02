@@ -93,6 +93,8 @@ export function oneOf<T>(cases: PickSet<T>[]): Arbitrary<T> {
 
 export const defaultArrayLimit = 1000;
 
+const addArrayItem = biased(0.9);
+
 export function array<T>(
   item: PickSet<T>,
   opts?: { min?: number; max?: number; label?: string },
@@ -100,7 +102,6 @@ export function array<T>(
   const label = opts?.label ?? "array";
   const min = opts?.min ?? 0;
   const max = opts?.max ?? defaultArrayLimit;
-  const bit = new PickRequest(0, 1);
 
   // Arrays are represented using a fixed-length part (items only) followed by a
   // variable-length part where each item is preceded by a 1, followed by a 0 to
@@ -108,7 +109,6 @@ export function array<T>(
   //
   // Since we make a pick request for each item, this makes long arrays unlikely
   // but possible, and it should be easier remove items when shrinking.
-  // TODO: change the odds; we don't want half of all arrays to be empty.
   return Arbitrary.from((pick) => {
     const result = [];
     // fixed-length portion
@@ -118,7 +118,7 @@ export function array<T>(
       i++;
     }
     // variable-length portion
-    while (i < max && pick(bit) === 1) {
+    while (i < max && pick(addArrayItem)) {
       result.push(pick(item));
       i++;
     }
