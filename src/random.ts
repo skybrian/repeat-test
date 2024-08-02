@@ -19,9 +19,6 @@ function makePicker(rng: prand.RandomGenerator): IntPicker {
   const picks: number[] = [];
 
   return {
-    get isRandom() {
-      return true;
-    },
     pick(req: PickRequest) {
       const pick = req.bias(uniform);
       picks.push(pick);

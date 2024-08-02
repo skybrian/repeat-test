@@ -4,10 +4,12 @@ import * as arb from "../src/arbitraries.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import {
+  alwaysPick,
   biasedBit,
   BiasedIntPicker,
   PickList,
   PickRequest,
+  PlaybackPicker,
 } from "../src/picks.ts";
 
 describe("biasedBit", () => {
@@ -49,7 +51,25 @@ describe("PickRequest", () => {
   });
 });
 
+describe("alwaysPick", () => {
+  it("throws if the pick isn't within the range", () => {
+    const threes = alwaysPick(3);
+    assertThrows(
+      () => threes.pick(new PickRequest(0, 1)),
+      Error,
+      "can't satisfy request (0, 1) with 3",
+    );
+  });
+});
+
 describe("PickList", () => {
+  describe("constructor", () => {
+    it("throws when given lists with different lengths", () => {
+      const reqs = [new PickRequest(0, 1)];
+      const vals = [0, 0];
+      assertThrows(() => new PickList(reqs, vals), Error);
+    });
+  });
   describe("isBit", () => {
     it("returns false if a pick isn't a bit", () => {
       const roll = new PickRequest(1, 6);
@@ -69,5 +89,22 @@ describe("PickList", () => {
       assertFalse(picks.isBit(1, 0));
       assert(picks.isBit(1, 1));
     });
+  });
+});
+
+describe("PlaybackPicker", () => {
+  it("throws if an expected pick isn't an integer", () => {
+    assertThrows(
+      () => new PlaybackPicker([1, 0.1]),
+      Error,
+      "1: expected a safe integer, got: 0.1",
+    );
+  });
+  it("throws if an expected pick is negative", () => {
+    assertThrows(
+      () => new PlaybackPicker([1, 2, -3]),
+      Error,
+      "2: expected a non-negative integer, got: -3",
+    );
   });
 });

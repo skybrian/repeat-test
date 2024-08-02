@@ -96,17 +96,9 @@ export class PickRequest {
     return this.max - this.min + 1;
   }
 
-  get range() {
-    return [this.min, this.max];
-  }
-
   /** Returns true if the given number satisfies this request. */
   inRange(n: number): boolean {
     return inRange(n, this.min, this.max);
-  }
-
-  toString() {
-    return `PickRequest(${this.min}, ${this.max})`;
   }
 }
 
@@ -116,12 +108,6 @@ export class PickRequest {
  */
 export interface IntPicker {
   /**
-   * True if this picker picks using an approximately uniform random
-   * distribution when {@link PickRequest.bias} is not set.
-   */
-  get isRandom(): boolean;
-
-  /**
    * Transitions to a new state and returns a pick satisfying
    * {@link PickRequest.inRange}.
    */
@@ -129,9 +115,6 @@ export interface IntPicker {
 }
 
 export const alwaysPickMin: IntPicker = {
-  get isRandom() {
-    return false;
-  },
   pick: (req) => req.min,
 };
 
@@ -142,13 +125,10 @@ export const alwaysPickMin: IntPicker = {
  */
 export function alwaysPick(n: number) {
   const picker: IntPicker = {
-    get isRandom() {
-      return false;
-    },
     pick: (req) => {
       if (!req.inRange(n)) {
         throw new Error(
-          `can't satisfy request for (${req.min}, ${req.max}) with ${n}`,
+          `can't satisfy request (${req.min}, ${req.max}) with ${n}`,
         );
       }
       return n;
@@ -179,21 +159,12 @@ export class PickList {
     return this.#reqs.length;
   }
 
-  set length(val: number) {
-    this.#reqs.length = val;
-    this.#replies.length = val;
-  }
-
   reqs() {
     return this.#reqs.slice();
   }
 
   replies() {
     return this.#replies.slice();
-  }
-
-  isMinPlayout() {
-    return this.trim().length === 0;
   }
 
   isBit(i: number, expected?: number) {
@@ -249,17 +220,6 @@ export class PickList {
   static fromReplies(replies: number[]) {
     return new PickList(replies.map((r) => new PickRequest(r, r)), replies);
   }
-
-  static equalPicks(a: PickList, b: PickList) {
-    const aPicks = a.#replies;
-    const bPicks = b.#replies;
-    const len = aPicks.length;
-    if (len !== bPicks.length) return false;
-    for (let i = 0; i < len; i++) {
-      if (aPicks[i] !== bPicks[i]) return false;
-    }
-    return true;
-  }
 }
 
 /**
@@ -271,17 +231,13 @@ export class PlaybackPicker implements IntPicker {
 
   constructor(private readonly expected: number[]) {
     for (let i = 0; i < expected.length; i++) {
-      if (expected[i] < 0) {
-        throw new Error("expected picks must be non-negative");
-      }
+      const pick = expected[i];
       if (!Number.isSafeInteger(expected[i])) {
-        throw new Error("expected picks must be safe integers");
+        throw new Error(`${i}: expected a safe integer, got: ${pick}`);
+      } else if (pick < 0) {
+        throw new Error(`${i}: expected a non-negative integer, got: ${pick}`);
       }
     }
-  }
-
-  get isRandom() {
-    return false;
   }
 
   pick(req: PickRequest): number {
