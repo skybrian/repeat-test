@@ -62,6 +62,16 @@ export type ArbitraryOpts = {
   label?: string;
 };
 
+export type GenerateOpts = {
+  /**
+   * The maximum number of picks to generate arbitrarily during playout.
+   *
+   * Once the limit is reached, the {@link PickFunction} will always return the
+   * default (first) value.
+   */
+  limit?: number;
+};
+
 /**
  * Holds a generated value along with the picks that were used to generate it.
  */
@@ -148,10 +158,13 @@ export default class Arbitrary<T> implements PickSet<T> {
    *
    * Returns undefined if it ran out of playouts without generating anything.
    */
-  generate(picker: PlayoutPicker): Generated<T> | undefined {
+  generate(
+    picker: PlayoutPicker,
+    opts?: GenerateOpts,
+  ): Generated<T> | undefined {
     while (picker.startAt(0)) {
       try {
-        const pick = Arbitrary.makePickFunction(picker);
+        const pick = Arbitrary.makePickFunction(picker, opts);
         const val = this.#callback(pick);
         const picks = picker.getPicks();
         if (picker.finishPlayout()) {
@@ -452,6 +465,23 @@ export default class Arbitrary<T> implements PickSet<T> {
   }
 
   /**
+   * Creates an Arbitrary that returns one of the given items. The first one
+   * will be the default.
+   *
+   * The items are returned as-is, without being cloned. If they are mutable,
+   * this might result in unexpected side effects.
+   *
+   * Consider using {@link from} to generate a new instance of mutable objects
+   * each time.
+   */
+  static of<T>(...examples: T[]): Arbitrary<T> {
+    if (examples.length === 0) {
+      throw new Error("Arbitrary.of() requires at least one argument");
+    }
+    return Arbitrary.from(examples, { label: "of" });
+  }
+
+  /**
    * Creates an Arbitrary for a record with the given shape.
    */
   static record<T extends AnyRecord>(
@@ -526,23 +556,6 @@ export default class Arbitrary<T> implements PickSet<T> {
   }
 
   /**
-   * Creates an Arbitrary that returns one of the given items. The first one
-   * will be the default.
-   *
-   * The items are returned as-is, without being cloned. If they are mutable,
-   * this might result in unexpected side effects.
-   *
-   * Consider using {@link from} to generate a new instance of mutable objects
-   * each time.
-   */
-  static of<T>(...examples: T[]): Arbitrary<T> {
-    if (examples.length === 0) {
-      throw new Error("Arbitrary.of() requires at least one argument");
-    }
-    return Arbitrary.from(examples, { label: "of" });
-  }
-
-  /**
    * Returns the result of running a callback with some picks.
    *
    * Throws {@link Pruned} if the picks don't correspond to a value.
@@ -564,12 +577,17 @@ export default class Arbitrary<T> implements PickSet<T> {
 
   private static makePickFunction<T>(
     picker: PlayoutPicker,
+    opts?: GenerateOpts,
   ): PickFunction {
+    const limit = opts?.limit ?? 1000;
     const dispatch = <T>(
       req: PickRequest | PickSet<T>,
       opts?: PickFunctionOpts<T>,
     ): number | T => {
       if (req instanceof PickRequest) {
+        if (picker.depth >= limit) {
+          req = new PickRequest(req.min, req.min);
+        }
         const pick = picker.maybePick(req);
         if (!pick.ok) throw new Pruned(pick.message);
         return pick.val;

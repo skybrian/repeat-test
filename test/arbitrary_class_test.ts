@@ -4,9 +4,10 @@ import { assertFirstGenerated, assertGenerated } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
-import { minPlayout, Pruned } from "../src/backtracking.ts";
+import { minPlayout, onePlayout, Pruned } from "../src/backtracking.ts";
 import Arbitrary, { ArbitraryCallback } from "../src/arbitrary_class.ts";
 import { PlayoutSearch } from "../src/searches.ts";
+import { randomPicker } from "../src/random.ts";
 
 describe("Arbitrary", () => {
   describe("from", () => {
@@ -44,6 +45,25 @@ describe("Arbitrary", () => {
     });
   });
 
+  describe("of", () => {
+    it("throws if called with no arguments", () => {
+      assertThrows(() => Arbitrary.of());
+    });
+    it("returns a constant Arbitrary if called with one argument", () => {
+      const arb = Arbitrary.of("hi");
+      assertGenerated(arb, [{ val: "hi", picks: [] }]);
+      assertEquals(arb.maxSize, 1);
+    });
+    it("creates an Arbitrary with multiple arguments", () => {
+      const arb = Arbitrary.of("hi", "there");
+      assertGenerated(arb, [
+        { val: "hi", picks: [0] },
+        { val: "there", picks: [1] },
+      ]);
+      assertEquals(arb.maxSize, 2);
+    });
+  });
+
   describe("record", () => {
     it("accepts a constant record shape", () => {
       const arb = Arbitrary.record({ a: Arbitrary.of(1), b: Arbitrary.of(2) });
@@ -64,25 +84,6 @@ describe("Arbitrary", () => {
     it("accepts constant alteratives", () => {
       const arb = Arbitrary.oneOf([Arbitrary.of(1), Arbitrary.of(2)]);
       assertGenerated(arb, [{ val: 1, picks: [0] }, { val: 2, picks: [1] }]);
-      assertEquals(arb.maxSize, 2);
-    });
-  });
-
-  describe("of", () => {
-    it("throws if called with no arguments", () => {
-      assertThrows(() => Arbitrary.of());
-    });
-    it("returns a constant Arbitrary if called with one argument", () => {
-      const arb = Arbitrary.of("hi");
-      assertGenerated(arb, [{ val: "hi", picks: [] }]);
-      assertEquals(arb.maxSize, 1);
-    });
-    it("creates an Arbitrary with multiple arguments", () => {
-      const arb = Arbitrary.of("hi", "there");
-      assertGenerated(arb, [
-        { val: "hi", picks: [0] },
-        { val: "there", picks: [1] },
-      ]);
       assertEquals(arb.maxSize, 2);
     });
   });
@@ -131,6 +132,38 @@ describe("Arbitrary", () => {
       const search = new PlayoutSearch({ pickSource: alwaysPick(3) });
       const gen = arb.generate(search);
       assertEquals(gen?.val, 4);
+    });
+  });
+
+  describe("generate", () => {
+    it("generates a single value for a constant", () => {
+      const one = Arbitrary.from(() => 1);
+      const gen = one.generate(minPlayout());
+      assert(gen !== undefined);
+      assertEquals(gen.val, 1);
+      assertEquals(gen.replies(), []);
+    });
+    const biased = new PickRequest(0, 1, {
+      bias: ((uniform) => uniform(0, 99999) > 0 ? 1 : 0),
+    });
+    const deep = Arbitrary.from((pick) => {
+      let picks = 0;
+      while (pick(biased) === 1) {
+        picks++;
+      }
+      return picks;
+    });
+    it("limits generation to 1000 picks by default", () => {
+      const gen = deep.generate(onePlayout(randomPicker(123)));
+      assert(gen !== undefined);
+      assertEquals(gen.val, 1000);
+    });
+    it("limits generation to the provided number of picks", () => {
+      repeatTest(Arbitrary.from(new PickRequest(0, 10000)), (limit) => {
+        const gen = deep.generate(onePlayout(randomPicker(123)), { limit });
+        assert(gen !== undefined);
+        assertEquals(gen.val, limit);
+      }, { reps: 100 });
     });
   });
 
