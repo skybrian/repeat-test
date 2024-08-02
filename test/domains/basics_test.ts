@@ -7,6 +7,10 @@ import * as arb from "../../src/arbitraries.ts";
 import * as dom from "../../src/domains.ts";
 
 describe("of", () => {
+  it("accepts a constant value", () => {
+    const one = dom.of(1);
+    assertRoundTrip(one, 1);
+  });
   it("rejects items not passed in as arguments", () => {
     assertThrows(() => dom.of(1, 2, 3).pickify(4), Error, "not in the list");
   });

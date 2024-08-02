@@ -8,6 +8,17 @@ export function from<T>(
   opts?: { label: string },
 ): Domain<T> {
   const generator = Arbitrary.from(values, opts);
+
+  if (values.length === 1) {
+    return new Domain(generator, (val, sendErr) => {
+      if (val !== values[0]) {
+        sendErr("not in the list");
+        return undefined;
+      }
+      return []; // constant
+    });
+  }
+
   const notFoundError = opts?.label
     ? `not a ${generator.label}`
     : "not in the list";

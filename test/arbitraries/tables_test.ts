@@ -3,13 +3,17 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 
 import * as arb from "../../src/arbitraries.ts";
 import * as dom from "../../src/domains.ts";
-import { assertFirstValues, assertValues } from "../../src/asserts.ts";
+import {
+  assertFirstGenerated,
+  assertFirstValues,
+  assertValues,
+} from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 
 describe("uniqueArray", () => {
   const bools = arb.uniqueArray(dom.boolean());
   it("defaults to an empty array", () => {
-    assertEquals(bools.default(), []);
+    assertEquals(bools.default().val, []);
   });
   it("generates all combinations of a boolean", () => {
     assertValues(bools, [
@@ -57,7 +61,7 @@ describe("table", () => {
   describe("with one column and no unique key", () => {
     const table = arb.table({ v: dom.boolean() });
     it("defaults to zero rows", () => {
-      assertEquals(table.default(), []);
+      assertFirstGenerated(table, [{ val: [], picks: [0] }]);
     });
     it("generates every combination of a boolean", () => {
       const combos: boolean[][] = [];
@@ -90,7 +94,7 @@ describe("table", () => {
   describe("with one unique column", () => {
     const table = arb.table({ v: dom.boolean() }, { uniqueKeys: ["v"] });
     it("defaults to zero rows", () => {
-      assertEquals(table.default(), []);
+      assertEquals(table.default().val, []);
     });
     it("generates the same values as uniqueArray", () => {
       const expected = arb.uniqueArray(dom.boolean()).map((r) =>

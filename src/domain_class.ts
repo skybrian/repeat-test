@@ -2,6 +2,7 @@ import { PlaybackPicker } from "./picks.ts";
 import Arbitrary, { Generated, PickSet } from "./arbitrary_class.ts";
 import { onePlayout, playback } from "./backtracking.ts";
 import { Failure, failure, Success, success } from "./results.ts";
+import { assertEquals } from "@std/assert";
 
 export type PickifyCallback = (
   val: unknown,
@@ -23,22 +24,27 @@ export default class Domain<T> implements PickSet<T> {
     this.#callback = callback;
 
     // Verify that we can round-trip the default value.
+
     const def = arb.default();
 
-    const picks = this.maybePickify(def);
+    const picks = this.maybePickify(def.val);
     if (!picks.ok) {
       const error = picks.message ?? "callback returned undefined";
       throw new Error(`can't pickify domain's default value: ${error}`);
     }
 
-    const gen = this.#arb.generate(playback(picks.val));
-    if (gen === undefined) {
+    const copy = this.#arb.generate(playback(picks.val));
+    if (copy === undefined) {
       throw new Error("can't regenerate domain's default value");
-    } else if (!gen.isDefault()) {
-      throw new Error(
-        "regenerating domain's default value got a different value",
-      );
     }
+
+    // Check that the default value's picks are canonical
+    assertEquals(copy.val, def.val, "can't regenerate domain's default value");
+    assertEquals(
+      copy.replies(),
+      picks.val,
+      "pickify didn't generate the default value's picks",
+    );
   }
 
   /** The Arbitrary that generates values for this domain. */

@@ -1,6 +1,6 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
-import { assertGenerated } from "../src/asserts.ts";
+import { assertFirstGenerated, assertGenerated } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
@@ -47,7 +47,7 @@ describe("Arbitrary", () => {
   describe("record", () => {
     it("accepts a constant record shape", () => {
       const arb = Arbitrary.record({ a: Arbitrary.of(1), b: Arbitrary.of(2) });
-      assertEquals(arb.default(), { a: 1, b: 2 });
+      assertGenerated(arb, [{ val: { a: 1, b: 2 }, picks: [] }]);
       assertEquals(arb.maxSize, 1);
     });
     it("has a default label", () => {
@@ -63,8 +63,7 @@ describe("Arbitrary", () => {
   describe("oneOf", () => {
     it("accepts constant alteratives", () => {
       const arb = Arbitrary.oneOf([Arbitrary.of(1), Arbitrary.of(2)]);
-      assertEquals(arb.default(), 1);
-      assertEquals(arb.takeAll(), [1, 2]);
+      assertGenerated(arb, [{ val: 1, picks: [0] }, { val: 2, picks: [1] }]);
       assertEquals(arb.maxSize, 2);
     });
   });
@@ -75,15 +74,11 @@ describe("Arbitrary", () => {
     });
     it("returns a constant Arbitrary if called with one argument", () => {
       const arb = Arbitrary.of("hi");
-      assertEquals(arb.default(), "hi");
-      assertEquals(arb.takeAll(), ["hi"]);
       assertGenerated(arb, [{ val: "hi", picks: [] }]);
       assertEquals(arb.maxSize, 1);
     });
     it("creates an Arbitrary with multiple arguments", () => {
       const arb = Arbitrary.of("hi", "there");
-      assertEquals(arb.default(), "hi");
-      assertEquals(arb.takeAll(), ["hi", "there"]);
       assertGenerated(arb, [
         { val: "hi", picks: [0] },
         { val: "there", picks: [1] },
@@ -249,7 +244,6 @@ describe("Arbitrary", () => {
         (pick) => accepted.has(pick),
         { maxTries: 1000 },
       );
-      assertEquals(lock.default(), "[1,2,3]");
       assertEquals(lock.takeAll(), [
         "[1,2,3]",
         "[1,4,3]",
@@ -267,13 +261,11 @@ describe("Arbitrary", () => {
     it("keeps the default the same if it works", () => {
       const keepEverything = () => true;
       const filtered = sixSided.filter(keepEverything);
-      assertEquals(filtered.default(), 1);
       assertEquals(filtered.takeAll(), [1, 2, 3, 4, 5, 6]);
     });
     it("changes the default to the next value that satisfies the predicate", () => {
       const keepEvens = (n: number) => n % 2 === 0;
       const filtered = sixSided.filter(keepEvens);
-      assertEquals(filtered.default(), 2);
       assertEquals(filtered.takeAll(), [2, 4, 6]);
     });
     it("filters out values that don't satisfy the predicate", () => {
@@ -297,7 +289,6 @@ describe("Arbitrary", () => {
       const filtered = combos.filter(
         (pick) => accepted.has(pick),
       );
-      assertEquals(filtered.default(), "[1,0]");
       assertEquals(filtered.takeAll(), [
         "[1,0]",
         "[0,1]",
@@ -340,7 +331,6 @@ describe("Arbitrary", () => {
         return n;
       });
       const filtered = original.filter(() => true);
-      assertEquals(filtered.default(), 1);
       assertEquals(filtered.takeAll(), [1, 3]);
     });
   });
@@ -348,10 +338,10 @@ describe("Arbitrary", () => {
   describe("map", () => {
     it("changes the default", () => {
       const original = Arbitrary.from(new PickRequest(1, 6));
-      assertEquals(original.default(), 1);
+      assertFirstGenerated(original, [{ val: 1, picks: [1] }]);
 
       const mapped = original.map((n) => n * 2);
-      assertEquals(mapped.default(), 2);
+      assertFirstGenerated(mapped, [{ val: 2, picks: [1] }]);
     });
     it("has a label by default", () => {
       const original = Arbitrary.from(new PickRequest(1, 6));

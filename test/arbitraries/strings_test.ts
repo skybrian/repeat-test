@@ -1,6 +1,10 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals } from "@std/assert";
-import { assertFirstValues, assertSameExamples } from "../../src/asserts.ts";
+import {
+  assertFirstGenerated,
+  assertFirstValues,
+  assertSameExamples,
+} from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 import { isWellFormed } from "../../src/workarounds.ts";
 
@@ -32,7 +36,7 @@ describe("asciiChar", () => {
     assertEquals(arb.asciiChar(/x/).takeAll(), ["x"]);
   });
   it("defaults to 'a'", () => {
-    assertEquals(arb.asciiChar().default(), "a");
+    assertFirstGenerated(arb.asciiChar(), [{ val: "a", picks: [0] }]);
   });
   it("has a label", () => {
     assertEquals(arb.asciiChar().label, "asciiChar");
@@ -42,7 +46,7 @@ describe("asciiChar", () => {
 
 describe("asciiLetter", () => {
   it("defaults to 'a'", () => {
-    assertEquals(arb.asciiLetter().default(), "a");
+    assertFirstGenerated(arb.asciiLetter(), [{ val: "a", picks: [0] }]);
   });
   it("includes lowercase and uppercase letters in order", () => {
     assertEquals(
@@ -58,7 +62,7 @@ describe("asciiLetter", () => {
 
 describe("asciiDigit", () => {
   it("defaults to '0'", () => {
-    assertEquals(arb.asciiDigit().default(), "0");
+    assertFirstGenerated(arb.asciiDigit(), [{ val: "0", picks: [0] }]);
   });
   it("includes digits in order", () => {
     assertEquals(arb.asciiDigit().takeAll(), "0123456789".split(""));
@@ -67,7 +71,7 @@ describe("asciiDigit", () => {
 
 describe("asciiWhitespace", () => {
   it("defaults to a space", () => {
-    assertEquals(arb.asciiWhitespace().default(), " ");
+    assertFirstGenerated(arb.asciiWhitespace(), [{ val: " ", picks: [0] }]);
   });
   it("matches the equivalent regexp", () => {
     assertSameExamples(arb.asciiWhitespace(), arb.asciiChar(/\s/));
@@ -79,7 +83,7 @@ describe("asciiWhitespace", () => {
 
 describe("asciiSymbol", () => {
   it("defaults to '!'", () => {
-    assertEquals(arb.asciiSymbol().default(), "!");
+    assertFirstGenerated(arb.asciiSymbol(), [{ val: "!", picks: [0] }]);
   });
   it("includes symbols in order", () => {
     assertEquals(
@@ -91,7 +95,7 @@ describe("asciiSymbol", () => {
 
 describe("char16", () => {
   it("defaults to 'a'", () => {
-    assertEquals(arb.char16().default(), "a");
+    assertFirstGenerated(arb.char16(), [{ val: "a", picks: [0] }]);
   });
   it("includes all code points", () => {
     assertCharCodeRange(arb.char16(), 0, 0xFFFF);
@@ -107,7 +111,7 @@ function codeUnits(str: string): string[] {
 
 describe("unicodeChar", () => {
   it("defaults to 'a'", () => {
-    assertEquals(arb.unicodeChar().default(), "a");
+    assertFirstGenerated(arb.unicodeChar(), [{ val: "a", picks: [0] }]);
   });
   it("always returns a well-formed string", () => {
     repeatTest(arb.unicodeChar(), (str) => {
@@ -125,7 +129,7 @@ describe("unicodeChar", () => {
 
 describe("anyString", () => {
   it("defaults to an empty string", () => {
-    assertEquals(arb.anyString().default(), "");
+    assertFirstGenerated(arb.anyString(), [{ val: "", picks: [0] }]);
   });
   it("has a label", () => {
     assertEquals(arb.anyString().label, "anyString");
@@ -134,7 +138,7 @@ describe("anyString", () => {
 
 describe("wellFormedString", () => {
   it("defaults to an empty string", () => {
-    assertEquals(arb.wellFormedString().default(), "");
+    assertFirstGenerated(arb.wellFormedString(), [{ val: "", picks: [0] }]);
   });
   it("starts with the empty string, followed by single ascii characters", () => {
     assertFirstValues(arb.wellFormedString(), [

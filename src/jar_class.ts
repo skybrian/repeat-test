@@ -67,6 +67,6 @@ export class Jar<T> {
       }
       return out;
     });
-    return arb.default();
+    return arb.default().val;
   }
 }
