@@ -9,6 +9,8 @@ import {
   assertGenerated,
   assertValues,
 } from "../../src/asserts.ts";
+import { repeatTest } from "../../src/runner.ts";
+import Arbitrary from "../../src/arbitrary_class.ts";
 
 describe("boolean", () => {
   it("generates both values", () => {
@@ -22,6 +24,46 @@ describe("boolean", () => {
   });
   it("has a label", () => {
     assertEquals(arb.boolean().label, "boolean");
+  });
+});
+
+describe("biased", () => {
+  it("generates the same values as boolean", () => {
+    assertGenerated(arb.biased(0.9), [
+      { val: false, picks: [0] },
+      { val: true, picks: [1] },
+    ]);
+  });
+  it("always picks true for probability 1", () => {
+    repeatTest(arb.biased(1), (val) => {
+      assertEquals(val, true);
+    });
+  });
+  it("always picks false for probability 0", () => {
+    repeatTest(arb.biased(0), (val) => {
+      assertEquals(val, false);
+    });
+  });
+  it("almost always picks false for a very small probability", () => {
+    const samples = arb.array(arb.biased(0.0000001), { min: 100, max: 100 });
+    const wrapped = Arbitrary.from((pick) => {
+      const result = pick(samples);
+      pick(arb.int(1, 10000000)); // prevent backtracking
+      return result;
+    });
+    repeatTest(wrapped, (samples) => {
+      const falseCount = samples.filter((val) => val === false).length;
+      assertEquals(falseCount, 100);
+    });
+  });
+  it("has maxSize set to 2", () => {
+    assertEquals(arb.biased(0.9).maxSize, 2);
+  });
+  it("has a defualt label", () => {
+    assertEquals(arb.biased(0.9).label, "biased boolean");
+  });
+  it("accepts a custom label", () => {
+    assertEquals(arb.biased(0.9, { label: "my label" }).label, "my label");
   });
 });
 

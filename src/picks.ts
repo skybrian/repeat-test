@@ -23,6 +23,21 @@ export function uniformBias(min: number, max: number): BiasedIntPicker {
   return (uniform: UniformIntPicker) => uniform(min, max);
 }
 
+const biasBins = 0x100000000;
+
+/**
+ * Returns a bias function that chooses between 0 and 1.
+ *
+ * @param probOne The probability of picking 1.
+ */
+export function biasedBit(probOne: number): BiasedIntPicker {
+  return (uniform: UniformIntPicker) => {
+    const threshold = Math.floor((1 - probOne) * biasBins);
+    const choice = uniform(1, biasBins);
+    return choice <= threshold ? 0 : 1;
+  };
+}
+
 export type PickRequestOptions = {
   /**
    * Overrides the distribution for this request. The output should satisfy

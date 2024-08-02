@@ -5,7 +5,7 @@ import Arbitrary, {
   PickSet,
   RecordShape,
 } from "../arbitrary_class.ts";
-import { PickRequest } from "../picks.ts";
+import { biasedBit, PickRequest } from "../picks.ts";
 
 /**
  * An arbitrary based on a callback function.
@@ -48,6 +48,34 @@ export function int(
   } else {
     return Arbitrary.oneOf([int(0, max), int(min, -1)], { label });
   }
+}
+
+/**
+ * Simulates a biased coin.
+ *
+ * When set to 0 or 1, this returns a constant. For any other value, it's a hint
+ * that's only used when picking randomly. The test case generator will ignore
+ * the bias when searching for a playout that meets other constraints.
+ *
+ * Setting a bias is useful mostly to encourage an Arbitrary to generate larger
+ * values when picking randomly.
+ */
+export function biased(
+  probabilityTrue: number,
+  opts?: { label: string },
+): Arbitrary<boolean> {
+  if (probabilityTrue < 0 || probabilityTrue > 1) {
+    throw new Error("probability must be between 0 and 1");
+  }
+  if (probabilityTrue === 0) {
+    return Arbitrary.of(false);
+  } else if (probabilityTrue === 1) {
+    return Arbitrary.of(true);
+  }
+  const bias = biasedBit(probabilityTrue);
+  const req = new PickRequest(0, 1, { bias });
+  const label = opts?.label ?? "biased boolean";
+  return Arbitrary.from(req).map((v) => v === 1, { label });
 }
 
 /**

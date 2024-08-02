@@ -1,9 +1,43 @@
 import { describe, it } from "@std/testing/bdd";
-import { assert, assertFalse, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import * as arb from "../src/arbitraries.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import { PickList, PickRequest } from "../src/picks.ts";
+import {
+  biasedBit,
+  BiasedIntPicker,
+  PickList,
+  PickRequest,
+} from "../src/picks.ts";
+
+describe("biasedBit", () => {
+  function scan(bias: BiasedIntPicker, bins: number): number[] {
+    const out: number[] = [];
+    for (let i = 0; i < bins; i++) {
+      const arg = i / (bins - 1);
+      const uniform = (min: number, max: number) => arg * (max - min) + min;
+      out.push(bias(uniform));
+    }
+    return out;
+  }
+
+  it("switches halfway for a fair coin", () => {
+    const fair = biasedBit(0.5);
+    assertEquals(scan(fair, 10), [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]);
+  });
+  it("switches early for a biased coin", () => {
+    const fair = biasedBit(0.1);
+    assertEquals(scan(fair, 10), [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+  });
+  it("always picks 0 for 0", () => {
+    const fair = biasedBit(0);
+    assertEquals(scan(fair, 10), [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  });
+  it("always picks 1 for 1", () => {
+    const fair = biasedBit(1);
+    assertEquals(scan(fair, 10), [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+  });
+});
 
 describe("PickRequest", () => {
   describe("constructor", () => {
