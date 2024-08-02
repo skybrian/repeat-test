@@ -50,7 +50,7 @@ export class Jar<T> {
    * @throws {@link Pruned} if the picks were used already.
    */
   take(picks: number[]): T {
-    const gen = Arbitrary.runWithPicks(picks, (p) => this.pickUnused(p));
+    const gen = Arbitrary.callWithPicks(picks, (p) => this.pickUnused(p));
     return gen.val;
   }
 

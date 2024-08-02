@@ -1,5 +1,5 @@
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 
 import * as arb from "../../src/arbitraries.ts";
 
@@ -64,6 +64,9 @@ describe("biased", () => {
   });
   it("accepts a custom label", () => {
     assertEquals(arb.biased(0.9, { label: "my label" }).label, "my label");
+  });
+  it("throws if given an invalid probability", () => {
+    assertThrows(() => arb.biased(-0.1), Error);
   });
 });
 

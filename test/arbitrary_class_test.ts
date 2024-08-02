@@ -4,7 +4,12 @@ import { assertFirstGenerated, assertGenerated } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
-import { minPlayout, onePlayout, Pruned } from "../src/backtracking.ts";
+import {
+  minPlayout,
+  onePlayout,
+  playback,
+  Pruned,
+} from "../src/backtracking.ts";
 import Arbitrary, { ArbitraryCallback } from "../src/arbitrary_class.ts";
 import { PlayoutSearch } from "../src/searches.ts";
 import { randomPicker } from "../src/random.ts";
@@ -40,14 +45,25 @@ describe("Arbitrary", () => {
       assertThrows(
         () => Arbitrary.from(callback),
         Error,
-        "pick called with invalid argument",
+        "callback called pick() with an invalid argument",
+      );
+    });
+    it("throws if given an empty array", () => {
+      assertThrows(
+        () => Arbitrary.from([]),
+        Error,
+        "Arbitrary.from() called with an empty array",
       );
     });
   });
 
   describe("of", () => {
     it("throws if called with no arguments", () => {
-      assertThrows(() => Arbitrary.of());
+      assertThrows(
+        () => Arbitrary.of(),
+        Error,
+        "Arbitrary.of() requires at least one argument",
+      );
     });
     it("returns a constant Arbitrary if called with one argument", () => {
       const arb = Arbitrary.of("hi");
@@ -60,6 +76,21 @@ describe("Arbitrary", () => {
         { val: "hi", picks: [0] },
         { val: "there", picks: [1] },
       ]);
+      assertEquals(arb.maxSize, 2);
+    });
+  });
+
+  describe("oneOf", () => {
+    it("throws if given an empty array", () => {
+      assertThrows(
+        () => Arbitrary.oneOf([]),
+        Error,
+        "Arbitrary.oneOf() requires at least one alternative",
+      );
+    });
+    it("accepts constant alteratives", () => {
+      const arb = Arbitrary.oneOf([Arbitrary.of(1), Arbitrary.of(2)]);
+      assertGenerated(arb, [{ val: 1, picks: [0] }, { val: 2, picks: [1] }]);
       assertEquals(arb.maxSize, 2);
     });
   });
@@ -77,14 +108,6 @@ describe("Arbitrary", () => {
     it("accepts a custom label", () => {
       const arb = Arbitrary.record({}, { label: "my label" });
       assertEquals(arb.label, "my label");
-    });
-  });
-
-  describe("oneOf", () => {
-    it("accepts constant alteratives", () => {
-      const arb = Arbitrary.oneOf([Arbitrary.of(1), Arbitrary.of(2)]);
-      assertGenerated(arb, [{ val: 1, picks: [0] }, { val: 2, picks: [1] }]);
-      assertEquals(arb.maxSize, 2);
     });
   });
 
@@ -142,6 +165,16 @@ describe("Arbitrary", () => {
       assert(gen !== undefined);
       assertEquals(gen.val, 1);
       assertEquals(gen.replies(), []);
+    });
+    it("passes through an error thrown in a nested Arbitrary", () => {
+      const fails = Arbitrary.from((pick) => {
+        if (pick(Arbitrary.of(false, true))) {
+          throw new Error("oops");
+        }
+        return "ok";
+      });
+      const outer = Arbitrary.from((pick) => pick(fails));
+      assertThrows(() => outer.generate(playback([1])), Error, "oops");
     });
     const biased = new PickRequest(0, 1, {
       bias: ((uniform) => uniform(0, 99999) > 0 ? 1 : 0),
@@ -220,6 +253,26 @@ describe("Arbitrary", () => {
     });
   });
 
+  describe("findGenerated", () => {
+    const letters = Arbitrary.of("a", "b", "c");
+    it("finds a generated value", () => {
+      const gen = letters.findGenerated((v) => v === "b");
+      assert(gen !== undefined);
+      assertEquals(gen.val, "b");
+    });
+    it("throws if it doesn't find it", () => {
+      assertEquals(letters.findGenerated((v) => v === "d"), undefined);
+    });
+    it("throws if it doesn't find it within the limit", () => {
+      const letters = Arbitrary.of("a", "b", "c");
+      assertThrows(
+        () => letters.findGenerated((v) => v === "c", { limit: 2 }),
+        Error,
+        "findGenerated for '3 examples': no match found in the first 2 values",
+      );
+    });
+  });
+
   describe("takeAll", () => {
     it("returns the only value of a constant", () => {
       const one = Arbitrary.from(() => 1);
@@ -282,14 +335,29 @@ describe("Arbitrary", () => {
         "[1,4,3]",
       ]);
     });
+
+    it("throws an exception if it can't find a value", () => {
+      const letters = Arbitrary.of("a", "b", "c");
+      assertThrows(
+        () => letters.takeAll({ limit: 2 }),
+        Error,
+        "takeAll for '3 examples': array would have more than 2 elements",
+      );
+    });
   });
 
   describe("filter", () => {
-    const sixSided = Arbitrary.from(new PickRequest(1, 6));
+    const sixSided = Arbitrary.from(new PickRequest(1, 6), {
+      label: "sixSided",
+    });
 
     it("disallows filters that don't allow any values through", () => {
       const rejectEverything = () => false;
-      assertThrows(() => sixSided.filter(rejectEverything));
+      assertThrows(
+        () => sixSided.filter(rejectEverything),
+        Error,
+        "filter: accept callback didn't match any values generated by 'sixSided'",
+      );
     });
     it("keeps the default the same if it works", () => {
       const keepEverything = () => true;
@@ -432,6 +500,13 @@ describe("Arbitrary", () => {
       it("returns 1 after filtering", () => {
         assertEquals(Arbitrary.of("hi").filter((s) => s == "hi").maxSize, 1);
       });
+    });
+  });
+
+  describe("toString", () => {
+    it("returns a string with the label", () => {
+      const original = Arbitrary.of(1, 2, 3);
+      assertEquals(original.toString(), "Arbitrary(3 examples)");
     });
   });
 });
