@@ -1,5 +1,12 @@
 import { describe, it } from "@std/testing/bdd";
-import { assert, assertEquals, assertFalse, fail } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertFalse,
+  assertInstanceOf,
+  assertThrows,
+  fail,
+} from "@std/assert";
 
 import { minPlayout, Pruned } from "../src/backtracking.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
@@ -9,12 +16,16 @@ import * as dom from "../src/domains.ts";
 import { success } from "../src/results.ts";
 
 import {
+  Console,
   depthFirstReps,
   parseRepKey,
   randomReps,
   Rep,
   repeatTest,
+  RepFailure,
+  reportFailure,
   runRep,
+  runReps,
   serializeRepKey,
   TestFunction,
 } from "../src/runner.ts";
@@ -54,20 +65,84 @@ describe("parseRepKey", () => {
   });
 });
 
-describe("depthFirstReps", () => {
+type RepFields<T> = {
+  seed: number;
+  index: number;
+  arg: T;
+  test: TestFunction<T>;
+};
+
+function assertRep<T>(
+  actualRep: Rep<T> | RepFailure<unknown>,
+  expected: RepFields<T>,
+): void {
+  if (!actualRep.ok) {
+    fail(`expected a success, got a failure: ${actualRep}`);
+  }
+  const actual: RepFields<T> = {
+    seed: actualRep.key.seed,
+    index: actualRep.key.index,
+    arg: actualRep.arg.val,
+    test: actualRep.test,
+  };
+  assertEquals(actual, expected);
+}
+
+type FailureFields<T> = {
+  seed: number;
+  index: number;
+  errorClass: new () => unknown;
+};
+
+function assertRepFailure<T>(
+  actualRep: Rep<T> | RepFailure<unknown>,
+  expected: FailureFields<T>,
+): void {
+  if (actualRep.ok) {
+    fail(`expected a failure, got a success: ${actualRep}`);
+  }
+  const expectedKey = { seed: expected.seed, index: expected.index };
+  assertEquals(actualRep.key, expectedKey);
+  assertInstanceOf(actualRep.caught, expected.errorClass);
+}
+
+describe("sequentialReps", () => {
   it("generates reps with the right keys", () => {
+    const example = arb.int(1, 10).filter((x) => x !== 10);
     const test = () => {};
-    const reps = depthFirstReps(arb.int(1, 10), test);
+    const reps = depthFirstReps(example, test);
 
     let index = 0;
     for (const rep of reps) {
-      assert(rep.ok);
-      assertEquals(rep.key, { seed: 0, index });
-      assertEquals(rep.arg.val, index + 1);
-      assertEquals(rep.test, test);
+      assertRep(rep, { seed: 0, index, arg: index + 1, test });
       index++;
     }
-    assertEquals(index, 10);
+    assertEquals(index, 9);
+  });
+
+  it("records an exception while generating a rep and continues", () => {
+    const example = arb.int(1, 3).map((id) => {
+      if (id === 2) {
+        throw new Error("oops!");
+      }
+      return id;
+    });
+    const test = () => {};
+    const reps = depthFirstReps(example, test);
+
+    const first = reps.next();
+    assertFalse(first.done);
+    assertRep(first.value, { seed: 0, index: 0, arg: 1, test });
+
+    const second = reps.next();
+    assertFalse(second.done);
+    assertRepFailure(second.value, { seed: 0, index: 1, errorClass: Error });
+
+    const third = reps.next();
+    assertFalse(third.done);
+    assertRep(third.value, { seed: 0, index: 2, arg: 3, test });
+
+    assert(reps.next().done, "expected reps to be done");
   });
 });
 
@@ -122,6 +197,27 @@ describe("randomReps", () => {
       }
     });
   });
+
+  it("records an exception while generating a rep and continues", () => {
+    const example = arb.int(1, 2).map((id) => {
+      if (id === 2) {
+        throw new Error("oops!");
+      }
+      return id;
+    });
+    const test = () => {};
+
+    const seed = 123;
+    const reps = randomReps(seed, example, test);
+
+    const first = reps.next();
+    assertFalse(first.done);
+    assertRep(first.value, { seed, index: 0, arg: 1, test });
+
+    const second = reps.next();
+    assertFalse(second.done);
+    assertRepFailure(second.value, { seed, index: 1, errorClass: Error });
+  });
 });
 
 function makeDefaultRep<T>(input: Arbitrary<T>, test: TestFunction<T>): Rep<T> {
@@ -152,16 +248,21 @@ function makeRep<T>(input: Domain<T>, arg: T, test: TestFunction<T>): Rep<T> {
   return rep;
 }
 
+const nullConsole: Console = {
+  log: () => {},
+  error: () => {},
+};
+
 describe("runRep", () => {
   it("returns success if the test passes", () => {
     const rep = makeDefaultRep(arb.int(1, 10), () => {});
-    assertEquals(runRep(rep), success());
+    assertEquals(runRep(rep, nullConsole), success());
   });
   it("returns a failure if the test throws", () => {
     const rep = makeDefaultRep(arb.int(1, 10), () => {
       throw new Error("test failed");
     });
-    const result = runRep(rep);
+    const result = runRep(rep, nullConsole);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     assertEquals(result.arg, rep.arg.val);
@@ -178,7 +279,7 @@ describe("runRep", () => {
       }
     };
     const rep = makeRep(input, 100, test);
-    const result = runRep(rep);
+    const result = runRep(rep, nullConsole);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     if (!(result.caught instanceof Error)) {
@@ -186,6 +287,38 @@ describe("runRep", () => {
     }
     assertEquals(result.caught.message, "test failed");
     assertEquals(result.arg, 10);
+  });
+});
+
+describe("runReps", () => {
+  it("returns any RepFailure it finds", () => {
+    const failure: RepFailure<unknown> = {
+      ok: false,
+      key: { seed: 1, index: 1 },
+      arg: 123,
+      caught: new Error("oops"),
+    };
+    const result = runReps([failure], 1, nullConsole);
+    assertEquals(result, failure);
+  });
+});
+
+describe("reportFailure", () => {
+  it("throws the caught error", () => {
+    const caught = new Error("oops");
+    const failure: RepFailure<unknown> = {
+      ok: false,
+      key: { seed: 1, index: 1 },
+      arg: 123,
+      caught,
+    };
+    assertThrows(
+      () => {
+        reportFailure(failure, nullConsole);
+      },
+      Error,
+      "oops",
+    );
   });
 });
 

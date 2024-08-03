@@ -1,5 +1,6 @@
 import prand from "pure-rand";
 import { IntPicker, PickRequest, UniformIntPicker } from "./picks.ts";
+import { assert } from "@std/assert";
 
 export function pickRandomSeed(): number {
   return Date.now() ^ (Math.random() * 0x100000000);
@@ -36,9 +37,7 @@ export function randomPicker(seed: number): IntPicker {
 
 function jump(r: prand.RandomGenerator): prand.RandomGenerator {
   const jump = r.jump;
-  if (!jump) {
-    throw new Error("no jump function");
-  }
+  assert(jump);
   return jump.bind(r)();
 }
 

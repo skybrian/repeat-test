@@ -3,11 +3,9 @@ import { PlayoutSearch } from "./searches.ts";
 import Arbitrary, { Generated, PickSet } from "./arbitrary_class.ts";
 import { Failure, failure, Success, success } from "./results.ts";
 import { shrink } from "./shrink.ts";
+import { assert } from "@std/assert";
 
-/** A function that runs a test, using generated input. */
-export type TestFunction<T> = (arg: T) => void;
-
-/** Identifies a repetition to generate and run. */
+/** Identifies a repetition to run. */
 export type RepKey = {
   seed: number;
   index: number;
@@ -31,6 +29,9 @@ export function serializeRepKey(key: RepKey): string {
   return `${key.seed}:${key.index}`;
 }
 
+/** A function that runs a test, using generated input. */
+export type TestFunction<T> = (arg: T) => void;
+
 /** A generated test, ready to run. */
 export type Rep<T> = {
   ok: true;
@@ -40,39 +41,82 @@ export type Rep<T> = {
   test: TestFunction<T>;
 };
 
-export interface TestFailure<T> extends Failure {
+export interface RepFailure<T> extends Failure {
   ok: false;
   key: RepKey;
-  arg: T;
+  arg: T | undefined;
   caught: unknown;
 }
 
-/** Returns a stream of reps, ready to run. */
+/**
+ * Generates every possible test argument, in depth-first order.
+ *
+ * (Since it's not random, the seed is set to zero.)
+ */
+export function* depthFirstReps<T>(
+  arb: Arbitrary<T>,
+  test: TestFunction<T>,
+): Generator<Rep<T> | RepFailure<T>> {
+  // Depth-first order doesnt' work for infinite arbitraries.
+  assert(arb.maxSize !== undefined);
+
+  let index = 0;
+
+  const search = new PlayoutSearch();
+  while (!search.done) {
+    const key = { seed: 0, index };
+    try {
+      const gen = arb.generate(search);
+      if (gen === undefined) {
+        break; // end of search
+      }
+      yield { ok: true, key, arb, arg: gen, test };
+    } catch (e) {
+      yield { ok: false, key, arg: undefined, caught: e };
+    }
+    index++;
+  }
+}
+
+/**
+ * Generates a stream of Reps based on a random seed.
+ *
+ * Each Rep will have a different test argument. The first one is always the
+ * default value of the Arbitrary. The rest will be chosen randomly, but
+ * avoiding duplicates.
+ *
+ * Since it uses a {@link PlayoutSearch} to avoid generating duplicates, the
+ * stream must be generated sequentially, even if the caller skips most of them.
+ *
+ * If an exception happens in {@link Arbitrary.generate}, a failed Rep will be
+ * generated, to be reported by the consumer of the stream.
+ *
+ * The stream might stop early if no more reps can be generated.
+ */
 export function* randomReps<T>(
   seed: number,
   arb: Arbitrary<T>,
   test: TestFunction<T>,
-): Generator<Rep<T> | TestFailure<unknown>> {
-  // TODO: figure out how to skip ahead.
-
+): Generator<Rep<T> | RepFailure<unknown>> {
+  // All Reps are generated using the same search to avoid duplicates.
   const search = new PlayoutSearch();
 
-  const pickers = randomPickers(seed);
-  let index = 0;
-
-  // Make sure that the default picks work.
-  // (Since this is part of the same search, we won't test the default again.)
+  // Dry run: the first test uses the default value.
   const arg = arb.generate(search);
-  if (arg === undefined) {
-    throw new Error("can't generate default value of supplied arbitrary");
-  }
-
-  // The first rep always uses the default.
-  const key = { seed, index };
-  yield { ok: true, key, arb, arg, test };
+  assert(arg);
+  let index = 0;
+  const firstRep: Rep<T> = { ok: true, key: { seed, index }, arb, arg, test };
+  yield firstRep;
   index++;
 
-  // Generate each rep with a different picker.
+  // Generate each rep with an independent random number generator. If some of
+  // the Reps take more random numbers due to a code change, it's less likely to
+  // affect later Reps.
+  //
+  // (It's not guaranteed, though, because it will change what's recorded in the
+  // PlayoutSearch.)
+  const pickers = randomPickers(seed);
+
   while (!search.done) {
     const key = { seed, index };
     const random = pickers.next().value;
@@ -90,27 +134,16 @@ export function* randomReps<T>(
   }
 }
 
-export function* depthFirstReps<T>(
-  arb: Arbitrary<T>,
-  test: TestFunction<T>,
-): Generator<Rep<T> | TestFailure<unknown>> {
-  let index = 0;
-  for (const arg of arb.generateAll()) {
-    const key = { seed: 0, index };
-    yield { ok: true, key, arb, arg, test };
-    index++;
-  }
-}
-
-export function reportFailure(failure: TestFailure<unknown>): never {
-  const key = serializeRepKey(failure.key);
-  console.error(`attempt ${failure.key.index} FAILED, using:`, failure.arg);
-  console.log(`rerun using {only: "${key}"}`);
-  throw failure.caught;
+export interface Console {
+  error(...data: unknown[]): void;
+  log(...data: unknown[]): void;
 }
 
 /** Runs one repetition. */
-export function runRep<T>(rep: Rep<T>): Success<void> | TestFailure<T> {
+export function runRep<T>(
+  rep: Rep<T>,
+  console: Console,
+): Success<void> | RepFailure<T> {
   const interesting = (arg: T) => {
     try {
       rep.test(arg);
@@ -138,20 +171,31 @@ export function runRep<T>(rep: Rep<T>): Success<void> | TestFailure<T> {
 }
 
 export function runReps<T>(
-  reps: Iterable<Rep<T> | TestFailure<unknown>>,
+  reps: Iterable<Rep<T> | RepFailure<unknown>>,
   count: number,
-): Success<void> | TestFailure<unknown> {
+  console: Console,
+): Success<void> | RepFailure<unknown> {
   if (count === 0) return success();
 
   let passed = 0;
   for (const rep of reps) {
     if (!rep.ok) return rep;
-    const ran = runRep(rep);
+    const ran = runRep(rep, console);
     if (!ran.ok) return ran;
     passed++;
     if (passed >= count) break;
   }
   return success();
+}
+
+export function reportFailure(
+  failure: RepFailure<unknown>,
+  console: Console,
+): never {
+  const key = serializeRepKey(failure.key);
+  console.error(`attempt ${failure.key.index} FAILED, using:`, failure.arg);
+  console.log(`rerun using {only: "${key}"}`);
+  throw failure.caught;
 }
 
 /**
@@ -160,10 +204,12 @@ export function runReps<T>(
 export type RepeatOptions = {
   /** The number of times to run the test. If not specified, defaults to 1000. */
   reps?: number;
-  // TODO: reenable filterLimit with tests
-  // filterLimit?: number;
-  /** If specified, it will rerun the repetition that failed */
+
+  /** If specified, it will rerun a single repetition */
   only?: string;
+
+  /** If specified, it will send output to this console instead of the default. */
+  console?: Console;
 };
 
 function getStartKey(opts?: RepeatOptions): Success<RepKey> | Failure {
@@ -230,6 +276,8 @@ export function repeatTest<T>(
   }
 
   const count = opts?.only ? 1 : expectedPlayouts;
-  const ran = runReps(reps, count);
-  if (!ran.ok) reportFailure(ran);
+
+  const testConsole = opts?.console ?? console;
+  const ran = runReps(reps, count, testConsole);
+  if (!ran.ok) reportFailure(ran, testConsole);
 }
