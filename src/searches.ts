@@ -2,6 +2,7 @@ import { Success, success } from "./results.ts";
 import { alwaysPickMin, IntPicker, PickList, PickRequest } from "./picks.ts";
 
 import { PlayoutPicker, Pruned } from "./backtracking.ts";
+import { assert } from "@std/assert";
 
 /** Indicates that the subtree rooted at a branch has been fully explored. */
 export const PRUNED = Symbol("pruned");
@@ -210,9 +211,10 @@ export class PickTree {
         return true; // pruned the last playout
       }
       const parentPick = pickPath.pop();
-      if (parentPick === undefined) {
-        throw new Error("nodePath and pickPath should be the same length");
-      }
+      assert(
+        parentPick !== undefined,
+        "nodePath and pickPath should be the same length",
+      );
       parent.prune(parentPick);
       child = parent;
     }
@@ -361,9 +363,8 @@ class PickStack {
     const parentPick = picks[picks.length - 1];
     const node = parent.getBranch(parentPick);
 
-    if (node === PRUNED) {
-      throw new Error("internal error: parent picked a pruned branch");
-    } else if (node !== undefined) {
+    assert(node !== PRUNED, "parent picked a pruned branch");
+    if (node !== undefined) {
       // Visit existing node.
       if (!node.rangeMatches(req)) {
         throw new Error(
@@ -434,12 +435,10 @@ export class PlayoutSearch implements PlayoutPicker {
   }
 
   setOptions(opts: SearchOpts) {
-    if (this.state !== "ready" && this.state !== "playoutDone") {
-      throw new Error(
-        "setOptions called in the wrong state; wanted 'ready' or 'playoutDone', got '" +
-          this.state + "'",
-      );
-    }
+    assert(
+      this.state === "ready" || this.state === "playoutDone",
+      "setOptions called in the wrong state",
+    );
     this.pickSource = opts.pickSource ?? this.pickSource;
     this.stack.trim(0);
     this.replaceRequest = opts.replaceRequest ?? this.replaceRequest;
@@ -474,16 +473,6 @@ export class PlayoutSearch implements PlayoutPicker {
     }
   }
 
-  /**
-   * Removes any picks from the stack so that only startAt(0) will work.
-   */
-  clearPicks() {
-    if (this.state === "picking") {
-      this.removePlayout();
-    }
-    this.stack.trim(0);
-  }
-
   startAt(depth: number): boolean {
     if (this.state === "searchDone") {
       return false;
@@ -505,11 +494,7 @@ export class PlayoutSearch implements PlayoutPicker {
   }
 
   maybePick(req: PickRequest): Success<number> | Pruned {
-    if (this.state !== "picking") {
-      throw new Error(
-        `maybePick called in the wrong state. Wanted "picking"; got "${this.state}"`,
-      );
-    }
+    assert(this.state === "picking", "maybePick called in the wrong state");
 
     const replaced = this.replaceRequest(this.depth, req);
     if (replaced === undefined) {
@@ -527,11 +512,7 @@ export class PlayoutSearch implements PlayoutPicker {
   }
 
   finishPlayout(): boolean {
-    if (this.state !== "picking") {
-      throw new Error(
-        `finishPlayout called in the wrong state. Wanted "picking"; got "${this.state}"`,
-      );
-    }
+    assert(this.state === "picking", "finishPlayout called in the wrong state");
     let accepted = false;
     if (this.stack.depth === 0) {
       accepted = this.acceptEmptyPlayout;
@@ -549,24 +530,21 @@ export class PlayoutSearch implements PlayoutPicker {
   }
 
   getPicks(start?: number, end?: number): PickList {
-    if (this.state !== "picking") {
-      throw new Error(
-        `getPicks called in the wrong state. Wanted "picking"; got "${this.state}"`,
-      );
-    }
+    assert(this.state === "picking", "getPicks called in the wrong state");
     return this.stack.getPicks(start, end);
   }
 }
 
 /**
- * Runs a single pass of a breadth-first search.
+ * Configures a search to run a breadth-first pass.
  * @param passIdx the number of previous passes that were run.
  * @param more called if more passes are needed.
  */
-export function breadthFirstPass(
+export function configureBreadthFirstPass(
+  search: PlayoutSearch,
   passIdx: number,
   more: () => void,
-): PlayoutSearch {
+) {
   let moreSent = false;
   function pruned() {
     if (!moreSent) {
@@ -592,7 +570,7 @@ export function breadthFirstPass(
     return lastDepth >= passIdx - 1;
   };
 
-  return new PlayoutSearch({
+  search.setOptions({
     replaceRequest,
     acceptPlayout,
     acceptEmptyPlayout: passIdx === 0,
@@ -612,15 +590,13 @@ export function* breadthFirstSearch(): Iterable<PlayoutPicker> {
   let pruned = true;
   while (pruned) {
     pruned = false;
-    const search = breadthFirstPass(maxDepth, () => {
+    const search = new PlayoutSearch();
+    configureBreadthFirstPass(search, maxDepth, () => {
       pruned = true;
     });
     while (!search.done) {
       yield search;
-      if (search.picking) {
-        search.finishPlayout();
-        search.clearPicks();
-      }
+      assert(!search.picking);
     }
     maxDepth++;
   }

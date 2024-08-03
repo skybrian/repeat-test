@@ -22,8 +22,8 @@ import * as arb from "../src/arbitraries/basics.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import {
-  breadthFirstPass,
   breadthFirstSearch,
+  configureBreadthFirstPass,
   PickTree,
   PlayoutSearch,
   SearchOpts,
@@ -536,7 +536,8 @@ function runPass(
   const playouts = new Set<string>();
   let pruneCalls = 0;
   let prunedPlayouts = 0;
-  const search = breadthFirstPass(idx, () => {
+  const search = new PlayoutSearch();
+  configureBreadthFirstPass(search, idx, () => {
     pruneCalls++;
   });
   while (!search.done) {
@@ -565,7 +566,7 @@ function runPass(
   };
 }
 
-describe("breadthFirstPass", () => {
+describe("configureBreadthFirstPass", () => {
   describe("for a single-playout tree", () => {
     it("yields the full playout on the first pass", () => {
       assertEquals(runPass(0, walkUnaryTree), {
