@@ -13,14 +13,14 @@ export type RepKey = {
 
 export function parseRepKey(key: string): Success<RepKey> | Failure {
   const fields = key.split(":");
-  if (fields.length !== 2) return failure("invalid key format");
+  if (fields.length !== 2) return failure("invalid format");
   const [seed, index] = fields.map((x) => parseInt(x));
 
   if (!Number.isSafeInteger(seed) || (seed | 0) !== seed) {
-    return failure("invalid seed in key");
+    return failure("invalid seed");
   }
   if (!Number.isSafeInteger(index) || index < 0) {
-    return failure("invalid index in key");
+    return failure("invalid index");
   }
   return success({ seed, index });
 }
@@ -41,12 +41,12 @@ export type Rep<T> = {
   test: TestFunction<T>;
 };
 
-export interface RepFailure<T> extends Failure {
+export type RepFailure<T> = {
   ok: false;
   key: RepKey;
   arg: T | undefined;
   caught: unknown;
-}
+};
 
 /**
  * Generates every possible test argument, in depth-first order.
@@ -64,7 +64,7 @@ export function* depthFirstReps<T>(
 
   const search = new PlayoutSearch();
   while (!search.done) {
-    const key = { seed: 0, index };
+    const key: RepKey = { seed: 0, index };
     try {
       const gen = arb.generate(search);
       if (gen === undefined) {
@@ -118,7 +118,7 @@ export function* randomReps<T>(
   const pickers = randomPickers(seed);
 
   while (!search.done) {
-    const key = { seed, index };
+    const key: RepKey = { seed, index };
     const random = pickers.next().value;
     search.setOptions({ pickSource: random });
     try {
@@ -129,6 +129,9 @@ export function* randomReps<T>(
       yield { ok: true, key, arb, arg, test };
     } catch (e) {
       yield { ok: false, key, arg: undefined, caught: e };
+      if (search.picking) {
+        search.finishPlayout();
+      }
     }
     index++;
   }
@@ -174,9 +177,7 @@ export function runReps<T>(
   reps: Iterable<Rep<T> | RepFailure<unknown>>,
   count: number,
   console: Console,
-): Success<void> | RepFailure<unknown> {
-  if (count === 0) return success();
-
+): Success<number> | RepFailure<unknown> {
   let passed = 0;
   for (const rep of reps) {
     if (!rep.ok) return rep;
@@ -185,7 +186,7 @@ export function runReps<T>(
     passed++;
     if (passed >= count) break;
   }
-  return success();
+  return success(passed);
 }
 
 export function reportFailure(
@@ -212,16 +213,16 @@ export type RepeatOptions = {
   console?: Console;
 };
 
-function getStartKey(opts?: RepeatOptions): Success<RepKey> | Failure {
+function getStartKey(opts?: RepeatOptions): RepKey {
   if (!opts?.only) {
-    return success({
+    return {
       seed: pickRandomSeed(),
       index: 0,
-    });
+    };
   }
   const parsed = parseRepKey(opts.only);
-  if (!parsed.ok) return failure("can't parse 'only' parameter");
-  return success(parsed.val);
+  if (!parsed.ok) throw Error(`can't parse 'only' option: ${parsed.message}`);
+  return parsed.val;
 }
 
 /**
@@ -248,16 +249,21 @@ export function repeatTest<T>(
   test: TestFunction<T>,
   opts?: RepeatOptions,
 ): void {
+  const key = getStartKey(opts);
+  const repsOpt = opts?.reps;
+  if (repsOpt !== undefined) {
+    if (!Number.isInteger(repsOpt)) {
+      throw new Error(`reps option must be an integer; got ${repsOpt}`);
+    }
+    if (repsOpt <= 0) {
+      throw new Error(`reps option must be at least 1; got ${repsOpt}`);
+    }
+  }
   let expectedPlayouts = opts?.reps ?? 1000;
   if (Array.isArray(input)) {
     expectedPlayouts = input.length;
   }
-
   const arb = Array.isArray(input) ? Arbitrary.from(input) : input.arb;
-
-  const start = getStartKey(opts);
-  if (!start.ok) throw new Error(start.message ?? "can't get start key");
-  const key = start.val;
 
   const runAll = arb.maxSize !== undefined &&
     arb.maxSize <= expectedPlayouts;
@@ -267,17 +273,23 @@ export function repeatTest<T>(
     : randomReps(key.seed, arb, test);
 
   // Skip to the iteration that we want to run.
+  let skipCount = 0;
   for (let i = 0; i < key.index; i++) {
     if (reps.next().done) {
-      throw new Error(
-        `tried to skip ${key.index} values but there were only ${i} available`,
-      );
+      break;
     }
+    skipCount++;
   }
 
   const count = opts?.only ? 1 : expectedPlayouts;
 
   const testConsole = opts?.console ?? console;
   const ran = runReps(reps, count, testConsole);
-  if (!ran.ok) reportFailure(ran, testConsole);
+  if (!ran.ok) {
+    reportFailure(ran, testConsole);
+  } else if (ran.val === 0) {
+    throw new Error(`skipped all ${skipCount} reps`);
+  } else if (opts?.only !== undefined) {
+    throw new Error(`only option is set`);
+  }
 }

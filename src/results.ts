@@ -11,7 +11,7 @@ export function success<T>(val?: T): Success<T | undefined> {
 
 export interface Failure {
   ok: false;
-  message?: string;
+  message: string;
 }
 
 export function failure(message: string): Failure {

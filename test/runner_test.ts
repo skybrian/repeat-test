@@ -95,7 +95,7 @@ type FailureFields<T> = {
 };
 
 function assertRepFailure<T>(
-  actualRep: Rep<T> | RepFailure<unknown>,
+  actualRep: { ok: true } | RepFailure<unknown>,
   expected: FailureFields<T>,
 ): void {
   if (actualRep.ok) {
@@ -199,7 +199,7 @@ describe("randomReps", () => {
   });
 
   it("records an exception while generating a rep and continues", () => {
-    const example = arb.int(1, 2).map((id) => {
+    const example = arb.int(1, 3).map((id) => {
       if (id === 2) {
         throw new Error("oops!");
       }
@@ -217,6 +217,12 @@ describe("randomReps", () => {
     const second = reps.next();
     assertFalse(second.done);
     assertRepFailure(second.value, { seed, index: 1, errorClass: Error });
+
+    const third = reps.next();
+    assertFalse(third.done);
+    assertRep(third.value, { seed, index: 2, arg: 3, test });
+
+    assert(reps.next().done, "expected reps to be done");
   });
 });
 
@@ -291,15 +297,33 @@ describe("runRep", () => {
 });
 
 describe("runReps", () => {
-  it("returns any RepFailure it finds", () => {
-    const failure: RepFailure<unknown> = {
+  it("passes through a RepFailure from the reps parameter", () => {
+    const failure: RepFailure<number> = {
       ok: false,
       key: { seed: 1, index: 1 },
-      arg: 123,
+      arg: undefined,
       caught: new Error("oops"),
     };
     const result = runReps([failure], 1, nullConsole);
     assertEquals(result, failure);
+  });
+  it("returns a RepFailure from running the test", () => {
+    const example = arb.int(1, 10);
+    const rep: Rep<number> = {
+      ok: true,
+      key: { seed: 1, index: 1 },
+      arb: example,
+      arg: example.default(),
+      test: () => {
+        throw new Error("oops");
+      },
+    };
+    const result = runReps([rep], 1, nullConsole);
+    assertRepFailure(result, {
+      seed: 1,
+      index: 1,
+      errorClass: Error,
+    });
   });
 });
 
@@ -325,11 +349,32 @@ describe("reportFailure", () => {
 describe("repeatTest", () => {
   it("runs a test function once for each of a list of inputs", () => {
     const inputs: number[] = [];
-    const collect = (val: number) => {
+    const test = (val: number) => {
       inputs.push(val);
     };
-    repeatTest(Arbitrary.of(1, 2, 3), collect);
+    repeatTest(Arbitrary.of(1, 2, 3), test);
     assertEquals(inputs, [1, 2, 3]);
+  });
+  it("stops running reps when the first one fails", () => {
+    const inputs: number[] = [];
+    const test = (val: number) => {
+      inputs.push(val);
+      if (val === 2) {
+        throw new Error("oops");
+      }
+    };
+    assertThrows(
+      () => {
+        repeatTest(Arbitrary.of(1, 2, 3), test, { console: nullConsole });
+      },
+      Error,
+      "oops",
+    );
+    // There will be additional calls to the test function due to shrinking.
+    assert(inputs.length > 3);
+    assertEquals(inputs.slice(0, 2), [1, 2]);
+    assertEquals(inputs.slice(-1), [2]);
+    assertFalse(inputs.includes(3));
   });
   it("accepts a list of test arguments", () => {
     const inputs: number[] = [];
@@ -339,8 +384,26 @@ describe("repeatTest", () => {
     repeatTest([1, 2, 3], collect);
     assertEquals(inputs, [1, 2, 3]);
   });
+  it("throws an exception if reps isn't an integer", () => {
+    assertThrows(
+      () => {
+        repeatTest(arb.int32(), () => {}, { reps: 0.5 });
+      },
+      Error,
+      "reps option must be an integer; got 0.5",
+    );
+  });
+  it("throws an exception if reps is 0", () => {
+    assertThrows(
+      () => {
+        repeatTest(arb.int32(), () => {}, { reps: 0 });
+      },
+      Error,
+      "reps option must be at least 1; got 0",
+    );
+  });
   it("stops running the test function after the limit given by `reps`", () => {
-    for (let expected = 0; expected < 100; expected++) {
+    for (let expected = 1; expected < 100; expected++) {
       let actual = 0;
       const increment = () => {
         actual++;
@@ -361,29 +424,64 @@ describe("repeatTest", () => {
     assertEquals(counts.get(123.4), 1);
   });
   describe("when the 'only' option is set", () => {
-    it("runs one rep", () => {
+    it("throws an Error if it's invalid", () => {
+      assertThrows(
+        () => repeatTest(arb.int32(), () => {}, { only: "invalid" }),
+        Error,
+        "can't parse 'only' option: invalid format",
+      );
+    });
+    it("runs one rep and fails", () => {
       let actual = 0;
       const increment = () => {
         actual++;
       };
-      repeatTest(arb.int32(), increment, { reps: 100, only: "123:456" });
+      assertThrows(
+        () =>
+          repeatTest(arb.int32(), increment, { reps: 100, only: "123:456" }),
+        Error,
+        "only option is set",
+      );
       assertEquals(actual, 1);
     });
+    it("throws an Error if it runs out of reps", () => {
+      const example = arb.int(1, 6);
+      const test = () => {
+        fail("test should not run");
+      };
+      repeatTest(arb.int(6, 10), (skipIndex) => {
+        assertThrows(
+          () => repeatTest(example, test, { only: `0:${skipIndex}` }),
+          Error,
+          "skipped all 6 reps",
+        );
+      });
+    });
     it("reproduces a previous test run for a small arbitrary", () => {
-      repeatTest(arb.int(0, 100), (i) => {
-        // assert(i != 42);
-        assertEquals(i, 42);
-      }, { only: "0:42" });
+      assertThrows(
+        () =>
+          repeatTest(arb.int(0, 100), (i) => {
+            // assert(i != 42);
+            assertEquals(i, 42);
+          }, { only: "0:42" }),
+        Error,
+        "only option is set",
+      );
     });
     it("reproduces a previous test run for a large arbitrary", () => {
       const example = arb.from((pick) => {
         return pick(arb.int(1, 500));
       });
       assertEquals(example.maxSize, undefined);
-      repeatTest(example, (i) => {
-        // assert(i != 42);
-        assertEquals(i, 42);
-      }, { only: "-756845603:239" });
+      assertThrows(
+        () =>
+          repeatTest(example, (i) => {
+            // assert(i != 42);
+            assertEquals(i, 42);
+          }, { only: "-756845603:239" }),
+        Error,
+        "only option is set",
+      );
     });
   });
 });

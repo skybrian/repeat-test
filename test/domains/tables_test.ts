@@ -30,13 +30,12 @@ describe("uniqueArray", () => {
       return { list, badIndex };
     });
     repeatTest(badList, ({ list, badIndex }) => {
-      console.log({ list, badIndex });
       assertThrows(
         () => bools.parse(list),
         Error,
         `${badIndex}: not a boolean`,
       );
-    }, { only: "568396397:6" });
+    });
   });
   it("rejects an array with a duplicate item", () => {
     const badList = bools.arb.filter((v) => v.length > 0).map((
