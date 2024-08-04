@@ -115,6 +115,12 @@ describe("PickTree", () => {
       );
     });
   });
+  describe("branchesLeft", () => {
+    it("returns undefined for an unexplored tree", () => {
+      const tree = new PickTree();
+      assertEquals(tree.branchesLeft([]), undefined);
+    });
+  });
 });
 
 const bit = new PickRequest(0, 1);
@@ -300,6 +306,26 @@ describe("Search", () => {
         val: 0,
       });
       assertFalse(search.startAt(0));
+    });
+  });
+
+  describe("getPicks", () => {
+    it("returns all the picks when called with no arguments", () => {
+      const search = new PlayoutSearch();
+      assert(search.startAt(0));
+      search.maybePick(bit);
+      assertEquals(search.getPicks().replies(), [0]);
+    });
+    it("returns a slice when called with start and end indexes", () => {
+      const search = new PlayoutSearch();
+      assert(search.startAt(0));
+      search.maybePick(bit);
+      search.maybePick(bit);
+      assert(search.startAt(1));
+      search.maybePick(bit);
+      assertEquals(search.getPicks(0, 2).replies(), [0, 1]);
+      assertEquals(search.getPicks(0, 1).replies(), [0]);
+      assertEquals(search.getPicks(1, 2).replies(), [1]);
     });
   });
 

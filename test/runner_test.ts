@@ -3,7 +3,6 @@ import {
   assert,
   assertEquals,
   assertFalse,
-  assertInstanceOf,
   assertThrows,
   fail,
 } from "@std/assert";
@@ -91,7 +90,7 @@ function assertRep<T>(
 type FailureFields<T> = {
   seed: number;
   index: number;
-  errorClass: new () => unknown;
+  messageIncludes: string;
 };
 
 function assertRepFailure<T>(
@@ -103,7 +102,17 @@ function assertRepFailure<T>(
   }
   const expectedKey = { seed: expected.seed, index: expected.index };
   assertEquals(actualRep.key, expectedKey);
-  assertInstanceOf(actualRep.caught, expected.errorClass);
+
+  const caught = actualRep.caught;
+  if (!(caught instanceof Error)) {
+    fail(`expected caught to be an Error, got ${caught}`);
+  }
+
+  const msg = caught.message;
+  assert(
+    msg.includes(expected.messageIncludes),
+    `unexpected error message: ${msg}`,
+  );
 }
 
 describe("sequentialReps", () => {
@@ -136,7 +145,11 @@ describe("sequentialReps", () => {
 
     const second = reps.next();
     assertFalse(second.done);
-    assertRepFailure(second.value, { seed: 0, index: 1, errorClass: Error });
+    assertRepFailure(second.value, {
+      seed: 0,
+      index: 1,
+      messageIncludes: "oops!",
+    });
 
     const third = reps.next();
     assertFalse(third.done);
@@ -172,6 +185,7 @@ describe("randomReps", () => {
       assertEquals(picks.size, 10, "didn't generate the right number of reps");
     });
   });
+
   it("retries when a pick fails", () => {
     const diceRoll = arb.int(1, 6);
 
@@ -216,13 +230,41 @@ describe("randomReps", () => {
 
     const second = reps.next();
     assertFalse(second.done);
-    assertRepFailure(second.value, { seed, index: 1, errorClass: Error });
+    assertRepFailure(second.value, {
+      seed,
+      index: 1,
+      messageIncludes: "oops!",
+    });
 
     const third = reps.next();
     assertFalse(third.done);
     assertRep(third.value, { seed, index: 2, arg: 3, test });
 
     assert(reps.next().done, "expected reps to be done");
+  });
+
+  it("records an exception if the Arbitrary is nondeterministic", () => {
+    let rangeSize = 1;
+    const example = arb.from((pick) => {
+      rangeSize++;
+      return pick(arb.int(1, rangeSize));
+    });
+    const test = () => {};
+
+    const seed = 123;
+    const reps = randomReps(seed, example, test);
+
+    const first = reps.next();
+    assertFalse(first.done);
+    assertRep(first.value, { seed, index: 0, arg: 1, test });
+
+    const second = reps.next();
+    assertFalse(second.done);
+    assertRepFailure(second.value, {
+      seed,
+      index: 1,
+      messageIncludes: "pick request range doesn't match previous playout",
+    });
   });
 });
 
@@ -322,7 +364,7 @@ describe("runReps", () => {
     assertRepFailure(result, {
       seed: 1,
       index: 1,
-      errorClass: Error,
+      messageIncludes: "oops",
     });
   });
 });

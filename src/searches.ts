@@ -56,8 +56,12 @@ class Node {
   }
 
   /** Returns true if the range matches the one used to create the node. */
-  rangeMatches(req: PickRequest): boolean {
-    return this.#reqMin === req.min && this.#max === req.max;
+  checkRangeMatches(req: PickRequest) {
+    if (this.#reqMin !== req.min || this.#max !== req.max) {
+      throw new Error(
+        `pick request range doesn't match previous playout; wanted [${this.#reqMin}, ${this.#max}] but got [${req.min}, ${req.max}]`,
+      );
+    }
   }
 
   getBranch(pick: number): Branch {
@@ -191,9 +195,7 @@ export class PickTree {
         parent = parent.addChild(parentPick, reqs[i]);
         parentPick = replies[i];
       } else {
-        if (!branch.rangeMatches(reqs[i])) {
-          throw new Error("pick request range doesn't match previous playout");
-        }
+        branch.checkRangeMatches(reqs[i]);
         parent = branch;
         parentPick = replies[i];
       }
@@ -321,9 +323,8 @@ class PickStack {
   }
 
   trim(depth: number): boolean {
-    if (depth < 0) {
-      throw new Error("depth must be >= 0");
-    } else if (depth > this.depth) {
+    assert(depth >= 0, "depth must be >= 0");
+    if (depth > this.depth) {
       return false;
     } else if (depth === this.depth) {
       return true;
@@ -339,10 +340,10 @@ class PickStack {
   }
 
   getPicks(start?: number, end?: number): PickList {
-    if (start && start < 0) throw new Error("start must be >= 0");
-    if (end && end < 0) throw new Error("end must be >= 0");
     start = start ? start + 1 : 1;
+    assert(start >= 1);
     end = end ? end + 1 : this.picks.length;
+    assert(end >= start);
     return new PickList(
       this.reqs.slice(start, end),
       this.picks.slice(start, end),
@@ -365,12 +366,7 @@ class PickStack {
 
     assert(node !== PRUNED, "parent picked a pruned branch");
     if (node !== undefined) {
-      // Visit existing node.
-      if (!node.rangeMatches(req)) {
-        throw new Error(
-          `pick request range doesn't match a previous visit`,
-        );
-      }
+      node.checkRangeMatches(req);
       return node;
     }
 
@@ -504,10 +500,7 @@ export class PlayoutSearch implements PlayoutPicker {
 
     const firstChoice = this.pickSource.pick(replaced);
     const pick = this.stack.pushUnpruned(firstChoice, req, replaced);
-    if (pick === undefined) {
-      throw new Error("internal error: node has no unpruned picks");
-    }
-
+    assert(pick !== undefined, "internal error: no unpruned picks");
     return success(pick);
   }
 
