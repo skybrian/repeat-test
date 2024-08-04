@@ -75,28 +75,28 @@ describe("shrink", () => {
   });
   describe("for a string", () => {
     it("can't shrink an empty string", () => {
-      assertNoChange(dom.anyString(), () => true, "");
+      assertNoChange(dom.string(), () => true, "");
     });
     it("can't shrink when there's no alternative", () => {
-      repeatTest(arb.anyString(), (start) => {
-        assertNoChange(dom.anyString(), (s) => s === start, start);
+      repeatTest(arb.string(), (start) => {
+        assertNoChange(dom.string(), (s) => s === start, start);
       }, { reps: 100 });
     });
     it("removes unused trailing characters", () => {
-      assertShrinks(dom.anyString(), (s) => s.startsWith("a"), "abc", "a");
+      assertShrinks(dom.string(), (s) => s.startsWith("a"), "abc", "a");
     });
     it("sets unused characters to 'a'", () => {
-      assertShrinks(dom.anyString(), (s) => s.at(2) === "z", "xyz", "aaz");
+      assertShrinks(dom.string(), (s) => s.at(2) === "z", "xyz", "aaz");
     });
     it("removes unused leading characters", () => {
-      assertShrinks(dom.anyString(), (s) => s.endsWith("z"), "xyz", "z");
+      assertShrinks(dom.string(), (s) => s.endsWith("z"), "xyz", "z");
     });
   });
   describe("for a record", () => {
     it("can't shrink an empty record", () => {
       assertNoChange(dom.record({}), () => true, {});
     });
-    const pair = dom.record({ a: dom.int32(), b: dom.anyString() });
+    const pair = dom.record({ a: dom.int32(), b: dom.string() });
     it("can't shrink when there's no alternative", () => {
       repeatTest(pair, ({ a, b }) => {
         assertNoChange(pair, (r) => r.a === a && r.b === b, { a, b });

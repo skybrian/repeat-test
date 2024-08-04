@@ -102,7 +102,7 @@ export const unicodeChar = codePoint.map((code) => {
  *
  * Min and max are measured in code units, the same as `String.length`.
  */
-export function anyString(
+export function string(
   opts?: { min: number; max: number },
 ): Arbitrary<string> {
   return arb.array(char16(), opts).map((arr) => arr.join(""), {

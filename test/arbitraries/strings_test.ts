@@ -127,12 +127,12 @@ describe("unicodeChar", () => {
   });
 });
 
-describe("anyString", () => {
+describe("string", () => {
   it("defaults to an empty string", () => {
-    assertFirstGenerated(arb.anyString(), [{ val: "", picks: [0] }]);
+    assertFirstGenerated(arb.string(), [{ val: "", picks: [0] }]);
   });
   it("has a label", () => {
-    assertEquals(arb.anyString().label, "anyString");
+    assertEquals(arb.string().label, "anyString");
   });
 });
 

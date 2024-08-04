@@ -52,8 +52,8 @@ describe("parseRepKey", () => {
   });
   it("returns a failure if the serialized key isn't in the right format", () => {
     const badString = arb.oneOf([
-      arb.anyString().filter((x) => x.split(":").length !== 2),
-      arb.record({ k: anyKey, junk: arb.anyString() }).map(({ k, junk }) =>
+      arb.string().filter((x) => x.split(":").length !== 2),
+      arb.record({ k: anyKey, junk: arb.string() }).map(({ k, junk }) =>
         `${serializeRepKey(k)}:${junk}`
       ),
     ]);

@@ -7,9 +7,14 @@ import * as arb from "../../src/arbitraries.ts";
 import * as dom from "../../src/domains.ts";
 
 describe("of", () => {
-  it("accepts a constant value", () => {
+  describe("for a single-item domain", () => {
     const one = dom.of(1);
-    assertRoundTrip(one, 1);
+    it("accepts a constant value", () => {
+      assertRoundTrip(one, 1);
+    });
+    it("rejects items not passed in as arguments", () => {
+      assertThrows(() => one.parse(2), Error, "value didn't match");
+    });
   });
   it("rejects items not passed in as arguments", () => {
     const items = dom.of(1, 2, 3);
