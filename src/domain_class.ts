@@ -1,10 +1,10 @@
 import { PlaybackPicker } from "./picks.ts";
 import Arbitrary, { Generated, PickSet } from "./arbitrary_class.ts";
-import { onePlayout, playback } from "./backtracking.ts";
+import { onePlayout } from "./backtracking.ts";
 import { Failure, failure, Success, success } from "./results.ts";
 import { assertEquals } from "@std/assert";
 
-export type SendErr = (msg: string, opts?: { at: string }) => void;
+export type SendErr = (msg: string, opts?: { at: string | number }) => void;
 
 export type PickifyCallback = (
   val: unknown,
@@ -29,7 +29,7 @@ export default class Domain<T> implements PickSet<T> {
 
     const def = arb.default();
 
-    const picks = this.maybePickify(
+    const picks = this.pickify(
       def.val,
       "callback returned undefined",
     );
@@ -56,27 +56,74 @@ export default class Domain<T> implements PickSet<T> {
    * @throws an Error if the value is not a member of this domain.
    */
   parse(val: unknown): T {
-    const picks = this.maybePickify(val, "can't parse value");
-    if (!picks.ok) {
-      throw new Error(picks.message);
+    const gen = this.regenerate(val);
+    if (!gen.ok) {
+      throw new Error(gen.message);
     }
-    return this.parsePicks(picks.val).val;
+    return gen.val;
   }
 
-  private maybePickify(
+  /**
+   * Returns a new domain with only the values accepted by a predicate.
+   */
+  filter(accept: (val: T) => boolean): Domain<T> {
+    return new Domain<T>(this.arb.filter(accept), (val, sendErr) => {
+      const gen = this.regenerate(val);
+      if (!gen.ok) {
+        sendErr(gen.message);
+        return undefined;
+      }
+      if (!accept(gen.val)) {
+        sendErr("filter rejected value");
+        return undefined;
+      }
+      return gen.replies();
+    });
+  }
+
+  /**
+   * Validates a value, returning the regenerated value and its picks.
+   */
+  regenerate(val: unknown): Generated<T> | Failure {
+    const picks = this.pickify(val);
+    if (!picks.ok) {
+      return picks;
+    }
+    return this.generate(picks.val);
+  }
+
+  /**
+   * Given some picks, attempts to generate the corresponding value.
+   */
+  generate(picks: number[]): Generated<T> | Failure {
+    const picker = new PlaybackPicker(picks);
+    const gen = this.#arb.generate(onePlayout(picker));
+    if (picker.error) {
+      let msg = picker.error;
+      if (gen === undefined) {
+        msg = `picks not accepted; ${picker.error}`;
+      }
+      return failure(msg);
+    } else if (gen === undefined) {
+      return failure(`picks not accepted by ${this.#arb.label}`);
+    }
+    return gen;
+  }
+
+  pickify(
     val: unknown,
-    defaultMessage: string,
+    defaultMessage?: string,
   ): Success<number[]> | Failure {
     let firstError: string | undefined = undefined;
-    const sendErr = (msg: string, opts?: { at: string }) => {
+    const sendErr: SendErr = (msg, opts) => {
       if (firstError === undefined) {
         const at = opts?.at;
-        firstError = at ? `${at}: ${msg}` : msg;
+        firstError = at !== undefined ? `${at}: ${msg}` : msg;
       }
     };
     const picks = this.#callback(val, sendErr);
     if (picks === undefined) {
-      const err = firstError ?? defaultMessage;
+      const err = firstError ?? defaultMessage ?? "not in domain";
       return failure(err);
     }
     return success(picks);
@@ -105,50 +152,6 @@ export default class Domain<T> implements PickSet<T> {
       };
     }
     return this.#callback(val, innerErr);
-  }
-
-  /**
-   * Given some picks, returns the corresponding value.
-   * @throws an Error if the picks don't encode a member of this domain.
-   */
-  parsePicks(picks: number[]): Generated<T> {
-    const picker = new PlaybackPicker(picks);
-    const gen = this.#arb.generate(onePlayout(picker));
-    if (picker.error) {
-      if (gen === undefined) {
-        throw new Error(
-          `picks not accepted; ${picker.error}`,
-        );
-      }
-      throw new Error(picker.error);
-    }
-    if (gen === undefined) {
-      throw new Error(`picks not accepted by ${this.#arb.label}`);
-    }
-    return gen;
-  }
-
-  /** Makes a copy of a value by converting it to picks and back again. */
-  regenerate(val: unknown): Generated<T> | undefined {
-    const picks = this.maybePickify(val, "can't pickify value");
-    if (!picks.ok) return undefined;
-    return this.arb.generate(playback(picks.val));
-  }
-
-  filter(accept: (val: T) => boolean): Domain<T> {
-    return new Domain<T>(this.arb.filter(accept), (val, sendErr) => {
-      const picks = this.#callback(val, sendErr);
-      if (picks === undefined) return undefined;
-
-      // Filter using a copy so that we know it's the right type.
-      const gen = this.parsePicks(picks);
-      if (!accept(gen.val)) {
-        sendErr("filter rejected value");
-        return undefined;
-      }
-
-      return picks;
-    });
   }
 
   asFunction() {

@@ -14,7 +14,7 @@ export class Jar<T> {
   private accept = (val: T, picks: PickList): boolean => {
     // Compare using the canonical picks.
     const gen = this.dom.regenerate(val);
-    if (gen === undefined) {
+    if (!gen.ok) {
       return false;
     }
     const accept = this.remaining.prune(gen.picks());

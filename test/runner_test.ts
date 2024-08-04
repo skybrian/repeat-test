@@ -284,7 +284,9 @@ function makeDefaultRep<T>(input: Arbitrary<T>, test: TestFunction<T>): Rep<T> {
 
 function makeRep<T>(input: Domain<T>, arg: T, test: TestFunction<T>): Rep<T> {
   const gen = input.regenerate(arg);
-  assert(gen !== undefined);
+  if (!gen.ok) {
+    fail(`failed to regenerate: ${gen.message}`);
+  }
 
   const rep: Rep<T> = {
     ok: true,

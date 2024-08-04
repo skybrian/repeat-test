@@ -22,10 +22,14 @@ export function uniqueArray<T>(
     for (const v of val as T[]) {
       const replies = item.innerPickify(v, sendErr, i);
       if (replies === undefined) return undefined;
-      const gen = item.parsePicks(replies);
+      const gen = item.generate(replies);
+      if (!gen.ok) {
+        sendErr(gen.message, { at: i });
+        return undefined;
+      }
       const picks = gen.picks();
       if (!seen.prune(picks)) {
-        sendErr(`${i}: duplicate item`);
+        sendErr("duplicate item", { at: i });
         return undefined;
       }
       out.push(1);
@@ -60,12 +64,12 @@ export function table<R extends AnyRecord>(
     let i = 0;
     for (const row of rows as Partial<Record<keyof R, unknown>>[]) {
       if (typeof row !== "object" || row === null) {
-        sendErr(`${i}: not a record`);
+        sendErr("not a record", { at: i });
         return undefined;
       }
       for (const key of Object.keys(row)) {
         if (!keys.includes(key)) {
-          sendErr(`${i}: extra field: ${key}`);
+          sendErr(`extra field: ${key}`, { at: i });
           return undefined;
         }
       }
@@ -75,13 +79,17 @@ export function table<R extends AnyRecord>(
         const field = row[key];
         const replies = shape[key].innerPickify(field, sendErr, `${i}.${key}`);
         if (replies === undefined) return undefined;
-        const gen = shape[key].parsePicks(replies);
+        const gen = shape[key].generate(replies);
+        if (!gen.ok) {
+          sendErr(gen.message, { at: `${i}.${key}` });
+          return undefined;
+        }
         const picks = gen.picks();
 
         const seen = trees[key];
         if (seen) {
           if (!seen.prune(picks)) {
-            sendErr(`${i}.${key}: duplicate field value`);
+            sendErr("duplicate field value", { at: `${i}.${key}` });
             return undefined;
           }
         }

@@ -88,6 +88,8 @@ export class Generated<T> {
     this.#val = val;
   }
 
+  readonly ok = true;
+
   get val() {
     return this.#val;
   }

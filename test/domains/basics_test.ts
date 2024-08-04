@@ -53,9 +53,7 @@ describe("int", () => {
   it("regenerates the original value", () => {
     repeatTest(arb.minMaxVal(), ({ min, max, val }) => {
       const ints = dom.int(min, max);
-      const copy = ints.regenerate(val);
-      assert(copy !== undefined);
-      assertEquals(copy.val, val);
+      assertEquals(ints.parse(val), val);
     });
   });
 

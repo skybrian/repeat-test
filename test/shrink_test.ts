@@ -1,5 +1,5 @@
 import { describe, it } from "@std/testing/bdd";
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, fail } from "@std/assert";
 import * as arb from "../src/arbitraries.ts";
 import { repeatTest } from "../src/runner.ts";
 
@@ -20,7 +20,9 @@ function assertShrinks<T>(
   result: T,
 ) {
   const gen = dom.regenerate(start);
-  assert(gen, "couldn't regenerate the starting value");
+  if (!gen.ok) {
+    fail(`couldn't regenerate the starting value: ${gen.message}`);
+  }
 
   const smaller = shrink(dom.arb, interesting, gen);
   assert(smaller, "didn't find the expected smaller value");

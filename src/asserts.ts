@@ -1,34 +1,16 @@
-import { assertEquals, fail } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import Arbitrary, { PickSet } from "./arbitrary_class.ts";
 
 import Domain from "./domain_class.ts";
 
 export function assertRoundTrip<T>(dom: Domain<T>, val: T) {
-  const copy = dom.regenerate(val);
-  assertEquals(copy?.val, val);
+  assertEquals(dom.parse(val), val, "regenerated value didn't match");
 }
 
 export function assertEncoding<T>(dom: Domain<T>, picks: number[], val: T) {
-  assertEquals(
-    dom.parsePicks(picks).val,
-    val,
-    `dom.parsePicks(${picks}) value didn't match`,
-  );
-
-  let error: string | undefined;
-  const sendErr = (msg: string) => {
-    error = msg;
-  };
-  const parsed = dom.innerPickify(val, sendErr);
-  if (parsed === undefined) {
-    const msg = `failed with: ${error}` ?? "returned undefined";
-    fail(`dom.innerPickify(${val}) ${msg}`);
-  }
-  assertEquals(
-    parsed,
-    picks,
-    `dom.maybePickify(${val}) picks didn't match`,
-  );
+  const gen = dom.regenerate(val);
+  assert(gen.ok, "can't regenerate value");
+  assertEquals(gen.val, val, `dom.generate(${picks}) didn't match val`);
 }
 
 export function assertSameExamples<T>(
