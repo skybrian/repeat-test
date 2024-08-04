@@ -248,9 +248,8 @@ export class PlaybackPicker implements IntPicker {
     let pick = this.expected[this.depth];
     if (!req.inRange(pick)) {
       if (this.rangeError === undefined) {
-        this.rangeError =
-          `pick at offset ${this.depth} doesn't satisfy the request.` +
-          ` Want: (${req.min}, ${req.max}). Got: ${pick}`;
+        this.rangeError = `pick ${this.depth} didn't satisfy the request.` +
+          ` Want: [${req.min}, ${req.max}]. Got: ${pick}`;
       }
       pick = req.min;
     }
@@ -260,8 +259,11 @@ export class PlaybackPicker implements IntPicker {
 
   get error(): string | undefined {
     if (this.rangeError) return this.rangeError;
+    if (this.depth > this.expected.length) {
+      return "ran out of picks";
+    }
     if (this.depth !== this.expected.length) {
-      return `expected ${this.expected.length} picks; got ${this.depth}`;
+      return `read only ${this.depth} of ${this.expected.length} available picks`;
     }
     return undefined;
   }

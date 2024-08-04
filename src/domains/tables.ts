@@ -20,13 +20,9 @@ export function uniqueArray<T>(
     const seen = new PickTree();
     let i = 0;
     for (const v of val as T[]) {
-      const replies = item.maybePickify(v);
-      if (!replies.ok) {
-        const msg = replies.message ?? `unexpected item`;
-        sendErr(`${i}: ${msg}`);
-        return undefined;
-      }
-      const gen = item.parsePicks(replies.val);
+      const replies = item.innerPickify(v, sendErr, i);
+      if (replies === undefined) return undefined;
+      const gen = item.parsePicks(replies);
       const picks = gen.picks();
       if (!seen.prune(picks)) {
         sendErr(`${i}: duplicate item`);
@@ -77,13 +73,9 @@ export function table<R extends AnyRecord>(
       out.push(1);
       for (const key of keys) {
         const field = row[key];
-        const replies = shape[key].maybePickify(field);
-        if (!replies.ok) {
-          const msg = replies.message ?? `unexpected field value`;
-          sendErr(`${i}.${key}: ${msg}`);
-          return undefined;
-        }
-        const gen = shape[key].parsePicks(replies.val);
+        const replies = shape[key].innerPickify(field, sendErr, `${i}.${key}`);
+        if (replies === undefined) return undefined;
+        const gen = shape[key].parsePicks(replies);
         const picks = gen.picks();
 
         const seen = trees[key];

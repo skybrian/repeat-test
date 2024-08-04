@@ -16,13 +16,13 @@ export function asciiChar(regexp?: RegExp): Domain<string> {
 
 export const asciiLetter = asciiChar(/[a-zA-Z]/).asFunction();
 
-export const char16 = new Domain(arb.char16(), (val) => {
+export const char16 = new Domain(arb.char16(), (val, sendErr) => {
   if (typeof val !== "string") return undefined;
   if (val.length !== 1) return undefined;
   const code = val.charCodeAt(0);
   if (code === undefined) return undefined;
   if (code < 128) {
-    return asciiChar().pickify(val);
+    return asciiChar().innerPickify(val, sendErr);
   }
   return [code];
 }).asFunction();
@@ -39,7 +39,7 @@ export const anyString = new Domain(
     }
     const out: number[] = [];
     for (let i = 0; i < val.length; i++) {
-      const picks = char16().pickify(val.charAt(i));
+      const picks = char16().innerPickify(val.charAt(i), sendErr, i);
       if (picks === undefined) return undefined;
       out.push(1);
       out.push(...picks);
@@ -62,14 +62,18 @@ export const wellFormedString = new Domain(
     }
 
     const out: number[] = [];
+    let i = 0;
     for (const char of val) {
       const code = char.codePointAt(0);
       if (code === undefined || unicode.isSurrogate(code)) {
+        sendErr("invalid code point", { at: i + "" });
         return undefined;
       }
       out.push(1);
       if (code < 128) {
-        out.push(...asciiChar().pickify(char));
+        const picks = asciiChar().innerPickify(char, sendErr, i);
+        if (picks === undefined) return undefined;
+        out.push(...picks);
       } else {
         const pick = code < unicode.surrogateMin
           ? code
@@ -78,6 +82,7 @@ export const wellFormedString = new Domain(
       }
     }
     out.push(0);
+    i++;
     return out;
   },
 ).asFunction();

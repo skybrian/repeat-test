@@ -12,7 +12,8 @@ describe("of", () => {
     assertRoundTrip(one, 1);
   });
   it("rejects items not passed in as arguments", () => {
-    assertThrows(() => dom.of(1, 2, 3).pickify(4), Error, "not in the list");
+    const items = dom.of(1, 2, 3);
+    assertThrows(() => items.parse(4), Error, "value didn't match");
   });
 });
 
@@ -170,8 +171,11 @@ describe("oneOf", () => {
     it("encodes it the same way as the child domain", () => {
       repeatTest(arb.minMaxVal(), ({ min, max, val }) => {
         const child = dom.int(min, max);
+        const ignore = () => {};
+        const expected = child.innerPickify(val, ignore);
+        assert(expected !== undefined);
         const oneWay = dom.oneOf([child]);
-        assertEncoding(oneWay, child.pickify(val), val);
+        assertEncoding(oneWay, expected, val);
       });
     });
     it("rejects values that don't match", () => {

@@ -12,7 +12,7 @@ export function from<T>(
   if (values.length === 1) {
     return new Domain(generator, (val, sendErr) => {
       if (val !== values[0]) {
-        sendErr("not in the list");
+        sendErr("value didn't match");
         return undefined;
       }
       return []; // constant
@@ -21,7 +21,7 @@ export function from<T>(
 
   const notFoundError = opts?.label
     ? `not a ${generator.label}`
-    : "not in the list";
+    : "value didn't match";
   return new Domain(generator, (val, sendErr) => {
     const pick = values.indexOf(val as T);
     if (pick === -1) {
@@ -76,7 +76,7 @@ export type RecordShape<T> = {
 export function record<T extends AnyRecord>(
   fields: RecordShape<T>,
 ): Domain<T> {
-  const fieldKeys = Object.keys(fields) as (keyof T)[];
+  const fieldKeys = Object.keys(fields) as (keyof T & string)[];
   const gen = arb.record(fields);
 
   return new Domain(
@@ -96,13 +96,9 @@ export function record<T extends AnyRecord>(
       const out: number[] = [];
       for (const key of fieldKeys) {
         const fieldVal = val[key as keyof typeof val];
-        const picks = fields[key].maybePickify(fieldVal);
-        if (!picks.ok) {
-          const error = picks.message ?? "invalid field value";
-          sendErr(`${key.toString()}: ${error}`);
-          return undefined;
-        }
-        out.push(...picks.val);
+        const picks = fields[key].innerPickify(fieldVal, sendErr, key);
+        if (picks === undefined) return undefined;
+        out.push(...picks);
       }
       return out;
     },
@@ -140,26 +136,18 @@ export function array<T>(
 
     // Fixed-length portion.
     while (i < min) {
-      const picks = item.maybePickify(val[i]);
-      if (!picks.ok) {
-        const err = picks.message ?? "can't pickify array item";
-        sendErr(`${i}: ${err}`);
-        return undefined;
-      }
-      out.push(...picks.val);
+      const picks = item.innerPickify(val[i], sendErr, i);
+      if (picks === undefined) return undefined;
+      out.push(...picks);
       i++;
     }
 
     // Variable-length portion.
     while (i < val.length) {
-      const picks = item.maybePickify(val[i]);
-      if (!picks.ok) {
-        const err = picks.message ?? "can't pickify array item";
-        sendErr(`${i}: ${err}`);
-        return undefined;
-      }
+      const picks = item.innerPickify(val[i], sendErr, i);
+      if (picks === undefined) return undefined;
       out.push(1);
-      out.push(...picks.val);
+      out.push(...picks);
       i++;
     }
     if (min < max) {
@@ -187,8 +175,9 @@ export function oneOf<T>(cases: Domain<T>[]): Domain<T> {
 
   return new Domain(gen, (val, sendErr) => {
     for (const [i, c] of cases.entries()) {
-      const picks = c.maybePickify(val);
-      if (picks.ok) return [i, ...picks.val];
+      const ignore = () => {};
+      const picks = c.innerPickify(val, ignore);
+      if (picks !== undefined) return [i, ...picks];
     }
     sendErr("no case matched");
     return undefined;
@@ -210,7 +199,7 @@ export function mapped<T, L>(lower: Domain<L>, mapper: Codec<T, L>): Domain<T> {
     (val, sendErr) => {
       const parsed = mapper.parse(val, sendErr);
       if (parsed === undefined) return undefined;
-      return lower.pickify(parsed);
+      return lower.innerPickify(parsed, sendErr);
     },
   );
 }

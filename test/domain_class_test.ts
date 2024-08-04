@@ -1,4 +1,4 @@
-import { describe, it } from "@std/testing/bdd";
+import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
 
 import { PickRequest } from "../src/picks.ts";
@@ -7,57 +7,173 @@ import Domain, { PickifyCallback } from "../src/domain_class.ts";
 
 describe("Domain", () => {
   describe("constructor", () => {
-    it("throws if the default value can't be pickified", () => {
+    it("throws an Error if the callback returns undefined with no error", () => {
       const arb = Arbitrary.from(new PickRequest(1, 6));
-      assertThrows(() => new Domain(arb, () => undefined), Error);
+      assertThrows(
+        () => new Domain(arb, () => undefined),
+        Error,
+        "can't pickify default of unlabeled PickRequest: callback returned undefined",
+      );
     });
-    it("reports the first error from the callback", () => {
+    it("throws an Error if the callback returns undefined with an error", () => {
       const arb = Arbitrary.from(new PickRequest(1, 6));
       const callback: PickifyCallback = (_, sendErr) => {
         sendErr("oops!");
         return undefined;
       };
-      assertThrows(() => new Domain(arb, callback), Error, "oops");
+      assertThrows(
+        () => new Domain(arb, callback),
+        Error,
+        "can't pickify default of unlabeled PickRequest: oops",
+      );
+    });
+    it("throws an Error if the callback returns picks that don't match the generated default", () => {
+      const arb = Arbitrary.from(new PickRequest(1, 6));
+      const callback: PickifyCallback = (v) => {
+        if (v === 1) {
+          return [123];
+        }
+        return undefined;
+      };
+      assertThrows(
+        () => new Domain(arb, callback),
+        Error,
+        "callback's picks don't match for the default value of unlabeled PickRequest",
+      );
     });
   });
-  describe("pickify", () => {
-    it("throws if the callback returns undefined", () => {
-      const arb = Arbitrary.from(new PickRequest(1, 6));
-      const dom = new Domain(arb, (v) => v === 1 ? [v] : undefined);
-      assertThrows(() => dom.pickify(2), Error, "can't pickify value");
+
+  const one = new Domain(
+    Arbitrary.from(new PickRequest(1, 1)),
+    (v) => {
+      return (v === 1) ? [1] : undefined;
+    },
+  );
+
+  const roll = new Domain(
+    Arbitrary.from(new PickRequest(1, 6)),
+    (v, sendErr) => {
+      if (typeof v !== "number") {
+        sendErr("not a number");
+        return undefined;
+      } else if (v < 1 || v > 6) {
+        sendErr("not in range");
+        return undefined;
+      }
+      return [v];
+    },
+  );
+
+  describe("parse", () => {
+    it("throws an Error if the callback returns undefined", () => {
+      assertThrows(() => one.parse("hello"), Error, "can't parse value");
     });
-    it("reports the first error from the callback", () => {
+    it("throws an Error if the callback returns undefined with an error", () => {
+      assertThrows(() => roll.parse("hello"), Error, "not a number");
+    });
+  });
+
+  describe("innerPickify", () => {
+    const errs: string[] = [];
+
+    const sendErr = (err: string, opts?: { at: string }) => {
+      if (opts?.at) {
+        errs.push(`${opts.at}: ${err}`);
+      } else {
+        errs.push(err);
+      }
+    };
+
+    beforeEach(() => {
+      errs.length = 0;
+    });
+
+    it("returns undefined if the callback returns undefined", () => {
+      assertEquals(one.innerPickify(2, sendErr), undefined);
+      assertEquals(errs, []);
+    });
+
+    it("prepends a location to an inner error", () => {
       const arb = Arbitrary.from(new PickRequest(1, 6));
       const dom = new Domain(arb, (v, sendErr) => {
         if (v !== 1) {
-          sendErr("oops!");
+          sendErr("oops!", { at: "inner" });
           return undefined;
         }
         return [v];
       });
-      assertThrows(() => dom.pickify(2), Error, "oops");
+      assertEquals(dom.innerPickify(2, sendErr, "outer"), undefined);
+      assertEquals(errs, ["outer.inner: oops!"]);
     });
   });
-  describe("parsePicks", () => {
-    const arb = Arbitrary.from(new PickRequest(1, 6));
-    const dom = new Domain(arb, (val) => {
-      if (val !== 1) throw "oops";
-      return [val];
-    });
 
-    it("fails when not enough values were supplied", () => {
-      assertThrows(() => dom.parsePicks([]), Error);
+  describe("parsePicks", () => {
+    it("throws when not enough values were supplied", () => {
+      assertThrows(() => one.parsePicks([]), Error, "ran out of picks");
     });
-    it("fails when too many values were supplied", () => {
-      assertThrows(() => dom.parsePicks([1, 1]), Error);
+    it("throws when too many values were supplied", () => {
+      assertThrows(
+        () => one.parsePicks([1, 1]),
+        Error,
+        "read only 1 of 2 available picks",
+      );
     });
-    it("fails for an out-of-range value", () => {
-      assertThrows(() => dom.parsePicks([7]), Error);
+    it("throws for an out-of-range value", () => {
+      assertThrows(
+        () => roll.parsePicks([7]),
+        Error,
+        "pick 0 didn't satisfy the request. Want: [1, 6]. Got: 7",
+      );
+    });
+    it("throws due to being filtered out", () => {
+      const weird = new Domain(roll.arb.filter((v) => v === 1), (val) => {
+        if (val !== 1) throw "oops";
+        return [val];
+      });
+      assertThrows(
+        () => weird.parsePicks([2]),
+        Error,
+        "picks not accepted by unlabeled filter",
+      );
+    });
+    it("throws due to being filtered out, and without reading all picks", () => {
+      const weird = new Domain(roll.arb.filter((v) => v === 1), (val) => {
+        if (val !== 1) throw "oops";
+        return [val];
+      });
+      assertThrows(
+        () => weird.parsePicks([2, 3]),
+        Error,
+        "picks not accepted; read only 1 of 2 available picks",
+      );
     });
     it("returns the value from a successful parse", () => {
       for (let i = 1; i < 6; i++) {
-        assertEquals(dom.parsePicks([i]).val, i);
+        assertEquals(roll.parsePicks([i]).val, i);
       }
+    });
+  });
+
+  describe("regenerate", () => {
+    it("returns undefined if the value isn't in the domain", () => {
+      assertEquals(one.regenerate(2), undefined);
+    });
+  });
+
+  describe("filter", () => {
+    it("rejects values that aren't in the original domain", () => {
+      assertThrows(
+        () => roll.filter((v) => v === 1).parse(7),
+        Error,
+        "not in range",
+      );
+    });
+    it("rejects values that have been filtered out", () => {
+      assertThrows(
+        () => roll.filter((v) => v === 1).parse(2),
+        Error,
+        "filter rejected value",
+      );
     });
   });
 });

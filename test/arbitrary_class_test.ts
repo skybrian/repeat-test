@@ -34,7 +34,7 @@ describe("Arbitrary", () => {
       assertThrows(
         () => Arbitrary.from(callback),
         Error,
-        "callback didn't generate any values",
+        "(unlabeled) didn't generate any values",
       );
     });
     it("throws an Error if given a callback that calls pick incorrectly", () => {
@@ -415,7 +415,7 @@ describe("Arbitrary", () => {
       const filtered = original.filter(
         (n) => n === 2,
       );
-      assertEquals(filtered.label, "filter");
+      assertEquals(filtered.label, "unlabeled filter");
     });
     it("accepts a custom label", () => {
       const original = Arbitrary.of(1, 2, 3);

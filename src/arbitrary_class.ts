@@ -348,7 +348,7 @@ export default class Arbitrary<T> implements PickSet<T> {
       }
     }
 
-    const label = opts?.label ?? "filter";
+    const label = opts?.label ?? "unlabeled filter";
     const callback: ArbitraryCallback<T> = (pick) => {
       return pick(this, pickOpts);
     };
@@ -436,7 +436,7 @@ export default class Arbitrary<T> implements PickSet<T> {
     opts?: { label?: string },
   ): Arbitrary<T> | Arbitrary<number> {
     if (typeof arg === "function") {
-      const label = opts?.label ?? "callback";
+      const label = opts?.label ?? "(unlabeled)";
       return new Arbitrary(label, arg);
     } else if (Array.isArray(arg)) {
       if (arg.length === 0) {
@@ -459,7 +459,7 @@ export default class Arbitrary<T> implements PickSet<T> {
         maxSize: arg.length,
       });
     } else {
-      const label = opts?.label ?? "pick";
+      const label = opts?.label ?? "unlabeled PickRequest";
       return new Arbitrary(label, (pick) => pick(arg), { maxSize: arg.size });
     }
   }

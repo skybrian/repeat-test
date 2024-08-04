@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, fail } from "@std/assert";
 import Arbitrary, { PickSet } from "./arbitrary_class.ts";
 
 import Domain from "./domain_class.ts";
@@ -12,9 +12,23 @@ export function assertEncoding<T>(dom: Domain<T>, picks: number[], val: T) {
   assertEquals(
     dom.parsePicks(picks).val,
     val,
-    `dom.parsePicks(${picks}) didn't match`,
+    `dom.parsePicks(${picks}) value didn't match`,
   );
-  assertEquals(dom.pickify(val), picks, `dom.pickify(${val}) didn't match`);
+
+  let error: string | undefined;
+  const sendErr = (msg: string) => {
+    error = msg;
+  };
+  const parsed = dom.innerPickify(val, sendErr);
+  if (parsed === undefined) {
+    const msg = `failed with: ${error}` ?? "returned undefined";
+    fail(`dom.innerPickify(${val}) ${msg}`);
+  }
+  assertEquals(
+    parsed,
+    picks,
+    `dom.maybePickify(${val}) picks didn't match`,
+  );
 }
 
 export function assertSameExamples<T>(

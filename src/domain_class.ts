@@ -4,9 +4,11 @@ import { onePlayout, playback } from "./backtracking.ts";
 import { Failure, failure, Success, success } from "./results.ts";
 import { assertEquals } from "@std/assert";
 
+export type SendErr = (msg: string, opts?: { at: string }) => void;
+
 export type PickifyCallback = (
   val: unknown,
-  sendErr: (msg: string) => void,
+  sendErr: SendErr,
 ) => number[] | undefined;
 
 /**
@@ -27,23 +29,19 @@ export default class Domain<T> implements PickSet<T> {
 
     const def = arb.default();
 
-    const picks = this.maybePickify(def.val);
+    const picks = this.maybePickify(
+      def.val,
+      "callback returned undefined",
+    );
     if (!picks.ok) {
-      const error = picks.message ?? "callback returned undefined";
-      throw new Error(`can't pickify domain's default value: ${error}`);
+      throw new Error(
+        `can't pickify default of ${arb.label}: ${picks.message}`,
+      );
     }
-
-    const copy = this.#arb.generate(playback(picks.val));
-    if (copy === undefined) {
-      throw new Error("can't regenerate domain's default value");
-    }
-
-    // Check that the default value's picks are canonical
-    assertEquals(copy.val, def.val, "can't regenerate domain's default value");
     assertEquals(
-      copy.replies(),
+      def.replies(),
       picks.val,
-      "pickify didn't generate the default value's picks",
+      `callback's picks don't match for the default value of ${arb.label}`,
     );
   }
 
@@ -52,52 +50,61 @@ export default class Domain<T> implements PickSet<T> {
     return this.#arb;
   }
 
-  /** Returns true if the value is a member of this domain. */
-  has(val: unknown): val is T {
-    const ignoreError = () => {};
-    return this.#callback(val, ignoreError) !== undefined;
-  }
-
   /**
    * Validates a value, returning a copy created by regenerating it.
    *
    * @throws an Error if the value is not a member of this domain.
    */
   parse(val: unknown): T {
-    const picks = this.maybePickify(val);
+    const picks = this.maybePickify(val, "can't parse value");
     if (!picks.ok) {
-      const error = picks.message ?? "can't pickify value";
-      throw new Error(error);
+      throw new Error(picks.message);
     }
     return this.parsePicks(picks.val).val;
   }
 
-  /**
-   * Returns the picks that encode a value.
-   * @throws an Error if the value is not a member of this domain.
-   */
-  pickify(val: T): number[] {
-    const picks = this.maybePickify(val);
-    if (!picks.ok) {
-      const error = picks.message ?? "can't pickify value";
-      throw new Error(error);
-    }
-    return picks.val;
-  }
-
-  maybePickify(val: unknown): Success<number[]> | Failure {
+  private maybePickify(
+    val: unknown,
+    defaultMessage: string,
+  ): Success<number[]> | Failure {
     let firstError: string | undefined = undefined;
-    const sendErr = (msg: string) => {
+    const sendErr = (msg: string, opts?: { at: string }) => {
       if (firstError === undefined) {
-        firstError = msg;
+        const at = opts?.at;
+        firstError = at ? `${at}: ${msg}` : msg;
       }
     };
     const picks = this.#callback(val, sendErr);
     if (picks === undefined) {
-      const err = firstError ?? "can't pickify value";
+      const err = firstError ?? defaultMessage;
       return failure(err);
     }
     return success(picks);
+  }
+
+  /**
+   * Returns the picks that encode a value, or undefined if the value isn't a
+   * member of the domain.
+   *
+   * If undefined is returned, errors might be reported by calling
+   * {@link sendErr}.
+   *
+   * If a location is supplied, it will be prepended to inner locations.
+   */
+  innerPickify(
+    val: unknown,
+    sendErr: SendErr,
+    location?: number | string,
+  ): number[] | undefined {
+    let innerErr: SendErr = sendErr;
+    if (location !== undefined) {
+      innerErr = (msg, opts) => {
+        const innerAt = opts?.at;
+        const at = innerAt ? `${location}.${innerAt}` : "" + location;
+        sendErr(msg, { at });
+      };
+    }
+    return this.#callback(val, innerErr);
   }
 
   /**
@@ -110,20 +117,20 @@ export default class Domain<T> implements PickSet<T> {
     if (picker.error) {
       if (gen === undefined) {
         throw new Error(
-          `domain's generator stopped accepting picks; ${picker.error}`,
+          `picks not accepted; ${picker.error}`,
         );
       }
       throw new Error(picker.error);
     }
     if (gen === undefined) {
-      throw new Error("domain's generator didn't accept picks");
+      throw new Error(`picks not accepted by ${this.#arb.label}`);
     }
     return gen;
   }
 
   /** Makes a copy of a value by converting it to picks and back again. */
   regenerate(val: unknown): Generated<T> | undefined {
-    const picks = this.maybePickify(val);
+    const picks = this.maybePickify(val, "can't pickify value");
     if (!picks.ok) return undefined;
     return this.arb.generate(playback(picks.val));
   }
