@@ -16,7 +16,7 @@ export function uniqueArray<T>(
     const jar = new Jar(item);
     const out: T[] = [];
     while (!jar.isEmpty() && pick(arb.boolean())) {
-      out.push(jar.pickUnused(pick));
+      out.push(jar.take(pick));
     }
     if (jar.isEmpty()) {
       // Add an ending pick to match a regular array.
@@ -63,7 +63,7 @@ export function table<R extends AnyRecord>(
       for (const key of Object.keys(shape)) {
         const jar = jars[key];
         if (jar) {
-          row[key] = jar.pickUnused(pick);
+          row[key] = jar.take(pick);
         } else {
           row[key] = pick(shape[key]);
         }

@@ -2,6 +2,7 @@ import { PickList } from "./picks.ts";
 import { PickTree } from "./searches.ts";
 import Arbitrary, { PickFunction } from "./arbitrary_class.ts";
 import Domain from "./domain_class.ts";
+import { assert } from "@std/assert";
 
 /**
  * Picks from the possible values in a Domain, without replacement.
@@ -14,9 +15,8 @@ export class Jar<T> {
   private accept = (val: T, picks: PickList): boolean => {
     // Compare using the canonical picks.
     const gen = this.dom.regenerate(val);
-    if (!gen.ok) {
-      return false;
-    }
+    assert(gen.ok, "regenerate should always succeed");
+
     const accept = this.remaining.prune(gen.picks());
 
     // Also prune the non-canonical picks so we know when we're done.
@@ -28,30 +28,19 @@ export class Jar<T> {
   constructor(readonly dom: Domain<T>) {}
 
   /**
-   * Returns true if there are any values left that haven't been used.
+   * Returns true if there are any values left in the jar.
    */
   isEmpty(): boolean {
     return this.remaining.done();
   }
 
   /**
-   * Picks from an arbitrary with a filter that prevents it from using the same
-   * pick sequence twice.
+   * Takes an unused value from the jar.
    *
-   * @throws {@link Pruned} if the picks were used already.
+   * @throws {@link Pruned} if the jar is empty.
    */
-  pickUnused(pick: PickFunction): T {
+  take(pick: PickFunction): T {
     return pick(this.dom, { accept: this.accept });
-  }
-
-  /**
-   * Takes the value with the given picks from the jar.
-   *
-   * @throws {@link Pruned} if the picks were used already.
-   */
-  take(picks: number[]): T {
-    const gen = Arbitrary.callWithPicks(picks, (p) => this.pickUnused(p));
-    return gen.val;
   }
 
   /**
@@ -62,7 +51,7 @@ export class Jar<T> {
       const out: T[] = [];
       const jar = new Jar(dom);
       while (!jar.isEmpty()) {
-        const val = jar.pickUnused(pick);
+        const val = jar.take(pick);
         out.push(val);
       }
       return out;

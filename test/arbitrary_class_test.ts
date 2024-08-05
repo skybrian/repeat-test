@@ -45,7 +45,7 @@ describe("Arbitrary", () => {
       assertThrows(
         () => Arbitrary.from(callback),
         Error,
-        "callback called pick() with an invalid argument",
+        "pick function called with an invalid argument",
       );
     });
     it("throws if given an empty array", () => {
