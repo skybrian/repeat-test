@@ -162,6 +162,10 @@ export class PickTree {
     this.startPick = startPick ?? 0;
   }
 
+  walk(): Walk {
+    return new Walk(this.startNode, this.startPick);
+  }
+
   /**
    * Prunes a possible playout.
    *
@@ -173,7 +177,7 @@ export class PickTree {
    * Throws an error if a PickRequest's range doesn't match a previous playout.
    */
   prune(picks: PickList): boolean {
-    const walk = new Walk(this.startNode, this.startPick);
+    const walk = this.walk();
     if (!walk.pushAll(picks)) {
       return false; // already pruned
     }
@@ -184,7 +188,11 @@ export class PickTree {
    * Returns true if the pick sequence hasn't been pruned yet.
    */
   available(picks: number[]): boolean {
-    return Node.at(this.startNode, picks) !== PRUNED;
+    const walk = this.walk();
+    if (!walk.follow(picks)) {
+      return false;
+    }
+    return !walk.pruned;
   }
 
   branchesLeft(picks: number[]): number | undefined {
@@ -206,7 +214,7 @@ export class PickTree {
   }
 }
 
-class Walk {
+export class Walk {
   private readonly nodePath: Node[];
   private readonly pickPath: number[];
 
@@ -221,6 +229,29 @@ class Walk {
 
   get lastPick(): number {
     return this.pickPath[this.pickPath.length - 1];
+  }
+
+  get pruned(): boolean {
+    return this.lastNode.getBranch(this.lastPick) === PRUNED;
+  }
+
+  /**
+   * Returns true if the picks could be followed to the end.
+   */
+  follow(picks: number[]): boolean {
+    let parent = this.lastNode;
+    let parentPick = this.lastPick;
+    for (let i = 0; i < picks.length; i++) {
+      const branch = parent.getBranch(parentPick);
+      if (branch === PRUNED || branch === undefined) {
+        return false;
+      }
+      parent = branch;
+      parentPick = picks[i];
+      this.nodePath.push(parent);
+      this.pickPath.push(parentPick);
+    }
+    return true;
   }
 
   pushAll(path: PickList): boolean {
