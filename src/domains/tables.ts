@@ -3,6 +3,7 @@ import Domain from "../domain_class.ts";
 import * as arb from "../arbitraries.ts";
 import * as dom from "./basics.ts";
 import { PickTree } from "../searches.ts";
+import { assert } from "@std/assert";
 
 export function uniqueArray<T>(
   item: Domain<T>,
@@ -22,11 +23,11 @@ export function uniqueArray<T>(
     for (const v of val as T[]) {
       const replies = item.innerPickify(v, sendErr, i);
       if (replies === undefined) return undefined;
+
+      // Regenerate because we need both requests and replies.
       const gen = item.generate(replies);
-      if (!gen.ok) {
-        sendErr(gen.message, { at: i });
-        return undefined;
-      }
+      assert(gen.ok, "can't regenerate an accepted value");
+
       const picks = gen.picks();
       if (!seen.prune(picks)) {
         sendErr("duplicate item", { at: i });
@@ -79,11 +80,10 @@ export function table<R extends AnyRecord>(
         const field = row[key];
         const replies = shape[key].innerPickify(field, sendErr, `${i}.${key}`);
         if (replies === undefined) return undefined;
+
+        // Regenerate because we need both requests and replies.
         const gen = shape[key].generate(replies);
-        if (!gen.ok) {
-          sendErr(gen.message, { at: `${i}.${key}` });
-          return undefined;
-        }
+        assert(gen.ok, "can't regenerate an accepted value");
         const picks = gen.picks();
 
         const seen = trees[key];

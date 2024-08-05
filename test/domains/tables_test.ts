@@ -55,6 +55,26 @@ describe("uniqueArray", () => {
 });
 
 describe("table", () => {
+  describe("with no unique columns", () => {
+    const table = dom.table({
+      a: dom.boolean(),
+      b: dom.boolean(),
+    });
+    it("encodes it the same way as a regular array", () => {
+      assertEncoding(table, [0], []);
+      assertEncoding(table, [1, 1, 0], [{ a: true, b: true }]);
+      assertEncoding(table, [1, 0, 1, 1, 0], [
+        { a: true, b: false },
+        { a: false, b: true },
+      ]);
+    });
+    it("round-trips generated tables", () => {
+      repeatTest(table, (rows) => {
+        assertRoundTrip(table, rows);
+      });
+    });
+  });
+
   describe("with a single unique column", () => {
     const table = dom.table({
       a: dom.boolean(),
