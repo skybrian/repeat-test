@@ -128,23 +128,6 @@ class Node {
     this.#branchesLeft--;
     return true;
   }
-
-  /**
-   * Returns the Node at the given path, if created and not pruned.
-   */
-  static at(start: Node, picks: number[]): Branch {
-    let parent = start;
-    let parentPick = 0;
-    for (let i = 0; i < picks.length; i++) {
-      const branch = parent.getBranch(parentPick);
-      if (branch == PRUNED || branch === undefined) {
-        return branch;
-      }
-      parent = branch;
-      parentPick = picks[i];
-    }
-    return parent.getBranch(parentPick);
-  }
 }
 
 /**
@@ -189,21 +172,17 @@ export class PickTree {
    */
   available(picks: number[]): boolean {
     const walk = this.walk();
-    if (!walk.follow(picks)) {
-      return false;
-    }
-    return !walk.pruned;
+    return walk.follow(picks) !== 0;
   }
 
+  /**
+   * Returns the number of unpruned branches left at the given node if it
+   * exists. If the node or any ancestor is pruned, returns 0. For unknown
+   * nodes, returns undefined.
+   */
   branchesLeft(picks: number[]): number | undefined {
-    const branch = Node.at(this.startNode, picks);
-    if (branch === undefined) {
-      return undefined;
-    } else if (branch === PRUNED) {
-      return 0;
-    } else {
-      return branch.branchesLeft;
-    }
+    const walk = this.walk();
+    return walk.follow(picks);
   }
 
   /**
@@ -214,6 +193,9 @@ export class PickTree {
   }
 }
 
+/**
+ * Points to a branch in a PickTree.
+ */
 export class Walk {
   private readonly nodePath: Node[];
   private readonly pickPath: number[];
@@ -223,37 +205,55 @@ export class Walk {
     this.pickPath = [startPick];
   }
 
-  private get lastNode(): Node {
+  private get parent(): Node {
     return this.nodePath[this.nodePath.length - 1];
   }
 
-  get lastPick(): number {
+  get branchPick(): number {
     return this.pickPath[this.pickPath.length - 1];
   }
 
-  get pruned(): boolean {
-    return this.lastNode.getBranch(this.lastPick) === PRUNED;
+  /**
+   * If the Walk points to a Node, returns its branchesLeft. Otherwise, returns undefined.
+   */
+  get branchesLeft(): number | undefined {
+    const branch = this.parent.getBranch(this.branchPick);
+    if (branch === undefined) {
+      return undefined;
+    } else if (branch === PRUNED) {
+      return 0;
+    } else {
+      return branch.branchesLeft;
+    }
   }
 
   /**
-   * Returns true if the picks could be followed to the end.
+   * Attempts to extend the path to an existing node. Returns the number of branches left,
+   * 0 if it's pruned, or undefined if it's not created yet.
    */
-  follow(picks: number[]): boolean {
-    let parent = this.lastNode;
-    let parentPick = this.lastPick;
+  follow(picks: number[]): number | undefined {
+    let parent = this.parent;
+    let parentPick = this.branchPick;
     for (let i = 0; i < picks.length; i++) {
       const branch = parent.getBranch(parentPick);
-      if (branch === PRUNED || branch === undefined) {
-        return false;
+      if (branch === PRUNED) {
+        return 0;
+      } else if (branch === undefined) {
+        return undefined;
       }
       parent = branch;
       parentPick = picks[i];
       this.nodePath.push(parent);
       this.pickPath.push(parentPick);
     }
-    return true;
+    return this.branchesLeft;
   }
 
+  /**
+   * Attempts to extend the path to a new branch, creating nodes if needed.
+   *
+   * Throws an Error if a request's range doesn't match a previous playout.
+   */
   pushAll(path: PickList): boolean {
     const reqs = path.reqs();
     const replies = path.replies();
@@ -265,13 +265,18 @@ export class Walk {
     return true;
   }
 
+  /**
+   * Attempts to follow a branch, creating a node if needed.
+   *
+   * Throws an Error if a request's range doesn't match a previous playout.
+   */
   push(req: PickRequest, pick: number): boolean {
-    let last = this.lastNode.getBranch(this.lastPick);
+    let last = this.parent.getBranch(this.branchPick);
     if (last === PRUNED) {
       return false;
     } else if (last === undefined) {
       // unexplored; add node
-      last = this.lastNode.addChild(this.lastPick, req);
+      last = this.parent.addChild(this.branchPick, req);
       this.nodePath.push(last);
       this.pickPath.push(pick);
       return true;
@@ -285,8 +290,8 @@ export class Walk {
   }
 
   prune(): boolean {
-    let parent = this.lastNode;
-    if (!parent.prune(this.lastPick)) {
+    let parent = this.parent;
+    if (!parent.prune(this.branchPick)) {
       return false; // already pruned
     }
 
@@ -296,8 +301,8 @@ export class Walk {
         // we pruned the entire tree
         return true;
       }
-      parent = this.lastNode;
-      parent.prune(this.lastPick);
+      parent = this.parent;
+      parent.prune(this.branchPick);
     }
     return true;
   }

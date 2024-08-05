@@ -120,6 +120,30 @@ describe("PickTree", () => {
       const tree = new PickTree();
       assertEquals(tree.branchesLeft([]), undefined);
     });
+    it("returns undefined for a path beyond an unexplored tree", () => {
+      const tree = new PickTree();
+      assertEquals(tree.branchesLeft([0]), undefined);
+    });
+    it("returns undefined for an unexplored node", () => {
+      const tree = new PickTree();
+      tree.prune(new PickList([bit], [0]));
+      assertEquals(tree.branchesLeft([1]), undefined);
+    });
+    it("returns 0 for a pruned tree", () => {
+      const tree = new PickTree();
+      tree.prune(new PickList([], []));
+      assertEquals(tree.branchesLeft([]), 0);
+    });
+    it("returns 0 for a path beyond a pruned node", () => {
+      const tree = new PickTree();
+      tree.prune(new PickList([], []));
+      assertEquals(tree.branchesLeft([0]), 0);
+    });
+    it("returns the branches left on a root node", () => {
+      const tree = new PickTree();
+      tree.prune(new PickList([bit], [0]));
+      assertEquals(tree.branchesLeft([]), 1);
+    });
   });
 });
 
