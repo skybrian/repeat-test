@@ -209,6 +209,10 @@ export class Walk {
     return this.nodePath[this.nodePath.length - 1];
   }
 
+  get depth(): number {
+    return this.nodePath.length - 1;
+  }
+
   get branchPick(): number {
     return this.pickPath[this.pickPath.length - 1];
   }
@@ -297,26 +301,16 @@ export class Walk {
 
     // remove ancestors that are now empty
     while (parent.branchesLeft === 0) {
-      if (this.pop() === undefined) {
+      if (this.depth === 0) {
         // we pruned the entire tree
         return true;
       }
+      this.nodePath.length -= 1;
+      this.pickPath.length -= 1;
       parent = this.parent;
       parent.prune(this.branchPick);
     }
     return true;
-  }
-
-  /** Removes and returns the parent node and pick, or undefined if empty. */
-  private pop(): { node: Node; pick: number } | undefined {
-    if (this.nodePath.length === 1) {
-      return undefined;
-    }
-    const node = this.nodePath.pop();
-    assert(node !== undefined);
-    const pick = this.pickPath.pop();
-    assert(pick !== undefined);
-    return { node, pick };
   }
 }
 
