@@ -55,7 +55,7 @@ class Node {
     this.#branchesLeft = max - min + 1;
   }
 
-  /** Returns true if the range matches the one used to create the node. */
+  /** Throws an Error if the range matches the one used to create the node. */
   checkRangeMatches(req: PickRequest) {
     if (this.#reqMin !== req.min || this.#max !== req.max) {
       throw new Error(
@@ -173,55 +173,11 @@ export class PickTree {
    * Throws an error if a PickRequest's range doesn't match a previous playout.
    */
   prune(picks: PickList): boolean {
-    const reqs = picks.reqs();
-    const replies = picks.replies();
-
-    let parent = this.startNode;
-    let parentPick = this.startPick;
-
-    const nodePath: Node[] = [];
-    const pickPath: number[] = [];
-
-    // walk the tree, adding nodes where needed.
-    for (let i = 0; i < reqs.length; i++) {
-      const branch = parent.getBranch(parentPick);
-      if (branch == PRUNED) {
-        return false; // aleady added
-      }
-      nodePath.push(parent);
-      pickPath.push(parentPick);
-      if (branch === undefined) {
-        // unexplored; add node
-        parent = parent.addChild(parentPick, reqs[i]);
-        parentPick = replies[i];
-      } else {
-        branch.checkRangeMatches(reqs[i]);
-        parent = branch;
-        parentPick = replies[i];
-      }
-    }
-
-    if (!parent.prune(parentPick)) {
+    const walk = new Walk(this.startNode, this.startPick);
+    if (!walk.pushAll(picks)) {
       return false; // already pruned
     }
-
-    // remove ancestors that are now empty
-    let child = parent;
-    while (child.branchesLeft === 0) {
-      const parent = nodePath.pop();
-      if (parent === undefined) {
-        return true; // pruned the last playout
-      }
-      const parentPick = pickPath.pop();
-      assert(
-        parentPick !== undefined,
-        "nodePath and pickPath should be the same length",
-      );
-      parent.prune(parentPick);
-      child = parent;
-    }
-
-    return true;
+    return walk.prune();
   }
 
   /**
@@ -247,6 +203,84 @@ export class PickTree {
    */
   done(): boolean {
     return this.startNode.branchesLeft === 0;
+  }
+}
+
+class Walk {
+  private readonly nodePath: Node[];
+  private readonly pickPath: number[];
+
+  constructor(start: Node, startPick: number) {
+    this.nodePath = [start];
+    this.pickPath = [startPick];
+  }
+
+  private get lastNode(): Node {
+    return this.nodePath[this.nodePath.length - 1];
+  }
+
+  get lastPick(): number {
+    return this.pickPath[this.pickPath.length - 1];
+  }
+
+  pushAll(path: PickList): boolean {
+    const reqs = path.reqs();
+    const replies = path.replies();
+    for (let i = 0; i < reqs.length; i++) {
+      if (!this.push(reqs[i], replies[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  push(req: PickRequest, pick: number): boolean {
+    let last = this.lastNode.getBranch(this.lastPick);
+    if (last === PRUNED) {
+      return false;
+    } else if (last === undefined) {
+      // unexplored; add node
+      last = this.lastNode.addChild(this.lastPick, req);
+      this.nodePath.push(last);
+      this.pickPath.push(pick);
+      return true;
+    } else {
+      // revisit node
+      last.checkRangeMatches(req);
+      this.nodePath.push(last);
+      this.pickPath.push(pick);
+      return true;
+    }
+  }
+
+  prune(): boolean {
+    let parent = this.lastNode;
+    if (!parent.prune(this.lastPick)) {
+      return false; // already pruned
+    }
+
+    // remove ancestors that are now empty
+    while (parent.branchesLeft === 0) {
+      if (this.pop() === undefined) {
+        // we pruned the entire tree
+        return true;
+      }
+      parent = this.lastNode;
+      parent.prune(this.lastPick);
+    }
+    return true;
+  }
+
+  /** Removes and returns the parent node and pick, or undefined if empty. */
+  private pop(): { node: Node; pick: number } | undefined {
+    if (this.nodePath.length === 1) {
+      return undefined;
+    }
+    const node = this.nodePath.pop();
+    assert(node !== undefined);
+    const pick = this.pickPath.pop();
+    assert(pick !== undefined);
+    return { node, pick };
   }
 }
 
