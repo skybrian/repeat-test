@@ -369,6 +369,43 @@ describe("Search", () => {
     });
   });
 
+  describe("trimmedDepth", () => {
+    let search = new PlayoutSearch();
+
+    beforeEach(() => {
+      search = new PlayoutSearch();
+      search.startAt(0);
+    });
+
+    it("returns 0 for a walk with only minimum picks", () => {
+      assertEquals(search.trimmedDepth, 0);
+      search.maybePick(bit);
+      assertEquals(search.trimmedDepth, 0);
+    });
+    it("returns the actual depth if the last pick wasn't a minimum pick", () => {
+      search.maybePick(bit);
+      search.startAt(0);
+      search.maybePick(bit);
+      assertEquals(search.trimmedDepth, 1);
+    });
+    it("goes back to the previous trimmed depth", () => {
+      const roll = new PickRequest(1, 6);
+      search.maybePick(roll);
+      search.maybePick(roll);
+      search.startAt(1);
+      search.maybePick(roll);
+      assertEquals(search.trimmedDepth, 2);
+      search.maybePick(roll);
+      search.maybePick(roll);
+      search.startAt(3);
+      search.maybePick(roll);
+      assertEquals(search.trimmedDepth, 4);
+      search.startAt(3);
+      assertEquals(search.depth, 3);
+      assertEquals(search.trimmedDepth, 2);
+    });
+  });
+
   it("fully explores a combination lock", () => {
     const underlyingPickers = arb.oneOf([
       arb.of(

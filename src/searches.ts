@@ -414,6 +414,7 @@ export class PlayoutSearch implements PlayoutPicker {
   readonly tree: PickTree = new PickTree();
   private readonly walk = this.tree.walk();
   private readonly reqs: PickRequest[] = [];
+  #trimmedDepth = 0;
 
   private pickSource: IntPicker = alwaysPickMin;
 
@@ -432,6 +433,7 @@ export class PlayoutSearch implements PlayoutPicker {
     this.acceptPlayout = opts.acceptPlayout ?? this.acceptPlayout;
     this.walk.trim(0);
     this.reqs.length = 0;
+    this.#trimmedDepth = 0;
     return true;
   }
 
@@ -445,9 +447,20 @@ export class PlayoutSearch implements PlayoutPicker {
     return this.state === "searchDone";
   }
 
+  private recalculateTrimmedDepth() {
+    const picks = this.walk.getPicks();
+    while (
+      picks.length > 0 && picks.at(-1) === this.reqs[picks.length - 1].min
+    ) {
+      picks.pop();
+    }
+    this.#trimmedDepth = picks.length;
+  }
+
   private removePlayout() {
     this.walk.prune();
     this.reqs.length = this.walk.depth;
+    this.recalculateTrimmedDepth();
     this.state = this.walk.pruned ? "searchDone" : "playoutDone";
   }
 
@@ -468,6 +481,7 @@ export class PlayoutSearch implements PlayoutPicker {
     }
     this.walk.trim(depth);
     this.reqs.length = depth;
+    this.recalculateTrimmedDepth();
     this.state = "picking";
     return true;
   }
@@ -484,6 +498,9 @@ export class PlayoutSearch implements PlayoutPicker {
     const firstChoice = this.pickSource.pick(replaced);
     const pick = this.walk.pushUnpruned(firstChoice, replaced);
     this.reqs.push(req);
+    if (pick > req.min) {
+      this.#trimmedDepth = this.reqs.length;
+    }
     return success(pick);
   }
 
@@ -496,6 +513,10 @@ export class PlayoutSearch implements PlayoutPicker {
 
   get depth(): number {
     return this.walk.depth;
+  }
+
+  get trimmedDepth(): number {
+    return this.#trimmedDepth;
   }
 
   getPicks(start?: number, end?: number): PickList {
