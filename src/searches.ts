@@ -310,9 +310,18 @@ export class Walk {
    * If the node exists, it has at least one unpruned branch.
    */
   pushUnpruned(firstChoice: number, req: PickRequest): number {
-    const node = this.nextNode(req);
-    const pick = node.findUnpruned(firstChoice);
-    this.nodePath.push(node);
+    const parent = this.parent;
+    const lastPick = this.lastPick;
+    let branch = parent.getBranch(lastPick);
+    assert(branch !== PRUNED, "parent picked a pruned branch");
+    if (branch === undefined) {
+      branch = parent.addChild(lastPick, req);
+    } else {
+      branch.checkRangeMatches(req);
+    }
+
+    const pick = branch.findUnpruned(firstChoice);
+    this.nodePath.push(branch);
     this.pickPath.push(pick);
     return pick;
   }
@@ -350,33 +359,11 @@ export class Walk {
     return true;
   }
 
-  trim(depth: number): boolean {
-    assert(depth >= 0, "depth must be non-negative");
-    if (depth > this.depth) {
-      return false;
-    }
+  trim(depth: number) {
+    assert(depth >= 0);
+    assert(depth <= this.depth);
     this.nodePath.length = depth + 1;
     this.pickPath.length = depth + 1;
-    return true;
-  }
-
-  /**
-   * Returns the next node that should be added to the playout.
-   *
-   * Creates it if needed. If not created, checks that pick request's range
-   * matches.
-   */
-  private nextNode(req: PickRequest): Node {
-    const parent = this.parent;
-    const lastPick = this.lastPick;
-    const node = parent.getBranch(lastPick);
-
-    assert(node !== PRUNED, "parent picked a pruned branch");
-    if (node !== undefined) {
-      node.checkRangeMatches(req);
-      return node;
-    }
-    return parent.addChild(lastPick, req);
   }
 }
 
@@ -420,9 +407,10 @@ class PickStack {
   }
 
   trim(depth: number): boolean {
-    if (!this.walk.trim(depth)) {
+    if (depth > this.depth) {
       return false;
     }
+    this.walk.trim(depth);
     this.reqs.length = this.walk.depth;
     return true;
   }
