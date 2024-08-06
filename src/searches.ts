@@ -367,70 +367,6 @@ export class Walk {
   }
 }
 
-/**
- * Holds the search tree and the current playout.
- */
-class PickStack {
-  /* Invariant: `reqs.length === walk.depth` */
-  readonly tree: PickTree = new PickTree();
-  private readonly walk = this.tree.walk();
-  private readonly reqs: PickRequest[] = [];
-
-  constructor() {}
-
-  /**
-   * Searches for an unpruned pick and adds it to the pick sequence.
-   *
-   * @param firstChoice the pick that the search should start from
-   * @param original the original request, to be returned by {@link getPicks}.
-   * @param narrowed the range of picks to be allowed in the search tree
-   *
-   * Returns the new pick, or undefined if no playouts are available.
-   */
-  pushUnpruned(
-    firstChoice: number,
-    original: PickRequest,
-    narrowed: PickRequest,
-  ): number | undefined {
-    const pick = this.walk.pushUnpruned(firstChoice, narrowed);
-    this.reqs.push(original);
-    return pick;
-  }
-
-  /**
-   * Prunes the current playout and any ancestors that have only one branch
-   * left. Returns true if more playouts are available.
-   */
-  prune(): boolean {
-    this.walk.prune();
-    return !this.walk.pruned;
-  }
-
-  trim(depth: number): boolean {
-    if (depth > this.depth) {
-      return false;
-    }
-    this.walk.trim(depth);
-    this.reqs.length = this.walk.depth;
-    return true;
-  }
-
-  get depth(): number {
-    return this.walk.depth;
-  }
-
-  getPicks(start?: number, end?: number): PickList {
-    start = start ?? 0;
-    assert(start >= 0);
-    end = end ?? this.reqs.length;
-    assert(end >= start);
-    return new PickList(
-      this.reqs.slice(start, end),
-      this.walk.getPicks(start, end),
-    );
-  }
-}
-
 type RequestFilter = (
   depth: number,
   req: PickRequest,
@@ -475,7 +411,10 @@ export type SearchOpts = {
  */
 export class PlayoutSearch implements PlayoutPicker {
   private state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
-  private readonly stack = new PickStack();
+
+  readonly tree: PickTree = new PickTree();
+  private readonly walk = this.tree.walk();
+  private readonly reqs: PickRequest[] = [];
 
   private pickSource: IntPicker = alwaysPickMin;
 
@@ -493,19 +432,13 @@ export class PlayoutSearch implements PlayoutPicker {
       "setOptions called in the wrong state",
     );
     this.pickSource = opts.pickSource ?? this.pickSource;
-    this.stack.trim(0);
+    this.walk.trim(0);
+    this.reqs.length = 0;
     this.replaceRequest = opts.replaceRequest ?? this.replaceRequest;
     this.acceptPlayout = opts.acceptPlayout ?? this.acceptPlayout;
     this.acceptEmptyPlayout = opts.acceptEmptyPlayout ??
       this.acceptEmptyPlayout;
     return true;
-  }
-
-  /**
-   * The tree that keeps track of pruned nodes for this search.
-   */
-  get tree(): PickTree {
-    return this.stack.tree;
   }
 
   /** Returns true if a playout is in progress. */
@@ -519,11 +452,9 @@ export class PlayoutSearch implements PlayoutPicker {
   }
 
   private removePlayout() {
-    if (this.stack.prune()) {
-      this.state = "playoutDone";
-    } else {
-      this.state = "searchDone";
-    }
+    this.walk.prune();
+    this.reqs.length = this.walk.depth;
+    this.state = this.walk.pruned ? "searchDone" : "playoutDone";
   }
 
   startAt(depth: number): boolean {
@@ -538,10 +469,11 @@ export class PlayoutSearch implements PlayoutPicker {
     }
     if (this.state !== "playoutDone") {
       return false;
-    }
-    if (!this.stack.trim(depth)) {
+    } else if (depth > this.depth) {
       return false;
     }
+    this.walk.trim(depth);
+    this.reqs.length = depth;
     this.state = "picking";
     return true;
   }
@@ -556,18 +488,18 @@ export class PlayoutSearch implements PlayoutPicker {
     }
 
     const firstChoice = this.pickSource.pick(replaced);
-    const pick = this.stack.pushUnpruned(firstChoice, req, replaced);
-    assert(pick !== undefined, "internal error: no unpruned picks");
+    const pick = this.walk.pushUnpruned(firstChoice, replaced);
+    this.reqs.push(req);
     return success(pick);
   }
 
   finishPlayout(): boolean {
     assert(this.state === "picking", "finishPlayout called in the wrong state");
     let accepted = false;
-    if (this.stack.depth === 0) {
+    if (this.walk.depth === 0) {
       accepted = this.acceptEmptyPlayout;
     } else {
-      const lastDepth = this.stack.depth - 1;
+      const lastDepth = this.walk.depth - 1;
       accepted = this.acceptPlayout(lastDepth);
     }
 
@@ -576,12 +508,19 @@ export class PlayoutSearch implements PlayoutPicker {
   }
 
   get depth(): number {
-    return this.stack.depth;
+    return this.walk.depth;
   }
 
   getPicks(start?: number, end?: number): PickList {
     assert(this.state === "picking", "getPicks called in the wrong state");
-    return this.stack.getPicks(start, end);
+    start = start ?? 0;
+    assert(start >= 0);
+    end = end ?? this.walk.depth;
+    assert(end >= start);
+    return new PickList(
+      this.reqs.slice(start, end),
+      this.walk.getPicks(start, end),
+    );
   }
 }
 
