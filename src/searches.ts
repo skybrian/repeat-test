@@ -487,7 +487,7 @@ export class PlayoutSearch implements PlayoutPicker {
     return success(pick);
   }
 
-  finishPlayout(): boolean {
+  endPlayout(): boolean {
     assert(this.state === "picking", "finishPlayout called in the wrong state");
     const accepted = this.acceptPlayout(this.walk.depth);
     this.removePlayout();
@@ -561,7 +561,7 @@ export function configureBreadthFirstPass(
  * (The iterable can only be iterated over once.)
  *
  * Note: to avoid duplicate playouts, the return value of
- * {@link PlayoutPicker.finishPlayout} must be used to filter them.
+ * {@link PlayoutPicker.endPlayout} must be used to filter them.
  */
 export function* breadthFirstSearch(): Iterable<PlayoutPicker> {
   let maxDepth = 0;

@@ -130,7 +130,7 @@ export function* randomReps<T>(
     } catch (e) {
       yield { ok: false, key, arg: undefined, caught: e };
       if (search.picking) {
-        search.finishPlayout();
+        search.endPlayout();
       }
     }
     index++;

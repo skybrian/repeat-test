@@ -32,7 +32,7 @@ describe("onePlayoutPicker", () => {
     it("throws if called without starting a playout", () => {
       const picker = onePlayout(randomPicker(123));
       assertThrows(() => {
-        picker.finishPlayout();
+        picker.endPlayout();
       }, Error);
     });
   });

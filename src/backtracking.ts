@@ -58,7 +58,7 @@ export interface PlayoutPicker {
    *
    * It's an error to call {@link maybePick} after finishing the playout.
    */
-  finishPlayout(): boolean;
+  endPlayout(): boolean;
 
   /**
    * The number of picks so far. (Corresponds to the current depth in a search
@@ -69,7 +69,7 @@ export interface PlayoutPicker {
   /**
    * Returns a slice of the picks made so far.
    *
-   * Available only between {@link startAt} and {@link finishPlayout}.
+   * Available only between {@link startAt} and {@link endPlayout}.
    */
   getPicks(start?: number, end?: number): PickList;
 }
@@ -101,7 +101,7 @@ export function onePlayout(picker: IntPicker): PlayoutPicker {
       return success(pick);
     },
 
-    finishPlayout(): boolean {
+    endPlayout(): boolean {
       if (state !== "picking") {
         throw new Error(
           `finishPlayout called in the wrong state. Wanted "picking"; got "${state}"`,

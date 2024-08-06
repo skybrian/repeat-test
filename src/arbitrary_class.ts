@@ -207,7 +207,7 @@ export default class Arbitrary<T> implements PickSet<T> {
         const pick = makePickFunction(picker, opts);
         const val = this.#callback(pick);
         const picks = picker.getPicks();
-        if (picker.finishPlayout()) {
+        if (picker.endPlayout()) {
           return new Generated(picks, val);
         }
       } catch (e) {
