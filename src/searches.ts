@@ -232,20 +232,6 @@ export class Walk {
   }
 
   /**
-   * If the Walk points to a Node, returns its branchesLeft. Otherwise, returns undefined.
-   */
-  get branchesLeft(): number | undefined {
-    const branch = this.parent.getBranch(this.lastPick);
-    if (branch === undefined) {
-      return undefined;
-    } else if (branch === PRUNED) {
-      return 0;
-    } else {
-      return branch.branchesLeft;
-    }
-  }
-
-  /**
    * Attempts to extend the path to an existing node. Returns the number of branches left,
    * 0 if it's pruned, or undefined if it's not created yet.
    */
@@ -264,7 +250,15 @@ export class Walk {
       this.nodePath.push(parent);
       this.pickPath.push(parentPick);
     }
-    return this.branchesLeft;
+
+    const branch = parent.getBranch(parentPick);
+    if (branch === undefined) {
+      return undefined;
+    } else if (branch === PRUNED) {
+      return 0;
+    } else {
+      return branch.branchesLeft;
+    }
   }
 
   /**
