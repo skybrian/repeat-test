@@ -31,7 +31,7 @@ export class Jar<T> {
    * Returns true if there are any values left in the jar.
    */
   isEmpty(): boolean {
-    return this.remaining.done();
+    return this.remaining.done;
   }
 
   /**

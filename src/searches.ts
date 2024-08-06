@@ -187,7 +187,7 @@ export class PickTree {
   /**
    * Returns true if every playout was pruned.
    */
-  done(): boolean {
+  get done(): boolean {
     return this.startNode.branchesLeft === 0;
   }
 }
