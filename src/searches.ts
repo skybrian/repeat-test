@@ -390,7 +390,6 @@ export type SearchOpts = {
    */
   replaceRequest?: RequestFilter;
   acceptPlayout?: PlayoutFilter;
-  acceptEmptyPlayout?: boolean;
 };
 
 /**
@@ -420,7 +419,6 @@ export class PlayoutSearch implements PlayoutPicker {
 
   private replaceRequest: RequestFilter = (_parent, req) => req;
   private acceptPlayout: PlayoutFilter = () => true;
-  private acceptEmptyPlayout = true;
 
   constructor(opts?: SearchOpts) {
     this.setOptions(opts ?? {});
@@ -436,8 +434,6 @@ export class PlayoutSearch implements PlayoutPicker {
     this.reqs.length = 0;
     this.replaceRequest = opts.replaceRequest ?? this.replaceRequest;
     this.acceptPlayout = opts.acceptPlayout ?? this.acceptPlayout;
-    this.acceptEmptyPlayout = opts.acceptEmptyPlayout ??
-      this.acceptEmptyPlayout;
     return true;
   }
 
@@ -495,13 +491,7 @@ export class PlayoutSearch implements PlayoutPicker {
 
   finishPlayout(): boolean {
     assert(this.state === "picking", "finishPlayout called in the wrong state");
-    let accepted = false;
-    if (this.walk.depth === 0) {
-      accepted = this.acceptEmptyPlayout;
-    } else {
-      accepted = this.acceptPlayout(this.walk.depth);
-    }
-
+    const accepted = this.acceptPlayout(this.walk.depth);
     this.removePlayout();
     return accepted;
   }
@@ -554,14 +544,16 @@ export function configureBreadthFirstPass(
     return req;
   };
 
-  const acceptPlayout = (lastDepth: number) => {
-    return lastDepth - 1 >= passIdx - 1;
+  const acceptPlayout = (depth: number) => {
+    if (depth === 0) {
+      return passIdx === 0;
+    }
+    return depth >= passIdx;
   };
 
   search.setOptions({
     replaceRequest,
     acceptPlayout,
-    acceptEmptyPlayout: passIdx === 0,
   });
 }
 
