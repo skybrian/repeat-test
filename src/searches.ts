@@ -420,9 +420,7 @@ export class PlayoutSearch implements PlayoutPicker {
   private replaceRequest: RequestFilter = (_parent, req) => req;
   private acceptPlayout: PlayoutFilter = () => true;
 
-  constructor(opts?: SearchOpts) {
-    this.setOptions(opts ?? {});
-  }
+  constructor() {}
 
   setOptions(opts: SearchOpts) {
     assert(
@@ -430,10 +428,10 @@ export class PlayoutSearch implements PlayoutPicker {
       "setOptions called in the wrong state",
     );
     this.pickSource = opts.pickSource ?? this.pickSource;
-    this.walk.trim(0);
-    this.reqs.length = 0;
     this.replaceRequest = opts.replaceRequest ?? this.replaceRequest;
     this.acceptPlayout = opts.acceptPlayout ?? this.acceptPlayout;
+    this.walk.trim(0);
+    this.reqs.length = 0;
     return true;
   }
 

@@ -152,7 +152,8 @@ describe("Arbitrary", () => {
         }
         return n;
       });
-      const search = new PlayoutSearch({ pickSource: alwaysPick(3) });
+      const search = new PlayoutSearch();
+      search.setOptions({ pickSource: alwaysPick(3) });
       const gen = arb.generate(search);
       assertEquals(gen?.val, 4);
     });
