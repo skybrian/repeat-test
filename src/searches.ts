@@ -499,8 +499,7 @@ export class PlayoutSearch implements PlayoutPicker {
     if (this.walk.depth === 0) {
       accepted = this.acceptEmptyPlayout;
     } else {
-      const lastDepth = this.walk.depth - 1;
-      accepted = this.acceptPlayout(lastDepth);
+      accepted = this.acceptPlayout(this.walk.depth);
     }
 
     this.removePlayout();
@@ -556,7 +555,7 @@ export function configureBreadthFirstPass(
   };
 
   const acceptPlayout = (lastDepth: number) => {
-    return lastDepth >= passIdx - 1;
+    return lastDepth - 1 >= passIdx - 1;
   };
 
   search.setOptions({

@@ -526,17 +526,17 @@ describe("depthFirstSearch", () => {
       pruneCount: 1,
     });
   });
-  it("filters by last request depth === 0", () => {
+  it("filters by playout depth === 1", () => {
     const maze = Maze.depthFirstSearch(tree, {
-      acceptPlayout: (lastDepth) => lastDepth === 0,
+      acceptPlayout: (lastDepth) => lastDepth === 1,
     });
     assertEquals(Array.from(maze.accepted.keys()), ["[1]", "[2]"]);
     assertEquals(Array.from(maze.rejected.keys()), ["[0,0]", "[0,1]"]);
     assertEquals(maze.pruneCount, 0);
   });
-  it("filters by last request depth === 1", () => {
+  it("filters by playout depth === 2", () => {
     const maze = Maze.depthFirstSearch(tree, {
-      acceptPlayout: (lastDepth) => lastDepth === 1,
+      acceptPlayout: (lastDepth) => lastDepth === 2,
     });
     assertEquals(Array.from(maze.accepted.keys()), ["[0,0]", "[0,1]"]);
     assertEquals(Array.from(maze.rejected.keys()), ["[1]", "[2]"]);
