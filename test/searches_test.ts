@@ -147,6 +147,22 @@ describe("PickTree", () => {
   });
 });
 
+describe("Walk", () => {
+  let tree = new PickTree();
+  let walk = tree.walk();
+
+  beforeEach(() => {
+    tree = new PickTree();
+    walk = tree.walk();
+  });
+
+  describe("getPicks", () => {
+    it("returns the empty list for a new Walk", () => {
+      assertEquals(walk.getPicks().length, 0);
+    });
+  });
+});
+
 const bit = new PickRequest(0, 1);
 
 describe("Search", () => {

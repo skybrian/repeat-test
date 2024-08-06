@@ -81,23 +81,22 @@ class Node {
   }
 
   /**
-   * Returns the next unpruned pick, or undefined if they are all pruned. (Wraps
-   * around if firstChoice isn't the minimum value.)
+   * Returns the next unpruned pick. (Wraps around if firstChoice isn't the
+   * minimum value.)
    */
   findUnpruned(
     firstChoice: number,
-  ): number | undefined {
+  ): number {
+    assert(this.branchesLeft > 0, "no branches left");
     let pick = firstChoice;
     if (pick < this.#min) pick = this.#min;
-    const size = this.#max - this.#min + 1;
-    for (let i = 0; i < size; i++) {
+    while (true) {
       if (this[pick] !== PRUNED) {
         return pick;
       }
       pick++;
       if (pick > this.#max) pick = this.#min;
     }
-    return undefined;
   }
 
   /**
@@ -213,15 +212,30 @@ export class Walk {
     return this.nodePath.length - 1;
   }
 
-  get branchPick(): number {
+  /** Returns the picks leading to the current branch. */
+  getPicks(start?: number, end?: number): number[] {
+    start = start ?? 0;
+    assert(start >= 0);
+    end = end ?? this.depth;
+    assert(end >= start);
+    return this.pickPath.slice(start + 1, end + 1);
+  }
+
+  /** Returns the pick that led to the current branch */
+  get lastPick(): number {
     return this.pickPath[this.pickPath.length - 1];
+  }
+
+  /** Returns true if the Walk points to a pruned branch. */
+  get pruned(): boolean {
+    return this.parent.getBranch(this.lastPick) === PRUNED;
   }
 
   /**
    * If the Walk points to a Node, returns its branchesLeft. Otherwise, returns undefined.
    */
   get branchesLeft(): number | undefined {
-    const branch = this.parent.getBranch(this.branchPick);
+    const branch = this.parent.getBranch(this.lastPick);
     if (branch === undefined) {
       return undefined;
     } else if (branch === PRUNED) {
@@ -237,7 +251,7 @@ export class Walk {
    */
   follow(picks: number[]): number | undefined {
     let parent = this.parent;
-    let parentPick = this.branchPick;
+    let parentPick = this.lastPick;
     for (let i = 0; i < picks.length; i++) {
       const branch = parent.getBranch(parentPick);
       if (branch === PRUNED) {
@@ -275,12 +289,12 @@ export class Walk {
    * Throws an Error if a request's range doesn't match a previous playout.
    */
   push(req: PickRequest, pick: number): boolean {
-    let last = this.parent.getBranch(this.branchPick);
+    let last = this.parent.getBranch(this.lastPick);
     if (last === PRUNED) {
       return false;
     } else if (last === undefined) {
       // unexplored; add node
-      last = this.parent.addChild(this.branchPick, req);
+      last = this.parent.addChild(this.lastPick, req);
       this.nodePath.push(last);
       this.pickPath.push(pick);
       return true;
@@ -293,9 +307,31 @@ export class Walk {
     }
   }
 
+  /**
+   * Creates a node if needed and follows the first branch that's not pruned.
+   *
+   * Starts with firstChoice and wraps around if necessary.
+   *
+   * Preconditions: the Walk doesn't point at a pruned branch.
+   * If the node exists, it has at least one unpruned branch.
+   */
+  pushUnpruned(firstChoice: number, req: PickRequest): number {
+    const node = this.nextNode(req);
+    const pick = node.findUnpruned(firstChoice);
+    this.nodePath.push(node);
+    this.pickPath.push(pick);
+    return pick;
+  }
+
+  /**
+   * Prunes this playout and any ancestors that are now empty.
+   *
+   * Unless the entire tree is pruned, also removes the last non-empty node, so
+   * that the Walk doesn't point at a pruned branch.
+   */
   prune(): boolean {
     let parent = this.parent;
-    if (!parent.prune(this.branchPick)) {
+    if (!parent.prune(this.lastPick)) {
       return false; // already pruned
     }
 
@@ -308,9 +344,45 @@ export class Walk {
       this.nodePath.length -= 1;
       this.pickPath.length -= 1;
       parent = this.parent;
-      parent.prune(this.branchPick);
+      parent.prune(this.lastPick);
+    }
+
+    if (this.depth > 0) {
+      // Still pointing at a pruned node.
+      // Pop this node so that we pick again.
+      this.nodePath.length -= 1;
+      this.pickPath.length -= 1;
     }
     return true;
+  }
+
+  trim(depth: number): boolean {
+    assert(depth >= 0, "depth must be non-negative");
+    if (depth > this.depth) {
+      return false;
+    }
+    this.nodePath.length = depth + 1;
+    this.pickPath.length = depth + 1;
+    return true;
+  }
+
+  /**
+   * Returns the next node that should be added to the playout.
+   *
+   * Creates it if needed. If not created, checks that pick request's range
+   * matches.
+   */
+  private nextNode(req: PickRequest): Node {
+    const parent = this.parent;
+    const lastPick = this.lastPick;
+    const node = parent.getBranch(lastPick);
+
+    assert(node !== PRUNED, "parent picked a pruned branch");
+    if (node !== undefined) {
+      node.checkRangeMatches(req);
+      return node;
+    }
+    return parent.addChild(lastPick, req);
   }
 }
 
@@ -318,23 +390,10 @@ export class Walk {
  * Holds the search tree and the current playout.
  */
 class PickStack {
-  /* Invariant: `nodes.length === reqs.length === picks.length` */
-
-  /**
-   * The nodes used in the current playout. The 'start' node is at index 0, and
-   * it points to the root at index 1.
-   */
-  private readonly nodes: Node[] = [Node.makeStart()];
-
-  readonly tree: PickTree = new PickTree(this.nodes[0]);
-
-  private readonly reqs: PickRequest[] = [new PickRequest(0, 0)];
-
-  /**
-   * The picks made in the current playout. The pick at index 0 is always 0,
-   * pointing to the root node.
-   */
-  private readonly picks: number[] = [0];
+  /* Invariant: `reqs.length === walk.depth` */
+  readonly tree: PickTree = new PickTree();
+  private readonly walk = this.tree.walk();
+  private readonly reqs: PickRequest[] = [];
 
   constructor() {}
 
@@ -352,89 +411,41 @@ class PickStack {
     original: PickRequest,
     narrowed: PickRequest,
   ): number | undefined {
-    const node = this.nextNode(narrowed);
-    const pick = node.findUnpruned(firstChoice);
-    if (pick === undefined) {
-      return undefined;
-    }
-
-    this.nodes.push(node);
+    const pick = this.walk.pushUnpruned(firstChoice, narrowed);
     this.reqs.push(original);
-    this.picks.push(pick);
     return pick;
   }
 
   /**
-   * Prunes the current playout and any ancestors that have only one branch left.
-   * Returns true if more playouts are available.
+   * Prunes the current playout and any ancestors that have only one branch
+   * left. Returns true if more playouts are available.
    */
   prune(): boolean {
-    const nodes = this.nodes;
-    const picks = this.picks;
-    // Prune at the last node with more than one branch.
-    for (let i = nodes.length - 1; i > 0; i--) {
-      const n = nodes[i];
-      if (n.branchesLeft > 1) {
-        n.prune(picks[i]);
-        // Remove this node from the stack so we take a different branch.
-        this.trim(i - 1);
-        return true;
-      }
-    }
-    // No branches. Prune the last playout of the search.
-    nodes[0].prune(picks[0]);
-    return false;
+    this.walk.prune();
+    return !this.walk.pruned;
   }
 
   trim(depth: number): boolean {
-    assert(depth >= 0, "depth must be >= 0");
-    if (depth > this.depth) {
+    if (!this.walk.trim(depth)) {
       return false;
-    } else if (depth === this.depth) {
-      return true;
     }
-    this.nodes.length = depth + 1;
-    this.reqs.length = depth + 1;
-    this.picks.length = depth + 1;
+    this.reqs.length = this.walk.depth;
     return true;
   }
 
   get depth(): number {
-    return this.nodes.length - 1;
+    return this.walk.depth;
   }
 
   getPicks(start?: number, end?: number): PickList {
-    start = start ? start + 1 : 1;
-    assert(start >= 1);
-    end = end ? end + 1 : this.picks.length;
+    start = start ?? 0;
+    assert(start >= 0);
+    end = end ?? this.reqs.length;
     assert(end >= start);
     return new PickList(
       this.reqs.slice(start, end),
-      this.picks.slice(start, end),
+      this.walk.getPicks(start, end),
     );
-  }
-
-  /**
-   * Returns the next node that should be added to the playout.
-   *
-   * Creates it if needed. If not created, checks that pick request's range
-   * matches.
-   */
-  private nextNode(req: PickRequest): Node {
-    const nodes = this.nodes;
-    const parent = nodes[nodes.length - 1];
-
-    const picks = this.picks;
-    const parentPick = picks[picks.length - 1];
-    const node = parent.getBranch(parentPick);
-
-    assert(node !== PRUNED, "parent picked a pruned branch");
-    if (node !== undefined) {
-      node.checkRangeMatches(req);
-      return node;
-    }
-
-    return parent.addChild(parentPick, req);
   }
 }
 
