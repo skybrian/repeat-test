@@ -140,6 +140,15 @@ describe("Arbitrary", () => {
       assertGenerated(one, [{ val: 1, picks: [] }]);
     });
 
+    it("generates a valid PickRequest for an array of examples", () => {
+      const examples = Arbitrary.of(1, 2, 3);
+      const gens = Array.from(examples.generateAll());
+      const reqs = gens[0].picks().reqs();
+      assertEquals(reqs.length, 1);
+      assertEquals(reqs[0].min, 0);
+      assertEquals(reqs[0].max, 2);
+    });
+
     it("generates a single value for a filtered constant", () => {
       const one = Arbitrary.from(() => 1).filter((val) => val === 1);
       assertGenerated(one, [{ val: 1, picks: [] }]);

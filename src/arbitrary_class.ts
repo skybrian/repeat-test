@@ -86,7 +86,7 @@ export default class Arbitrary<T> implements PickSet<T> {
     function* listGenerator(
       items: T[],
     ): IterableIterator<Generated<T>> {
-      const req = new PickRequest(0, listGenerator.length - 1);
+      const req = new PickRequest(0, items.length - 1);
       for (let i = 0; i < items.length; i++) {
         const val = items[i];
         const picks = new PickList([req], [i]);
