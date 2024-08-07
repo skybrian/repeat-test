@@ -20,7 +20,6 @@ import {
   generateAll,
   pickers,
   Search,
-  SearchOpts,
   takeAll,
 } from "../src/breadth_first_search.ts";
 import { Success, success } from "../src/results.ts";
@@ -347,14 +346,6 @@ class Maze {
     result.sort((a, b) => a - b);
     return result;
   }
-
-  static depthFirstSearch(tree: Tree<number>, opts: SearchOpts) {
-    const maze = new Maze(tree);
-    const search = new Search();
-    search.setOptions(opts);
-    maze.visit(search);
-    return maze;
-  }
 }
 
 describe("Search", () => {
@@ -398,10 +389,18 @@ describe("Search", () => {
     new Tree(43, [new Tree(45)]),
     new Tree(44),
   ]);
+
+  function runMaze(search: Search) {
+    const maze = new Maze(tree);
+    maze.visit(search);
+    return maze;
+  }
+
   it("filters by request depth", () => {
-    const maze = Maze.depthFirstSearch(tree, {
+    search.setOptions({
       replaceRequest: (depth, req) => depth < 1 ? req : undefined,
     });
+    const maze = runMaze(search);
     const actual = {
       accepted: Array.from(maze.accepted.keys()),
       rejected: Array.from(maze.rejected.keys()),
@@ -414,17 +413,19 @@ describe("Search", () => {
     });
   });
   it("filters by playout depth === 1", () => {
-    const maze = Maze.depthFirstSearch(tree, {
+    search.setOptions({
       acceptPlayout: (lastDepth) => lastDepth === 1,
     });
+    const maze = runMaze(search);
     assertEquals(Array.from(maze.accepted.keys()), ["[1]", "[2]"]);
     assertEquals(Array.from(maze.rejected.keys()), ["[0,0]", "[0,1]"]);
     assertEquals(maze.pruneCount, 0);
   });
   it("filters by playout depth === 2", () => {
-    const maze = Maze.depthFirstSearch(tree, {
+    search.setOptions({
       acceptPlayout: (lastDepth) => lastDepth === 2,
     });
+    const maze = runMaze(search);
     assertEquals(Array.from(maze.accepted.keys()), ["[0,0]", "[0,1]"]);
     assertEquals(Array.from(maze.rejected.keys()), ["[1]", "[2]"]);
     assertEquals(maze.pruneCount, 0);

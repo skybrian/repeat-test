@@ -13,7 +13,7 @@ type RequestFilter = (
 
 type PlayoutFilter = (depth: number) => boolean;
 
-export type SearchOpts = {
+type SearchOpts = {
   /**
    * Replaces each incoming pick request with a new one. The new request might
    * have a narrower range. If the callback returns undefined, the playout will
