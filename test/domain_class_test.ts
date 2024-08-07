@@ -168,7 +168,7 @@ describe("Domain", () => {
       });
       assertEquals(
         weird.generate([2]),
-        { ok: false, message: "picks not accepted by unlabeled filter" },
+        { ok: false, message: "picks not accepted by 1..6 (filtered)" },
       );
     });
     it("throws due to being filtered out, and without reading all picks", () => {
