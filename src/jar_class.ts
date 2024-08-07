@@ -1,6 +1,7 @@
 import { PickList } from "./picks.ts";
+import { PickFunction } from "./pick_function.ts";
 import { PickTree } from "./searches.ts";
-import Arbitrary, { PickFunction } from "./arbitrary_class.ts";
+import Arbitrary from "./arbitrary_class.ts";
 import Domain from "./domain_class.ts";
 import { assert } from "@std/assert";
 

@@ -1,12 +1,10 @@
-import { PlaybackPicker } from "./picks.ts";
-import Arbitrary, {
-  Generated,
-  PickFunction,
-  PickSet,
-} from "./arbitrary_class.ts";
-import { onePlayout } from "./backtracking.ts";
-import { Failure, failure, Success, success } from "./results.ts";
 import { assertEquals } from "@std/assert";
+
+import { Failure, failure, Success, success } from "./results.ts";
+import { PlaybackPicker } from "./picks.ts";
+import { onePlayout } from "./backtracking.ts";
+import { PickFunction, PickSet } from "./pick_function.ts";
+import Arbitrary, { Generated } from "./arbitrary_class.ts";
 
 export type SendErr = (msg: string, opts?: { at: string | number }) => void;
 

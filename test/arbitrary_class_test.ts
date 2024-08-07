@@ -3,16 +3,16 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { assertFirstGenerated, assertGenerated } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import { alwaysPick, PickRequest } from "../src/picks.ts";
+import { PickRequest } from "../src/picks.ts";
 import {
   minPlayout,
   onePlayout,
   playback,
   Pruned,
 } from "../src/backtracking.ts";
-import Arbitrary, { PickCallback, PickSet } from "../src/arbitrary_class.ts";
-import { PlayoutSearch } from "../src/searches.ts";
+import Arbitrary from "../src/arbitrary_class.ts";
 import { randomPicker } from "../src/random.ts";
+import { PickCallback, PickSet } from "../src/pick_function.ts";
 
 const bit = new PickRequest(0, 1);
 
@@ -140,54 +140,6 @@ describe("Arbitrary", () => {
     });
   });
 
-  describe("the pick function (while generating)", () => {
-    it("accepts a PickRequest", () => {
-      const req = new PickRequest(1, 2);
-      const arb = Arbitrary.from((pick) => pick(req));
-      const gen = arb.generate(minPlayout());
-      assertEquals(gen?.val, 1);
-    });
-    it("accepts an Arbitrary", () => {
-      const req = Arbitrary.of("hi", "there");
-      const arb = Arbitrary.from((pick) => pick(req));
-      const gen = arb.generate(minPlayout());
-      assertEquals(gen?.val, "hi");
-    });
-    it("filters an Arbitrary", () => {
-      const req = Arbitrary.of("hi", "there");
-      const arb = Arbitrary.from((pick) =>
-        pick(req, { accept: (s) => s !== "hi" })
-      );
-      assertEquals(arb.generate(minPlayout()), undefined);
-      assertGenerated(arb, [{ val: "there", picks: [1] }]);
-    });
-    it("can filter out every value", () => {
-      const req = Arbitrary.of("hi", "there");
-      const arb = Arbitrary.from((pick) => {
-        if (pick(Arbitrary.of(false, true))) {
-          return "ok";
-        }
-        pick(req, { accept: () => false });
-      });
-      assertEquals(arb.generate(minPlayout()), undefined);
-      assertGenerated(arb, [{ val: "ok", picks: [1] }]);
-    });
-    it("retries a pick with a different playout", () => {
-      const roll = new PickRequest(1, 6);
-      const arb = Arbitrary.from((pick) => {
-        const n = pick(roll);
-        if (n === 3) {
-          throw new Pruned("try again");
-        }
-        return n;
-      });
-      const search = new PlayoutSearch();
-      search.setOptions({ pickSource: alwaysPick(3) });
-      const gen = arb.generate(search);
-      assertEquals(gen?.val, 4);
-    });
-  });
-
   describe("generate", () => {
     it("generates a single value for a constant", () => {
       const one = Arbitrary.from(() => 1);
@@ -222,7 +174,8 @@ describe("Arbitrary", () => {
       assertEquals(gen.val, 1000);
     });
     it("limits generation to the provided number of picks", () => {
-      repeatTest(Arbitrary.from(new PickRequest(0, 10000)), (limit) => {
+      const arb = Arbitrary.from(new PickRequest(0, 10000));
+      repeatTest(arb, (limit) => {
         const gen = deep.generate(onePlayout(randomPicker(123)), { limit });
         assert(gen !== undefined);
         assertEquals(gen.val, limit);
