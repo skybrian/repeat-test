@@ -255,6 +255,17 @@ export function find<T>(
   return undefined;
 }
 
+export function takeGenerated<T>(set: PickSet<T>, n: number): Generated<T>[] {
+  const result = [];
+  for (const gen of generateAll(set)) {
+    result.push(gen);
+    if (result.length >= n) {
+      break;
+    }
+  }
+  return result;
+}
+
 /**
  * Returns up to n examples from this Arbitrary, in the same order as
  * {@link generateAll}.
@@ -262,14 +273,7 @@ export function find<T>(
  * There may be duplicates.
  */
 export function take<T>(set: PickSet<T>, n: number): T[] {
-  const result = [];
-  for (const gen of generateAll(set)) {
-    result.push(gen.val);
-    if (result.length >= n) {
-      break;
-    }
-  }
-  return result;
+  return takeGenerated(set, n).map((gen) => gen.val);
 }
 
 /**

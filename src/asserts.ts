@@ -23,22 +23,10 @@ export function assertSameExamples<T>(
   assertEquals(actualVals, expectedVals);
 }
 
-function take<T>(it: Iterator<T>, n: number): T[] {
-  const result: T[] = [];
-
-  let count = 0;
-  for (let next = it.next(); !next.done && count < n; next = it.next()) {
-    result.push(next.value);
-    count++;
-  }
-
-  return result;
-}
-
 type Gen<T> = { val: T; picks: number[] };
 
 function takeGen<T>(set: PickSet<T>, n: number): Gen<T>[] {
-  return take(bfs.generateAll(set), n).map((gen) => ({
+  return bfs.takeGenerated(set, n).map((gen) => ({
     val: gen.val,
     picks: gen.replies(),
   }));
