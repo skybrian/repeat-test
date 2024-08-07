@@ -3,7 +3,7 @@ import { AnyRecord } from "./types.ts";
 import { PickRequest } from "./picks.ts";
 import { PickCallback, PickFunction, PickSet } from "./pick_function.ts";
 import { generate, Generated } from "./generated_class.ts";
-import { PlayoutSearch, takeAllBreadthFirst } from "./searches.ts";
+import { PlayoutSearch } from "./searches.ts";
 
 /**
  * Specifies a record to be generated.
@@ -84,22 +84,6 @@ export default class Arbitrary<T> implements PickSet<T> {
       );
     }
     return gen;
-  }
-
-  /**
-   * Creates a new Arbitrary that generates the same examples as this one, but
-   * they're picked from an internal list instead of generated each time.
-   *
-   * The examples won't be cloned, so this method should only be used for
-   * immutable values.
-   *
-   * When picking randomly, a uniform distribution will be used, regardless of
-   * what the distribution was originally.
-   *
-   * @param opts.limit The maximum number of examples allowed.
-   */
-  precompute(opts?: { limit?: number; label?: string }): Arbitrary<T> {
-    return Arbitrary.from(takeAllBreadthFirst(this, opts), opts);
   }
 
   /**

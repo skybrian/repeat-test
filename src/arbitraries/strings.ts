@@ -45,7 +45,7 @@ export function asciiChar(regexp?: RegExp): Arbitrary<string> {
     return asciiTableArb;
   }
   const label = regexp.toString();
-  return asciiTableArb.filter((c) => regexp.test(c)).precompute({ label });
+  return Arbitrary.from(asciiTable.filter((c) => regexp.test(c)), { label });
 }
 
 /** The characters a-z and A-Z, in that order. */
