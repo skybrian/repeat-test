@@ -29,6 +29,7 @@ export function uniqueArray<T>(
 export type TableOpts<T extends AnyRecord> = {
   label?: string;
   uniqueKeys?: (keyof T & string)[];
+  maxRows?: number;
 };
 
 export function table<R extends AnyRecord>(
@@ -55,7 +56,13 @@ export function table<R extends AnyRecord>(
       return false;
     };
 
+    const maxRows = opts?.maxRows;
+    const rows: R[] = [];
+
     const addRow: Arbitrary<R | undefined> = arb.from((pick) => {
+      if (maxRows !== undefined && rows.length >= maxRows) {
+        return undefined;
+      }
       if (emptyJar() || !pick(arb.boolean())) {
         return undefined;
       }
@@ -71,7 +78,6 @@ export function table<R extends AnyRecord>(
       return row as R;
     });
 
-    const rows: R[] = [];
     for (let row = pick(addRow); row !== undefined; row = pick(addRow)) {
       rows.push(row);
     }

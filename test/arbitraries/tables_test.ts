@@ -60,21 +60,17 @@ describe("uniqueArray", () => {
 
 describe("table", () => {
   describe("with one column and no unique key", () => {
-    const table = arb.table({ v: dom.boolean() });
+    const table = arb.table({ v: dom.boolean() }, { maxRows: 2 });
     it("defaults to zero rows", () => {
       assertFirstGenerated(table, [{ val: [], picks: [0] }]);
     });
     it("generates every combination of a boolean", () => {
       const combos: boolean[][] = [];
-      for (const rows of bfs.generateAll(table)) {
-        const val = rows.val;
+      for (const val of bfs.takeAll(table)) {
         if (val.length < 2) {
           continue;
         }
-        if (val.length > 2) {
-          break;
-        }
-        const bools = rows.val.map((row) => row.v);
+        const bools = val.map((row) => row.v);
         combos.push(bools);
       }
       assertEquals(combos, [
