@@ -10,50 +10,79 @@ import {
   playback,
   Pruned,
 } from "../src/backtracking.ts";
-import Arbitrary, { ArbitraryCallback } from "../src/arbitrary_class.ts";
+import Arbitrary, { PickCallback, PickSet } from "../src/arbitrary_class.ts";
 import { PlayoutSearch } from "../src/searches.ts";
 import { randomPicker } from "../src/random.ts";
 
+const bit = new PickRequest(0, 1);
+
 describe("Arbitrary", () => {
   describe("from", () => {
-    it("accepts a PickRequest", () => {
-      const pick = new PickRequest(1, 2);
-      const arbitrary = Arbitrary.from(pick);
-      assertEquals(arbitrary.takeAll(), [1, 2]);
+    describe("given a PickRequest", () => {
+      it("generates both values", () => {
+        const arb = Arbitrary.from(bit);
+        assertEquals("0..1", arb.label);
+        assertEquals(arb.takeAll(), [0, 1]);
+      });
+      it("accepts a custom label", () => {
+        const arb = Arbitrary.from(bit, { label: "bit" });
+        assertEquals(arb.label, "bit");
+      });
     });
-    it("throws if given a callback that throws", () => {
-      const callback = () => {
-        throw new Error("oops");
+    describe("given a PickSet", () => {
+      const answer: PickSet<string> = {
+        label: "answer",
+        generatePick: (pick) => {
+          return pick(bit) == 1 ? "yes" : "no";
+        },
       };
-      assertThrows(() => Arbitrary.from(callback), Error, "oops");
+      it("generates both values", () => {
+        const arb = Arbitrary.from(answer);
+        assertEquals(arb.label, "answer");
+        assertEquals(arb.takeAll(), ["no", "yes"]);
+      });
+      it("accepts a custom label", () => {
+        const arb = Arbitrary.from(answer, { label: "yes/no" });
+        assertEquals(arb.label, "yes/no");
+      });
     });
-    it("throws an Error if the Arbitrary didn't generate any values", () => {
-      const callback = () => {
-        throw new Pruned("oops");
-      };
-      assertThrows(
-        () => Arbitrary.from(callback),
-        Error,
-        "(unlabeled) didn't generate any values",
-      );
+    describe("given a callback", () => {
+      it("throws if given a callback that throws", () => {
+        const callback = () => {
+          throw new Error("oops");
+        };
+        assertThrows(() => Arbitrary.from(callback), Error, "oops");
+      });
+      it("throws an Error if the Arbitrary didn't generate any values", () => {
+        const callback = () => {
+          throw new Pruned("oops");
+        };
+        assertThrows(
+          () => Arbitrary.from(callback),
+          Error,
+          "(unlabeled) didn't generate any values",
+        );
+      });
+      it("throws an Error if given a callback that calls pick incorrectly", () => {
+        type Pick = (arg: unknown) => number;
+        const callback = ((pick: Pick) => pick("hello")) as PickCallback<
+          number
+        >;
+        assertThrows(
+          () => Arbitrary.from(callback),
+          Error,
+          "pick function called with an invalid argument",
+        );
+      });
     });
-    it("throws an Error if given a callback that calls pick incorrectly", () => {
-      type Pick = (arg: unknown) => number;
-      const callback = ((pick: Pick) => pick("hello")) as ArbitraryCallback<
-        number
-      >;
-      assertThrows(
-        () => Arbitrary.from(callback),
-        Error,
-        "pick function called with an invalid argument",
-      );
-    });
-    it("throws if given an empty array", () => {
-      assertThrows(
-        () => Arbitrary.from([]),
-        Error,
-        "Arbitrary.from() called with an empty array",
-      );
+    describe("given an array", () => {
+      it("throws if given an empty array", () => {
+        assertThrows(
+          () => Arbitrary.from([]),
+          Error,
+          "Arbitrary.from() called with an empty array",
+        );
+      });
     });
   });
 

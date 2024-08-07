@@ -12,7 +12,7 @@ describe("Domain", () => {
       assertThrows(
         () => new Domain(arb, () => undefined),
         Error,
-        "can't pickify default of unlabeled PickRequest: callback returned undefined",
+        "can't pickify default of 1..6: callback returned undefined",
       );
     });
     it("throws an Error if the callback returns undefined with an error", () => {
@@ -24,7 +24,7 @@ describe("Domain", () => {
       assertThrows(
         () => new Domain(arb, callback),
         Error,
-        "can't pickify default of unlabeled PickRequest: oops",
+        "can't pickify default of 1..6: oops",
       );
     });
     it("throws an Error if the callback returns picks that don't match the generated default", () => {
@@ -38,7 +38,7 @@ describe("Domain", () => {
       assertThrows(
         () => new Domain(arb, callback),
         Error,
-        "callback's picks don't match for the default value of unlabeled PickRequest",
+        "callback's picks don't match for the default value of 1..6",
       );
     });
   });
