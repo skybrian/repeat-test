@@ -1,7 +1,7 @@
 import { AnyRecord } from "./types.ts";
 import { PickList, PickRequest } from "./picks.ts";
 import { PlayoutPicker, Pruned } from "./backtracking.ts";
-import { breadthFirstSearch } from "./searches.ts";
+import { breadthFirstSearch, PlayoutSearch } from "./searches.ts";
 import { assert } from "@std/assert";
 import {
   GenerateOpts,
@@ -178,12 +178,14 @@ export default class Arbitrary<T> implements PickSet<T> {
    * (Often a minimum value.)
    */
   default(): Generated<T> {
-    for (const gen of this.generateAll()) {
-      return gen;
+    const search = new PlayoutSearch();
+    const gen = this.generate(search);
+    if (gen === undefined) {
+      throw new Error(
+        `${this.label} didn't generate any values`,
+      );
     }
-    throw new Error(
-      `${this.label} didn't generate any values`,
-    );
+    return gen;
   }
 
   /**
