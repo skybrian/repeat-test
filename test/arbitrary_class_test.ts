@@ -7,6 +7,7 @@ import { PickRequest } from "../src/picks.ts";
 import { Pruned } from "../src/backtracking.ts";
 import { PickCallback, PickSet } from "../src/pick_function.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
+import { generateBreadthFirst } from "../src/searches.ts";
 
 const bit = new PickRequest(0, 1);
 
@@ -142,7 +143,7 @@ describe("Arbitrary", () => {
 
     it("generates a valid PickRequest for an array of examples", () => {
       const examples = Arbitrary.of(1, 2, 3);
-      const gens = Array.from(examples.generateAll());
+      const gens = Array.from(generateBreadthFirst(examples));
       const reqs = gens[0].picks().reqs();
       assertEquals(reqs.length, 1);
       assertEquals(reqs[0].min, 0);
@@ -188,7 +189,7 @@ describe("Arbitrary", () => {
         return a * 100 + b * 10 + c;
       });
 
-      const vals = Array.from(digits.generateAll());
+      const vals = Array.from(generateBreadthFirst(digits));
       assertEquals(vals[0].val, 0);
       assertEquals(vals[0].replies(), [0, 0, 0]);
       assertEquals(vals[999].val, 999);

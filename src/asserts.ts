@@ -2,6 +2,7 @@ import { assert, assertEquals } from "@std/assert";
 import { PickSet } from "./pick_function.ts";
 import Arbitrary from "./arbitrary_class.ts";
 import Domain from "./domain_class.ts";
+import { generateBreadthFirst } from "./searches.ts";
 
 export function assertRoundTrip<T>(dom: Domain<T>, val: T) {
   assertEquals(dom.parse(val), val, "regenerated value didn't match");
@@ -36,8 +37,8 @@ function take<T>(it: Iterator<T>, n: number): T[] {
 
 type Gen<T> = { val: T; picks: number[] };
 
-function takeGen<T>(arb: Arbitrary<T>, n: number): Gen<T>[] {
-  return take(arb.generateAll(), n).map((gen) => ({
+function takeGen<T>(set: PickSet<T>, n: number): Gen<T>[] {
+  return take(generateBreadthFirst(set), n).map((gen) => ({
     val: gen.val,
     picks: gen.replies(),
   }));

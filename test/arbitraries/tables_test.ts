@@ -9,6 +9,7 @@ import {
   assertValues,
 } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
+import { generateBreadthFirst } from "../../src/searches.ts";
 
 describe("uniqueArray", () => {
   const bools = arb.uniqueArray(dom.boolean());
@@ -65,7 +66,7 @@ describe("table", () => {
     });
     it("generates every combination of a boolean", () => {
       const combos: boolean[][] = [];
-      for (const rows of table.generateAll()) {
+      for (const rows of generateBreadthFirst(table)) {
         const val = rows.val;
         if (val.length < 2) {
           continue;
