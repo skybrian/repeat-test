@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import { Success, success } from "./results.ts";
-import { alwaysPickMin, IntPicker, PickList, PickRequest } from "./picks.ts";
+import { alwaysPickMin, PickList, PickRequest } from "./picks.ts";
 import { PlayoutPicker, Pruned } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
 import { PickSet } from "./pick_function.ts";
@@ -14,14 +14,6 @@ type RequestFilter = (
 type PlayoutFilter = (depth: number) => boolean;
 
 export type SearchOpts = {
-  /**
-   * Used when deciding which branch to take in the search tree.
-   *
-   * Note that sometimes the picked branch has been pruned, in which case a
-   * different pick will be used.
-   */
-  pickSource?: IntPicker;
-
   /**
    * Replaces each incoming pick request with a new one. The new request might
    * have a narrower range. If the callback returns undefined, the playout will
@@ -54,8 +46,6 @@ export class Search implements PlayoutPicker {
   private readonly walk = this.tree.walk();
   private readonly reqs: PickRequest[] = [];
 
-  private pickSource: IntPicker = alwaysPickMin;
-
   private replaceRequest: RequestFilter = (_parent, req) => req;
   private acceptPlayout: PlayoutFilter = () => true;
 
@@ -66,7 +56,6 @@ export class Search implements PlayoutPicker {
       this.state === "ready",
       "setOptions called in the wrong state",
     );
-    this.pickSource = opts.pickSource ?? this.pickSource;
     this.replaceRequest = opts.replaceRequest ?? this.replaceRequest;
     this.acceptPlayout = opts.acceptPlayout ?? this.acceptPlayout;
     this.walk.trim(0);
@@ -120,7 +109,7 @@ export class Search implements PlayoutPicker {
       return new Pruned("filtered by replaceRequest");
     }
 
-    const firstChoice = this.pickSource.pick(replaced);
+    const firstChoice = alwaysPickMin.pick(replaced);
     const pick = this.walk.pushUnpruned(firstChoice, replaced);
     this.reqs.push(req);
     return success(pick);
