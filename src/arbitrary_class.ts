@@ -65,14 +65,14 @@ export function makePickFunction<T>(
     if (arb instanceof Arbitrary) {
       const accept = opts?.accept;
       if (accept === undefined) {
-        return arb.innerPick(picker, dispatch);
+        return arb.innerPick(dispatch, picker);
       }
 
       // filtered pick
       while (true) {
         const depth = picker.depth;
         const depthBefore = picker.depth;
-        const val = arb.innerPick(picker, dispatch);
+        const val = arb.innerPick(dispatch, picker);
         const picks = picker.getPicks(depthBefore);
         if (accept(val, picks)) {
           return val;
@@ -223,10 +223,14 @@ export default class Arbitrary<T> implements PickSet<T> {
    *
    * (This is normally called by a PickFunction's implementation.)
    *
-   * @param picker a source of playouts, already in 'picking' mode.
    * @param pick the pick function used for recursive calls.
+   * @param picker a source of playouts, already in 'picking' mode.
    */
-  innerPick(picker: PlayoutPicker, pick: PickFunction): T {
+  innerPick(pick: PickFunction, picker?: PlayoutPicker): T {
+    if (picker === undefined) {
+      // Pick function will call us back with the picker.
+      return pick(this);
+    }
     while (true) {
       const depth = picker.depth;
       try {
