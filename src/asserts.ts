@@ -6,7 +6,7 @@ import {
   generateBreadthFirst,
   takeAllBreadthFirst,
   takeBreadthFirst,
-} from "./searches.ts";
+} from "./breadth_first_search.ts";
 
 export function assertRoundTrip<T>(dom: Domain<T>, val: T) {
   assertEquals(dom.parse(val), val, "regenerated value didn't match");

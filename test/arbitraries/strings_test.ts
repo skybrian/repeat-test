@@ -10,7 +10,7 @@ import { repeatTest } from "../../src/runner.ts";
 import { isWellFormed } from "../../src/workarounds.ts";
 
 import * as arb from "../../src/arbitraries.ts";
-import { takeAllBreadthFirst } from "../../src/searches.ts";
+import { takeAllBreadthFirst } from "../../src/breadth_first_search.ts";
 import { PickSet } from "../../src/pick_function.ts";
 
 function assertCharCodeRange(

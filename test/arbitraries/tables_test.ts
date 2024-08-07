@@ -12,7 +12,7 @@ import { repeatTest } from "../../src/runner.ts";
 import {
   generateBreadthFirst,
   takeAllBreadthFirst,
-} from "../../src/searches.ts";
+} from "../../src/breadth_first_search.ts";
 
 describe("uniqueArray", () => {
   const bools = arb.uniqueArray(dom.boolean());
