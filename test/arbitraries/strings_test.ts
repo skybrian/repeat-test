@@ -4,19 +4,21 @@ import {
   assertFirstGenerated,
   assertFirstValues,
   assertSameExamples,
+  assertValues,
 } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 import { isWellFormed } from "../../src/workarounds.ts";
 
 import * as arb from "../../src/arbitraries.ts";
-import Arbitrary from "../../src/arbitrary_class.ts";
+import { takeAllBreadthFirst } from "../../src/searches.ts";
+import { PickSet } from "../../src/pick_function.ts";
 
 function assertCharCodeRange(
-  arb: Arbitrary<string>,
+  set: PickSet<string>,
   min: number,
   max: number,
 ) {
-  const actual = arb.takeAll({ limit: 100000 });
+  const actual = takeAllBreadthFirst(set, { limit: 100000 });
   assertEquals(actual.length, max - min + 1);
   const actualSet = new Set(actual);
   assertEquals(actualSet.size, max - min + 1);
@@ -33,7 +35,7 @@ describe("asciiChar", () => {
     assertCharCodeRange(arb.asciiChar(), 0, 127);
   });
   it("can select a single ascii character", () => {
-    assertEquals(arb.asciiChar(/x/).takeAll(), ["x"]);
+    assertValues(arb.asciiChar(/x/), ["x"]);
   });
   it("defaults to 'a'", () => {
     assertFirstGenerated(arb.asciiChar(), [{ val: "a", picks: [0] }]);
@@ -49,8 +51,8 @@ describe("asciiLetter", () => {
     assertFirstGenerated(arb.asciiLetter(), [{ val: "a", picks: [0] }]);
   });
   it("includes lowercase and uppercase letters in order", () => {
-    assertEquals(
-      arb.asciiLetter().takeAll(),
+    assertValues(
+      arb.asciiLetter(),
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
         .split(""),
     );
@@ -65,7 +67,7 @@ describe("asciiDigit", () => {
     assertFirstGenerated(arb.asciiDigit(), [{ val: "0", picks: [0] }]);
   });
   it("includes digits in order", () => {
-    assertEquals(arb.asciiDigit().takeAll(), "0123456789".split(""));
+    assertValues(arb.asciiDigit(), "0123456789".split(""));
   });
 });
 
@@ -86,8 +88,8 @@ describe("asciiSymbol", () => {
     assertFirstGenerated(arb.asciiSymbol(), [{ val: "!", picks: [0] }]);
   });
   it("includes symbols in order", () => {
-    assertEquals(
-      arb.asciiSymbol().takeAll(),
+    assertValues(
+      arb.asciiSymbol(),
       "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~".split(""),
     );
   });

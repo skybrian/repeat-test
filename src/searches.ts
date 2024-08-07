@@ -303,3 +303,25 @@ export function takeBreadthFirst<T>(set: PickSet<T>, n: number): T[] {
   }
   return result;
 }
+
+/**
+ * Generates all examples from this Arbitrary, provided that it's not too many.
+ *
+ * @param opts.limit The maximum size of the array to return.
+ *
+ * There may be duplicates.
+ */
+export function takeAllBreadthFirst<T>(
+  set: PickSet<T>,
+  opts?: { limit?: number },
+): T[] {
+  const limit = opts?.limit ?? 1000;
+
+  const examples = takeBreadthFirst(set, limit + 1);
+  if ((examples.length > limit)) {
+    throw new Error(
+      `takeAllBreadthFirst for '${set.label}': array would have more than ${limit} elements`,
+    );
+  }
+  return examples;
+}

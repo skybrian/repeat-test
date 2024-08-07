@@ -23,8 +23,9 @@ import {
   generateBreadthFirst,
   PlayoutSearch,
   SearchOpts,
+  takeAllBreadthFirst,
 } from "../src/searches.ts";
-import { assertGenerated } from "../src/asserts.ts";
+import { assertGenerated, assertValues } from "../src/asserts.ts";
 
 const bit = new PickRequest(0, 1);
 
@@ -791,6 +792,76 @@ describe("findBreadthFirst", () => {
       () => findBreadthFirst(letters, (v) => v === "c", { limit: 2 }),
       Error,
       "findBreadthFirst for '3 examples': no match found in the first 2 values",
+    );
+  });
+});
+
+describe("takeAllBreadthFirst", () => {
+  it("returns the only value of a constant", () => {
+    const one = Arbitrary.from(() => 1);
+    assertValues(one, [1]);
+  });
+
+  const bit = Arbitrary.from(new PickRequest(0, 1));
+  it("returns both bit values", () => {
+    assertValues(bit, [0, 1]);
+  });
+
+  it("handles a mapped Arbitrary", () => {
+    const bool = bit.map((b) => b == 1);
+    assertValues(bool, [false, true]);
+  });
+
+  it("handles PlayoutPruned", () => {
+    const notTwo = Arbitrary.from((pick) => {
+      const n = pick(new PickRequest(1, 3));
+      if (n === 2) throw new Pruned("skip 2");
+      return n;
+    });
+    assertValues(notTwo, [1, 3]);
+  });
+
+  it("handles a filtered Arbitrary", () => {
+    const zero = bit.filter((b) => b === 0);
+    assertValues(zero, [0]);
+  });
+
+  it("handles a chained Arbitrary", () => {
+    const hello = bit.chain((val) => {
+      if (val === 1) {
+        return Arbitrary.from(() => "there");
+      } else {
+        return Arbitrary.from(() => "hi");
+      }
+    });
+    assertValues(hello, ["hi", "there"]);
+  });
+
+  it("generates all values for a combination lock", () => {
+    const digit = new PickRequest(1, 9);
+    const digitCount = 3;
+    const accepted = new Set(["[1,2,3]", "[1,4,3]"]);
+
+    const digits = Arbitrary.from((pick) => {
+      const picks: number[] = [];
+      for (let i = 0; i < digitCount; i++) {
+        picks.push(pick(digit));
+      }
+      return JSON.stringify(picks);
+    });
+    const lock = digits.filter((pick) => accepted.has(pick));
+    assertEquals(takeAllBreadthFirst(lock), [
+      "[1,2,3]",
+      "[1,4,3]",
+    ]);
+  });
+
+  it("throws an exception if it can't find a value", () => {
+    const letters = Arbitrary.of("a", "b", "c");
+    assertThrows(
+      () => takeAllBreadthFirst(letters, { limit: 2 }),
+      Error,
+      "takeAllBreadthFirst for '3 examples': array would have more than 2 elements",
     );
   });
 });

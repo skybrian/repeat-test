@@ -9,7 +9,10 @@ import {
   assertValues,
 } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
-import { generateBreadthFirst } from "../../src/searches.ts";
+import {
+  generateBreadthFirst,
+  takeAllBreadthFirst,
+} from "../../src/searches.ts";
 
 describe("uniqueArray", () => {
   const bools = arb.uniqueArray(dom.boolean());
@@ -98,13 +101,17 @@ describe("table", () => {
       assertEquals(table.default().val, []);
     });
     it("generates the same values as uniqueArray", () => {
-      const expected = arb.uniqueArray(dom.boolean()).map((r) =>
-        JSON.stringify(r)
-      ).takeAll();
-      const actual = table.map((rows) => rows.map((row) => row.v)).map((r) =>
-        JSON.stringify(r)
-      ).takeAll();
-      assertEquals(actual, expected);
+      const expected = takeAllBreadthFirst(
+        arb.uniqueArray(dom.boolean()).map((r) => JSON.stringify(r)),
+      );
+      function toJSON(rows: { v: boolean }[]): string {
+        const values = rows.map((row) => row.v);
+        return JSON.stringify(values);
+      }
+      assertValues(
+        table.map(toJSON),
+        expected,
+      );
     });
   });
   describe("of key-value pairs", () => {
