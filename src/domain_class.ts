@@ -4,7 +4,8 @@ import { Failure, failure, Success, success } from "./results.ts";
 import { PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
 import { PickFunction, PickSet } from "./pick_function.ts";
-import Arbitrary, { Generated } from "./arbitrary_class.ts";
+import Arbitrary from "./arbitrary_class.ts";
+import { generate, Generated } from "./generated_class.ts";
 
 export type SendErr = (msg: string, opts?: { at: string | number }) => void;
 
@@ -107,7 +108,7 @@ export default class Domain<T> implements PickSet<T> {
    */
   generate(picks: number[]): Generated<T> | Failure {
     const picker = new PlaybackPicker(picks);
-    const gen = this.#arb.generate(onePlayout(picker));
+    const gen = generate(this.#arb, onePlayout(picker));
     if (picker.error) {
       let msg = picker.error;
       if (gen === undefined) {

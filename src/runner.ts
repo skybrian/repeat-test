@@ -1,10 +1,11 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
 import { PlayoutSearch } from "./searches.ts";
-import Arbitrary, { Generated } from "./arbitrary_class.ts";
+import Arbitrary from "./arbitrary_class.ts";
 import { Failure, failure, Success, success } from "./results.ts";
 import { shrink } from "./shrink.ts";
 import { assert } from "@std/assert";
 import { PickSet } from "./pick_function.ts";
+import { generate, Generated } from "./generated_class.ts";
 
 /** Identifies a repetition to run. */
 export type RepKey = {
@@ -67,7 +68,7 @@ export function* depthFirstReps<T>(
   while (!search.done) {
     const key: RepKey = { seed: 0, index };
     try {
-      const gen = arb.generate(search);
+      const gen = generate(arb, search);
       if (gen === undefined) {
         break; // end of search
       }
@@ -103,7 +104,7 @@ export function* randomReps<T>(
   const search = new PlayoutSearch();
 
   // Dry run: the first test uses the default value.
-  const arg = arb.generate(search);
+  const arg = generate(arb, search);
   assert(arg);
   let index = 0;
   const firstRep: Rep<T> = { ok: true, key: { seed, index }, arb, arg, test };
@@ -123,7 +124,7 @@ export function* randomReps<T>(
     const random = pickers.next().value;
     search.setOptions({ pickSource: random });
     try {
-      const arg = arb.generate(search);
+      const arg = generate(arb, search);
       if (arg === undefined) {
         return; // No more test args to generate.
       }

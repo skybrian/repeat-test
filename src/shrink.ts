@@ -1,6 +1,7 @@
 import { PickList } from "./picks.ts";
 import { playback } from "./backtracking.ts";
-import Arbitrary, { Generated } from "./arbitrary_class.ts";
+import Arbitrary from "./arbitrary_class.ts";
+import { generate, Generated } from "./generated_class.ts";
 
 /**
  * Provides increasingly smaller guesses for how to shrink a value.
@@ -52,7 +53,7 @@ function runStrategy<T>(
 ): Generated<T> | undefined {
   let worked: Generated<T> | undefined = undefined;
   for (const guess of strategy(start.picks())) {
-    const shrunk = arb.generate(playback(guess));
+    const shrunk = generate(arb, playback(guess));
     if (!shrunk || !interesting(shrunk.val)) {
       return worked;
     }

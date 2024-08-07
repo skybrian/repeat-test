@@ -4,15 +4,9 @@ import { assertFirstGenerated, assertGenerated } from "../src/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { PickRequest } from "../src/picks.ts";
-import {
-  minPlayout,
-  onePlayout,
-  playback,
-  Pruned,
-} from "../src/backtracking.ts";
-import Arbitrary from "../src/arbitrary_class.ts";
-import { randomPicker } from "../src/random.ts";
+import { Pruned } from "../src/backtracking.ts";
 import { PickCallback, PickSet } from "../src/pick_function.ts";
+import Arbitrary from "../src/arbitrary_class.ts";
 
 const bit = new PickRequest(0, 1);
 
@@ -137,49 +131,6 @@ describe("Arbitrary", () => {
     it("accepts a custom label", () => {
       const arb = Arbitrary.record({}, { label: "my label" });
       assertEquals(arb.label, "my label");
-    });
-  });
-
-  describe("generate", () => {
-    it("generates a single value for a constant", () => {
-      const one = Arbitrary.from(() => 1);
-      const gen = one.generate(minPlayout());
-      assert(gen !== undefined);
-      assertEquals(gen.val, 1);
-      assertEquals(gen.replies(), []);
-    });
-    it("passes through an error thrown in a nested Arbitrary", () => {
-      const fails = Arbitrary.from((pick) => {
-        if (pick(Arbitrary.of(false, true))) {
-          throw new Error("oops");
-        }
-        return "ok";
-      });
-      const outer = Arbitrary.from((pick) => pick(fails));
-      assertThrows(() => outer.generate(playback([1])), Error, "oops");
-    });
-    const biased = new PickRequest(0, 1, {
-      bias: ((uniform) => uniform(0, 99999) > 0 ? 1 : 0),
-    });
-    const deep = Arbitrary.from((pick) => {
-      let picks = 0;
-      while (pick(biased) === 1) {
-        picks++;
-      }
-      return picks;
-    });
-    it("limits generation to 1000 picks by default", () => {
-      const gen = deep.generate(onePlayout(randomPicker(123)));
-      assert(gen !== undefined);
-      assertEquals(gen.val, 1000);
-    });
-    it("limits generation to the provided number of picks", () => {
-      const arb = Arbitrary.from(new PickRequest(0, 10000));
-      repeatTest(arb, (limit) => {
-        const gen = deep.generate(onePlayout(randomPicker(123)), { limit });
-        assert(gen !== undefined);
-        assertEquals(gen.val, limit);
-      }, { reps: 100 });
     });
   });
 

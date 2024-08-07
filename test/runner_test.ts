@@ -8,6 +8,7 @@ import {
 } from "@std/assert";
 
 import { minPlayout, Pruned } from "../src/backtracking.ts";
+import { generate } from "../src/generated_class.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
 import Domain from "../src/domain_class.ts";
 import * as arb from "../src/arbitraries.ts";
@@ -269,7 +270,7 @@ describe("randomReps", () => {
 });
 
 function makeDefaultRep<T>(input: Arbitrary<T>, test: TestFunction<T>): Rep<T> {
-  const gen = input.generate(minPlayout());
+  const gen = generate(input, minPlayout());
   assert(gen !== undefined);
 
   const rep: Rep<T> = {
