@@ -10,7 +10,7 @@ import { repeatTest } from "../../src/runner.ts";
 import { isWellFormed } from "../../src/workarounds.ts";
 
 import * as arb from "../../src/arbitraries.ts";
-import { takeAllBreadthFirst } from "../../src/breadth_first_search.ts";
+import { takeAll } from "../../src/breadth_first_search.ts";
 import { PickSet } from "../../src/pick_function.ts";
 
 function assertCharCodeRange(
@@ -18,7 +18,7 @@ function assertCharCodeRange(
   min: number,
   max: number,
 ) {
-  const actual = takeAllBreadthFirst(set, { limit: 100000 });
+  const actual = takeAll(set, { limit: 100000 });
   assertEquals(actual.length, max - min + 1);
   const actualSet = new Set(actual);
   assertEquals(actualSet.size, max - min + 1);

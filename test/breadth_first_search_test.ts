@@ -15,13 +15,13 @@ import { repeatTest } from "../src/runner.ts";
 
 import { assertGenerated, assertValues } from "../src/asserts.ts";
 import {
-  breadthFirstSearch,
-  configureBreadthFirstPass,
-  findBreadthFirst,
-  generateBreadthFirst,
+  configurePass,
+  find,
+  generateAll,
+  pickers,
   Search,
   SearchOpts,
-  takeAllBreadthFirst,
+  takeAll,
 } from "../src/breadth_first_search.ts";
 import { Success, success } from "../src/results.ts";
 
@@ -86,7 +86,7 @@ function runPass(
   let pruneCalls = 0;
   let prunedPlayouts = 0;
   const search = new Search();
-  configureBreadthFirstPass(search, idx, () => {
+  configurePass(search, idx, () => {
     pruneCalls++;
   });
   while (!search.done) {
@@ -115,7 +115,7 @@ function runPass(
   };
 }
 
-describe("configureBreadthFirstPass", () => {
+describe("configurePass", () => {
   describe("for a single-playout tree", () => {
     it("yields the full playout on the first pass", () => {
       assertEquals(runPass(0, walkUnaryTree), {
@@ -431,10 +431,10 @@ describe("Search", () => {
   });
 });
 
-describe("breadthFirstSearch", () => {
+describe("pickers", () => {
   it("iterates once when there aren't any branches", () => {
     let count = 0;
-    for (const picker of breadthFirstSearch()) {
+    for (const picker of pickers()) {
       assert(picker.startAt(0));
       assert(picker.endPlayout());
       count++;
@@ -443,7 +443,7 @@ describe("breadthFirstSearch", () => {
   });
   it("visits each root branch once", () => {
     const accepted = new Set<string>();
-    for (const picker of breadthFirstSearch()) {
+    for (const picker of pickers()) {
       assert(picker.startAt(0));
       picker.maybePick(new PickRequest(0, 2));
       const picks = picker.getPicks();
@@ -458,7 +458,7 @@ describe("breadthFirstSearch", () => {
       const expectedLeaves = Array(tree.size).fill(0).map((_, i) => i);
 
       const maze = new Maze(tree);
-      for (const picker of breadthFirstSearch()) {
+      for (const picker of pickers()) {
         maze.visit(picker);
       }
       assertEquals(expectedLeaves, maze.leaves);
@@ -466,7 +466,7 @@ describe("breadthFirstSearch", () => {
   });
 });
 
-describe("generateBreadthFirst", () => {
+describe("generateAll", () => {
   it("generates a single value for a constant", () => {
     const one = Arbitrary.from(() => 1);
     assertGenerated(one, [{ val: 1, picks: [] }]);
@@ -474,7 +474,7 @@ describe("generateBreadthFirst", () => {
 
   it("generates a valid PickRequest for an array of examples", () => {
     const examples = Arbitrary.of(1, 2, 3);
-    const gens = Array.from(generateBreadthFirst(examples));
+    const gens = Array.from(generateAll(examples));
     const reqs = gens[0].picks().reqs();
     assertEquals(reqs.length, 1);
     assertEquals(reqs[0].min, 0);
@@ -520,7 +520,7 @@ describe("generateBreadthFirst", () => {
       return a * 100 + b * 10 + c;
     });
 
-    const vals = Array.from(generateBreadthFirst(digits));
+    const vals = Array.from(generateAll(digits));
     assertEquals(vals[0].val, 0);
     assertEquals(vals[0].replies(), [0, 0, 0]);
     assertEquals(vals[999].val, 999);
@@ -528,27 +528,27 @@ describe("generateBreadthFirst", () => {
   });
 });
 
-describe("findBreadthFirst", () => {
+describe("find", () => {
   const letters = Arbitrary.of("a", "b", "c");
   it("finds a generated value", () => {
-    const gen = findBreadthFirst(letters, (v) => v === "b");
+    const gen = find(letters, (v) => v === "b");
     assert(gen !== undefined);
     assertEquals(gen.val, "b");
   });
   it("throws if it doesn't find it", () => {
-    assertEquals(findBreadthFirst(letters, (v) => v === "d"), undefined);
+    assertEquals(find(letters, (v) => v === "d"), undefined);
   });
   it("throws if it doesn't find it within the limit", () => {
     const letters = Arbitrary.of("a", "b", "c");
     assertThrows(
-      () => findBreadthFirst(letters, (v) => v === "c", { limit: 2 }),
+      () => find(letters, (v) => v === "c", { limit: 2 }),
       Error,
       "findBreadthFirst for '3 examples': no match found in the first 2 values",
     );
   });
 });
 
-describe("takeAllBreadthFirst", () => {
+describe("takeAll", () => {
   it("returns the only value of a constant", () => {
     const one = Arbitrary.from(() => 1);
     assertValues(one, [1]);
@@ -602,7 +602,7 @@ describe("takeAllBreadthFirst", () => {
       return JSON.stringify(picks);
     });
     const lock = digits.filter((pick) => accepted.has(pick));
-    assertEquals(takeAllBreadthFirst(lock), [
+    assertValues(lock, [
       "[1,2,3]",
       "[1,4,3]",
     ]);
@@ -611,7 +611,7 @@ describe("takeAllBreadthFirst", () => {
   it("throws an exception if it can't find a value", () => {
     const letters = Arbitrary.of("a", "b", "c");
     assertThrows(
-      () => takeAllBreadthFirst(letters, { limit: 2 }),
+      () => takeAll(letters, { limit: 2 }),
       Error,
       "takeAllBreadthFirst for '3 examples': array would have more than 2 elements",
     );

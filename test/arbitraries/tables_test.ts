@@ -9,10 +9,7 @@ import {
   assertValues,
 } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
-import {
-  generateBreadthFirst,
-  takeAllBreadthFirst,
-} from "../../src/breadth_first_search.ts";
+import * as bfs from "../../src/breadth_first_search.ts";
 
 describe("uniqueArray", () => {
   const bools = arb.uniqueArray(dom.boolean());
@@ -69,7 +66,7 @@ describe("table", () => {
     });
     it("generates every combination of a boolean", () => {
       const combos: boolean[][] = [];
-      for (const rows of generateBreadthFirst(table)) {
+      for (const rows of bfs.generateAll(table)) {
         const val = rows.val;
         if (val.length < 2) {
           continue;
@@ -101,7 +98,7 @@ describe("table", () => {
       assertEquals(table.default().val, []);
     });
     it("generates the same values as uniqueArray", () => {
-      const expected = takeAllBreadthFirst(
+      const expected = bfs.takeAll(
         arb.uniqueArray(dom.boolean()).map((r) => JSON.stringify(r)),
       );
       function toJSON(rows: { v: boolean }[]): string {
