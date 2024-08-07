@@ -259,3 +259,30 @@ export function* generateBreadthFirst<T>(
     }
   }
 }
+
+/**
+ * Returns the first generated value that satisfies the given predicate, if it's
+ * within the given limit.
+ *
+ * It returns undefined if every possible value was tried.
+ */
+export function findBreadthFirst<T>(
+  set: PickSet<T>,
+  predicate: (val: T) => boolean,
+  opts?: { limit: number },
+): Generated<T> | undefined {
+  const limit = opts?.limit ?? 1000;
+
+  let count = 0;
+  for (const gen of generateBreadthFirst(set)) {
+    if (predicate(gen.val)) {
+      return gen;
+    }
+    if (++count >= limit) {
+      throw new Error(
+        `findBreadthFirst for '${set.label}': no match found in the first ${limit} values`,
+      );
+    }
+  }
+  return undefined;
+}

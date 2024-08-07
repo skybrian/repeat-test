@@ -7,7 +7,6 @@ import { PickRequest } from "../src/picks.ts";
 import { Pruned } from "../src/backtracking.ts";
 import { PickCallback, PickSet } from "../src/pick_function.ts";
 import Arbitrary from "../src/arbitrary_class.ts";
-import { generateBreadthFirst } from "../src/searches.ts";
 
 const bit = new PickRequest(0, 1);
 
@@ -132,88 +131,6 @@ describe("Arbitrary", () => {
     it("accepts a custom label", () => {
       const arb = Arbitrary.record({}, { label: "my label" });
       assertEquals(arb.label, "my label");
-    });
-  });
-
-  describe("generateAll", () => {
-    it("generates a single value for a constant", () => {
-      const one = Arbitrary.from(() => 1);
-      assertGenerated(one, [{ val: 1, picks: [] }]);
-    });
-
-    it("generates a valid PickRequest for an array of examples", () => {
-      const examples = Arbitrary.of(1, 2, 3);
-      const gens = Array.from(generateBreadthFirst(examples));
-      const reqs = gens[0].picks().reqs();
-      assertEquals(reqs.length, 1);
-      assertEquals(reqs[0].min, 0);
-      assertEquals(reqs[0].max, 2);
-    });
-
-    it("generates a single value for a filtered constant", () => {
-      const one = Arbitrary.from(() => 1).filter((val) => val === 1);
-      assertGenerated(one, [{ val: 1, picks: [] }]);
-    });
-
-    it("generates each value an integer range", () => {
-      const oneTwoThree = Arbitrary.from(new PickRequest(1, 3));
-      assertGenerated(oneTwoThree, [
-        { val: 1, picks: [1] },
-        { val: 2, picks: [2] },
-        { val: 3, picks: [3] },
-      ]);
-    });
-
-    it("generates both values for a boolean", () => {
-      const boolean = Arbitrary.from(new PickRequest(0, 1)).map((b) => b === 1);
-      assertGenerated(boolean, [
-        { val: false, picks: [0] },
-        { val: true, picks: [1] },
-      ]);
-    });
-
-    it("generates the accepted values from a filter", () => {
-      const bit = Arbitrary.from(new PickRequest(0, 1))
-        .filter((b) => b === 0);
-      assertGenerated(bit, [
-        { val: 0, picks: [0] },
-      ]);
-    });
-
-    it("generates every combination for an odometer", () => {
-      const digit = new PickRequest(0, 9);
-      const digits = Arbitrary.from((pick) => {
-        const a = pick(digit);
-        const b = pick(digit);
-        const c = pick(digit);
-        return a * 100 + b * 10 + c;
-      });
-
-      const vals = Array.from(generateBreadthFirst(digits));
-      assertEquals(vals[0].val, 0);
-      assertEquals(vals[0].replies(), [0, 0, 0]);
-      assertEquals(vals[999].val, 999);
-      assertEquals(vals[999].replies(), [9, 9, 9]);
-    });
-  });
-
-  describe("findGenerated", () => {
-    const letters = Arbitrary.of("a", "b", "c");
-    it("finds a generated value", () => {
-      const gen = letters.findGenerated((v) => v === "b");
-      assert(gen !== undefined);
-      assertEquals(gen.val, "b");
-    });
-    it("throws if it doesn't find it", () => {
-      assertEquals(letters.findGenerated((v) => v === "d"), undefined);
-    });
-    it("throws if it doesn't find it within the limit", () => {
-      const letters = Arbitrary.of("a", "b", "c");
-      assertThrows(
-        () => letters.findGenerated((v) => v === "c", { limit: 2 }),
-        Error,
-        "findGenerated for '3 examples': no match found in the first 2 values",
-      );
     });
   });
 

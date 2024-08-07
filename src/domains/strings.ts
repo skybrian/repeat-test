@@ -2,6 +2,7 @@ import Domain from "../domain_class.ts";
 import * as arb from "../arbitraries.ts";
 import * as unicode from "../unicode.ts";
 import { assert } from "@std/assert";
+import { findBreadthFirst } from "../searches.ts";
 
 const arbAscii = arb.asciiChar();
 
@@ -10,7 +11,7 @@ const asciiDom = new Domain(arbAscii, (val, sendErr) => {
     sendErr("not a string");
     return undefined;
   }
-  const gen = arbAscii.findGenerated((s) => s === val, { limit: 1000 });
+  const gen = findBreadthFirst(arbAscii, (s) => s === val, { limit: 1000 });
   if (!gen) {
     sendErr("not an ascii character");
     return undefined;
