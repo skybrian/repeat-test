@@ -3,7 +3,7 @@ import { AnyRecord } from "./types.ts";
 import { PickRequest } from "./picks.ts";
 import { PickCallback, PickFunction, PickSet } from "./pick_function.ts";
 import { generate, Generated } from "./generated_class.ts";
-import { generateBreadthFirst, PlayoutSearch } from "./searches.ts";
+import { PlayoutSearch, takeBreadthFirst } from "./searches.ts";
 
 /**
  * Specifies a record to be generated.
@@ -87,23 +87,6 @@ export default class Arbitrary<T> implements PickSet<T> {
   }
 
   /**
-   * Returns up to n examples from this Arbitrary, in the same order as
-   * {@link generateBreadthFirst}.
-   *
-   * There may be duplicates.
-   */
-  take(n: number): T[] {
-    const result = [];
-    for (const gen of generateBreadthFirst(this)) {
-      result.push(gen.val);
-      if (result.length >= n) {
-        break;
-      }
-    }
-    return result;
-  }
-
-  /**
    * Generates all examples from this Arbitrary, provided that it's not too many.
    *
    * @param opts.limit The maximum size of the array to return.
@@ -113,7 +96,7 @@ export default class Arbitrary<T> implements PickSet<T> {
   takeAll(opts?: { limit?: number }): T[] {
     const limit = opts?.limit ?? 1000;
 
-    const examples = this.take(limit + 1);
+    const examples = takeBreadthFirst(this, limit + 1);
     if ((examples.length > limit)) {
       throw new Error(
         `takeAll for '${this.label}': array would have more than ${limit} elements`,

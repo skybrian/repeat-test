@@ -2,7 +2,7 @@ import { assert, assertEquals } from "@std/assert";
 import { PickSet } from "./pick_function.ts";
 import Arbitrary from "./arbitrary_class.ts";
 import Domain from "./domain_class.ts";
-import { generateBreadthFirst } from "./searches.ts";
+import { generateBreadthFirst, takeBreadthFirst } from "./searches.ts";
 
 export function assertRoundTrip<T>(dom: Domain<T>, val: T) {
   assertEquals(dom.parse(val), val, "regenerated value didn't match");
@@ -59,15 +59,15 @@ export function assertGenerated<T>(
 }
 
 export function assertFirstValues<T>(
-  arb: Arbitrary<T>,
+  set: PickSet<T>,
   expected: T[],
 ) {
-  assertEquals(arb.take(expected.length), expected);
+  assertEquals(takeBreadthFirst(set, expected.length), expected);
 }
 
 export function assertValues<T>(
   set: PickSet<T>,
   expected: T[],
 ) {
-  assertEquals(Arbitrary.from(set).take(expected.length + 5), expected);
+  assertEquals(takeBreadthFirst(set, expected.length + 5), expected);
 }

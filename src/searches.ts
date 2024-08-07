@@ -286,3 +286,20 @@ export function findBreadthFirst<T>(
   }
   return undefined;
 }
+
+/**
+ * Returns up to n examples from this Arbitrary, in the same order as
+ * {@link generateBreadthFirst}.
+ *
+ * There may be duplicates.
+ */
+export function takeBreadthFirst<T>(set: PickSet<T>, n: number): T[] {
+  const result = [];
+  for (const gen of generateBreadthFirst(set)) {
+    result.push(gen.val);
+    if (result.length >= n) {
+      break;
+    }
+  }
+  return result;
+}
