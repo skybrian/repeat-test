@@ -19,8 +19,9 @@ export type PickCallback<T> = (pick: PickFunction) => T;
  */
 export interface PickSet<T> {
   /** A short label to use in error messsages about this PickSet */
-  get label(): string;
-  get generatePick(): PickCallback<T>;
+  readonly label: string;
+  /** Generates a member of this set, given a source of picks. */
+  readonly generateFrom: PickCallback<T>;
 }
 
 export type PickFunctionOpts<T> = {
@@ -70,13 +71,13 @@ export function makePickFunction<T>(
       if (!pick.ok) throw new Pruned(pick.message);
       return pick.val;
     }
-    const innerPick = req["generatePick"];
-    if (typeof innerPick === "function") {
+    const generateFrom = req["generateFrom"];
+    if (typeof generateFrom === "function") {
       const generate = () => {
         while (true) {
           const depth = picker.depth;
           try {
-            const val = innerPick(dispatch);
+            const val = generateFrom(dispatch);
             return val;
           } catch (e) {
             if (!(e instanceof Pruned)) {

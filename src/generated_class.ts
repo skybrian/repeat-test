@@ -46,7 +46,7 @@ export function generate<T>(
   while (picker.startAt(0)) {
     try {
       const pick = makePickFunction(picker, opts);
-      const val = set.generatePick(pick);
+      const val = set.generateFrom(pick);
       const picks = picker.getPicks();
       if (picker.endPlayout()) {
         return new Generated(picks, val);

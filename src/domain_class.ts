@@ -3,7 +3,7 @@ import { assertEquals } from "@std/assert";
 import { Failure, failure, Success, success } from "./results.ts";
 import { PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
-import { PickFunction, PickSet } from "./pick_function.ts";
+import { PickSet } from "./pick_function.ts";
 import Arbitrary from "./arbitrary_class.ts";
 import { generate, Generated } from "./generated_class.ts";
 
@@ -57,9 +57,9 @@ export default class Domain<T> implements PickSet<T> {
     return this.#arb.label;
   }
 
-  generatePick = (pick: PickFunction): T => {
-    return this.#arb.generatePick(pick);
-  };
+  get generateFrom() {
+    return this.#arb.generateFrom;
+  }
 
   /**
    * Validates a value, returning a copy created by regenerating it.

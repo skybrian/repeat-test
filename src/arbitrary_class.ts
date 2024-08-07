@@ -63,7 +63,7 @@ export default class Arbitrary<T> implements PickSet<T> {
     return this.#label;
   }
 
-  get generatePick() {
+  get generateFrom() {
     return this.#callback;
   }
 
@@ -325,12 +325,12 @@ export default class Arbitrary<T> implements PickSet<T> {
     } else if (arg instanceof Arbitrary) {
       return arg;
     }
-    const innerPick = arg["generatePick"];
-    if (typeof innerPick === "function") {
+    const generateFrom = arg["generateFrom"];
+    if (typeof generateFrom === "function") {
       let label = arg["label"];
       assert(typeof label === "string");
       label = opts?.label ?? label;
-      return new Arbitrary(label, arg.generatePick);
+      return new Arbitrary(label, generateFrom);
     }
     throw new Error("invalid argument to Arbitrary.from");
   }

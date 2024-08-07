@@ -26,7 +26,7 @@ describe("Arbitrary", () => {
     describe("given a PickSet", () => {
       const answer: PickSet<string> = {
         label: "answer",
-        generatePick: (pick) => {
+        generateFrom: (pick) => {
           return pick(bit) == 1 ? "yes" : "no";
         },
       };
