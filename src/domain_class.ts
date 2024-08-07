@@ -1,6 +1,10 @@
 import { PlaybackPicker } from "./picks.ts";
-import Arbitrary, { Generated, PickSet } from "./arbitrary_class.ts";
-import { onePlayout } from "./backtracking.ts";
+import Arbitrary, {
+  Generated,
+  PickFunction,
+  PickSet,
+} from "./arbitrary_class.ts";
+import { onePlayout, PlayoutPicker } from "./backtracking.ts";
 import { Failure, failure, Success, success } from "./results.ts";
 import { assertEquals } from "@std/assert";
 
@@ -49,6 +53,10 @@ export default class Domain<T> implements PickSet<T> {
   get arb(): Arbitrary<T> {
     return this.#arb;
   }
+
+  innerPick = (pick: PickFunction, picker?: PlayoutPicker): T => {
+    return this.#arb.innerPick(pick, picker);
+  };
 
   /**
    * Validates a value, returning a copy created by regenerating it.
