@@ -53,8 +53,26 @@ export abstract class PlayoutPicker {
    * If `startAt(0)` returns false, there are no more playouts and the search is
    * over.
    */
-  abstract startAt(depth: number): boolean;
-
+  startAt(depth: number): boolean {
+    if (this.state === "searchDone") {
+      return false;
+    }
+    if (this.state === "ready") {
+      this.state = "picking";
+      return true;
+    } else if (this.state === "picking") {
+      this.removePlayout(); // should change state
+    }
+    if (this.state !== "playoutDone") {
+      return false;
+    } else if (depth > this.depth) {
+      return false;
+    }
+    this.trim(depth);
+    this.reqs.length = depth;
+    this.state = "picking";
+    return true;
+  }
   /**
    * Picks an integer within the range of the given request.
    *
@@ -109,6 +127,8 @@ export abstract class PlayoutPicker {
     );
   }
 
+  protected abstract getReplies(start?: number, end?: number): number[];
+
   /** Returns true if the current playout is not filtered out. */
   protected acceptPlayout(): boolean {
     return true;
@@ -119,7 +139,7 @@ export abstract class PlayoutPicker {
    */
   protected abstract removePlayout(): void;
 
-  protected abstract getReplies(start?: number, end?: number): number[];
+  protected abstract trim(depth: number): void;
 }
 
 /**
@@ -158,6 +178,10 @@ class SinglePlayoutPicker extends PlayoutPicker {
 
   protected getReplies(start?: number, end?: number): number[] {
     return this.replies.slice(start, end);
+  }
+
+  protected trim(_depth: number): void {
+    assert(false);
   }
 }
 

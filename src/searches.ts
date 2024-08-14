@@ -47,27 +47,6 @@ export class PlayoutSearch extends PlayoutPicker {
     return true;
   }
 
-  startAt(depth: number): boolean {
-    if (this.state === "searchDone") {
-      return false;
-    }
-    if (this.state === "ready") {
-      this.state = "picking";
-      return true;
-    } else if (this.state === "picking") {
-      this.removePlayout(); // should change state
-    }
-    if (this.state !== "playoutDone") {
-      return false;
-    } else if (depth > this.depth) {
-      return false;
-    }
-    this.walk.trim(depth);
-    this.reqs.length = depth;
-    this.state = "picking";
-    return true;
-  }
-
   maybePick(req: PickRequest): Success<number> | Pruned {
     assert(this.state === "picking", "maybePick called in the wrong state");
 
@@ -77,13 +56,17 @@ export class PlayoutSearch extends PlayoutPicker {
     return success(pick);
   }
 
+  protected getReplies(start?: number, end?: number): number[] {
+    return this.walk.getPicks(start, end);
+  }
+
   protected removePlayout() {
     this.walk.prune();
     this.reqs.length = this.walk.depth;
     this.state = this.walk.pruned ? "searchDone" : "playoutDone";
   }
 
-  protected getReplies(start?: number, end?: number): number[] {
-    return this.walk.getPicks(start, end);
+  protected trim(depth: number): void {
+    this.walk.trim(depth);
   }
 }
