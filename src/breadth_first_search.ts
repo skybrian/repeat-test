@@ -53,8 +53,6 @@ export class Search extends PlayoutPicker {
     );
     this.replaceRequest = opts.replaceRequest ?? this.replaceRequest;
     this.#acceptPlayout = opts.acceptPlayout ?? this.#acceptPlayout;
-    this.walk.trim(0);
-    this.reqs.length = 0;
     return true;
   }
 
@@ -81,10 +79,9 @@ export class Search extends PlayoutPicker {
     return this.#acceptPlayout(this.walk.depth);
   }
 
-  protected nextPlayout() {
+  protected nextPlayout(): number | undefined {
     this.walk.prune();
-    this.reqs.length = this.walk.depth;
-    return !this.walk.pruned;
+    return this.walk.pruned ? undefined : this.walk.depth;
   }
 }
 
@@ -151,7 +148,7 @@ export function* pickers(): Iterable<PlayoutPicker> {
     });
     while (!search.done) {
       yield search;
-      assert(!search.picking);
+      assert(search.state !== "picking");
     }
     maxDepth++;
   }

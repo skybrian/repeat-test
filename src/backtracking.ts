@@ -29,12 +29,11 @@ export class Pruned extends Error {
  * different path.
  */
 export abstract class PlayoutPicker {
-  protected state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
-  protected reqs: PickRequest[] = [];
+  #state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
+  readonly #reqs: PickRequest[] = [];
 
-  /** Returns true if a playout is in progress. */
-  get picking() {
-    return this.state === "picking";
+  get state(): "ready" | "picking" | "playoutDone" | "searchDone" {
+    return this.#state;
   }
 
   /** Returns true if no more playouts are available and the search is done. */
@@ -54,17 +53,18 @@ export abstract class PlayoutPicker {
    * over.
    */
   startAt(depth: number): boolean {
-    if (this.state === "picking") {
-      this.state = this.nextPlayout() ? "playoutDone" : "searchDone";
+    if (this.#state === "picking") {
+      this.next();
     }
-    if (this.state === "searchDone" || depth > this.depth) {
+    if (this.#state === "searchDone" || depth > this.depth) {
       return false;
     }
     this.startPlayout(depth);
-    this.reqs.length = depth;
-    this.state = "picking";
+    this.#reqs.length = depth;
+    this.#state = "picking";
     return true;
   }
+
   /**
    * Picks an integer within the range of the given request.
    *
@@ -77,11 +77,11 @@ export abstract class PlayoutPicker {
 
     const result = this.doPick(req);
     if (!result.ok) {
-      this.state = this.nextPlayout() ? "playoutDone" : "searchDone";
+      this.next();
       return result;
     }
 
-    this.reqs.push(req);
+    this.#reqs.push(req);
     return result;
   }
 
@@ -94,9 +94,9 @@ export abstract class PlayoutPicker {
    * It's an error to call {@link maybePick} after finishing the playout.
    */
   endPlayout(): boolean {
-    assert(this.state === "picking", "endPlayout called in the wrong state");
+    assert(this.#state === "picking", "endPlayout called in the wrong state");
     const accepted = this.acceptPlayout();
-    this.state = this.nextPlayout() ? "playoutDone" : "searchDone";
+    this.next();
     return accepted;
   }
 
@@ -105,7 +105,7 @@ export abstract class PlayoutPicker {
    * tree.)
    */
   get depth(): number {
-    return this.reqs.length;
+    return this.#reqs.length;
   }
 
   /**
@@ -125,7 +125,7 @@ export abstract class PlayoutPicker {
     assert(end >= start);
 
     return PickList.zip(
-      this.reqs.slice(start, end),
+      this.#reqs.slice(start, end),
       this.getReplies(start, end),
     );
   }
@@ -142,9 +142,21 @@ export abstract class PlayoutPicker {
   }
 
   /**
-   * Removes the current playout. Returns true if there's a new playout to try.
+   * Removes the current playout. Returns the new depth or undefined if there
+   * are no more playouts.
    */
-  protected abstract nextPlayout(): boolean;
+  protected abstract nextPlayout(): number | undefined;
+
+  private next() {
+    const newDepth = this.nextPlayout();
+    if (newDepth === undefined) {
+      this.#state = "searchDone";
+      this.#reqs.length = 0;
+    } else {
+      this.#state = "playoutDone";
+      this.#reqs.length = newDepth;
+    }
+  }
 }
 
 /**
@@ -170,8 +182,8 @@ class SinglePlayoutPicker extends PlayoutPicker {
     return this.replies.slice(start, end);
   }
 
-  protected nextPlayout(): boolean {
-    return false;
+  protected nextPlayout() {
+    return undefined;
   }
 }
 

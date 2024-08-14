@@ -131,7 +131,7 @@ export function* randomReps<T>(
       yield { ok: true, key, arb, arg, test };
     } catch (e) {
       yield { ok: false, key, arg: undefined, caught: e };
-      if (search.picking) {
+      if (search.state === "picking") {
         search.endPlayout();
       }
     }

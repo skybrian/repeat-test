@@ -1,4 +1,3 @@
-import { assert } from "@std/assert";
 import { Success, success } from "./results.ts";
 import { alwaysPickMin, IntPicker, PickRequest } from "./picks.ts";
 import { PlayoutPicker } from "./backtracking.ts";
@@ -37,14 +36,7 @@ export class PlayoutSearch extends PlayoutPicker {
   private pickSource: IntPicker = alwaysPickMin;
 
   setOptions(opts: SearchOpts) {
-    assert(
-      this.state === "ready" || this.state === "playoutDone",
-      "setOptions called in the wrong state",
-    );
     this.pickSource = opts.pickSource;
-    this.walk.trim(0);
-    this.reqs.length = 0;
-    return true;
   }
 
   protected startPlayout(depth: number): void {
@@ -61,9 +53,8 @@ export class PlayoutSearch extends PlayoutPicker {
     return this.walk.getPicks(start, end);
   }
 
-  protected nextPlayout(): boolean {
+  protected nextPlayout(): number | undefined {
     this.walk.prune();
-    this.reqs.length = this.walk.depth;
-    return !this.walk.pruned;
+    return this.walk.pruned ? undefined : this.walk.depth;
   }
 }
