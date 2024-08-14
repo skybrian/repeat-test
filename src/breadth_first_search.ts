@@ -62,18 +62,14 @@ export class Search extends PlayoutPicker {
     this.walk.trim(depth);
   }
 
-  maybePick(req: PickRequest): Success<number> | Pruned {
-    assert(this.state === "picking", "maybePick called in the wrong state");
-
+  protected doPick(req: PickRequest): Success<number> | Pruned {
     const replaced = this.replaceRequest(this.depth, req);
     if (replaced === undefined) {
-      this.state = this.nextPlayout() ? "playoutDone" : "searchDone";
       return new Pruned("filtered by replaceRequest");
     }
 
     const firstChoice = alwaysPickMin.pick(replaced);
     const pick = this.walk.pushUnpruned(firstChoice, replaced);
-    this.reqs.push(req);
     return success(pick);
   }
 

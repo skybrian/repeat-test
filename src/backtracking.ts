@@ -72,7 +72,18 @@ export abstract class PlayoutPicker {
    *
    * Returns {@link Pruned} if the current playout is cancelled.
    */
-  abstract maybePick(req: PickRequest): Success<number> | Pruned;
+  maybePick(req: PickRequest): Success<number> | Pruned {
+    assert(this.state === "picking", "maybePick called in the wrong state");
+
+    const result = this.doPick(req);
+    if (!result.ok) {
+      this.state = this.nextPlayout() ? "playoutDone" : "searchDone";
+      return result;
+    }
+
+    this.reqs.push(req);
+    return result;
+  }
 
   /**
    * Ends a playout.
@@ -121,6 +132,8 @@ export abstract class PlayoutPicker {
 
   protected abstract startPlayout(depth: number): void;
 
+  protected abstract doPick(req: PickRequest): Success<number> | Pruned;
+
   protected abstract getReplies(start?: number, end?: number): number[];
 
   /** Returns true if the current playout is not filtered out. */
@@ -147,14 +160,8 @@ class SinglePlayoutPicker extends PlayoutPicker {
   protected startPlayout(_depth: number): void {
   }
 
-  maybePick(req: PickRequest): Success<number> | Pruned {
-    if (this.state !== "picking") {
-      throw new Error(
-        `maybePick called in the wrong state. Wanted "picking"; got "${this.state}"`,
-      );
-    }
+  protected doPick(req: PickRequest): Success<number> | Pruned {
     const pick = this.picker.pick(req);
-    this.reqs.push(req);
     this.replies.push(pick);
     return success(pick);
   }

@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
 import { Success, success } from "./results.ts";
 import { alwaysPickMin, IntPicker, PickRequest } from "./picks.ts";
-import { PlayoutPicker, Pruned } from "./backtracking.ts";
+import { PlayoutPicker } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
 
 export type SearchOpts = {
@@ -51,12 +51,9 @@ export class PlayoutSearch extends PlayoutPicker {
     this.walk.trim(depth);
   }
 
-  maybePick(req: PickRequest): Success<number> | Pruned {
-    assert(this.state === "picking", "maybePick called in the wrong state");
-
+  protected doPick(req: PickRequest): Success<number> {
     const firstChoice = this.pickSource.pick(req);
     const pick = this.walk.pushUnpruned(firstChoice, req);
-    this.reqs.push(req);
     return success(pick);
   }
 
@@ -64,7 +61,7 @@ export class PlayoutSearch extends PlayoutPicker {
     return this.walk.getPicks(start, end);
   }
 
-  protected nextPlayout() {
+  protected nextPlayout(): boolean {
     this.walk.prune();
     this.reqs.length = this.walk.depth;
     return !this.walk.pruned;
