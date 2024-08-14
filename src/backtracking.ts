@@ -1,3 +1,4 @@
+import { assert } from "@std/assert";
 import { Success, success } from "./results.ts";
 import {
   alwaysPickMin,
@@ -28,6 +29,9 @@ export class Pruned extends Error {
  * different path.
  */
 export abstract class PlayoutPicker {
+  protected state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
+  protected reqs: PickRequest[] = [];
+
   /**
    * Starts a new playout, possibly by backtracking.
    *
@@ -64,22 +68,40 @@ export abstract class PlayoutPicker {
    * The number of picks so far. (Corresponds to the current depth in a search
    * tree.)
    */
-  abstract get depth(): number;
+  get depth(): number {
+    return this.reqs.length;
+  }
+
+  protected abstract getReplies(start?: number, end?: number): number[];
 
   /**
    * Returns a slice of the picks made so far.
    *
    * Available only between {@link startAt} and {@link endPlayout}.
    */
-  abstract getPicks(start?: number, end?: number): PickList;
+  getPicks(start?: number, end?: number): PickList {
+    if (this.state !== "picking") {
+      throw new Error(
+        `getPicks called in the wrong state. Wanted "picking"; got "${this.state}"`,
+      );
+    }
+    start = start ?? 0;
+    assert(start >= 0);
+    end = end ?? this.depth;
+    assert(end >= start);
+
+    return new PickList(
+      this.reqs.slice(start, end),
+      this.getReplies(start, end),
+    );
+  }
 }
 
 /**
  * A picker that only does one playout.
  */
 class SinglePlayoutPicker extends PlayoutPicker {
-  private state: "ready" | "picking" | "done" = "ready";
-  private picks = new PickList();
+  private replies: number[] = [];
 
   constructor(private picker: IntPicker) {
     super();
@@ -100,7 +122,8 @@ class SinglePlayoutPicker extends PlayoutPicker {
       );
     }
     const pick = this.picker.pick(req);
-    this.picks.push(req, pick);
+    this.reqs.push(req);
+    this.replies.push(pick);
     return success(pick);
   }
 
@@ -110,21 +133,12 @@ class SinglePlayoutPicker extends PlayoutPicker {
         `finishPlayout called in the wrong state. Wanted "picking"; got "${this.state}"`,
       );
     }
-    this.state = "done";
+    this.state = "searchDone";
     return true;
   }
 
-  get depth() {
-    return this.picks.length;
-  }
-
-  getPicks(start?: number, end?: number): PickList {
-    if (this.state !== "picking") {
-      throw new Error(
-        `getPicks called in the wrong state. Wanted "picking"; got "${this.state}"`,
-      );
-    }
-    return this.picks.slice(start, end);
+  protected getReplies(start?: number, end?: number): number[] {
+    return this.replies.slice(start, end);
   }
 }
 

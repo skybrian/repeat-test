@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import { Success, success } from "./results.ts";
-import { alwaysPickMin, IntPicker, PickList, PickRequest } from "./picks.ts";
+import { alwaysPickMin, IntPicker, PickRequest } from "./picks.ts";
 import { PlayoutPicker, Pruned } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
 
@@ -31,11 +31,8 @@ export type SearchOpts = {
  * increased to do more tracking during a large search.
  */
 export class PlayoutSearch extends PlayoutPicker {
-  private state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
-
   readonly tree: PickTree = new PickTree();
   private readonly walk = this.tree.walk();
-  private readonly reqs: PickRequest[] = [];
   #trimmedDepth = 0;
 
   private pickSource: IntPicker = alwaysPickMin;
@@ -119,23 +116,11 @@ export class PlayoutSearch extends PlayoutPicker {
     return true;
   }
 
-  get depth(): number {
-    return this.walk.depth;
-  }
-
   get trimmedDepth(): number {
     return this.#trimmedDepth;
   }
 
-  getPicks(start?: number, end?: number): PickList {
-    assert(this.state === "picking", "getPicks called in the wrong state");
-    start = start ?? 0;
-    assert(start >= 0);
-    end = end ?? this.walk.depth;
-    assert(end >= start);
-    return new PickList(
-      this.reqs.slice(start, end),
-      this.walk.getPicks(start, end),
-    );
+  protected getReplies(start?: number, end?: number): number[] {
+    return this.walk.getPicks(start, end);
   }
 }

@@ -178,11 +178,6 @@ export class PickList {
     return true;
   }
 
-  push(req: PickRequest, reply: number) {
-    this.#reqs.push(req);
-    this.#replies.push(reply);
-  }
-
   slice(start?: number, end?: number): PickList {
     return new PickList(
       this.#reqs.slice(start, end),
