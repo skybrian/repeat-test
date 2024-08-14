@@ -11,14 +11,14 @@ describe("PickTree", () => {
     const bit = new PickRequest(0, 1);
     it("prunes the entire tree when given an empty playout", () => {
       const tree = new PickTree();
-      assert(tree.prune(new PickList([], [])));
+      assert(tree.prune(PickList.zip([], [])));
       assertFalse(tree.available([]));
       assert(tree.done);
     });
     it("prunes a child of the root node", () => {
       repeatTest([0, 1], (pick) => {
         const tree = new PickTree();
-        assert(tree.prune(new PickList([bit], [pick])));
+        assert(tree.prune(PickList.zip([bit], [pick])));
         assertFalse(tree.available([pick]));
         assertEquals(tree.branchesLeft([]), 1);
       });
@@ -34,7 +34,7 @@ describe("PickTree", () => {
         const tree = new PickTree();
         const req = new PickRequest(min, max);
         const reqs = path.map((_) => req);
-        const picks = new PickList(reqs, path);
+        const picks = PickList.zip(reqs, path);
         assert(tree.prune(picks));
         assertFalse(tree.available(path), "not pruned");
         if (path.length > 1) {
@@ -45,13 +45,13 @@ describe("PickTree", () => {
     it("removes picks in order", () => {
       const tree = new PickTree();
       const bit = new PickRequest(0, 1);
-      assert(tree.prune(new PickList([bit, bit], [0, 0])));
+      assert(tree.prune(PickList.zip([bit, bit], [0, 0])));
       assertEquals(tree.branchesLeft([]), 2);
-      assert(tree.prune(new PickList([bit, bit], [0, 1])));
+      assert(tree.prune(PickList.zip([bit, bit], [0, 1])));
       assertEquals(tree.branchesLeft([]), 1);
-      assert(tree.prune(new PickList([bit, bit], [1, 0])));
+      assert(tree.prune(PickList.zip([bit, bit], [1, 0])));
       assertEquals(tree.branchesLeft([]), 1);
-      assert(tree.prune(new PickList([bit, bit], [1, 1])));
+      assert(tree.prune(PickList.zip([bit, bit], [1, 1])));
       assertEquals(tree.branchesLeft([]), 0);
     });
     it("removes three picks from the same node", () => {
@@ -67,7 +67,7 @@ describe("PickTree", () => {
       });
       repeatTest(example, ({ min, max, picks }) => {
         const req = new PickRequest(min, max);
-        const path = (pick: number) => new PickList([req], [pick]);
+        const path = (pick: number) => PickList.zip([req], [pick]);
         const tree = new PickTree();
         let expectRemaining = max - min + 1;
         for (const pick of picks) {
@@ -84,10 +84,10 @@ describe("PickTree", () => {
     it("throws an Error if a PickRequest's range doesn't match the tree", () => {
       const tree = new PickTree();
       const bit = new PickRequest(0, 1);
-      assert(tree.prune(new PickList([bit, bit], [0, 0])));
+      assert(tree.prune(PickList.zip([bit, bit], [0, 0])));
       const roll = new PickRequest(1, 6);
       assertThrows(
-        () => tree.prune(new PickList([roll], [3])),
+        () => tree.prune(PickList.zip([roll], [3])),
         Error,
       );
     });
@@ -105,22 +105,22 @@ describe("PickTree", () => {
     });
     it("returns undefined for an unexplored node", () => {
       const tree = new PickTree();
-      tree.prune(new PickList([bit], [0]));
+      tree.prune(PickList.zip([bit], [0]));
       assertEquals(tree.branchesLeft([1]), undefined);
     });
     it("returns 0 for a pruned tree", () => {
       const tree = new PickTree();
-      tree.prune(new PickList([], []));
+      tree.prune(PickList.zip([], []));
       assertEquals(tree.branchesLeft([]), 0);
     });
     it("returns 0 for a path beyond a pruned node", () => {
       const tree = new PickTree();
-      tree.prune(new PickList([], []));
+      tree.prune(PickList.zip([], []));
       assertEquals(tree.branchesLeft([0]), 0);
     });
     it("returns the branches left on a root node", () => {
       const tree = new PickTree();
-      tree.prune(new PickList([bit], [0]));
+      tree.prune(PickList.zip([bit], [0]));
       assertEquals(tree.branchesLeft([]), 1);
     });
   });

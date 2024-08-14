@@ -122,7 +122,7 @@ describe("shrink", () => {
 
 describe("shrinkLength", () => {
   it("doesn't guess for an empty playout", () => {
-    const guesses = shrinkLength(new PickList());
+    const guesses = shrinkLength(PickList.fromReplies([]));
     assertEquals(Array.from(guesses), []);
   });
   it("doesn't guess if no requests were provided", () => {
@@ -137,7 +137,7 @@ describe("shrinkLength", () => {
     repeatTest(example, (ranges) => {
       const reqs = ranges.map((r) => new PickRequest(r.min, r.max));
       const picks = ranges.map((r) => r.min);
-      const guesses = shrinkLength(new PickList(reqs, picks));
+      const guesses = shrinkLength(PickList.zip(reqs, picks));
       assertEquals(Array.from(guesses), []);
     });
   });
@@ -147,7 +147,7 @@ describe("shrinkLength", () => {
     repeatTest(playout, (ranges) => {
       const reqs = ranges.map((r) => new PickRequest(r.min, r.max));
       const replies = ranges.map((r) => r.val);
-      const picks = new PickList(reqs, replies).trim();
+      const picks = PickList.zip(reqs, replies).trim();
       const guesses = Array.from(shrinkLength(picks));
 
       if (picks.length === 0) {
@@ -182,12 +182,12 @@ describe("shrinkLength", () => {
 describe("shrinkPicksFrom", () => {
   const shrink = shrinkPicksFrom(0);
   it("can't shrink an empty playout", () => {
-    const guesses = shrink(new PickList());
+    const guesses = shrink(PickList.fromReplies([]));
     assertEquals(Array.from(guesses), []);
   });
   it("replaces each pick with the minimum", () => {
     const roll = new PickRequest(1, 2);
-    const picks = new PickList([roll, roll], [2, 2]);
+    const picks = PickList.zip([roll, roll], [2, 2]);
     const guesses = shrink(picks);
     assertEquals(Array.from(guesses), [[1, 2], [1, 1]]);
   });
@@ -195,27 +195,27 @@ describe("shrinkPicksFrom", () => {
 
 describe("shrinkOptionsUntil", () => {
   it("can't shrink an empty playout", () => {
-    const guesses = shrinkOptionsUntil(0)(new PickList());
+    const guesses = shrinkOptionsUntil(0)(PickList.fromReplies([]));
     assertEquals(Array.from(guesses), []);
   });
   it("removes an option at the end of the playout", () => {
     const bit = new PickRequest(0, 1);
     const roll = new PickRequest(1, 6);
-    const picks = new PickList([bit, roll], [1, 6]);
+    const picks = PickList.zip([bit, roll], [1, 6]);
     const guesses = shrinkOptionsUntil(2)(picks);
     assertEquals(Array.from(guesses), [[]]);
   });
   it("removes an option with something after it", () => {
     const bit = new PickRequest(0, 1);
     const roll = new PickRequest(1, 6);
-    const picks = new PickList([bit, roll, roll], [1, 6, 3]);
+    const picks = PickList.zip([bit, roll, roll], [1, 6, 3]);
     const guesses = shrinkOptionsUntil(2)(picks);
     assertEquals(Array.from(guesses), [[3]]);
   });
   it("removes two options", () => {
     const bit = new PickRequest(0, 1);
     const roll = new PickRequest(1, 6);
-    const picks = new PickList([bit, roll, bit, roll, roll], [1, 6, 1, 3, 5]);
+    const picks = PickList.zip([bit, roll, bit, roll, roll], [1, 6, 1, 3, 5]);
     const guesses = shrinkOptionsUntil(4)(picks);
     assertEquals(Array.from(guesses), [[1, 6, 5], [5]]);
   });

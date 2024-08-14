@@ -139,18 +139,10 @@ export function alwaysPick(n: number) {
 
 export class PickList {
   readonly ok = true; // Can be used as a success response.
+  readonly #reqs: PickRequest[];
+  readonly #replies: number[];
 
-  #reqs: PickRequest[];
-  #replies: number[];
-
-  constructor();
-  constructor(reqs: PickRequest[], replies: number[]);
-  constructor(reqs?: PickRequest[], replies?: number[]) {
-    reqs = reqs ?? [];
-    replies = replies ?? [];
-    if (reqs.length !== replies.length) {
-      throw new Error("reqs and replies must be the same length");
-    }
+  private constructor(reqs: PickRequest[], replies: number[]) {
     this.#reqs = reqs;
     this.#replies = replies;
   }
@@ -179,7 +171,7 @@ export class PickList {
   }
 
   slice(start?: number, end?: number): PickList {
-    return new PickList(
+    return PickList.zip(
       this.#reqs.slice(start, end),
       this.#replies.slice(start, end),
     );
@@ -201,10 +193,17 @@ export class PickList {
     if (last === this.#reqs.length - 1) {
       return this;
     }
-    return new PickList(
+    return PickList.zip(
       this.#reqs.slice(0, last + 1),
       this.#replies.slice(0, last + 1),
     );
+  }
+
+  static zip(reqs: PickRequest[], replies: number[]) {
+    if (reqs.length !== replies.length) {
+      throw new Error("reqs and replies must be the same length");
+    }
+    return new PickList(reqs, replies);
   }
 
   /**
@@ -213,7 +212,7 @@ export class PickList {
    * Each request's range only includes the reply.
    */
   static fromReplies(replies: number[]) {
-    return new PickList(replies.map((r) => new PickRequest(r, r)), replies);
+    return PickList.zip(replies.map((r) => new PickRequest(r, r)), replies);
   }
 }
 

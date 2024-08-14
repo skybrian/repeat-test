@@ -90,7 +90,7 @@ export abstract class PlayoutPicker {
     end = end ?? this.depth;
     assert(end >= start);
 
-    return new PickList(
+    return PickList.zip(
       this.reqs.slice(start, end),
       this.getReplies(start, end),
     );
