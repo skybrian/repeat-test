@@ -44,7 +44,7 @@ export class Search extends PlayoutPicker {
   private readonly walk = this.tree.walk();
 
   private replaceRequest: RequestFilter = (_parent, req) => req;
-  private acceptPlayout: PlayoutFilter = () => true;
+  #acceptPlayout: PlayoutFilter = () => true;
 
   setOptions(opts: SearchOpts) {
     assert(
@@ -52,26 +52,10 @@ export class Search extends PlayoutPicker {
       "setOptions called in the wrong state",
     );
     this.replaceRequest = opts.replaceRequest ?? this.replaceRequest;
-    this.acceptPlayout = opts.acceptPlayout ?? this.acceptPlayout;
+    this.#acceptPlayout = opts.acceptPlayout ?? this.#acceptPlayout;
     this.walk.trim(0);
     this.reqs.length = 0;
     return true;
-  }
-
-  /** Returns true if a playout is in progress. */
-  get picking() {
-    return this.state === "picking";
-  }
-
-  /** Returns true if no more playouts are available and the search is done. */
-  get done() {
-    return this.state === "searchDone";
-  }
-
-  private removePlayout() {
-    this.walk.prune();
-    this.reqs.length = this.walk.depth;
-    this.state = this.walk.pruned ? "searchDone" : "playoutDone";
   }
 
   startAt(depth: number): boolean {
@@ -110,11 +94,14 @@ export class Search extends PlayoutPicker {
     return success(pick);
   }
 
-  endPlayout(): boolean {
-    assert(this.state === "picking", "finishPlayout called in the wrong state");
-    const accepted = this.acceptPlayout(this.walk.depth);
-    this.removePlayout();
-    return accepted;
+  protected acceptPlayout(): boolean {
+    return this.#acceptPlayout(this.walk.depth);
+  }
+
+  protected removePlayout() {
+    this.walk.prune();
+    this.reqs.length = this.walk.depth;
+    this.state = this.walk.pruned ? "searchDone" : "playoutDone";
   }
 
   protected getReplies(start?: number, end?: number): number[] {

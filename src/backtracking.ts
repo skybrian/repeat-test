@@ -32,6 +32,16 @@ export abstract class PlayoutPicker {
   protected state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
   protected reqs: PickRequest[] = [];
 
+  /** Returns true if a playout is in progress. */
+  get picking() {
+    return this.state === "picking";
+  }
+
+  /** Returns true if no more playouts are available and the search is done. */
+  get done() {
+    return this.state === "searchDone";
+  }
+
   /**
    * Starts a new playout, possibly by backtracking.
    *
@@ -62,7 +72,12 @@ export abstract class PlayoutPicker {
    *
    * It's an error to call {@link maybePick} after finishing the playout.
    */
-  abstract endPlayout(): boolean;
+  endPlayout(): boolean {
+    assert(this.state === "picking", "endPlayout called in the wrong state");
+    const accepted = this.acceptPlayout();
+    this.removePlayout();
+    return accepted;
+  }
 
   /**
    * The number of picks so far. (Corresponds to the current depth in a search
@@ -71,8 +86,6 @@ export abstract class PlayoutPicker {
   get depth(): number {
     return this.reqs.length;
   }
-
-  protected abstract getReplies(start?: number, end?: number): number[];
 
   /**
    * Returns a slice of the picks made so far.
@@ -95,6 +108,18 @@ export abstract class PlayoutPicker {
       this.getReplies(start, end),
     );
   }
+
+  /** Returns true if the current playout is not filtered out. */
+  protected acceptPlayout(): boolean {
+    return true;
+  }
+
+  /**
+   * Removes the current playout, setting the state to 'playoutDone' or 'searchDone'.
+   */
+  protected abstract removePlayout(): void;
+
+  protected abstract getReplies(start?: number, end?: number): number[];
 }
 
 /**
@@ -127,14 +152,8 @@ class SinglePlayoutPicker extends PlayoutPicker {
     return success(pick);
   }
 
-  endPlayout(): boolean {
-    if (this.state !== "picking") {
-      throw new Error(
-        `finishPlayout called in the wrong state. Wanted "picking"; got "${this.state}"`,
-      );
-    }
+  protected removePlayout(): void {
     this.state = "searchDone";
-    return true;
   }
 
   protected getReplies(start?: number, end?: number): number[] {

@@ -49,16 +49,6 @@ export class PlayoutSearch extends PlayoutPicker {
     return true;
   }
 
-  /** Returns true if a playout is in progress. */
-  get picking() {
-    return this.state === "picking";
-  }
-
-  /** Returns true if no more playouts are available and the search is done. */
-  get done() {
-    return this.state === "searchDone";
-  }
-
   private recalculateTrimmedDepth() {
     const picks = this.walk.getPicks();
     while (
@@ -67,13 +57,6 @@ export class PlayoutSearch extends PlayoutPicker {
       picks.pop();
     }
     this.#trimmedDepth = picks.length;
-  }
-
-  private removePlayout() {
-    this.walk.prune();
-    this.reqs.length = this.walk.depth;
-    this.recalculateTrimmedDepth();
-    this.state = this.walk.pruned ? "searchDone" : "playoutDone";
   }
 
   startAt(depth: number): boolean {
@@ -110,10 +93,11 @@ export class PlayoutSearch extends PlayoutPicker {
     return success(pick);
   }
 
-  endPlayout(): boolean {
-    assert(this.state === "picking", "finishPlayout called in the wrong state");
-    this.removePlayout();
-    return true;
+  protected removePlayout() {
+    this.walk.prune();
+    this.reqs.length = this.walk.depth;
+    this.recalculateTrimmedDepth();
+    this.state = this.walk.pruned ? "searchDone" : "playoutDone";
   }
 
   get trimmedDepth(): number {
