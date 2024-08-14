@@ -39,7 +39,7 @@ type SearchOpts = {
  * depends on the {@link SearchOpts.expectedPlayouts} setting, which can be
  * increased to do more tracking during a large search.
  */
-export class Search implements PlayoutPicker {
+export class Search extends PlayoutPicker {
   private state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
 
   readonly tree: PickTree = new PickTree();
@@ -48,8 +48,6 @@ export class Search implements PlayoutPicker {
 
   private replaceRequest: RequestFilter = (_parent, req) => req;
   private acceptPlayout: PlayoutFilter = () => true;
-
-  constructor() {}
 
   setOptions(opts: SearchOpts) {
     assert(

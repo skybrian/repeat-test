@@ -30,7 +30,7 @@ export type SearchOpts = {
  * depends on the {@link SearchOpts.expectedPlayouts} setting, which can be
  * increased to do more tracking during a large search.
  */
-export class PlayoutSearch implements PlayoutPicker {
+export class PlayoutSearch extends PlayoutPicker {
   private state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
 
   readonly tree: PickTree = new PickTree();
@@ -39,8 +39,6 @@ export class PlayoutSearch implements PlayoutPicker {
   #trimmedDepth = 0;
 
   private pickSource: IntPicker = alwaysPickMin;
-
-  constructor() {}
 
   setOptions(opts: SearchOpts) {
     assert(

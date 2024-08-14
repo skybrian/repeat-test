@@ -27,7 +27,7 @@ export class Pruned extends Error {
  * A picker that can back up to a previous point in a pick sequence and try a
  * different path.
  */
-export interface PlayoutPicker {
+export abstract class PlayoutPicker {
   /**
    * Starts a new playout, possibly by backtracking.
    *
@@ -39,7 +39,7 @@ export interface PlayoutPicker {
    * If `startAt(0)` returns false, there are no more playouts and the search is
    * over.
    */
-  startAt(depth: number): boolean;
+  abstract startAt(depth: number): boolean;
 
   /**
    * Picks an integer within the range of the given request.
@@ -48,7 +48,7 @@ export interface PlayoutPicker {
    *
    * Returns {@link Pruned} if the current playout is cancelled.
    */
-  maybePick(req: PickRequest): Success<number> | Pruned;
+  abstract maybePick(req: PickRequest): Success<number> | Pruned;
 
   /**
    * Ends a playout.
@@ -58,80 +58,89 @@ export interface PlayoutPicker {
    *
    * It's an error to call {@link maybePick} after finishing the playout.
    */
-  endPlayout(): boolean;
+  abstract endPlayout(): boolean;
 
   /**
    * The number of picks so far. (Corresponds to the current depth in a search
    * tree.)
    */
-  get depth(): number;
+  abstract get depth(): number;
 
   /**
    * Returns a slice of the picks made so far.
    *
    * Available only between {@link startAt} and {@link endPlayout}.
    */
-  getPicks(start?: number, end?: number): PickList;
+  abstract getPicks(start?: number, end?: number): PickList;
+}
+
+/**
+ * A picker that only does one playout.
+ */
+class SinglePlayoutPicker extends PlayoutPicker {
+  private state: "ready" | "picking" | "done" = "ready";
+  private picks = new PickList();
+
+  constructor(private picker: IntPicker) {
+    super();
+  }
+
+  startAt(depth: number): boolean {
+    if (this.state !== "ready" || depth !== 0) {
+      return false;
+    }
+    this.state = "picking";
+    return true;
+  }
+
+  maybePick(req: PickRequest): Success<number> | Pruned {
+    if (this.state !== "picking") {
+      throw new Error(
+        `maybePick called in the wrong state. Wanted "picking"; got "${this.state}"`,
+      );
+    }
+    const pick = this.picker.pick(req);
+    this.picks.push(req, pick);
+    return success(pick);
+  }
+
+  endPlayout(): boolean {
+    if (this.state !== "picking") {
+      throw new Error(
+        `finishPlayout called in the wrong state. Wanted "picking"; got "${this.state}"`,
+      );
+    }
+    this.state = "done";
+    return true;
+  }
+
+  get depth() {
+    return this.picks.length;
+  }
+
+  getPicks(start?: number, end?: number): PickList {
+    if (this.state !== "picking") {
+      throw new Error(
+        `getPicks called in the wrong state. Wanted "picking"; got "${this.state}"`,
+      );
+    }
+    return this.picks.slice(start, end);
+  }
 }
 
 /**
  * A picker that only does one playout.
  */
 export function onePlayout(picker: IntPicker): PlayoutPicker {
-  let state: "ready" | "picking" | "done" = "ready";
-  const picks = new PickList();
-
-  return {
-    startAt(depth: number): boolean {
-      if (state !== "ready" || depth !== 0) {
-        return false;
-      }
-      state = "picking";
-      return true;
-    },
-
-    maybePick(req) {
-      if (state !== "picking") {
-        throw new Error(
-          `maybePick called in the wrong state. Wanted "picking"; got "${state}"`,
-        );
-      }
-      const pick = picker.pick(req);
-      picks.push(req, pick);
-      return success(pick);
-    },
-
-    endPlayout(): boolean {
-      if (state !== "picking") {
-        throw new Error(
-          `finishPlayout called in the wrong state. Wanted "picking"; got "${state}"`,
-        );
-      }
-      state = "done";
-      return true;
-    },
-
-    get depth() {
-      return picks.length;
-    },
-
-    getPicks(start?: number, end?: number): PickList {
-      if (state !== "picking") {
-        throw new Error(
-          `getPicks called in the wrong state. Wanted "picking"; got "${state}"`,
-        );
-      }
-      return picks.slice(start, end);
-    },
-  };
+  return new SinglePlayoutPicker(picker);
 }
 
 /** A playout that always picks the minimum */
 export function minPlayout(): PlayoutPicker {
-  return onePlayout(alwaysPickMin);
+  return new SinglePlayoutPicker(alwaysPickMin);
 }
 
 /** A playout that plays back the given picks. */
 export function playback(picks: number[]): PlayoutPicker {
-  return onePlayout(new PlaybackPicker(picks));
+  return new SinglePlayoutPicker(new PlaybackPicker(picks));
 }
