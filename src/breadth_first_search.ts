@@ -58,6 +58,10 @@ export class Search extends PlayoutPicker {
     return true;
   }
 
+  protected startPlayout(depth: number): void {
+    this.walk.trim(depth);
+  }
+
   maybePick(req: PickRequest): Success<number> | Pruned {
     assert(this.state === "picking", "maybePick called in the wrong state");
 
@@ -85,10 +89,6 @@ export class Search extends PlayoutPicker {
     this.walk.prune();
     this.reqs.length = this.walk.depth;
     return !this.walk.pruned;
-  }
-
-  protected trim(depth: number): void {
-    this.walk.trim(depth);
   }
 }
 
