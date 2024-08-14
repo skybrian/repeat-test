@@ -54,18 +54,12 @@ export abstract class PlayoutPicker {
    * over.
    */
   startAt(depth: number): boolean {
-    if (this.state === "searchDone") {
-      return false;
-    }
     if (this.state === "ready") {
       this.state = "picking";
-      return true;
     } else if (this.state === "picking") {
-      this.removePlayout(); // should change state
+      this.state = this.nextPlayout() ? "playoutDone" : "searchDone";
     }
-    if (this.state !== "playoutDone") {
-      return false;
-    } else if (depth > this.depth) {
+    if (this.state === "searchDone" || depth > this.depth) {
       return false;
     }
     this.trim(depth);
@@ -93,7 +87,7 @@ export abstract class PlayoutPicker {
   endPlayout(): boolean {
     assert(this.state === "picking", "endPlayout called in the wrong state");
     const accepted = this.acceptPlayout();
-    this.removePlayout();
+    this.state = this.nextPlayout() ? "playoutDone" : "searchDone";
     return accepted;
   }
 
@@ -135,9 +129,9 @@ export abstract class PlayoutPicker {
   }
 
   /**
-   * Removes the current playout, setting the state to 'playoutDone' or 'searchDone'.
+   * Removes the current playout. Returns true if there's a new playout to try.
    */
-  protected abstract removePlayout(): void;
+  protected abstract nextPlayout(): boolean;
 
   protected abstract trim(depth: number): void;
 }
@@ -152,14 +146,6 @@ class SinglePlayoutPicker extends PlayoutPicker {
     super();
   }
 
-  startAt(depth: number): boolean {
-    if (this.state !== "ready" || depth !== 0) {
-      return false;
-    }
-    this.state = "picking";
-    return true;
-  }
-
   maybePick(req: PickRequest): Success<number> | Pruned {
     if (this.state !== "picking") {
       throw new Error(
@@ -172,8 +158,8 @@ class SinglePlayoutPicker extends PlayoutPicker {
     return success(pick);
   }
 
-  protected removePlayout(): void {
-    this.state = "searchDone";
+  protected nextPlayout(): boolean {
+    return false;
   }
 
   protected getReplies(start?: number, end?: number): number[] {
@@ -181,7 +167,6 @@ class SinglePlayoutPicker extends PlayoutPicker {
   }
 
   protected trim(_depth: number): void {
-    assert(false);
   }
 }
 

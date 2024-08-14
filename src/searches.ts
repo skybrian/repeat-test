@@ -60,10 +60,10 @@ export class PlayoutSearch extends PlayoutPicker {
     return this.walk.getPicks(start, end);
   }
 
-  protected removePlayout() {
+  protected nextPlayout() {
     this.walk.prune();
     this.reqs.length = this.walk.depth;
-    this.state = this.walk.pruned ? "searchDone" : "playoutDone";
+    return !this.walk.pruned;
   }
 
   protected trim(depth: number): void {

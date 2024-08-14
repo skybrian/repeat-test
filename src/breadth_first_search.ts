@@ -63,7 +63,7 @@ export class Search extends PlayoutPicker {
 
     const replaced = this.replaceRequest(this.depth, req);
     if (replaced === undefined) {
-      this.removePlayout();
+      this.state = this.nextPlayout() ? "playoutDone" : "searchDone";
       return new Pruned("filtered by replaceRequest");
     }
 
@@ -81,10 +81,10 @@ export class Search extends PlayoutPicker {
     return this.#acceptPlayout(this.walk.depth);
   }
 
-  protected removePlayout() {
+  protected nextPlayout() {
     this.walk.prune();
     this.reqs.length = this.walk.depth;
-    this.state = this.walk.pruned ? "searchDone" : "playoutDone";
+    return !this.walk.pruned;
   }
 
   protected trim(depth: number): void {
