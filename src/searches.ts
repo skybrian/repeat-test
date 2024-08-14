@@ -1,4 +1,3 @@
-import { Success, success } from "./results.ts";
 import { alwaysPickMin, IntPicker, PickRequest } from "./picks.ts";
 import { PlayoutPicker } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
@@ -43,10 +42,10 @@ export class PlayoutSearch extends PlayoutPicker {
     this.walk.trim(depth);
   }
 
-  protected doPick(req: PickRequest): Success<number> {
+  protected doPick(req: PickRequest): number {
     const firstChoice = this.pickSource.pick(req);
     const pick = this.walk.pushUnpruned(firstChoice, req);
-    return success(pick);
+    return pick;
   }
 
   protected getReplies(start?: number, end?: number): number[] {

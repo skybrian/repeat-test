@@ -76,13 +76,13 @@ export abstract class PlayoutPicker {
     assert(this.state === "picking", "maybePick called in the wrong state");
 
     const result = this.doPick(req);
-    if (!result.ok) {
+    if (result === undefined) {
       this.next();
-      return result;
+      return new Pruned("filtered out in maybePick");
     }
 
     this.#reqs.push(req);
-    return result;
+    return success(result);
   }
 
   /**
@@ -132,7 +132,7 @@ export abstract class PlayoutPicker {
 
   protected abstract startPlayout(depth: number): void;
 
-  protected abstract doPick(req: PickRequest): Success<number> | Pruned;
+  protected abstract doPick(req: PickRequest): number | undefined;
 
   protected abstract getReplies(start?: number, end?: number): number[];
 
@@ -172,10 +172,10 @@ class SinglePlayoutPicker extends PlayoutPicker {
   protected startPlayout(_depth: number): void {
   }
 
-  protected doPick(req: PickRequest): Success<number> | Pruned {
+  protected doPick(req: PickRequest): number {
     const pick = this.picker.pick(req);
     this.replies.push(pick);
-    return success(pick);
+    return pick;
   }
 
   protected getReplies(start?: number, end?: number): number[] {

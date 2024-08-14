@@ -1,7 +1,6 @@
 import { assert } from "@std/assert";
-import { Success, success } from "./results.ts";
 import { alwaysPickMin, PickRequest } from "./picks.ts";
-import { PlayoutPicker, Pruned } from "./backtracking.ts";
+import { PlayoutPicker } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
 import { PickSet } from "./pick_function.ts";
 import { generate, Generated } from "./generated_class.ts";
@@ -60,15 +59,15 @@ export class Search extends PlayoutPicker {
     this.walk.trim(depth);
   }
 
-  protected doPick(req: PickRequest): Success<number> | Pruned {
+  protected doPick(req: PickRequest): number | undefined {
     const replaced = this.replaceRequest(this.depth, req);
     if (replaced === undefined) {
-      return new Pruned("filtered by replaceRequest");
+      return undefined;
     }
 
     const firstChoice = alwaysPickMin.pick(replaced);
     const pick = this.walk.pushUnpruned(firstChoice, replaced);
-    return success(pick);
+    return pick;
   }
 
   protected getReplies(start?: number, end?: number): number[] {
