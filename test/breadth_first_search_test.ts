@@ -21,6 +21,7 @@ import {
   pickers,
   Search,
   takeAll,
+  takeGenerated,
 } from "../src/breadth_first_search.ts";
 import { Success, success } from "../src/results.ts";
 
@@ -467,7 +468,7 @@ describe("pickers", () => {
   });
 });
 
-describe("generateAll", () => {
+describe("takeGenerated", () => {
   it("generates a single value for a constant", () => {
     const one = Arbitrary.from(() => 1);
     assertGenerated(one, [{ val: 1, picks: [] }]);
@@ -475,7 +476,7 @@ describe("generateAll", () => {
 
   it("generates a valid PickRequest for an array of examples", () => {
     const examples = Arbitrary.of(1, 2, 3);
-    const gens = Array.from(generateAll(examples));
+    const gens = takeGenerated(examples, 4);
     const reqs = gens[0].picks().reqs();
     assertEquals(reqs.length, 1);
     assertEquals(reqs[0].min, 0);
