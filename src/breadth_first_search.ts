@@ -26,42 +26,13 @@ type SearchOpts = {
  */
 class FilteredSearch {
   readonly tree: PickTree = new PickTree();
-  private readonly walk = this.tree.walk();
-
-  private replaceRequest: RequestFilter;
-  #acceptPlayout: PlayoutFilter;
+  readonly walk = this.tree.walk();
+  readonly replaceRequest: RequestFilter;
+  readonly acceptPlayout: PlayoutFilter;
 
   constructor(opts: SearchOpts) {
     this.replaceRequest = opts.replaceRequest;
-    this.#acceptPlayout = opts.acceptPlayout;
-  }
-
-  getReplies(start?: number, end?: number): number[] {
-    return this.walk.getPicks(start, end);
-  }
-
-  startPlayout(depth: number): void {
-    this.walk.trim(depth);
-  }
-
-  doPick(req: PickRequest, depth: number): number | undefined {
-    const replaced = this.replaceRequest(depth, req);
-    if (replaced === undefined) {
-      return undefined;
-    }
-
-    const firstChoice = alwaysPickMin.pick(replaced);
-    const pick = this.walk.pushUnpruned(firstChoice, replaced);
-    return pick;
-  }
-
-  acceptPlayout(): boolean {
-    return this.#acceptPlayout(this.walk.depth);
-  }
-
-  nextPlayout(): number | undefined {
-    this.walk.prune();
-    return this.walk.pruned ? undefined : this.walk.depth;
+    this.acceptPlayout = opts.acceptPlayout;
   }
 }
 
@@ -117,36 +88,43 @@ export class BreadthFirstSearch extends PlayoutSource {
   }
 
   protected startPlayout(depth: number): void {
-    // console.log("startPlayout", depth);
-    this.search.startPlayout(depth);
+    this.search.walk.trim(depth);
   }
 
   protected doPick(req: PickRequest): number | undefined {
-    const result = this.search.doPick(req, this.depth);
-    // console.log("doPick", req.toString(), " => ", result);
-    return result;
+    const replaced = this.search.replaceRequest(this.depth, req);
+    if (replaced === undefined) {
+      return undefined;
+    }
+
+    const firstChoice = alwaysPickMin.pick(replaced);
+    const pick = this.search.walk.pushUnpruned(firstChoice, replaced);
+    return pick;
   }
 
   getReplies(start?: number, end?: number): number[] {
-    return this.search.getReplies(start, end);
+    return this.search.walk.getPicks(start, end);
   }
 
   protected acceptPlayout(): boolean {
-    return this.search.acceptPlayout();
+    return this.search.acceptPlayout(this.depth);
   }
 
   protected nextPlayout(): number | undefined {
-    const depth = this.search.nextPlayout();
-    if (depth !== undefined) {
-      return depth;
-    } else if (!this.pruned) {
+    this.search.walk.prune();
+    if (!this.search.walk.pruned) {
+      // continue current pass
+      return this.search.walk.depth;
+    }
+
+    if (!this.pruned) {
+      // no more passes needed
       return undefined;
     }
 
     // Start next pass
     this.pruned = false;
     this.maxDepth++;
-    // console.log(`Starting pass ${this.maxDepth}`);
     this.search = configurePass(this.maxDepth, () => {
       this.pruned = true;
     });
