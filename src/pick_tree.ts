@@ -358,7 +358,7 @@ export class Walk {
 
   trim(depth: number) {
     assert(depth >= 0);
-    assert(depth <= this.depth);
+    assert(depth <= this.depth, "trim depth must be <= current depth");
     this.nodePath.length = depth + 1;
     this.pickPath.length = depth + 1;
   }

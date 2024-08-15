@@ -291,10 +291,11 @@ describe("BreadthFirstSearch", () => {
     const accepted = new Set<string>();
     while (!search.done) {
       assert(search.startAt(0));
-      search.nextPick(new PickRequest(0, 2));
-      const picks = search.getPicks();
-      if (search.endPlayout()) {
-        accepted.add(JSON.stringify(picks.replies()));
+      if (search.nextPick(new PickRequest(0, 2)).ok) {
+        const picks = search.getPicks();
+        if (search.endPlayout()) {
+          accepted.add(JSON.stringify(picks.replies()));
+        }
       }
     }
     assertEquals(Array.from(accepted), ["[0]", "[1]", "[2]"]);

@@ -1,6 +1,6 @@
 import { alwaysPickMin, PickRequest } from "./picks.ts";
 import { PlayoutSource } from "./backtracking.ts";
-import { PickTree } from "./pick_tree.ts";
+import { PickTree, Walk } from "./pick_tree.ts";
 import { PickSet } from "./pick_function.ts";
 import { generate, Generated } from "./generated_class.ts";
 
@@ -8,8 +8,7 @@ import { generate, Generated } from "./generated_class.ts";
  * Implements a single pass of a breadth-first search.
  */
 export class Filter {
-  readonly tree = new PickTree();
-  readonly walk = this.tree.walk();
+  readonly walk = new PickTree().walk();
   #filtered = false;
 
   constructor(readonly passIdx: number) {}
@@ -24,6 +23,7 @@ export class Filter {
     }
 
     this.#filtered = true;
+
     if (depth > this.passIdx - 1) {
       return new PickRequest(req.min, req.min);
     } else if (req.min === req.max) {
@@ -34,15 +34,17 @@ export class Filter {
 }
 
 export class BreadthFirstSearch extends PlayoutSource {
-  tree = new PickTree();
+  shared: Walk;
   filter: Filter;
 
   constructor(readonly maxPasses?: number) {
     super();
+    this.shared = new PickTree().walk();
     this.filter = new Filter(0);
   }
 
   protected startPlayout(depth: number): void {
+    this.shared.trim(depth);
     this.filter.walk.trim(depth);
   }
 
@@ -54,6 +56,9 @@ export class BreadthFirstSearch extends PlayoutSource {
 
     const firstChoice = alwaysPickMin.pick(replaced);
     const pick = this.filter.walk.pushUnpruned(firstChoice, replaced);
+    if (!this.shared.push(req, pick)) {
+      return undefined; // pruned in previous pass
+    }
     return pick;
   }
 
@@ -62,11 +67,11 @@ export class BreadthFirstSearch extends PlayoutSource {
   }
 
   protected acceptPlayout(): boolean {
-    return this.tree.available(this.getReplies());
+    return !this.shared.pruned;
   }
 
   protected nextPlayout(): number | undefined {
-    this.tree.prune(this.getPicks());
+    this.shared.prune();
     this.filter.walk.prune();
     if (!this.filter.walk.pruned) {
       // continue current pass
