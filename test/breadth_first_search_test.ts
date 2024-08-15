@@ -76,7 +76,7 @@ function runPass(
   const playouts = new Set<string>();
   const search = new BreadthFirstSearch(idx + 1);
   while (!search.done) {
-    const currentPass = search.filter.passIdx;
+    const currentPass = search.currentPass;
     try {
       const playout = walk(search);
       if (playout === undefined) {

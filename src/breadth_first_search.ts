@@ -1,6 +1,6 @@
 import { alwaysPickMin, PickRequest } from "./picks.ts";
 import { PlayoutSource } from "./backtracking.ts";
-import { PickTree, Walk } from "./pick_tree.ts";
+import { PickTree } from "./pick_tree.ts";
 import { PickSet } from "./pick_function.ts";
 import { generate, Generated } from "./generated_class.ts";
 
@@ -8,7 +8,6 @@ import { generate, Generated } from "./generated_class.ts";
  * Implements a single pass of a breadth-first search.
  */
 export class Filter {
-  readonly walk = new PickTree().walk();
   #filtered = false;
 
   constructor(readonly passIdx: number) {}
@@ -33,19 +32,31 @@ export class Filter {
   }
 }
 
+/**
+ * Generates playouts using an iterative deepening search.
+ *
+ * Unlike a depth-first search, this will generates shorter playouts before longer ones.
+ */
 export class BreadthFirstSearch extends PlayoutSource {
-  shared: Walk;
-  filter: Filter;
+  /** Keeps track of which playouts have been pruned, including previous passes. */
+  private readonly shared = new PickTree().walk();
+
+  /** Keeps track of playouts that were pruned during the current pass. */
+  private pass = new PickTree().walk();
+
+  private filter = new Filter(0);
 
   constructor(readonly maxPasses?: number) {
     super();
-    this.shared = new PickTree().walk();
-    this.filter = new Filter(0);
+  }
+
+  get currentPass() {
+    return this.filter.passIdx;
   }
 
   protected startPlayout(depth: number): void {
     this.shared.trim(depth);
-    this.filter.walk.trim(depth);
+    this.pass.trim(depth);
   }
 
   protected doPick(req: PickRequest): number | undefined {
@@ -55,7 +66,7 @@ export class BreadthFirstSearch extends PlayoutSource {
     }
 
     const firstChoice = alwaysPickMin.pick(replaced);
-    const pick = this.filter.walk.pushUnpruned(firstChoice, replaced);
+    const pick = this.pass.pushUnpruned(firstChoice, replaced);
     if (!this.shared.push(req, pick)) {
       return undefined; // pruned in previous pass
     }
@@ -63,7 +74,7 @@ export class BreadthFirstSearch extends PlayoutSource {
   }
 
   getReplies(start?: number, end?: number): number[] {
-    return this.filter.walk.getPicks(start, end);
+    return this.pass.getPicks(start, end);
   }
 
   protected acceptPlayout(): boolean {
@@ -72,10 +83,10 @@ export class BreadthFirstSearch extends PlayoutSource {
 
   protected nextPlayout(): number | undefined {
     this.shared.prune();
-    this.filter.walk.prune();
-    if (!this.filter.walk.pruned) {
+    this.pass.prune();
+    if (!this.pass.pruned) {
       // continue current pass
-      return this.filter.walk.depth;
+      return this.pass.depth;
     }
 
     const nextPass = this.filter.passIdx + 1;
@@ -85,6 +96,7 @@ export class BreadthFirstSearch extends PlayoutSource {
     }
 
     // Start next pass
+    this.pass = new PickTree().walk();
     this.filter = new Filter(nextPass);
     return 0;
   }
