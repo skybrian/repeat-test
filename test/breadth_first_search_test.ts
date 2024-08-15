@@ -19,7 +19,6 @@ import {
 import { Success, success } from "../src/results.ts";
 
 const bit = new PickRequest(0, 1);
-
 const one = new PickRequest(1, 1);
 
 function walkUnaryTree(playouts: PlayoutSource): string | undefined {
@@ -42,12 +41,12 @@ function walkUnaryTree(playouts: PlayoutSource): string | undefined {
   return result;
 }
 
-function walkBinaryTree(...stops: string[]) {
+function walkBinaryTree(...solutions: string[]) {
   function walk(playouts: PlayoutSource): string | undefined {
     assert(playouts.startAt(0));
     let result = "";
     for (let i = 0; i < 8; i++) {
-      if (stops.includes(result)) {
+      if (solutions.includes(result)) {
         if (!playouts.endPlayout()) {
           return undefined;
         }
@@ -79,7 +78,7 @@ function runPass(
   let pruneCalls = 0;
   let prunedPlayouts = 0;
   const search = new BreadthFirstSearch();
-  search.search = configurePass(idx, () => {
+  search.filtered = configurePass(idx, () => {
     pruneCalls++;
   });
   while (!search.done) {

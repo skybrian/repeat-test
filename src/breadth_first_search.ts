@@ -76,45 +76,45 @@ export function configurePass(
 }
 
 export class BreadthFirstSearch extends PlayoutSource {
-  search: FilteredSearch;
-  private maxDepth = 0;
+  filtered: FilteredSearch;
+  passIdx = 0;
   private pruned = false;
 
   constructor() {
     super();
-    this.search = configurePass(this.maxDepth, () => {
+    this.filtered = configurePass(this.passIdx, () => {
       this.pruned = true;
     });
   }
 
   protected startPlayout(depth: number): void {
-    this.search.walk.trim(depth);
+    this.filtered.walk.trim(depth);
   }
 
   protected doPick(req: PickRequest): number | undefined {
-    const replaced = this.search.replaceRequest(this.depth, req);
+    const replaced = this.filtered.replaceRequest(this.depth, req);
     if (replaced === undefined) {
       return undefined;
     }
 
     const firstChoice = alwaysPickMin.pick(replaced);
-    const pick = this.search.walk.pushUnpruned(firstChoice, replaced);
+    const pick = this.filtered.walk.pushUnpruned(firstChoice, replaced);
     return pick;
   }
 
   getReplies(start?: number, end?: number): number[] {
-    return this.search.walk.getPicks(start, end);
+    return this.filtered.walk.getPicks(start, end);
   }
 
   protected acceptPlayout(): boolean {
-    return this.search.acceptPlayout(this.depth);
+    return this.filtered.acceptPlayout(this.depth);
   }
 
   protected nextPlayout(): number | undefined {
-    this.search.walk.prune();
-    if (!this.search.walk.pruned) {
+    this.filtered.walk.prune();
+    if (!this.filtered.walk.pruned) {
       // continue current pass
-      return this.search.walk.depth;
+      return this.filtered.walk.depth;
     }
 
     if (!this.pruned) {
@@ -124,8 +124,8 @@ export class BreadthFirstSearch extends PlayoutSource {
 
     // Start next pass
     this.pruned = false;
-    this.maxDepth++;
-    this.search = configurePass(this.maxDepth, () => {
+    this.passIdx++;
+    this.filtered = configurePass(this.passIdx, () => {
       this.pruned = true;
     });
     return 0;
