@@ -49,6 +49,12 @@ describe("PickRequest", () => {
       });
     });
   });
+
+  describe("toString", () => {
+    it("prints the range", () => {
+      assertEquals(new PickRequest(0, 1).toString(), "0..1");
+    });
+  });
 });
 
 describe("alwaysPick", () => {

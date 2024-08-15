@@ -53,6 +53,7 @@ export abstract class PlayoutSource {
    * over.
    */
   startAt(depth: number): boolean {
+    // console.log("startAt", depth);
     if (this.#state === "picking") {
       this.next();
     }

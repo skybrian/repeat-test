@@ -1,4 +1,3 @@
-import { assert } from "@std/assert";
 import { alwaysPickMin, PickRequest } from "./picks.ts";
 import { PlayoutSource } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
@@ -18,52 +17,35 @@ type SearchOpts = {
    * have a narrower range. If the callback returns undefined, the playout will
    * be cancelled.
    */
-  replaceRequest?: RequestFilter;
-  acceptPlayout?: PlayoutFilter;
+  replaceRequest: RequestFilter;
+  acceptPlayout: PlayoutFilter;
 };
 
 /**
  * A filtered search over all possible playouts.
- *
- * It avoids duplicate playouts by recording each pick in a search tree. For
- * small search trees where every pick is recorded, eventually every playout
- * will be eliminated and the search will end.
- *
- * Does a depth-first search, implementing a single pass of a breadth-first
- * search. See {@link generatePlayouts} to iterate over multiple passes.
- *
- * Duplicates may happen with small probability when doing a random search,
- * because visits to nodes with many branches won't be tracked.  The heuristic
- * depends on the {@link SearchOpts.expectedPlayouts} setting, which can be
- * increased to do more tracking during a large search.
  */
-export class FilteredSearch extends PlayoutSource {
+class FilteredSearch {
   readonly tree: PickTree = new PickTree();
   private readonly walk = this.tree.walk();
 
-  private replaceRequest: RequestFilter = (_parent, req) => req;
-  #acceptPlayout: PlayoutFilter = () => true;
+  private replaceRequest: RequestFilter;
+  #acceptPlayout: PlayoutFilter;
 
-  setOptions(opts: SearchOpts) {
-    assert(
-      this.state === "ready",
-      "setOptions called in the wrong state",
-    );
-    this.replaceRequest = opts.replaceRequest ?? this.replaceRequest;
-    this.#acceptPlayout = opts.acceptPlayout ?? this.#acceptPlayout;
-    return true;
+  constructor(opts: SearchOpts) {
+    this.replaceRequest = opts.replaceRequest;
+    this.#acceptPlayout = opts.acceptPlayout;
   }
 
   getReplies(start?: number, end?: number): number[] {
     return this.walk.getPicks(start, end);
   }
 
-  protected startPlayout(depth: number): void {
+  startPlayout(depth: number): void {
     this.walk.trim(depth);
   }
 
-  protected doPick(req: PickRequest): number | undefined {
-    const replaced = this.replaceRequest(this.depth, req);
+  doPick(req: PickRequest, depth: number): number | undefined {
+    const replaced = this.replaceRequest(depth, req);
     if (replaced === undefined) {
       return undefined;
     }
@@ -73,26 +55,25 @@ export class FilteredSearch extends PlayoutSource {
     return pick;
   }
 
-  protected acceptPlayout(): boolean {
+  acceptPlayout(): boolean {
     return this.#acceptPlayout(this.walk.depth);
   }
 
-  protected nextPlayout(): number | undefined {
+  nextPlayout(): number | undefined {
     this.walk.prune();
     return this.walk.pruned ? undefined : this.walk.depth;
   }
 }
 
 /**
- * Configures a search to run a breadth-first pass.
+ * Configures a FilteredSearch to run a breadth-first pass.
  * @param passIdx the number of previous passes that were run.
  * @param more called if more passes are needed.
  */
 export function configurePass(
-  search: FilteredSearch,
   passIdx: number,
   more: () => void,
-) {
+): FilteredSearch {
   let moreSent = false;
   function pruned() {
     if (!moreSent) {
@@ -120,11 +101,57 @@ export function configurePass(
     }
     return depth >= passIdx;
   };
+  return new FilteredSearch({ replaceRequest, acceptPlayout });
+}
 
-  search.setOptions({
-    replaceRequest,
-    acceptPlayout,
-  });
+export class BreadthFirstSearch extends PlayoutSource {
+  search: FilteredSearch;
+  private maxDepth = 0;
+  private pruned = false;
+
+  constructor() {
+    super();
+    this.search = configurePass(this.maxDepth, () => {
+      this.pruned = true;
+    });
+  }
+
+  protected startPlayout(depth: number): void {
+    // console.log("startPlayout", depth);
+    this.search.startPlayout(depth);
+  }
+
+  protected doPick(req: PickRequest): number | undefined {
+    const result = this.search.doPick(req, this.depth);
+    // console.log("doPick", req.toString(), " => ", result);
+    return result;
+  }
+
+  getReplies(start?: number, end?: number): number[] {
+    return this.search.getReplies(start, end);
+  }
+
+  protected acceptPlayout(): boolean {
+    return this.search.acceptPlayout();
+  }
+
+  protected nextPlayout(): number | undefined {
+    const depth = this.search.nextPlayout();
+    if (depth !== undefined) {
+      return depth;
+    } else if (!this.pruned) {
+      return undefined;
+    }
+
+    // Start next pass
+    this.pruned = false;
+    this.maxDepth++;
+    // console.log(`Starting pass ${this.maxDepth}`);
+    this.search = configurePass(this.maxDepth, () => {
+      this.pruned = true;
+    });
+    return 0;
+  }
 }
 
 /**
@@ -136,19 +163,9 @@ export function configurePass(
  * {@link PlayoutSource.endPlayout} must be used to filter them.
  */
 export function* generatePlayouts(): Iterable<PlayoutSource> {
-  let maxDepth = 0;
-  let pruned = true;
-  while (pruned) {
-    pruned = false;
-    const search = new FilteredSearch();
-    configurePass(search, maxDepth, () => {
-      pruned = true;
-    });
-    while (!search.done) {
-      yield search;
-      assert(search.state !== "picking");
-    }
-    maxDepth++;
+  const search = new BreadthFirstSearch();
+  while (!search.done) {
+    yield search;
   }
 }
 

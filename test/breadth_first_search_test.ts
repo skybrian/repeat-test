@@ -1,11 +1,5 @@
-import { beforeEach, describe, it } from "@std/testing/bdd";
-import {
-  assert,
-  assertEquals,
-  assertFalse,
-  assertThrows,
-  fail,
-} from "@std/assert";
+import { describe, it } from "@std/testing/bdd";
+import { assert, assertEquals, assertThrows, fail } from "@std/assert";
 
 import { PickRequest } from "../src/picks.ts";
 import { PlayoutSource, Pruned } from "../src/backtracking.ts";
@@ -15,8 +9,8 @@ import { repeatTest } from "../src/runner.ts";
 
 import { assertGenerated, assertValues } from "../src/asserts.ts";
 import {
+  BreadthFirstSearch,
   configurePass,
-  FilteredSearch,
   find,
   generateAll,
   generatePlayouts,
@@ -85,8 +79,8 @@ function runPass(
   const playouts = new Set<string>();
   let pruneCalls = 0;
   let prunedPlayouts = 0;
-  const search = new FilteredSearch();
-  configurePass(search, idx, () => {
+  const search = new BreadthFirstSearch();
+  search.search = configurePass(idx, () => {
     pruneCalls++;
   });
   while (!search.done) {
@@ -348,90 +342,6 @@ class Maze {
     return result;
   }
 }
-
-describe("FilteredSearch", () => {
-  let search = new FilteredSearch();
-
-  beforeEach(() => {
-    search = new FilteredSearch();
-  });
-
-  describe("startAt", () => {
-    it("skips a filtered-out branch", () => {
-      search.setOptions({
-        replaceRequest: (_, req) => new PickRequest(req.min, req.min),
-      });
-      assert(search.startAt(0));
-
-      assertEquals(search.nextPick(new PickRequest(0, 1)), {
-        ok: true,
-        val: 0,
-      });
-      assertFalse(search.startAt(0));
-    });
-  });
-
-  describe("nextPick", () => {
-    it("picks using a replaced request", () => {
-      search.setOptions({
-        replaceRequest: (_, req) => new PickRequest(req.max, req.max),
-      });
-      assert(search.startAt(0));
-
-      assertEquals(
-        search.nextPick(new PickRequest(0, 1)),
-        { ok: true, val: 1 },
-      );
-      assertFalse(search.startAt(0));
-    });
-  });
-
-  const tree = new Tree(42, [
-    new Tree(43, [new Tree(45)]),
-    new Tree(44),
-  ]);
-
-  function runMaze(search: FilteredSearch) {
-    const maze = new Maze(tree);
-    maze.visit(search);
-    return maze;
-  }
-
-  it("filters by request depth", () => {
-    search.setOptions({
-      replaceRequest: (depth, req) => depth < 1 ? req : undefined,
-    });
-    const maze = runMaze(search);
-    const actual = {
-      accepted: Array.from(maze.accepted.keys()),
-      rejected: Array.from(maze.rejected.keys()),
-      pruneCount: maze.pruneCount,
-    };
-    assertEquals(actual, {
-      accepted: ["[1]", "[2]"],
-      rejected: [],
-      pruneCount: 1,
-    });
-  });
-  it("filters by playout depth === 1", () => {
-    search.setOptions({
-      acceptPlayout: (lastDepth) => lastDepth === 1,
-    });
-    const maze = runMaze(search);
-    assertEquals(Array.from(maze.accepted.keys()), ["[1]", "[2]"]);
-    assertEquals(Array.from(maze.rejected.keys()), ["[0,0]", "[0,1]"]);
-    assertEquals(maze.pruneCount, 0);
-  });
-  it("filters by playout depth === 2", () => {
-    search.setOptions({
-      acceptPlayout: (lastDepth) => lastDepth === 2,
-    });
-    const maze = runMaze(search);
-    assertEquals(Array.from(maze.accepted.keys()), ["[0,0]", "[0,1]"]);
-    assertEquals(Array.from(maze.rejected.keys()), ["[1]", "[2]"]);
-    assertEquals(maze.pruneCount, 0);
-  });
-});
 
 describe("generatePlayouts", () => {
   it("iterates once when there aren't any branches", () => {

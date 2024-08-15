@@ -100,6 +100,10 @@ export class PickRequest {
   inRange(n: number): boolean {
     return inRange(n, this.min, this.max);
   }
+
+  toString() {
+    return `${this.min}..${this.max}`;
+  }
 }
 
 /**
