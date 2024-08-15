@@ -1,4 +1,4 @@
-import { describe, it } from "@std/testing/bdd";
+import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows, fail } from "@std/assert";
 
 import { PickRequest } from "../src/picks.ts";
@@ -13,7 +13,6 @@ import {
   configurePass,
   find,
   generateAll,
-  generatePlayouts,
   takeAll,
   takeGenerated,
 } from "../src/breadth_first_search.ts";
@@ -343,23 +342,26 @@ class Maze {
   }
 }
 
-describe("generatePlayouts", () => {
-  it("iterates once when there aren't any branches", () => {
-    let count = 0;
-    for (const source of generatePlayouts()) {
-      assert(source.startAt(0));
-      assert(source.endPlayout());
-      count++;
-    }
-    assertEquals(count, 1);
+describe("BreadthFirstSearch", () => {
+  let search = new BreadthFirstSearch();
+
+  beforeEach(() => {
+    search = new BreadthFirstSearch();
   });
+
+  it("generates one playout when there aren't any branches", () => {
+    assert(search.startAt(0));
+    assert(search.endPlayout());
+    assert(search.done);
+  });
+
   it("visits each root branch once", () => {
     const accepted = new Set<string>();
-    for (const source of generatePlayouts()) {
-      assert(source.startAt(0));
-      source.nextPick(new PickRequest(0, 2));
-      const picks = source.getPicks();
-      if (source.endPlayout()) {
+    while (!search.done) {
+      assert(search.startAt(0));
+      search.nextPick(new PickRequest(0, 2));
+      const picks = search.getPicks();
+      if (search.endPlayout()) {
         accepted.add(JSON.stringify(picks.replies()));
       }
     }
@@ -370,8 +372,9 @@ describe("generatePlayouts", () => {
       const expectedLeaves = Array(tree.size).fill(0).map((_, i) => i);
 
       const maze = new Maze(tree);
-      for (const source of generatePlayouts()) {
-        maze.visit(source);
+      const search = new BreadthFirstSearch();
+      while (!search.done) {
+        maze.visit(search);
       }
       assertEquals(expectedLeaves, maze.leaves);
     }, { reps: 100 });
