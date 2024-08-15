@@ -10,7 +10,6 @@ import { repeatTest } from "../src/runner.ts";
 import { assertGenerated, assertValues } from "../src/asserts.ts";
 import {
   BreadthFirstSearch,
-  Filter,
   find,
   generateAll,
   takeAll,
@@ -75,159 +74,114 @@ function runPass(
   walk: (playouts: PlayoutSource) => string | undefined,
 ) {
   const playouts = new Set<string>();
-  let prunedPlayouts = 0;
-  const search = new BreadthFirstSearch();
-  search.filter = new Filter(idx);
-  while (!search.done && search.filter.passIdx === idx) {
+  const search = new BreadthFirstSearch(idx + 1);
+  while (!search.done) {
+    const currentPass = search.filter.passIdx;
     try {
       const playout = walk(search);
       if (playout === undefined) {
-        prunedPlayouts++;
         continue;
       }
       if (playouts.has(playout)) {
         fail(`duplicate playout: ${playout}`);
       }
-      playouts.add(playout);
+      if (currentPass === idx) {
+        playouts.add(playout);
+      }
     } catch (e) {
       if (e instanceof Pruned) {
-        prunedPlayouts++;
         continue;
       }
       throw e;
     }
   }
-  return {
-    playouts: Array.from(playouts),
-    done: search.done,
-  };
+  return Array.from(playouts);
 }
 
 describe("configurePass", () => {
   describe("for a single-playout tree", () => {
     it("yields the full playout on the first pass", () => {
-      assertEquals(runPass(0, walkUnaryTree), {
-        playouts: ["11111111"],
-        done: false,
-      });
+      assertEquals(runPass(0, walkUnaryTree), ["11111111"]);
     });
     it("yields nothing on the second pass", () => {
-      assertEquals(runPass(1, walkUnaryTree), {
-        playouts: [],
-        done: false,
-      });
+      assertEquals(runPass(1, walkUnaryTree), []);
     });
   });
   describe("for a binary tree", () => {
     describe("on the first pass", () => {
       it("stops if there's an empty playout", () => {
-        assertEquals(runPass(0, walkBinaryTree("")), {
-          playouts: [""],
-          done: true,
-        });
+        assertEquals(runPass(0, walkBinaryTree("")), [""]);
       });
       it("can yield a long minimum playout", () => {
-        assertEquals(runPass(0, walkBinaryTree()), {
-          playouts: ["00000000"],
-          done: false,
-        });
+        assertEquals(runPass(0, walkBinaryTree()), ["00000000"]);
       });
     });
 
     describe("on the second pass", () => {
       it("can't yield an empty playout", () => {
-        assertEquals(runPass(1, walkBinaryTree("")), {
-          playouts: [],
-          done: true,
-        });
+        assertEquals(runPass(1, walkBinaryTree("")), []);
       });
       it("emits a playout with one pick", () => {
-        assertEquals(runPass(1, walkBinaryTree("1")), {
-          playouts: ["1"],
-          done: false,
-        });
+        assertEquals(runPass(1, walkBinaryTree("1")), ["1"]);
       });
       it("can yield a long playout with one non-default pick", () => {
-        assertEquals(runPass(1, walkBinaryTree()), {
-          playouts: ["10000000"],
-          done: false,
-        });
+        assertEquals(runPass(1, walkBinaryTree()), ["10000000"]);
       });
     });
 
     describe("on the third pass", () => {
       it("can't yield an empty playout", () => {
-        assertEquals(runPass(2, walkBinaryTree("")), {
-          playouts: [],
-          done: true,
-        });
+        assertEquals(runPass(2, walkBinaryTree("")), []);
       });
       it("can't yield playouts with one pick", () => {
-        assertEquals(runPass(2, walkBinaryTree("0", "1")), {
-          playouts: [],
-          done: true,
-        });
+        assertEquals(runPass(2, walkBinaryTree("0", "1")), []);
       });
       it("stops after playouts with two picks", () => {
-        assertEquals(runPass(2, walkBinaryTree("01", "11")), {
-          playouts: ["01", "11"],
-          done: false,
-        });
+        assertEquals(runPass(2, walkBinaryTree("01", "11")), ["01", "11"]);
       });
       it("can yield two long playouts", () => {
-        assertEquals(runPass(2, walkBinaryTree()), {
-          playouts: ["01000000", "11000000"],
-          done: false,
-        });
+        assertEquals(runPass(2, walkBinaryTree()), ["01000000", "11000000"]);
       });
     });
 
     describe("on the fourth pass", () => {
       it("can't yield an empty playout", () => {
-        assertEquals(runPass(3, walkBinaryTree("")), {
-          playouts: [],
-          done: true,
-        });
+        assertEquals(runPass(3, walkBinaryTree("")), []);
       });
       it("can't yield playouts with one pick", () => {
-        assertEquals(runPass(3, walkBinaryTree("0", "1")), {
-          playouts: [],
-          done: true,
-        });
+        assertEquals(runPass(3, walkBinaryTree("0", "1")), []);
       });
-      it("can't yield playouts with two pick", () => {
-        assertEquals(runPass(3, walkBinaryTree("00", "01", "10", "11")), {
-          playouts: [],
-          done: true,
-        });
+      it("can't yield playouts with two picks", () => {
+        assertEquals(runPass(3, walkBinaryTree("00", "01", "10", "11")), []);
       });
       it("stops after playouts with three picks", () => {
-        assertEquals(runPass(3, walkBinaryTree("001", "011", "101", "111")), {
-          playouts: ["001", "011", "101", "111"],
-          done: false,
-        });
+        assertEquals(runPass(3, walkBinaryTree("001", "011", "101", "111")), [
+          "001",
+          "011",
+          "101",
+          "111",
+        ]);
       });
       it("yields four long playouts", () => {
-        assertEquals(runPass(3, walkBinaryTree()), {
-          playouts: ["00100000", "01100000", "10100000", "11100000"],
-          done: false,
-        });
+        assertEquals(runPass(3, walkBinaryTree()), [
+          "00100000",
+          "01100000",
+          "10100000",
+          "11100000",
+        ]);
       });
     });
     it("yields eight playouts on the fifth pass", () => {
-      assertEquals(runPass(4, walkBinaryTree()), {
-        playouts: [
-          "00010000",
-          "00110000",
-          "01010000",
-          "01110000",
-          "10010000",
-          "10110000",
-          "11010000",
-          "11110000",
-        ],
-        done: false,
-      });
+      assertEquals(runPass(4, walkBinaryTree()), [
+        "00010000",
+        "00110000",
+        "01010000",
+        "01110000",
+        "10010000",
+        "10110000",
+        "11010000",
+        "11110000",
+      ]);
     });
   });
 });

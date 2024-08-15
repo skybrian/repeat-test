@@ -4,19 +4,11 @@ import { PickTree } from "./pick_tree.ts";
 import { PickSet } from "./pick_function.ts";
 import { generate, Generated } from "./generated_class.ts";
 
-type RequestFilter = (
-  depth: number,
-  req: PickRequest,
-) => PickRequest | undefined;
-
-type PlayoutFilter = (depth: number) => boolean;
-
-type SearchOpts = {
-  pruned: () => void;
-};
-
+/**
+ * Implements a single pass of a breadth-first search.
+ */
 export class Filter {
-  readonly tree: PickTree = new PickTree();
+  readonly tree = new PickTree();
   readonly walk = this.tree.walk();
   #filtered = false;
 
@@ -26,32 +18,26 @@ export class Filter {
     return this.#filtered;
   }
 
-  replaceRequest(depth: number, req: PickRequest) {
-    if (depth === this.passIdx - 1) {
-      this.#filtered = true;
-      if (req.min === req.max) {
-        return undefined; //  no more playouts
-      }
-      return new PickRequest(req.min + 1, req.max);
-    } else if (depth >= this.passIdx) {
-      this.#filtered = true;
-      return new PickRequest(req.min, req.min);
+  filterRequest(depth: number, req: PickRequest) {
+    if (depth < this.passIdx - 1) {
+      return req;
     }
-    return req;
-  }
 
-  acceptPlayout(depth: number) {
-    if (depth === 0) {
-      return this.passIdx === 0;
+    this.#filtered = true;
+    if (depth > this.passIdx - 1) {
+      return new PickRequest(req.min, req.min);
+    } else if (req.min === req.max) {
+      return undefined; //  no more playouts
     }
-    return depth >= this.passIdx;
+    return new PickRequest(req.min + 1, req.max);
   }
 }
 
 export class BreadthFirstSearch extends PlayoutSource {
+  tree = new PickTree();
   filter: Filter;
 
-  constructor() {
+  constructor(readonly maxPasses?: number) {
     super();
     this.filter = new Filter(0);
   }
@@ -61,7 +47,7 @@ export class BreadthFirstSearch extends PlayoutSource {
   }
 
   protected doPick(req: PickRequest): number | undefined {
-    const replaced = this.filter.replaceRequest(this.depth, req);
+    const replaced = this.filter.filterRequest(this.depth, req);
     if (replaced === undefined) {
       return undefined;
     }
@@ -76,23 +62,25 @@ export class BreadthFirstSearch extends PlayoutSource {
   }
 
   protected acceptPlayout(): boolean {
-    return this.filter.acceptPlayout(this.depth);
+    return this.tree.available(this.getReplies());
   }
 
   protected nextPlayout(): number | undefined {
+    this.tree.prune(this.getPicks());
     this.filter.walk.prune();
     if (!this.filter.walk.pruned) {
       // continue current pass
       return this.filter.walk.depth;
     }
 
-    if (!this.filter.filtered) {
+    const nextPass = this.filter.passIdx + 1;
+    if (!this.filter.filtered || nextPass === this.maxPasses) {
       // no more passes needed
       return undefined;
     }
 
     // Start next pass
-    this.filter = new Filter(this.filter.passIdx + 1);
+    this.filter = new Filter(nextPass);
     return 0;
   }
 }
