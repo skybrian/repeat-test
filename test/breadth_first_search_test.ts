@@ -9,9 +9,9 @@ import { repeatTest } from "../src/runner.ts";
 
 import { assertGenerated, assertValues } from "../src/asserts.ts";
 import {
-  BreadthFirstSearch,
   find,
   generateAll,
+  MultipassSearch,
   takeAll,
   takeGenerated,
 } from "../src/breadth_first_search.ts";
@@ -74,7 +74,7 @@ function runPass(
   walk: (playouts: PlayoutSource) => string | undefined,
 ) {
   const playouts = new Set<string>();
-  const search = new BreadthFirstSearch(idx + 1);
+  const search = new MultipassSearch(idx + 1);
   while (!search.done) {
     const currentPass = search.currentPass;
     try {
@@ -275,10 +275,10 @@ class Maze {
 }
 
 describe("BreadthFirstSearch", () => {
-  let search = new BreadthFirstSearch();
+  let search = new MultipassSearch();
 
   beforeEach(() => {
-    search = new BreadthFirstSearch();
+    search = new MultipassSearch();
   });
 
   it("generates one playout when there aren't any branches", () => {
@@ -305,7 +305,7 @@ describe("BreadthFirstSearch", () => {
       const expectedLeaves = Array(tree.size).fill(0).map((_, i) => i);
 
       const maze = new Maze(tree);
-      const search = new BreadthFirstSearch();
+      const search = new MultipassSearch();
       while (!search.done) {
         maze.visit(search);
       }

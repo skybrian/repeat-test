@@ -5,53 +5,28 @@ import { PickSet } from "./pick_function.ts";
 import { generate, Generated } from "./generated_class.ts";
 
 /**
- * Implements a single pass of a breadth-first search.
- */
-export class Filter {
-  #filtered = false;
-
-  constructor(readonly passIdx: number) {}
-
-  get filtered() {
-    return this.#filtered;
-  }
-
-  filterRequest(depth: number, req: PickRequest) {
-    if (depth < this.passIdx - 1) {
-      return req;
-    }
-
-    this.#filtered = true;
-
-    if (depth > this.passIdx - 1) {
-      return new PickRequest(req.min, req.min);
-    } else if (req.min === req.max) {
-      return undefined; //  no more playouts
-    }
-    return new PickRequest(req.min + 1, req.max);
-  }
-}
-
-/**
- * Generates playouts using an iterative deepening search.
+ * Generates possible playouts with shorter playouts before longer ones.
  *
- * Unlike a depth-first search, this will generates shorter playouts before longer ones.
+ * Here, "shorter" means using the length of the playout with trailing minimum
+ * picks removed. Any number of minimum picks are allowed after the depth limit
+ * is reached.
  */
-export class BreadthFirstSearch extends PlayoutSource {
+export class MultipassSearch extends PlayoutSource {
   /** Keeps track of which playouts have been pruned, including previous passes. */
   private readonly shared = new PickTree().walk();
 
   /** Keeps track of playouts that were pruned during the current pass. */
   private pass = new PickTree().walk();
 
-  private filter = new Filter(0);
+  #passIdx = 0;
+  #filtered = false;
 
   constructor(readonly maxPasses?: number) {
     super();
   }
 
   get currentPass() {
-    return this.filter.passIdx;
+    return this.#passIdx;
   }
 
   protected startPlayout(depth: number): void {
@@ -60,7 +35,7 @@ export class BreadthFirstSearch extends PlayoutSource {
   }
 
   protected doPick(req: PickRequest): number | undefined {
-    const replaced = this.filter.filterRequest(this.depth, req);
+    const replaced = this.filterRequest(req);
     if (replaced === undefined) {
       return undefined;
     }
@@ -71,6 +46,22 @@ export class BreadthFirstSearch extends PlayoutSource {
       return undefined; // pruned in previous pass
     }
     return pick;
+  }
+
+  private filterRequest(req: PickRequest) {
+    const depth = this.depth;
+    if (depth < this.#passIdx - 1) {
+      return req;
+    }
+
+    this.#filtered = true;
+
+    if (depth > this.#passIdx - 1) {
+      return new PickRequest(req.min, req.min);
+    } else if (req.min === req.max) {
+      return undefined; //  no more playouts
+    }
+    return new PickRequest(req.min + 1, req.max);
   }
 
   getReplies(start?: number, end?: number): number[] {
@@ -89,15 +80,14 @@ export class BreadthFirstSearch extends PlayoutSource {
       return this.pass.depth;
     }
 
-    const nextPass = this.filter.passIdx + 1;
-    if (!this.filter.filtered || nextPass === this.maxPasses) {
+    // Start next pass
+    this.pass = new PickTree().walk();
+    this.#passIdx++;
+    if (!this.#filtered || this.#passIdx === this.maxPasses) {
       // no more passes needed
       return undefined;
     }
-
-    // Start next pass
-    this.pass = new PickTree().walk();
-    this.filter = new Filter(nextPass);
+    this.#filtered = false;
     return 0;
   }
 }
@@ -112,11 +102,11 @@ export class BreadthFirstSearch extends PlayoutSource {
 export function* generateAll<T>(
   set: PickSet<T>,
 ): IterableIterator<Generated<T>> {
-  const source = new BreadthFirstSearch();
-  let gen = generate(set, source);
+  const search = new MultipassSearch();
+  let gen = generate(set, search);
   while (gen) {
     yield gen;
-    gen = generate(set, source);
+    gen = generate(set, search);
   }
 }
 
