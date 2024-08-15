@@ -16,10 +16,10 @@ import { repeatTest } from "../src/runner.ts";
 import { assertGenerated, assertValues } from "../src/asserts.ts";
 import {
   configurePass,
+  FilteredSearch,
   find,
   generateAll,
   generatePlayouts,
-  Search,
   takeAll,
   takeGenerated,
 } from "../src/breadth_first_search.ts";
@@ -85,7 +85,7 @@ function runPass(
   const playouts = new Set<string>();
   let pruneCalls = 0;
   let prunedPlayouts = 0;
-  const search = new Search();
+  const search = new FilteredSearch();
   configurePass(search, idx, () => {
     pruneCalls++;
   });
@@ -349,11 +349,11 @@ class Maze {
   }
 }
 
-describe("Search", () => {
-  let search = new Search();
+describe("FilteredSearch", () => {
+  let search = new FilteredSearch();
 
   beforeEach(() => {
-    search = new Search();
+    search = new FilteredSearch();
   });
 
   describe("startAt", () => {
@@ -391,7 +391,7 @@ describe("Search", () => {
     new Tree(44),
   ]);
 
-  function runMaze(search: Search) {
+  function runMaze(search: FilteredSearch) {
     const maze = new Maze(tree);
     maze.visit(search);
     return maze;

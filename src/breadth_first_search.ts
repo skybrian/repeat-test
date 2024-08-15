@@ -23,7 +23,7 @@ type SearchOpts = {
 };
 
 /**
- * A search over all possible playouts.
+ * A filtered search over all possible playouts.
  *
  * It avoids duplicate playouts by recording each pick in a search tree. For
  * small search trees where every pick is recorded, eventually every playout
@@ -37,7 +37,7 @@ type SearchOpts = {
  * depends on the {@link SearchOpts.expectedPlayouts} setting, which can be
  * increased to do more tracking during a large search.
  */
-export class Search extends PlayoutSource {
+export class FilteredSearch extends PlayoutSource {
   readonly tree: PickTree = new PickTree();
   private readonly walk = this.tree.walk();
 
@@ -89,7 +89,7 @@ export class Search extends PlayoutSource {
  * @param more called if more passes are needed.
  */
 export function configurePass(
-  search: Search,
+  search: FilteredSearch,
   passIdx: number,
   more: () => void,
 ) {
@@ -140,7 +140,7 @@ export function* generatePlayouts(): Iterable<PlayoutSource> {
   let pruned = true;
   while (pruned) {
     pruned = false;
-    const search = new Search();
+    const search = new FilteredSearch();
     configurePass(search, maxDepth, () => {
       pruned = true;
     });
