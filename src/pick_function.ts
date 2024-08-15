@@ -1,5 +1,5 @@
 import { PickList, PickRequest } from "./picks.ts";
-import { PlayoutPicker, Pruned } from "./backtracking.ts";
+import { PlayoutSource, Pruned } from "./backtracking.ts";
 
 /**
  * A function that generates a value, given some picks.
@@ -55,7 +55,7 @@ export type GenerateOpts = {
 };
 
 export function makePickFunction<T>(
-  picker: PlayoutPicker,
+  playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): PickFunction {
   const limit = opts?.limit ?? 1000;
@@ -64,10 +64,10 @@ export function makePickFunction<T>(
     opts?: PickFunctionOpts<T>,
   ): number | T => {
     if (req instanceof PickRequest) {
-      if (picker.depth >= limit) {
+      if (playouts.depth >= limit) {
         req = new PickRequest(req.min, req.min);
       }
-      const pick = picker.maybePick(req);
+      const pick = playouts.nextPick(req);
       if (!pick.ok) throw new Pruned(pick.message);
       return pick.val;
     }
@@ -75,7 +75,7 @@ export function makePickFunction<T>(
     if (typeof generateFrom === "function") {
       const generate = () => {
         while (true) {
-          const depth = picker.depth;
+          const depth = playouts.depth;
           try {
             const val = generateFrom(dispatch);
             return val;
@@ -83,7 +83,7 @@ export function makePickFunction<T>(
             if (!(e instanceof Pruned)) {
               throw e;
             }
-            if (!picker.startAt(depth)) {
+            if (!playouts.startAt(depth)) {
               throw e; // can't recover
             }
           }
@@ -97,14 +97,14 @@ export function makePickFunction<T>(
 
       // filtered pick
       while (true) {
-        const depth = picker.depth;
-        const depthBefore = picker.depth;
+        const depth = playouts.depth;
+        const depthBefore = playouts.depth;
         const val = generate();
-        const picks = picker.getPicks(depthBefore);
+        const picks = playouts.getPicks(depthBefore);
         if (accept(val, picks)) {
           return val;
         }
-        if (!picker.startAt(depth)) {
+        if (!playouts.startAt(depth)) {
           throw new Pruned("accept() returned false for all possible values");
         }
       }

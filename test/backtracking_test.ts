@@ -7,24 +7,24 @@ import { onePlayout } from "../src/backtracking.ts";
 
 const bit = new PickRequest(0, 1);
 
-describe("onePlayoutPicker", () => {
+describe("SinglePlayoutPicker", () => {
   it("records one playout", () => {
-    const picker = onePlayout(randomPicker(123));
-    assert(picker.startAt(0));
-    const first = picker.maybePick(bit);
+    const playouts = onePlayout(randomPicker(123));
+    assert(playouts.startAt(0));
+    const first = playouts.nextPick(bit);
     assert(first.ok);
-    const second = picker.maybePick(bit);
+    const second = playouts.nextPick(bit);
     assert(second.ok);
-    assertEquals(picker.getPicks().reqs(), [bit, bit]);
-    assertEquals(picker.getPicks().replies(), [first.val, second.val]);
-    assertEquals(picker.depth, 2);
-    assertEquals(picker.startAt(0), false);
+    assertEquals(playouts.getPicks().reqs(), [bit, bit]);
+    assertEquals(playouts.getReplies(), [first.val, second.val]);
+    assertEquals(playouts.depth, 2);
+    assertEquals(playouts.startAt(0), false);
   });
-  describe("maybePick", () => {
+  describe("nextPick", () => {
     it("throws if called without starting a playout", () => {
       const picker = onePlayout(randomPicker(123));
       assertThrows(() => {
-        picker.maybePick(bit);
+        picker.nextPick(bit);
       }, Error);
     });
   });

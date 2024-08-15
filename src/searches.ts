@@ -1,5 +1,5 @@
 import { alwaysPickMin, IntPicker, PickRequest } from "./picks.ts";
-import { PlayoutPicker } from "./backtracking.ts";
+import { PlayoutSource } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
 
 export type SearchOpts = {
@@ -28,7 +28,7 @@ export type SearchOpts = {
  * depends on the {@link SearchOpts.expectedPlayouts} setting, which can be
  * increased to do more tracking during a large search.
  */
-export class PlayoutSearch extends PlayoutPicker {
+export class PlayoutSearch extends PlayoutSource {
   readonly tree: PickTree = new PickTree();
   private readonly walk = this.tree.walk();
 
@@ -36,6 +36,10 @@ export class PlayoutSearch extends PlayoutPicker {
 
   setOptions(opts: SearchOpts) {
     this.pickSource = opts.pickSource;
+  }
+
+  getReplies(start?: number, end?: number): number[] {
+    return this.walk.getPicks(start, end);
   }
 
   protected startPlayout(depth: number): void {
@@ -46,10 +50,6 @@ export class PlayoutSearch extends PlayoutPicker {
     const firstChoice = this.pickSource.pick(req);
     const pick = this.walk.pushUnpruned(firstChoice, req);
     return pick;
-  }
-
-  protected getReplies(start?: number, end?: number): number[] {
-    return this.walk.getPicks(start, end);
   }
 
   protected nextPlayout(): number | undefined {

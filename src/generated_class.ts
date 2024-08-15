@@ -1,4 +1,4 @@
-import { PlayoutPicker, Pruned } from "./backtracking.ts";
+import { PlayoutSource, Pruned } from "./backtracking.ts";
 import { GenerateOpts, makePickFunction, PickSet } from "./pick_function.ts";
 import { PickList } from "./picks.ts";
 
@@ -40,15 +40,15 @@ export class Generated<T> {
  */
 export function generate<T>(
   set: PickSet<T>,
-  picker: PlayoutPicker,
+  playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): Generated<T> | undefined {
-  while (picker.startAt(0)) {
+  while (playouts.startAt(0)) {
     try {
-      const pick = makePickFunction(picker, opts);
+      const pick = makePickFunction(playouts, opts);
       const val = set.generateFrom(pick);
-      const picks = picker.getPicks();
-      if (picker.endPlayout()) {
+      const picks = playouts.getPicks();
+      if (playouts.endPlayout()) {
         return new Generated(picks, val);
       }
     } catch (e) {

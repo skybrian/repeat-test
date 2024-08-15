@@ -30,10 +30,10 @@ describe("PlayoutSearch", () => {
       assertFalse(search.done);
     });
   });
-  describe("maybePick", () => {
+  describe("nextPick", () => {
     it("picks the minimum value by default", () => {
       assert(search.startAt(0));
-      const pick = search.maybePick(bit);
+      const pick = search.nextPick(bit);
       assert(pick.ok);
       assertEquals(pick.val, 0);
       assertEquals(search.depth, 1);
@@ -46,7 +46,7 @@ describe("PlayoutSearch", () => {
     it("prunes a pick in a wide node", () => {
       assert(search.startAt(0));
       const uint32 = new PickRequest(0, 2 ** 32 - 1);
-      const pick = search.maybePick(uint32);
+      const pick = search.nextPick(uint32);
       assert(pick.ok);
       assertEquals(pick.val, 0);
       assert(search.endPlayout());
@@ -55,9 +55,9 @@ describe("PlayoutSearch", () => {
 
     it("requires the same range as last time", () => {
       assert(search.startAt(0));
-      assertEquals(search.maybePick(bit), { ok: true, val: 0 });
+      assertEquals(search.nextPick(bit), { ok: true, val: 0 });
       search.startAt(0);
-      assertThrows(() => search.maybePick(new PickRequest(-1, 0)), Error);
+      assertThrows(() => search.nextPick(new PickRequest(-1, 0)), Error);
     });
 
     describe("when using a random underlying picker", () => {
@@ -72,13 +72,13 @@ describe("PlayoutSearch", () => {
         };
         for (let i = 0; i < 1000; i++) {
           assert(search.startAt(0));
-          const pick = search.maybePick(bit);
+          const pick = search.nextPick(bit);
           assert(pick.ok);
           if (pick.val == 1) {
-            search.maybePick(new PickRequest(1, 2 ** 40));
+            search.nextPick(new PickRequest(1, 2 ** 40));
             counts.other++;
           } else {
-            search.maybePick(new PickRequest(1, 2));
+            search.nextPick(new PickRequest(1, 2));
             counts.constants++;
           }
         }
@@ -100,8 +100,8 @@ describe("PlayoutSearch", () => {
 
     it("disallows calling getPicks afterwards", () => {
       assert(search.startAt(0));
-      assert(search.maybePick(bit).ok);
-      assert(search.maybePick(new PickRequest(0, 0)).ok);
+      assert(search.nextPick(bit).ok);
+      assert(search.nextPick(new PickRequest(0, 0)).ok);
       assertEquals(search.getPicks().replies(), [0, 0]);
       assert(search.endPlayout());
       assertThrows(() => search.getPicks(), Error);
@@ -122,15 +122,15 @@ describe("PlayoutSearch", () => {
 
     it("ends the search when the root has no other children", () => {
       assert(search.startAt(0));
-      search.maybePick(new PickRequest(0, 1));
+      search.nextPick(new PickRequest(0, 1));
       assert(search.startAt(0));
-      search.maybePick(new PickRequest(0, 1));
+      search.nextPick(new PickRequest(0, 1));
       assertFalse(search.startAt(0));
     });
 
     it("starts a new playout when there's a fork", () => {
       assert(search.startAt(0));
-      search.maybePick(bit);
+      search.nextPick(bit);
       assert(search.startAt(0));
       assertEquals(search.depth, 0);
       assertEquals(search.getPicks().reqs(), []);
@@ -139,34 +139,34 @@ describe("PlayoutSearch", () => {
 
     it("goes to a different child after a fork", () => {
       assert(search.startAt(0));
-      search.maybePick(bit);
+      search.nextPick(bit);
       search.startAt(0);
-      assertEquals(search.maybePick(bit), { ok: true, val: 1 });
+      assertEquals(search.nextPick(bit), { ok: true, val: 1 });
     });
 
     it("ends the search when both sides of a fork were visited", () => {
       assert(search.startAt(0));
-      search.maybePick(bit);
+      search.nextPick(bit);
       search.startAt(0);
-      search.maybePick(bit);
+      search.nextPick(bit);
       assertFalse(search.startAt(0));
     });
 
     it("goes back to a non-zero level", () => {
       assert(search.startAt(0));
-      search.maybePick(bit);
-      search.maybePick(bit);
+      search.nextPick(bit);
+      search.nextPick(bit);
       search.startAt(1);
       assertEquals(search.depth, 1);
     });
 
     it("goes to a different child after going back to a non-zero level", () => {
       assert(search.startAt(0));
-      search.maybePick(bit);
-      search.maybePick(bit);
+      search.nextPick(bit);
+      search.nextPick(bit);
       assert(search.startAt(1));
 
-      assertEquals(search.maybePick(bit), { ok: true, val: 1 });
+      assertEquals(search.nextPick(bit), { ok: true, val: 1 });
       assertFalse(
         search.startAt(1),
         "should fail because picks are exhausted",
@@ -179,16 +179,16 @@ describe("PlayoutSearch", () => {
     it("returns all the picks when called with no arguments", () => {
       const search = new PlayoutSearch();
       assert(search.startAt(0));
-      search.maybePick(bit);
+      search.nextPick(bit);
       assertEquals(search.getPicks().replies(), [0]);
     });
     it("returns a slice when called with start and end indexes", () => {
       const search = new PlayoutSearch();
       assert(search.startAt(0));
-      search.maybePick(bit);
-      search.maybePick(bit);
+      search.nextPick(bit);
+      search.nextPick(bit);
       assert(search.startAt(1));
-      search.maybePick(bit);
+      search.nextPick(bit);
       assertEquals(search.getPicks(0, 2).replies(), [0, 1]);
       assertEquals(search.getPicks(0, 1).replies(), [0]);
       assertEquals(search.getPicks(1, 2).replies(), [1]);
@@ -212,7 +212,7 @@ describe("PlayoutSearch", () => {
         assert(search.startAt(0));
         const picks: number[] = [];
         for (let j = 0; j < 3; j++) {
-          const pick = search.maybePick(digit);
+          const pick = search.nextPick(digit);
           assert(pick.ok);
           picks.push(pick.val);
         }

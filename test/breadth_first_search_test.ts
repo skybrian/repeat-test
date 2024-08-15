@@ -8,7 +8,7 @@ import {
 } from "@std/assert";
 
 import { PickRequest } from "../src/picks.ts";
-import { PlayoutPicker, Pruned } from "../src/backtracking.ts";
+import { PlayoutSource, Pruned } from "../src/backtracking.ts";
 
 import Arbitrary from "../src/arbitrary_class.ts";
 import { repeatTest } from "../src/runner.ts";
@@ -18,7 +18,7 @@ import {
   configurePass,
   find,
   generateAll,
-  pickers,
+  generatePlayouts,
   Search,
   takeAll,
   takeGenerated,
@@ -29,11 +29,11 @@ const bit = new PickRequest(0, 1);
 
 const one = new PickRequest(1, 1);
 
-function walkUnaryTree(picker: PlayoutPicker): string | undefined {
-  assert(picker.startAt(0));
+function walkUnaryTree(playouts: PlayoutSource): string | undefined {
+  assert(playouts.startAt(0));
   let result = "";
   for (let i = 0; i < 8; i++) {
-    const pick = picker.maybePick(one);
+    const pick = playouts.nextPick(one);
     if (!pick.ok) {
       return undefined;
     }
@@ -43,24 +43,24 @@ function walkUnaryTree(picker: PlayoutPicker): string | undefined {
       result += "0";
     }
   }
-  if (!picker.endPlayout()) {
+  if (!playouts.endPlayout()) {
     return undefined;
   }
   return result;
 }
 
 function walkBinaryTree(...stops: string[]) {
-  function walk(picker: PlayoutPicker): string | undefined {
-    assert(picker.startAt(0));
+  function walk(playouts: PlayoutSource): string | undefined {
+    assert(playouts.startAt(0));
     let result = "";
     for (let i = 0; i < 8; i++) {
       if (stops.includes(result)) {
-        if (!picker.endPlayout()) {
+        if (!playouts.endPlayout()) {
           return undefined;
         }
         return result;
       }
-      const pick = picker.maybePick(bit);
+      const pick = playouts.nextPick(bit);
       if (!pick.ok) {
         return undefined;
       }
@@ -70,7 +70,7 @@ function walkBinaryTree(...stops: string[]) {
         result += "0";
       }
     }
-    if (!picker.endPlayout()) {
+    if (!playouts.endPlayout()) {
       return undefined;
     }
     return result;
@@ -80,7 +80,7 @@ function walkBinaryTree(...stops: string[]) {
 
 function runPass(
   idx: number,
-  walk: (picker: PlayoutPicker) => string | undefined,
+  walk: (playouts: PlayoutSource) => string | undefined,
 ) {
   const playouts = new Set<string>();
   let pruneCalls = 0;
@@ -299,12 +299,12 @@ const anyTree = Arbitrary.from((pick) => {
 
 function randomWalk<T>(
   tree: Tree<T>,
-  picker: PlayoutPicker,
+  playouts: PlayoutSource,
 ): Success<T> | Pruned {
   while (
     tree.children.length > 0
   ) {
-    const pick = picker.maybePick(new PickRequest(0, tree.children.length));
+    const pick = playouts.nextPick(new PickRequest(0, tree.children.length));
     if (!pick.ok) {
       return pick;
     }
@@ -323,15 +323,15 @@ class Maze {
 
   constructor(readonly tree: Tree<number>) {}
 
-  visit(picker: PlayoutPicker) {
-    while (picker.startAt(0)) {
-      const val = randomWalk(this.tree, picker);
+  visit(playouts: PlayoutSource) {
+    while (playouts.startAt(0)) {
+      const val = randomWalk(this.tree, playouts);
       if (!val.ok) {
         this.pruneCount++;
         continue;
       }
-      const picks = JSON.stringify(picker.getPicks().replies());
-      if (picker.endPlayout()) {
+      const picks = JSON.stringify(playouts.getPicks().replies());
+      if (playouts.endPlayout()) {
         if (this.accepted.has(picks)) {
           fail(`duplicate picks: ${picks}`);
         }
@@ -363,7 +363,7 @@ describe("Search", () => {
       });
       assert(search.startAt(0));
 
-      assertEquals(search.maybePick(new PickRequest(0, 1)), {
+      assertEquals(search.nextPick(new PickRequest(0, 1)), {
         ok: true,
         val: 0,
       });
@@ -371,7 +371,7 @@ describe("Search", () => {
     });
   });
 
-  describe("maybePick", () => {
+  describe("nextPick", () => {
     it("picks using a replaced request", () => {
       search.setOptions({
         replaceRequest: (_, req) => new PickRequest(req.max, req.max),
@@ -379,7 +379,7 @@ describe("Search", () => {
       assert(search.startAt(0));
 
       assertEquals(
-        search.maybePick(new PickRequest(0, 1)),
+        search.nextPick(new PickRequest(0, 1)),
         { ok: true, val: 1 },
       );
       assertFalse(search.startAt(0));
@@ -433,23 +433,23 @@ describe("Search", () => {
   });
 });
 
-describe("pickers", () => {
+describe("generatePlayouts", () => {
   it("iterates once when there aren't any branches", () => {
     let count = 0;
-    for (const picker of pickers()) {
-      assert(picker.startAt(0));
-      assert(picker.endPlayout());
+    for (const source of generatePlayouts()) {
+      assert(source.startAt(0));
+      assert(source.endPlayout());
       count++;
     }
     assertEquals(count, 1);
   });
   it("visits each root branch once", () => {
     const accepted = new Set<string>();
-    for (const picker of pickers()) {
-      assert(picker.startAt(0));
-      picker.maybePick(new PickRequest(0, 2));
-      const picks = picker.getPicks();
-      if (picker.endPlayout()) {
+    for (const source of generatePlayouts()) {
+      assert(source.startAt(0));
+      source.nextPick(new PickRequest(0, 2));
+      const picks = source.getPicks();
+      if (source.endPlayout()) {
         accepted.add(JSON.stringify(picks.replies()));
       }
     }
@@ -460,8 +460,8 @@ describe("pickers", () => {
       const expectedLeaves = Array(tree.size).fill(0).map((_, i) => i);
 
       const maze = new Maze(tree);
-      for (const picker of pickers()) {
-        maze.visit(picker);
+      for (const source of generatePlayouts()) {
+        maze.visit(source);
       }
       assertEquals(expectedLeaves, maze.leaves);
     }, { reps: 100 });

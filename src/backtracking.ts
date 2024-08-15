@@ -9,12 +9,12 @@ import {
 } from "./picks.ts";
 
 /**
- * Indicates that a sequence of picks didn't result in generating a value.
+ * Indicates that a playout didn't result in generating a value.
  *
  * This can happen due to filtering or a partial search.
  *
  * Sometimes recovery is possible by starting a new playout and picking again.
- * (See {@link PlayoutPicker.startAt}.) It won't be possible when a search has
+ * (See {@link PlayoutSource.startAt}.) It won't be possible when a search has
  * visited every playout.
  */
 export class Pruned extends Error {
@@ -25,10 +25,10 @@ export class Pruned extends Error {
 }
 
 /**
- * A picker that can back up to a previous point in a pick sequence and try a
+ * A picker that can back up to a previous point in a playout and try a
  * different path.
  */
-export abstract class PlayoutPicker {
+export abstract class PlayoutSource {
   #state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
   readonly #reqs: PickRequest[] = [];
 
@@ -72,13 +72,13 @@ export abstract class PlayoutPicker {
    *
    * Returns {@link Pruned} if the current playout is cancelled.
    */
-  maybePick(req: PickRequest): Success<number> | Pruned {
-    assert(this.state === "picking", "maybePick called in the wrong state");
+  nextPick(req: PickRequest): Success<number> | Pruned {
+    assert(this.state === "picking", "nextPick called in the wrong state");
 
     const result = this.doPick(req);
     if (result === undefined) {
       this.next();
-      return new Pruned("filtered out in maybePick");
+      return new Pruned("playout cancelled in nextPick");
     }
 
     this.#reqs.push(req);
@@ -91,7 +91,7 @@ export abstract class PlayoutPicker {
    * Returns either the picks for the finished playout or @{link Pruned} if the
    * search filtered it out.
    *
-   * It's an error to call {@link maybePick} after finishing the playout.
+   * It's an error to call {@link nextPick} after finishing the playout.
    */
   endPlayout(): boolean {
     assert(this.#state === "picking", "endPlayout called in the wrong state");
@@ -134,7 +134,7 @@ export abstract class PlayoutPicker {
 
   protected abstract doPick(req: PickRequest): number | undefined;
 
-  protected abstract getReplies(start?: number, end?: number): number[];
+  abstract getReplies(start?: number, end?: number): number[];
 
   /** Returns true if the current playout is not filtered out. */
   protected acceptPlayout(): boolean {
@@ -160,13 +160,17 @@ export abstract class PlayoutPicker {
 }
 
 /**
- * A picker that only does one playout.
+ * A source that only generates one playout.
  */
-class SinglePlayoutPicker extends PlayoutPicker {
+class SinglePlayoutSource extends PlayoutSource {
   private replies: number[] = [];
 
   constructor(private picker: IntPicker) {
     super();
+  }
+
+  getReplies(start?: number, end?: number): number[] {
+    return this.replies.slice(start, end);
   }
 
   protected startPlayout(_depth: number): void {
@@ -178,28 +182,24 @@ class SinglePlayoutPicker extends PlayoutPicker {
     return pick;
   }
 
-  protected getReplies(start?: number, end?: number): number[] {
-    return this.replies.slice(start, end);
-  }
-
   protected nextPlayout() {
     return undefined;
   }
 }
 
 /**
- * A picker that only does one playout.
+ * A source that only generates one playout.
  */
-export function onePlayout(picker: IntPicker): PlayoutPicker {
-  return new SinglePlayoutPicker(picker);
+export function onePlayout(picker: IntPicker): PlayoutSource {
+  return new SinglePlayoutSource(picker);
 }
 
-/** A playout that always picks the minimum */
-export function minPlayout(): PlayoutPicker {
-  return new SinglePlayoutPicker(alwaysPickMin);
+/** A source of a single playout that always picks the minimum */
+export function minPlayout(): PlayoutSource {
+  return new SinglePlayoutSource(alwaysPickMin);
 }
 
-/** A playout that plays back the given picks. */
-export function playback(picks: number[]): PlayoutPicker {
-  return new SinglePlayoutPicker(new PlaybackPicker(picks));
+/** A source of a single playout that plays back the given picks. */
+export function playback(picks: number[]): PlayoutSource {
+  return new SinglePlayoutSource(new PlaybackPicker(picks));
 }

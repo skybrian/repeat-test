@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import { alwaysPickMin, PickRequest } from "./picks.ts";
-import { PlayoutPicker } from "./backtracking.ts";
+import { PlayoutSource } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
 import { PickSet } from "./pick_function.ts";
 import { generate, Generated } from "./generated_class.ts";
@@ -23,22 +23,21 @@ type SearchOpts = {
 };
 
 /**
- * A search over all possible pick sequences (playouts).
+ * A search over all possible playouts.
  *
  * It avoids duplicate playouts by recording each pick in a search tree. For
  * small search trees where every pick is recorded, eventually every playout
  * will be eliminated and the search will end.
  *
- * The default search is depth-first, but it can also be configured to pick
- * randomly using {@link SearchOpts.pickSource}. For a breadth-first search, see
- * {@link pickers}.
+ * Does a depth-first search, implementing a single pass of a breadth-first
+ * search. See {@link generatePlayouts} to iterate over multiple passes.
  *
  * Duplicates may happen with small probability when doing a random search,
  * because visits to nodes with many branches won't be tracked.  The heuristic
  * depends on the {@link SearchOpts.expectedPlayouts} setting, which can be
  * increased to do more tracking during a large search.
  */
-export class Search extends PlayoutPicker {
+export class Search extends PlayoutSource {
   readonly tree: PickTree = new PickTree();
   private readonly walk = this.tree.walk();
 
@@ -55,6 +54,10 @@ export class Search extends PlayoutPicker {
     return true;
   }
 
+  getReplies(start?: number, end?: number): number[] {
+    return this.walk.getPicks(start, end);
+  }
+
   protected startPlayout(depth: number): void {
     this.walk.trim(depth);
   }
@@ -68,10 +71,6 @@ export class Search extends PlayoutPicker {
     const firstChoice = alwaysPickMin.pick(replaced);
     const pick = this.walk.pushUnpruned(firstChoice, replaced);
     return pick;
-  }
-
-  protected getReplies(start?: number, end?: number): number[] {
-    return this.walk.getPicks(start, end);
   }
 
   protected acceptPlayout(): boolean {
@@ -129,14 +128,14 @@ export function configurePass(
 }
 
 /**
- * Iterates over all playouts in breadth-first order, using iterative deepening.
+ * Generates playouts in breadth-first order, using iterative deepening.
  *
  * (The iterable can only be iterated over once.)
  *
  * Note: to avoid duplicate playouts, the return value of
- * {@link PlayoutPicker.endPlayout} must be used to filter them.
+ * {@link PlayoutSource.endPlayout} must be used to filter them.
  */
-export function* pickers(): Iterable<PlayoutPicker> {
+export function* generatePlayouts(): Iterable<PlayoutSource> {
   let maxDepth = 0;
   let pruned = true;
   while (pruned) {
@@ -163,12 +162,12 @@ export function* pickers(): Iterable<PlayoutPicker> {
 export function* generateAll<T>(
   set: PickSet<T>,
 ): IterableIterator<Generated<T>> {
-  for (const picker of pickers()) {
-    // Keep using the same picker until it's finished.
-    let gen = generate(set, picker);
+  for (const source of generatePlayouts()) {
+    // Keep using the same source until it's finished.
+    let gen = generate(set, source);
     while (gen) {
       yield gen;
-      gen = generate(set, picker);
+      gen = generate(set, source);
     }
   }
 }
