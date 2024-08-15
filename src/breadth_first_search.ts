@@ -12,122 +12,87 @@ type RequestFilter = (
 type PlayoutFilter = (depth: number) => boolean;
 
 type SearchOpts = {
-  /**
-   * Replaces each incoming pick request with a new one. The new request might
-   * have a narrower range. If the callback returns undefined, the playout will
-   * be cancelled.
-   */
-  replaceRequest: RequestFilter;
-  acceptPlayout: PlayoutFilter;
+  pruned: () => void;
 };
 
-/**
- * A filtered search over all possible playouts.
- */
-class FilteredSearch {
+export class Filter {
   readonly tree: PickTree = new PickTree();
   readonly walk = this.tree.walk();
-  readonly replaceRequest: RequestFilter;
-  readonly acceptPlayout: PlayoutFilter;
+  #filtered = false;
 
-  constructor(opts: SearchOpts) {
-    this.replaceRequest = opts.replaceRequest;
-    this.acceptPlayout = opts.acceptPlayout;
-  }
-}
+  constructor(readonly passIdx: number) {}
 
-/**
- * Configures a FilteredSearch to run a breadth-first pass.
- * @param passIdx the number of previous passes that were run.
- * @param more called if more passes are needed.
- */
-export function configurePass(
-  passIdx: number,
-  more: () => void,
-): FilteredSearch {
-  let moreSent = false;
-  function pruned() {
-    if (!moreSent) {
-      more();
-      moreSent = true;
-    }
+  get filtered() {
+    return this.#filtered;
   }
-  const replaceRequest = (depth: number, req: PickRequest) => {
-    if (depth === passIdx - 1) {
-      pruned();
+
+  replaceRequest(depth: number, req: PickRequest) {
+    if (depth === this.passIdx - 1) {
+      this.#filtered = true;
       if (req.min === req.max) {
         return undefined; //  no more playouts
       }
       return new PickRequest(req.min + 1, req.max);
-    } else if (depth >= passIdx) {
-      pruned();
+    } else if (depth >= this.passIdx) {
+      this.#filtered = true;
       return new PickRequest(req.min, req.min);
     }
     return req;
-  };
+  }
 
-  const acceptPlayout = (depth: number) => {
+  acceptPlayout(depth: number) {
     if (depth === 0) {
-      return passIdx === 0;
+      return this.passIdx === 0;
     }
-    return depth >= passIdx;
-  };
-  return new FilteredSearch({ replaceRequest, acceptPlayout });
+    return depth >= this.passIdx;
+  }
 }
 
 export class BreadthFirstSearch extends PlayoutSource {
-  filtered: FilteredSearch;
-  passIdx = 0;
-  private pruned = false;
+  filter: Filter;
 
   constructor() {
     super();
-    this.filtered = configurePass(this.passIdx, () => {
-      this.pruned = true;
-    });
+    this.filter = new Filter(0);
   }
 
   protected startPlayout(depth: number): void {
-    this.filtered.walk.trim(depth);
+    this.filter.walk.trim(depth);
   }
 
   protected doPick(req: PickRequest): number | undefined {
-    const replaced = this.filtered.replaceRequest(this.depth, req);
+    const replaced = this.filter.replaceRequest(this.depth, req);
     if (replaced === undefined) {
       return undefined;
     }
 
     const firstChoice = alwaysPickMin.pick(replaced);
-    const pick = this.filtered.walk.pushUnpruned(firstChoice, replaced);
+    const pick = this.filter.walk.pushUnpruned(firstChoice, replaced);
     return pick;
   }
 
   getReplies(start?: number, end?: number): number[] {
-    return this.filtered.walk.getPicks(start, end);
+    return this.filter.walk.getPicks(start, end);
   }
 
   protected acceptPlayout(): boolean {
-    return this.filtered.acceptPlayout(this.depth);
+    return this.filter.acceptPlayout(this.depth);
   }
 
   protected nextPlayout(): number | undefined {
-    this.filtered.walk.prune();
-    if (!this.filtered.walk.pruned) {
+    this.filter.walk.prune();
+    if (!this.filter.walk.pruned) {
       // continue current pass
-      return this.filtered.walk.depth;
+      return this.filter.walk.depth;
     }
 
-    if (!this.pruned) {
+    if (!this.filter.filtered) {
       // no more passes needed
       return undefined;
     }
 
     // Start next pass
-    this.pruned = false;
-    this.passIdx++;
-    this.filtered = configurePass(this.passIdx, () => {
-      this.pruned = true;
-    });
+    this.filter = new Filter(this.filter.passIdx + 1);
     return 0;
   }
 }

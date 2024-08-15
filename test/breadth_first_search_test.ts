@@ -10,7 +10,7 @@ import { repeatTest } from "../src/runner.ts";
 import { assertGenerated, assertValues } from "../src/asserts.ts";
 import {
   BreadthFirstSearch,
-  configurePass,
+  Filter,
   find,
   generateAll,
   takeAll,
@@ -75,13 +75,10 @@ function runPass(
   walk: (playouts: PlayoutSource) => string | undefined,
 ) {
   const playouts = new Set<string>();
-  let pruneCalls = 0;
   let prunedPlayouts = 0;
   const search = new BreadthFirstSearch();
-  search.filtered = configurePass(idx, () => {
-    pruneCalls++;
-  });
-  while (!search.done) {
+  search.filter = new Filter(idx);
+  while (!search.done && search.filter.passIdx === idx) {
     try {
       const playout = walk(search);
       if (playout === undefined) {
@@ -102,8 +99,7 @@ function runPass(
   }
   return {
     playouts: Array.from(playouts),
-    pruneCalls,
-    prunedPlayouts,
+    done: search.done,
   };
 }
 
@@ -112,15 +108,13 @@ describe("configurePass", () => {
     it("yields the full playout on the first pass", () => {
       assertEquals(runPass(0, walkUnaryTree), {
         playouts: ["11111111"],
-        pruneCalls: 1,
-        prunedPlayouts: 0,
+        done: false,
       });
     });
     it("yields nothing on the second pass", () => {
       assertEquals(runPass(1, walkUnaryTree), {
         playouts: [],
-        pruneCalls: 1,
-        prunedPlayouts: 1,
+        done: false,
       });
     });
   });
@@ -129,15 +123,13 @@ describe("configurePass", () => {
       it("stops if there's an empty playout", () => {
         assertEquals(runPass(0, walkBinaryTree("")), {
           playouts: [""],
-          pruneCalls: 0,
-          prunedPlayouts: 0,
+          done: true,
         });
       });
       it("can yield a long minimum playout", () => {
         assertEquals(runPass(0, walkBinaryTree()), {
           playouts: ["00000000"],
-          pruneCalls: 1,
-          prunedPlayouts: 0,
+          done: false,
         });
       });
     });
@@ -146,22 +138,19 @@ describe("configurePass", () => {
       it("can't yield an empty playout", () => {
         assertEquals(runPass(1, walkBinaryTree("")), {
           playouts: [],
-          pruneCalls: 0,
-          prunedPlayouts: 1,
+          done: true,
         });
       });
-      it("stops for a playout with one pick", () => {
+      it("emits a playout with one pick", () => {
         assertEquals(runPass(1, walkBinaryTree("1")), {
           playouts: ["1"],
-          pruneCalls: 1,
-          prunedPlayouts: 0,
+          done: false,
         });
       });
       it("can yield a long playout with one non-default pick", () => {
         assertEquals(runPass(1, walkBinaryTree()), {
           playouts: ["10000000"],
-          pruneCalls: 1,
-          prunedPlayouts: 0,
+          done: false,
         });
       });
     });
@@ -170,29 +159,25 @@ describe("configurePass", () => {
       it("can't yield an empty playout", () => {
         assertEquals(runPass(2, walkBinaryTree("")), {
           playouts: [],
-          pruneCalls: 0,
-          prunedPlayouts: 1,
+          done: true,
         });
       });
       it("can't yield playouts with one pick", () => {
         assertEquals(runPass(2, walkBinaryTree("0", "1")), {
           playouts: [],
-          pruneCalls: 0,
-          prunedPlayouts: 2,
+          done: true,
         });
       });
       it("stops after playouts with two picks", () => {
         assertEquals(runPass(2, walkBinaryTree("01", "11")), {
           playouts: ["01", "11"],
-          pruneCalls: 1,
-          prunedPlayouts: 0,
+          done: false,
         });
       });
       it("can yield two long playouts", () => {
         assertEquals(runPass(2, walkBinaryTree()), {
           playouts: ["01000000", "11000000"],
-          pruneCalls: 1,
-          prunedPlayouts: 0,
+          done: false,
         });
       });
     });
@@ -201,36 +186,31 @@ describe("configurePass", () => {
       it("can't yield an empty playout", () => {
         assertEquals(runPass(3, walkBinaryTree("")), {
           playouts: [],
-          pruneCalls: 0,
-          prunedPlayouts: 1,
+          done: true,
         });
       });
       it("can't yield playouts with one pick", () => {
         assertEquals(runPass(3, walkBinaryTree("0", "1")), {
           playouts: [],
-          pruneCalls: 0,
-          prunedPlayouts: 2,
+          done: true,
         });
       });
       it("can't yield playouts with two pick", () => {
         assertEquals(runPass(3, walkBinaryTree("00", "01", "10", "11")), {
           playouts: [],
-          pruneCalls: 0,
-          prunedPlayouts: 4,
+          done: true,
         });
       });
       it("stops after playouts with three picks", () => {
         assertEquals(runPass(3, walkBinaryTree("001", "011", "101", "111")), {
           playouts: ["001", "011", "101", "111"],
-          pruneCalls: 1,
-          prunedPlayouts: 0,
+          done: false,
         });
       });
       it("yields four long playouts", () => {
         assertEquals(runPass(3, walkBinaryTree()), {
           playouts: ["00100000", "01100000", "10100000", "11100000"],
-          pruneCalls: 1,
-          prunedPlayouts: 0,
+          done: false,
         });
       });
     });
@@ -246,8 +226,7 @@ describe("configurePass", () => {
           "11010000",
           "11110000",
         ],
-        pruneCalls: 1,
-        prunedPlayouts: 0,
+        done: false,
       });
     });
   });
