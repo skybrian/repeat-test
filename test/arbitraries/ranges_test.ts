@@ -1,5 +1,5 @@
 import { assertThrows } from "@std/assert";
-import { describe, it } from "jsr:@std/testing@^0.225.1/bdd";
+import { describe, it } from "@std/testing/bdd";
 import { intRange } from "../../src/arbitraries/ranges.ts";
 
 describe("intRange", () => {

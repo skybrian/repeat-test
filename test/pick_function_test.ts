@@ -1,5 +1,5 @@
-import { beforeEach, describe, it } from "jsr:@std/testing@^0.225.1/bdd";
-import { assertEquals } from "jsr:@std/assert@^1.0.0-rc.1/assert-equals";
+import { beforeEach, describe, it } from "@std/testing/bdd";
+import { assertEquals } from "@std/assert";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
 import { minPlayout, Pruned } from "../src/backtracking.ts";
