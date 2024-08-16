@@ -76,7 +76,7 @@ export abstract class PlayoutSource {
   nextPick(req: PickRequest): Success<number> | Pruned {
     assert(this.state === "picking", "nextPick called in the wrong state");
 
-    const result = this.doPick(req);
+    const result = this.maybePick(req);
     if (result === undefined) {
       this.next();
       return new Pruned("playout cancelled in nextPick");
@@ -133,7 +133,7 @@ export abstract class PlayoutSource {
 
   protected abstract startPlayout(depth: number): void;
 
-  protected abstract doPick(req: PickRequest): number | undefined;
+  protected abstract maybePick(req: PickRequest): number | undefined;
 
   abstract getReplies(start?: number, end?: number): number[];
 
@@ -177,7 +177,7 @@ class SinglePlayoutSource extends PlayoutSource {
   protected startPlayout(_depth: number): void {
   }
 
-  protected doPick(req: PickRequest): number {
+  protected maybePick(req: PickRequest): number {
     const pick = this.picker.pick(req);
     this.replies.push(pick);
     return pick;

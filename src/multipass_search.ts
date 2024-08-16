@@ -32,7 +32,7 @@ export class MultipassSearch extends PlayoutSource {
     this.#pass.trim(depth);
   }
 
-  protected doPick(req: PickRequest): number | undefined {
+  protected maybePick(req: PickRequest): number | undefined {
     let replaced = req;
     if (this.depth >= this.#currentPass) {
       replaced = new PickRequest(req.min, req.min);

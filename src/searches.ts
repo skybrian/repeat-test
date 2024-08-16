@@ -46,7 +46,7 @@ export class PlayoutSearch extends PlayoutSource {
     this.walk.trim(depth);
   }
 
-  protected doPick(req: PickRequest): number {
+  protected maybePick(req: PickRequest): number {
     const firstChoice = this.pickSource.pick(req);
     const pick = this.walk.pushUnpruned(firstChoice, req);
     return pick;
