@@ -2,7 +2,7 @@ import Domain from "../domain_class.ts";
 import * as arb from "../arbitraries.ts";
 import * as unicode from "../unicode.ts";
 import { assert } from "@std/assert";
-import { find } from "../breadth_first_search.ts";
+import { find } from "../multipass_search.ts";
 
 const arbAscii = arb.asciiChar();
 

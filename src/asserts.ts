@@ -2,7 +2,7 @@ import { assert, assertEquals } from "@std/assert";
 import { PickSet } from "./pick_function.ts";
 import Arbitrary from "./arbitrary_class.ts";
 import Domain from "./domain_class.ts";
-import * as bfs from "./breadth_first_search.ts";
+import { take, takeAll, takeGenerated } from "./multipass_search.ts";
 
 export function assertRoundTrip<T>(dom: Domain<T>, val: T) {
   assertEquals(dom.parse(val), val, "regenerated value didn't match");
@@ -18,15 +18,15 @@ export function assertSameExamples<T>(
   actual: Arbitrary<T>,
   expected: Arbitrary<T>,
 ) {
-  const actualVals = new Set(bfs.takeAll(actual));
-  const expectedVals = new Set(bfs.takeAll(expected));
+  const actualVals = new Set(takeAll(actual));
+  const expectedVals = new Set(takeAll(expected));
   assertEquals(actualVals, expectedVals);
 }
 
 type Gen<T> = { val: T; picks: number[] };
 
 function takeGen<T>(set: PickSet<T>, n: number): Gen<T>[] {
-  return bfs.takeGenerated(set, n).map((gen) => ({
+  return takeGenerated(set, n).map((gen) => ({
     val: gen.val,
     picks: gen.replies(),
   }));
@@ -50,12 +50,12 @@ export function assertFirstValues<T>(
   set: PickSet<T>,
   expected: T[],
 ) {
-  assertEquals(bfs.take(set, expected.length), expected);
+  assertEquals(take(set, expected.length), expected);
 }
 
 export function assertValues<T>(
   set: PickSet<T>,
   expected: T[],
 ) {
-  assertEquals(bfs.take(set, expected.length + 5), expected);
+  assertEquals(take(set, expected.length + 5), expected);
 }

@@ -14,7 +14,7 @@ import {
   MultipassSearch,
   takeAll,
   takeGenerated,
-} from "../src/breadth_first_search.ts";
+} from "../src/multipass_search.ts";
 import { Success, success } from "../src/results.ts";
 
 const bit = new PickRequest(0, 1);
