@@ -6,6 +6,10 @@
     "@std/testing": "jsr:@std/testing@^1.0.0",
     "pure-rand": "npm:pure-rand@^6.1.0"
   },
+  "publish": {
+    "include": ["./main.ts", "./src/*.ts", "./src/arbitraries/*.ts", "./src/domains/*.ts"],
+    "exclude": ["./src/asserts.ts", "./src/arbitraries/ranges.ts"]
+  },
   "exports": "./main.ts",
   "tasks": {
     "coverage": "rm -f lcov.info && deno test --coverage --clean && deno coverage --lcov > lcov.info && deno coverage",
