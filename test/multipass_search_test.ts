@@ -274,7 +274,7 @@ class Maze {
   }
 }
 
-describe("BreadthFirstSearch", () => {
+describe("MultipassSearch", () => {
   let search = new MultipassSearch();
 
   beforeEach(() => {

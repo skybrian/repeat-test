@@ -35,9 +35,10 @@ export class MultipassSearch extends PlayoutSource {
   }
 
   protected doPick(req: PickRequest): number | undefined {
-    const replaced = this.filterRequest(req);
-    if (replaced === undefined) {
-      return undefined;
+    let replaced = req;
+    if (this.depth >= this.#passIdx) {
+      replaced = new PickRequest(req.min, req.min);
+      this.#filtered = true;
     }
 
     const firstChoice = alwaysPickMin.pick(replaced);
@@ -46,22 +47,6 @@ export class MultipassSearch extends PlayoutSource {
       return undefined; // pruned in previous pass
     }
     return pick;
-  }
-
-  private filterRequest(req: PickRequest) {
-    const depth = this.depth;
-    if (depth < this.#passIdx - 1) {
-      return req;
-    }
-
-    this.#filtered = true;
-
-    if (depth > this.#passIdx - 1) {
-      return new PickRequest(req.min, req.min);
-    } else if (req.min === req.max) {
-      return undefined; //  no more playouts
-    }
-    return new PickRequest(req.min + 1, req.max);
   }
 
   getReplies(start?: number, end?: number): number[] {
