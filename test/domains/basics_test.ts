@@ -5,6 +5,11 @@ import { repeatTest } from "../../src/runner.ts";
 
 import * as arb from "../../src/arbitraries.ts";
 import * as dom from "../../src/domains.ts";
+import {
+  intRange,
+  invalidIntRange,
+  minMaxVal,
+} from "../../src/arbitraries/ranges.ts";
 
 describe("of", () => {
   describe("for a single-item domain", () => {
@@ -35,19 +40,19 @@ describe("boolean", () => {
 
 describe("int", () => {
   it("throws when given an invalid range", () => {
-    repeatTest(arb.invalidIntRange(), ({ min, max }) => {
+    repeatTest(invalidIntRange(), ({ min, max }) => {
       assertThrows(() => dom.int(min, max));
     });
   });
 
   it("round-trips integers for any valid range", () => {
-    repeatTest(arb.minMaxVal(), ({ min, max, val }) => {
+    repeatTest(minMaxVal(), ({ min, max, val }) => {
       assertRoundTrip(dom.int(min, max), val);
     });
   });
 
   it("rejects integers outside the given range", () => {
-    repeatTest(arb.intRange({ minMin: -100 }), ({ min, max }) => {
+    repeatTest(intRange({ minMin: -100 }), ({ min, max }) => {
       const ints = dom.int(min, max);
       assertThrows(() => ints.parse("hi"), Error, "not a safe integer");
       assertThrows(() => ints.parse(min - 1), Error, "not in range");
@@ -56,7 +61,7 @@ describe("int", () => {
   });
 
   it("regenerates the original value", () => {
-    repeatTest(arb.minMaxVal(), ({ min, max, val }) => {
+    repeatTest(minMaxVal(), ({ min, max, val }) => {
       const ints = dom.int(min, max);
       assertEquals(ints.parse(val), val);
     });
@@ -172,7 +177,7 @@ describe("oneOf", () => {
   });
   describe("for a single-case oneOf", () => {
     it("encodes it the same way as the child domain", () => {
-      repeatTest(arb.minMaxVal(), ({ min, max, val }) => {
+      repeatTest(minMaxVal(), ({ min, max, val }) => {
         const child = dom.int(min, max);
         const ignore = () => {};
         const expected = child.innerPickify(val, ignore);

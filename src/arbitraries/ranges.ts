@@ -1,4 +1,4 @@
-import Arbitrary from "../arbitrary_class.ts";
+import { Arbitrary } from "../arbitrary_class.ts";
 import { from, int, oneOf, record } from "./basics.ts";
 import { nonInteger, safeInt } from "./numbers.ts";
 
@@ -55,7 +55,9 @@ export function intRange(opts?: IntRangeOptions): Arbitrary<Range> {
 /**
  * Generates a safe integer range and a value within that range.
  */
-export function minMaxVal(opts?: IntRangeOptions) {
+export function minMaxVal(
+  opts?: IntRangeOptions,
+): Arbitrary<Range & { val: number }> {
   const range = intRange(opts);
   return from((pick) => {
     const { min, max } = pick(range);

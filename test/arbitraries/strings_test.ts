@@ -11,7 +11,7 @@ import { isWellFormed } from "../../src/workarounds.ts";
 
 import * as arb from "../../src/arbitraries.ts";
 import { takeAll } from "../../src/multipass_search.ts";
-import { PickSet } from "../../src/pick_function.ts";
+import type { PickSet } from "../../src/pick_function.ts";
 
 function assertCharCodeRange(
   set: PickSet<string>,

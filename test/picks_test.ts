@@ -1,12 +1,12 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
-import * as arb from "../src/arbitraries.ts";
 import { repeatTest } from "../src/runner.ts";
+import { invalidIntRange } from "../src/arbitraries/ranges.ts";
 
 import {
   alwaysPick,
   biasedBit,
-  BiasedIntPicker,
+  type BiasedIntPicker,
   PickList,
   PickRequest,
   PlaybackPicker,
@@ -44,7 +44,7 @@ describe("biasedBit", () => {
 describe("PickRequest", () => {
   describe("constructor", () => {
     it("throws when given an invalid range", () => {
-      repeatTest(arb.invalidIntRange({ minMin: 0 }), ({ min, max }) => {
+      repeatTest(invalidIntRange({ minMin: 0 }), ({ min, max }) => {
         assertThrows(() => new PickRequest(min, max));
       });
     });

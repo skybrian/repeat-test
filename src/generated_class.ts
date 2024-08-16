@@ -1,6 +1,10 @@
-import { PlayoutSource, Pruned } from "./backtracking.ts";
-import { GenerateOpts, makePickFunction, PickSet } from "./pick_function.ts";
-import { PickList } from "./picks.ts";
+import { type PlayoutSource, Pruned } from "./backtracking.ts";
+import {
+  type GenerateOpts,
+  makePickFunction,
+  type PickSet,
+} from "./pick_function.ts";
+import type { PickList } from "./picks.ts";
 
 /**
  * Holds a generated value along with the picks that were used to generate it.
@@ -19,15 +23,15 @@ export class Generated<T> {
 
   readonly ok = true;
 
-  get val() {
+  get val(): T {
     return this.#val;
   }
 
-  picks() {
+  picks(): PickList {
     return this.#picks.slice();
   }
 
-  replies() {
+  replies(): number[] {
     return this.#picks.replies();
   }
 }

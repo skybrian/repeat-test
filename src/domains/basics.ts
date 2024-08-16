@@ -1,7 +1,7 @@
-import { AnyRecord } from "../types.ts";
-import Arbitrary from "../arbitrary_class.ts";
+import type { AnyRecord } from "../types.ts";
+import { Arbitrary } from "../arbitrary_class.ts";
 import * as arb from "../arbitraries.ts";
-import Domain from "../domain_class.ts";
+import { Domain } from "../domain_class.ts";
 
 export function from<T>(
   values: T[],
@@ -36,7 +36,9 @@ export function of<T>(...values: T[]): Domain<T> {
   return from(values);
 }
 
-export const boolean = from([false, true], { label: "boolean" })
+export const boolean: () => Domain<boolean> = from([false, true], {
+  label: "boolean",
+})
   .asFunction();
 
 export function int(min: number, max: number): Domain<number> {

@@ -3,7 +3,7 @@ import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
 import * as dom from "../../src/domains.ts";
 import { repeatTest } from "../../src/runner.ts";
 import { assertThrows } from "@std/assert";
-import Arbitrary from "../../src/arbitrary_class.ts";
+import { Arbitrary } from "../../src/arbitrary_class.ts";
 
 describe("uniqueArray", () => {
   const bools = dom.uniqueArray(dom.boolean());

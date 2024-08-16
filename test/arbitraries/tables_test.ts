@@ -10,6 +10,7 @@ import {
 } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 import { takeAll } from "../../src/multipass_search.ts";
+import { intRange } from "../../src/arbitraries/ranges.ts";
 
 describe("uniqueArray", () => {
   const bools = arb.uniqueArray(dom.boolean());
@@ -27,7 +28,7 @@ describe("uniqueArray", () => {
   });
   it("generates unique ids within an integer range", () => {
     const example = arb.from((pick) => {
-      const { min, max } = pick(arb.intRange());
+      const { min, max } = pick(intRange());
       const ids = pick(arb.uniqueArray(dom.int(min, max)));
       return { min, max, ids };
     });

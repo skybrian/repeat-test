@@ -1,8 +1,8 @@
 import { assert } from "@std/assert";
-import { AnyRecord } from "./types.ts";
+import type { AnyRecord } from "./types.ts";
 import { PickRequest } from "./picks.ts";
-import { PickCallback, PickFunction, PickSet } from "./pick_function.ts";
-import { generate, Generated } from "./generated_class.ts";
+import type { PickCallback, PickFunction, PickSet } from "./pick_function.ts";
+import { generate, type Generated } from "./generated_class.ts";
 import { PlayoutSearch } from "./searches.ts";
 
 /**
@@ -31,7 +31,7 @@ export type ArbitraryOpts = {
  *
  * The values can be iterated over using {@link generateBreadthFirst}.
  */
-export default class Arbitrary<T> implements PickSet<T> {
+export class Arbitrary<T> implements PickSet<T> {
   readonly #label: string;
   readonly #callback: PickCallback<T>;
 
@@ -58,7 +58,7 @@ export default class Arbitrary<T> implements PickSet<T> {
     return this.#label;
   }
 
-  get generateFrom() {
+  get generateFrom(): PickCallback<T> {
     return this.#callback;
   }
 
@@ -140,11 +140,11 @@ export default class Arbitrary<T> implements PickSet<T> {
     return new Arbitrary(label, callback);
   }
 
-  asFunction() {
+  asFunction(): () => Arbitrary<T> {
     return () => this;
   }
 
-  toString() {
+  toString(): string {
     return `Arbitrary(${this.label})`;
   }
 

@@ -4,7 +4,7 @@ import { assertEquals } from "@std/assert";
 import { alwaysPick, PickRequest } from "../src/picks.ts";
 import { minPlayout, Pruned } from "../src/backtracking.ts";
 import { PlayoutSearch } from "../src/searches.ts";
-import Arbitrary from "../src/arbitrary_class.ts";
+import { Arbitrary } from "../src/arbitrary_class.ts";
 import { makePickFunction } from "../src/pick_function.ts";
 import { assertThrows } from "@std/assert";
 

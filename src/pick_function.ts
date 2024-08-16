@@ -1,5 +1,5 @@
-import { PickList, PickRequest } from "./picks.ts";
-import { PlayoutSource, Pruned } from "./backtracking.ts";
+import { type PickList, PickRequest } from "./picks.ts";
+import { type PlayoutSource, Pruned } from "./backtracking.ts";
 
 /**
  * A function that generates a value, given some picks.

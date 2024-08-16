@@ -2,9 +2,9 @@ import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows, fail } from "@std/assert";
 
 import { PickRequest } from "../src/picks.ts";
-import { PlayoutSource, Pruned } from "../src/backtracking.ts";
+import { type PlayoutSource, Pruned } from "../src/backtracking.ts";
 
-import Arbitrary from "../src/arbitrary_class.ts";
+import { Arbitrary } from "../src/arbitrary_class.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { assertGenerated, assertValues } from "../src/asserts.ts";
@@ -15,7 +15,7 @@ import {
   takeAll,
   takeGenerated,
 } from "../src/multipass_search.ts";
-import { Success, success } from "../src/results.ts";
+import { type Success, success } from "../src/results.ts";
 
 const bit = new PickRequest(0, 1);
 const one = new PickRequest(1, 1);

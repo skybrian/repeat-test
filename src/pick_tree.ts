@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { PickList, PickRequest } from "./picks.ts";
+import type { PickList, PickRequest } from "./picks.ts";
 
 /** Indicates that the subtree rooted at a branch has been fully explored. */
 export const PRUNED = Symbol("pruned");

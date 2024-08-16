@@ -1,9 +1,9 @@
-import { AnyRecord } from "../types.ts";
-import Arbitrary from "../arbitrary_class.ts";
+import type { AnyRecord } from "../types.ts";
+import type { Arbitrary } from "../arbitrary_class.ts";
 import * as arb from "./basics.ts";
-import * as dom from "../domains/basics.ts";
+import type * as dom from "../domains/basics.ts";
 import { Jar } from "../jar_class.ts";
-import Domain from "../domain_class.ts";
+import type { Domain } from "../domain_class.ts";
 import { PickRequest } from "../picks.ts";
 
 export function uniqueArray<T>(

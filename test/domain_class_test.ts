@@ -2,8 +2,8 @@ import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows, fail } from "@std/assert";
 
 import { PickRequest } from "../src/picks.ts";
-import Arbitrary from "../src/arbitrary_class.ts";
-import Domain, { PickifyCallback } from "../src/domain_class.ts";
+import { Arbitrary } from "../src/arbitrary_class.ts";
+import { Domain, type PickifyCallback } from "../src/domain_class.ts";
 
 describe("Domain", () => {
   describe("constructor", () => {

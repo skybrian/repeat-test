@@ -1,8 +1,5 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
-
-import * as arb from "../../src/arbitraries.ts";
-
 import {
   assertFirstGenerated,
   assertFirstValues,
@@ -10,7 +7,9 @@ import {
   assertValues,
 } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
-import Arbitrary from "../../src/arbitrary_class.ts";
+
+import { Arbitrary } from "../../src/arbitrary_class.ts";
+import * as arb from "../../src/arbitraries.ts";
 
 describe("boolean", () => {
   it("generates both values", () => {

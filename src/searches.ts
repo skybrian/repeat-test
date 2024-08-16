@@ -1,4 +1,4 @@
-import { alwaysPickMin, IntPicker, PickRequest } from "./picks.ts";
+import { alwaysPickMin, type IntPicker, type PickRequest } from "./picks.ts";
 import { PlayoutSource } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
 

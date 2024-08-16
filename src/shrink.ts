@@ -1,7 +1,7 @@
-import { PickList } from "./picks.ts";
+import type { PickList } from "./picks.ts";
 import { playback } from "./backtracking.ts";
-import Arbitrary from "./arbitrary_class.ts";
-import { generate, Generated } from "./generated_class.ts";
+import type { Arbitrary } from "./arbitrary_class.ts";
+import { generate, type Generated } from "./generated_class.ts";
 
 /**
  * Provides increasingly smaller guesses for how to shrink a value.

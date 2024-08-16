@@ -1,7 +1,11 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, fail } from "@std/assert";
 
-import { BiasedIntPicker, IntPicker, PickRequest } from "../src/picks.ts";
+import {
+  type BiasedIntPicker,
+  type IntPicker,
+  PickRequest,
+} from "../src/picks.ts";
 import { randomPickers } from "../src/random.ts";
 
 function checkReturnsAllNumbers(picker: IntPicker, req: PickRequest) {

@@ -1,11 +1,11 @@
 import { pickRandomSeed, randomPickers } from "./random.ts";
 import { PlayoutSearch } from "./searches.ts";
-import Arbitrary from "./arbitrary_class.ts";
-import { Failure, failure, Success, success } from "./results.ts";
+import { Arbitrary } from "./arbitrary_class.ts";
+import { type Failure, failure, type Success, success } from "./results.ts";
 import { shrink } from "./shrink.ts";
 import { assert } from "@std/assert";
-import { PickSet } from "./pick_function.ts";
-import { generate, Generated } from "./generated_class.ts";
+import type { PickSet } from "./pick_function.ts";
+import { generate, type Generated } from "./generated_class.ts";
 
 /** Identifies a repetition to run. */
 export type RepKey = {

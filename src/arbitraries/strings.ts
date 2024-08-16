@@ -1,4 +1,4 @@
-import Arbitrary from "../arbitrary_class.ts";
+import { Arbitrary } from "../arbitrary_class.ts";
 import * as arb from "./basics.ts";
 import { surrogateGap, surrogateMin, unicodeMax } from "../unicode.ts";
 
@@ -49,18 +49,24 @@ export function asciiChar(regexp?: RegExp): Arbitrary<string> {
 }
 
 /** The characters a-z and A-Z, in that order. */
-export const asciiLetter = asciiChar(/[a-zA-Z]/).asFunction();
+export const asciiLetter: () => Arbitrary<string> = asciiChar(/[a-zA-Z]/)
+  .asFunction();
 
 /** The characters 0-9, in that order. */
-export const asciiDigit = asciiChar(/\d/).asFunction();
+export const asciiDigit: () => Arbitrary<string> = asciiChar(/\d/).asFunction();
 
-export const asciiWhitespace = Arbitrary.from(" \t\n\v\f\r".split(""), {
-  label: "whitespace",
-}).asFunction();
+export const asciiWhitespace: () => Arbitrary<string> = Arbitrary.from(
+  " \t\n\v\f\r".split(""),
+  {
+    label: "whitespace",
+  },
+).asFunction();
 
 /** Ascii characters that are not letters, digits, whitespace, or control characters. */
-// deno-lint-ignore no-control-regex
-export const asciiSymbol = asciiChar(/[^ a-zA-Z0-9\x00-\x1f\x7f]/).asFunction();
+export const asciiSymbol: () => Arbitrary<string> = asciiChar(
+  // deno-lint-ignore no-control-regex
+  /[^ a-zA-Z0-9\x00-\x1f\x7f]/,
+).asFunction();
 
 /**
  * All strings of length 1, containing single 16-bit code unit.
@@ -69,12 +75,15 @@ export const asciiSymbol = asciiChar(/[^ a-zA-Z0-9\x00-\x1f\x7f]/).asFunction();
  * surrogates. It's useful when you want to test your code to handle
  * badly-formed strings.
  */
-export const char16 = arb.int(0, 0xffff).map((code) => {
-  if (code < 128) {
-    return asciiTable[code];
-  }
-  return String.fromCodePoint(code);
-}, { label: "char16" })
+export const char16: () => Arbitrary<string> = arb.int(0, 0xffff).map(
+  (code) => {
+    if (code < 128) {
+      return asciiTable[code];
+    }
+    return String.fromCodePoint(code);
+  },
+  { label: "char16" },
+)
   .asFunction();
 
 const codePoint = arb.int(0, unicodeMax - surrogateGap).map(
@@ -90,7 +99,7 @@ const codePoint = arb.int(0, unicodeMax - surrogateGap).map(
  * they aren't included because they decode to unpaired surrogates, which aren't
  * well-formed.
  */
-export const unicodeChar = codePoint.map((code) => {
+export const unicodeChar: () => Arbitrary<string> = codePoint.map((code) => {
   if (code < 128) {
     return asciiTable[code];
   }

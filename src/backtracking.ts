@@ -1,10 +1,10 @@
 import { assert } from "@std/assert";
-import { Success, success } from "./results.ts";
+import { type Success, success } from "./results.ts";
 import {
   alwaysPickMin,
-  IntPicker,
+  type IntPicker,
   PickList,
-  PickRequest,
+  type PickRequest,
   PlaybackPicker,
 } from "./picks.ts";
 

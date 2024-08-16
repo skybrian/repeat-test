@@ -1,11 +1,11 @@
 import { assertEquals } from "@std/assert";
 
-import { Failure, failure, Success, success } from "./results.ts";
+import { type Failure, failure, type Success, success } from "./results.ts";
 import { PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
-import { PickSet } from "./pick_function.ts";
-import Arbitrary from "./arbitrary_class.ts";
-import { generate, Generated } from "./generated_class.ts";
+import type { PickCallback, PickSet } from "./pick_function.ts";
+import type { Arbitrary } from "./arbitrary_class.ts";
+import { generate, type Generated } from "./generated_class.ts";
 
 export type SendErr = (msg: string, opts?: { at: string | number }) => void;
 
@@ -17,7 +17,7 @@ export type PickifyCallback = (
 /**
  * A domain can both validate and generate a set of values.
  */
-export default class Domain<T> implements PickSet<T> {
+export class Domain<T> implements PickSet<T> {
   #arb: Arbitrary<T>;
   #callback: PickifyCallback;
 
@@ -57,7 +57,7 @@ export default class Domain<T> implements PickSet<T> {
     return this.#arb.label;
   }
 
-  get generateFrom() {
+  get generateFrom(): PickCallback<T> {
     return this.#arb.generateFrom;
   }
 
@@ -165,7 +165,7 @@ export default class Domain<T> implements PickSet<T> {
     return this.#callback(val, innerErr);
   }
 
-  asFunction() {
+  asFunction(): () => Domain<T> {
     return () => this;
   }
 }

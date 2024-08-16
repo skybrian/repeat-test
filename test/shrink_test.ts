@@ -1,6 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, fail } from "@std/assert";
 import * as arb from "../src/arbitraries.ts";
+import { intRange, minMaxVal } from "../src/arbitraries/ranges.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { PickList, PickRequest } from "../src/picks.ts";
@@ -10,7 +11,7 @@ import {
   shrinkOptionsUntil,
   shrinkPicksFrom,
 } from "../src/shrink.ts";
-import Domain from "../src/domain_class.ts";
+import type { Domain } from "../src/domain_class.ts";
 import * as dom from "../src/domains.ts";
 
 function assertShrinks<T>(
@@ -43,7 +44,7 @@ describe("shrink", () => {
       assertNoChange(dom.int(1, 6), () => true, 1);
     });
     it("can't shrink when the value is required", () => {
-      repeatTest(arb.minMaxVal(), ({ min, max, val }) => {
+      repeatTest(minMaxVal(), ({ min, max, val }) => {
         assertNoChange(dom.int(min, max), (n) => n === val, val);
       });
     });
@@ -133,7 +134,7 @@ describe("shrinkLength", () => {
     });
   });
   it("doesn't guess if all playouts are at the minimum", () => {
-    const example = arb.array(arb.intRange({ minMin: 0 }));
+    const example = arb.array(intRange({ minMin: 0 }));
     repeatTest(example, (ranges) => {
       const reqs = ranges.map((r) => new PickRequest(r.min, r.max));
       const picks = ranges.map((r) => r.min);
@@ -142,7 +143,7 @@ describe("shrinkLength", () => {
     });
   });
   it("tries shrinking trailing picks", () => {
-    const playout = arb.array(arb.minMaxVal({ minMin: 0 }));
+    const playout = arb.array(minMaxVal({ minMin: 0 }));
 
     repeatTest(playout, (ranges) => {
       const reqs = ranges.map((r) => new PickRequest(r.min, r.max));

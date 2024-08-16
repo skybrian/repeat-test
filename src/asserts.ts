@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "@std/assert";
-import { PickSet } from "./pick_function.ts";
-import Arbitrary from "./arbitrary_class.ts";
-import Domain from "./domain_class.ts";
+import type { PickSet } from "./pick_function.ts";
+import type { Arbitrary } from "./arbitrary_class.ts";
+import type { Domain } from "./domain_class.ts";
 import { take, takeAll, takeGenerated } from "./multipass_search.ts";
 
 export function assertRoundTrip<T>(dom: Domain<T>, val: T) {

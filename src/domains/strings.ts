@@ -1,4 +1,4 @@
-import Domain from "../domain_class.ts";
+import { Domain } from "../domain_class.ts";
 import * as arb from "../arbitraries.ts";
 import * as unicode from "../unicode.ts";
 import { assert } from "@std/assert";
@@ -24,33 +24,37 @@ export function asciiChar(regexp?: RegExp): Domain<string> {
   return asciiDom.filter((val) => regexp.test(val));
 }
 
-export const asciiLetter = asciiChar(/[a-zA-Z]/).asFunction();
+export const asciiLetter: () => Domain<string> = asciiChar(/[a-zA-Z]/)
+  .asFunction();
 
-export const char16 = new Domain(arb.char16(), (val, sendErr) => {
-  if (typeof val !== "string") {
-    sendErr("not a string");
-    return undefined;
-  }
-  if (val.length > 1) {
-    sendErr("not a single character");
-    return undefined;
-  }
-  const code = val.charCodeAt(0);
-  if (Number.isNaN(code)) {
-    sendErr("not a single character");
-    return undefined;
-  }
+export const char16: () => Domain<string> = new Domain(
+  arb.char16(),
+  (val, sendErr) => {
+    if (typeof val !== "string") {
+      sendErr("not a string");
+      return undefined;
+    }
+    if (val.length > 1) {
+      sendErr("not a single character");
+      return undefined;
+    }
+    const code = val.charCodeAt(0);
+    if (Number.isNaN(code)) {
+      sendErr("not a single character");
+      return undefined;
+    }
 
-  if (code < 128) {
-    return asciiChar().innerPickify(val, sendErr);
-  }
-  return [code];
-}).asFunction();
+    if (code < 128) {
+      return asciiChar().innerPickify(val, sendErr);
+    }
+    return [code];
+  },
+).asFunction();
 
 // Using the max array size here because the implementation uses arrays.
 const maxStringLength = 2 ** 32 - 1;
 
-export const string = new Domain(
+export const string: () => Domain<string> = new Domain(
   arb.string({ min: 0, max: maxStringLength }),
   (val, sendErr) => {
     if (typeof val !== "string") {
@@ -69,7 +73,7 @@ export const string = new Domain(
   },
 ).asFunction();
 
-export const wellFormedString = new Domain(
+export const wellFormedString: () => Domain<string> = new Domain(
   arb.wellFormedString(),
   (val, sendErr) => {
     if (typeof val !== "string") {

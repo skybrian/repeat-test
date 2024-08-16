@@ -6,10 +6,6 @@
  */
 export type UniformIntPicker = (min: number, max: number) => number;
 
-function inRange(n: number, min: number, max: number) {
-  return Number.isSafeInteger(n) && n >= min && n <= max;
-}
-
 /**
  * Picks an integer from a random distribution.
  *
@@ -19,7 +15,7 @@ function inRange(n: number, min: number, max: number) {
  */
 export type BiasedIntPicker = (uniform: UniformIntPicker) => number;
 
-export function uniformBias(min: number, max: number): BiasedIntPicker {
+function uniformBias(min: number, max: number): BiasedIntPicker {
   return (uniform: UniformIntPicker) => uniform(min, max);
 }
 
@@ -38,7 +34,11 @@ export function biasedBit(probOne: number): BiasedIntPicker {
   };
 }
 
-export type PickRequestOptions = {
+function inRange(n: number, min: number, max: number) {
+  return Number.isSafeInteger(n) && n >= min && n <= max;
+}
+
+export type PickRequestOpts = {
   /**
    * Overrides the distribution for this request. The output should satisfy
    * {@link inRange} for the request.
@@ -50,7 +50,7 @@ export type PickRequestOptions = {
  * Requests a safe, non-negative integer in a given range, with optional hints
  * to the picker.
  *
- * When {@link IntPicker.isRandom} is true and {@link PickRequestOptions.bias}
+ * When {@link IntPicker.isRandom} is true and {@link PickRequestOpts.bias}
  * isn't set, requests that the number should be picked using a uniform
  * distribution. Otherwise, the reply can be any number within range.
  */
@@ -70,12 +70,12 @@ export class PickRequest {
    *
    * The request's default value will be the number closest to zero that's
    * between min and max, unless overridden by
-   * {@link PickRequestOptions.default}.
+   * {@link PickRequestOpts.default}.
    */
   constructor(
     readonly min: number,
     readonly max: number,
-    opts?: PickRequestOptions,
+    opts?: PickRequestOpts,
   ) {
     if (min < 0) {
       throw new Error(`min must be non-negative; got ${min}`);
@@ -101,7 +101,7 @@ export class PickRequest {
     return inRange(n, this.min, this.max);
   }
 
-  toString() {
+  toString(): string {
     return `${this.min}..${this.max}`;
   }
 }
@@ -151,19 +151,19 @@ export class PickList {
     this.#replies = replies;
   }
 
-  get length() {
+  get length(): number {
     return this.#reqs.length;
   }
 
-  reqs() {
+  reqs(): PickRequest[] {
     return this.#reqs.slice();
   }
 
-  replies() {
+  replies(): number[] {
     return this.#replies.slice();
   }
 
-  isBit(i: number, expected?: number) {
+  isBit(i: number, expected?: number): boolean {
     const req = this.#reqs[i];
     if (req.min !== 0 || req.max !== 1) {
       return false;
@@ -203,7 +203,7 @@ export class PickList {
     );
   }
 
-  static zip(reqs: PickRequest[], replies: number[]) {
+  static zip(reqs: PickRequest[], replies: number[]): PickList {
     if (reqs.length !== replies.length) {
       throw new Error("reqs and replies must be the same length");
     }
@@ -215,7 +215,7 @@ export class PickList {
    *
    * Each request's range only includes the reply.
    */
-  static fromReplies(replies: number[]) {
+  static fromReplies(replies: number[]): PickList {
     return PickList.zip(replies.map((r) => new PickRequest(r, r)), replies);
   }
 }

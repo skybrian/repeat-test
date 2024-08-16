@@ -1,7 +1,8 @@
-import { AnyRecord } from "../types.ts";
-import Arbitrary, { ArbitraryOpts, RecordShape } from "../arbitrary_class.ts";
+import type { AnyRecord } from "../types.ts";
+import { Arbitrary } from "../arbitrary_class.ts";
+import type { ArbitraryOpts, RecordShape } from "../arbitrary_class.ts";
 import { biasedBit, PickRequest } from "../picks.ts";
-import { PickCallback, PickSet } from "../pick_function.ts";
+import type { PickCallback, PickSet } from "../pick_function.ts";
 
 /**
  * An arbitrary based on a callback function.
@@ -20,7 +21,9 @@ export function of<T>(...values: T[]): Arbitrary<T> {
   return Arbitrary.of(...values);
 }
 
-export const boolean = Arbitrary.from([false, true], { label: "boolean" })
+export const boolean: () => Arbitrary<boolean> = Arbitrary.from([false, true], {
+  label: "boolean",
+})
   .asFunction();
 
 /**

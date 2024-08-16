@@ -1,13 +1,13 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
-import Arbitrary from "../src/arbitrary_class.ts";
+import { Arbitrary } from "../src/arbitrary_class.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { PickRequest } from "../src/picks.ts";
 import { minPlayout, onePlayout } from "../src/backtracking.ts";
 import { randomPicker } from "../src/random.ts";
 import { generate } from "../src/generated_class.ts";
-import { PickSet } from "../src/pick_function.ts";
+import type { PickSet } from "../src/pick_function.ts";
 
 const hello: PickSet<string> = {
   label: "hello",

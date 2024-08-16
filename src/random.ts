@@ -1,5 +1,5 @@
 import prand from "pure-rand";
-import { IntPicker, PickRequest, UniformIntPicker } from "./picks.ts";
+import type { IntPicker, PickRequest, UniformIntPicker } from "./picks.ts";
 import { assert } from "@std/assert";
 
 export function pickRandomSeed(): number {

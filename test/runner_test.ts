@@ -9,25 +9,25 @@ import {
 
 import { minPlayout, Pruned } from "../src/backtracking.ts";
 import { generate } from "../src/generated_class.ts";
-import Arbitrary from "../src/arbitrary_class.ts";
-import Domain from "../src/domain_class.ts";
+import { Arbitrary } from "../src/arbitrary_class.ts";
+import type { Domain } from "../src/domain_class.ts";
 import * as arb from "../src/arbitraries.ts";
 import * as dom from "../src/domains.ts";
 import { success } from "../src/results.ts";
 
 import {
-  Console,
+  type Console,
   depthFirstReps,
   parseRepKey,
   randomReps,
-  Rep,
+  type Rep,
   repeatTest,
-  RepFailure,
+  type RepFailure,
   reportFailure,
   runRep,
   runReps,
   serializeRepKey,
-  TestFunction,
+  type TestFunction,
 } from "../src/runner.ts";
 
 const anyKey = arb.record({ seed: arb.int32(), index: arb.int(0, 100) });
