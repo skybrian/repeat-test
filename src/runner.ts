@@ -121,8 +121,7 @@ export function* randomReps<T>(
 
   while (!search.done) {
     const key: RepKey = { seed, index };
-    const random = pickers.next().value;
-    search.setOptions({ pickSource: random });
+    search.pickSource = pickers.next().value;
     try {
       const arg = generate(arb, search);
       if (arg === undefined) {

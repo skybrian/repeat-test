@@ -62,7 +62,7 @@ describe("PlayoutSearch", () => {
 
     describe("when using a random underlying picker", () => {
       beforeEach(() => {
-        search.setOptions({ pickSource: randomPicker(123) });
+        search.pickSource = randomPicker(123);
       });
 
       it("doesn't revisit a constant in an unbalanced tree", () => {

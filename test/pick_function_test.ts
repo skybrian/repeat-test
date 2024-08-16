@@ -49,7 +49,7 @@ describe("makePickFunction", () => {
     });
 
     const search = new PlayoutSearch();
-    search.setOptions({ pickSource: alwaysPick(3) });
+    search.pickSource = alwaysPick(3);
     search.startAt(0);
     pick = makePickFunction(search);
 
