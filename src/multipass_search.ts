@@ -7,72 +7,70 @@ import { generate, Generated } from "./generated_class.ts";
 /**
  * Generates possible playouts with shorter playouts before longer ones.
  *
- * Here, "shorter" means using the length of the playout with trailing minimum
- * picks removed. Any number of minimum picks are allowed after the depth limit
- * is reached.
+ * (Here, "shorter" means the playout with trailing minimum picks removed.)
  */
 export class MultipassSearch extends PlayoutSource {
   /** Keeps track of which playouts have been pruned, including previous passes. */
-  private readonly shared = new PickTree().walk();
+  #shared = new PickTree().walk();
 
   /** Keeps track of playouts that were pruned during the current pass. */
-  private pass = new PickTree().walk();
+  #pass = new PickTree().walk();
 
-  #passIdx = 0;
-  #filtered = false;
+  #currentPass = 0;
+  #filteredThisPass = false;
 
   constructor(readonly maxPasses?: number) {
     super();
   }
 
   get currentPass() {
-    return this.#passIdx;
+    return this.#currentPass;
   }
 
   protected startPlayout(depth: number): void {
-    this.shared.trim(depth);
-    this.pass.trim(depth);
+    this.#shared.trim(depth);
+    this.#pass.trim(depth);
   }
 
   protected doPick(req: PickRequest): number | undefined {
     let replaced = req;
-    if (this.depth >= this.#passIdx) {
+    if (this.depth >= this.#currentPass) {
       replaced = new PickRequest(req.min, req.min);
-      this.#filtered = true;
+      this.#filteredThisPass = true;
     }
 
     const firstChoice = alwaysPickMin.pick(replaced);
-    const pick = this.pass.pushUnpruned(firstChoice, replaced);
-    if (!this.shared.push(req, pick)) {
+    const pick = this.#pass.pushUnpruned(firstChoice, replaced);
+    if (!this.#shared.push(req, pick)) {
       return undefined; // pruned in previous pass
     }
     return pick;
   }
 
   getReplies(start?: number, end?: number): number[] {
-    return this.pass.getPicks(start, end);
+    return this.#pass.getPicks(start, end);
   }
 
   protected acceptPlayout(): boolean {
-    return !this.shared.pruned;
+    return !this.#shared.pruned;
   }
 
   protected nextPlayout(): number | undefined {
-    this.shared.prune();
-    this.pass.prune();
-    if (!this.pass.pruned) {
+    this.#shared.prune();
+    this.#pass.prune();
+    if (!this.#pass.pruned) {
       // continue current pass
-      return this.pass.depth;
+      return this.#pass.depth;
     }
 
     // Start next pass
-    this.pass = new PickTree().walk();
-    this.#passIdx++;
-    if (!this.#filtered || this.#passIdx === this.maxPasses) {
+    this.#pass = new PickTree().walk();
+    this.#currentPass++;
+    if (!this.#filteredThisPass || this.#currentPass === this.maxPasses) {
       // no more passes needed
       return undefined;
     }
-    this.#filtered = false;
+    this.#filteredThisPass = false;
     return 0;
   }
 }
