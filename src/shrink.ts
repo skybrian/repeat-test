@@ -1,4 +1,4 @@
-import type { PickList } from "./picks.ts";
+import { PickList } from "./picks.ts";
 import { playback } from "./backtracking.ts";
 import type { Arbitrary } from "./arbitrary_class.ts";
 import { generate, type Generated } from "./generated_class.ts";
@@ -41,8 +41,9 @@ function* strategiesToTry<T>(
   start: Generated<T>,
 ): Iterable<Strategy> {
   yield shrinkLength;
-  yield* shrinkPicks(start.picks());
-  yield* shrinkOptions(start.picks());
+  const len = start.replies().length;
+  yield* shrinkPicks(len);
+  yield* shrinkOptions(len);
 }
 
 function runStrategy<T>(
@@ -52,7 +53,8 @@ function runStrategy<T>(
   strategy: Strategy,
 ): Generated<T> | undefined {
   let worked: Generated<T> | undefined = undefined;
-  for (const guess of strategy(start.picks())) {
+  const picks = PickList.zip(start.requests(), start.replies());
+  for (const guess of strategy(picks)) {
     const shrunk = generate(arb, playback(guess));
     if (!shrunk || !interesting(shrunk.val)) {
       return worked;
@@ -92,9 +94,8 @@ export function* shrinkLength(
  * Returns the strategies to try. Each strategy assumes that the previous one
  * failed.
  */
-function* shrinkPicks(picks: PickList): Iterable<Strategy> {
-  const len = picks.length;
-  for (let i = 0; i < len; i++) {
+function* shrinkPicks(pickCount: number): Iterable<Strategy> {
+  for (let i = 0; i < pickCount; i++) {
     yield shrinkPicksFrom(i);
   }
 }
@@ -141,8 +142,8 @@ export function shrinkPicksFrom(
   return shrink;
 }
 
-function* shrinkOptions(picks: PickList): Iterable<Strategy> {
-  for (let i = picks.length; i >= 0; i--) {
+function* shrinkOptions(pickCount: number): Iterable<Strategy> {
+  for (let i = pickCount; i >= 0; i--) {
     yield shrinkOptionsUntil(i);
   }
 }

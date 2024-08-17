@@ -4,7 +4,7 @@ import {
   makePickFunction,
   type PickSet,
 } from "./pick_function.ts";
-import { PickList, type PickRequest } from "./picks.ts";
+import type { PickRequest } from "./picks.ts";
 
 /**
  * Holds a generated value along with the picks that were used to generate it.
@@ -28,10 +28,6 @@ export class Generated<T> {
 
   get val(): T {
     return this.#val;
-  }
-
-  picks(): PickList {
-    return PickList.zip(this.requests(), this.replies());
   }
 
   requests(): PickRequest[] {

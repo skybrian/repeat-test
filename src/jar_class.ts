@@ -6,6 +6,7 @@ import { Arbitrary } from "./arbitrary_class.ts";
 import type { Domain } from "./domain_class.ts";
 import { MultipassSearch } from "./multipass_search.ts";
 import { generate, type Generated } from "./generated_class.ts";
+import { PickList } from "./picks.ts";
 
 /**
  * Picks from the possible values in a Domain, without replacement.
@@ -57,7 +58,8 @@ export class Jar<T> {
     const canon = this.dom.regenerate(val);
     assert(canon.ok, "regenerate should always succeed");
 
-    return this.remaining.prune(canon.picks());
+    const picks = PickList.zip(canon.requests(), canon.replies());
+    return this.remaining.prune(picks);
   };
 
   private refreshExample(): void {

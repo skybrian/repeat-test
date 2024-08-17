@@ -4,6 +4,7 @@ import * as arb from "../arbitraries.ts";
 import type * as dom from "./basics.ts";
 import { PickTree } from "../pick_tree.ts";
 import { assert } from "@std/assert";
+import { PickList } from "../picks.ts";
 
 export function uniqueArray<T>(
   item: Domain<T>,
@@ -28,7 +29,7 @@ export function uniqueArray<T>(
       const gen = item.generate(replies);
       assert(gen.ok, "can't regenerate an accepted value");
 
-      const picks = gen.picks();
+      const picks = PickList.zip(gen.requests(), gen.replies());
       if (!seen.prune(picks)) {
         sendErr("duplicate item", { at: i });
         return undefined;
@@ -84,7 +85,7 @@ export function table<R extends AnyRecord>(
         // Regenerate because we need both requests and replies.
         const gen = shape[key].generate(replies);
         assert(gen.ok, "can't regenerate an accepted value");
-        const picks = gen.picks();
+        const picks = PickList.zip(gen.requests(), gen.replies());
 
         const seen = trees[key];
         if (seen) {

@@ -323,7 +323,7 @@ describe("takeGenerated", () => {
   it("generates a valid PickRequest for an array of examples", () => {
     const examples = Arbitrary.of(1, 2, 3);
     const gens = takeGenerated(examples, 4);
-    const reqs = gens[0].picks().reqs();
+    const reqs = gens[0].requests();
     assertEquals(reqs.length, 1);
     assertEquals(reqs[0].min, 0);
     assertEquals(reqs[0].max, 2);
