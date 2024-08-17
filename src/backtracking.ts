@@ -3,7 +3,6 @@ import { type Success, success } from "./results.ts";
 import {
   alwaysPickMin,
   type IntPicker,
-  PickList,
   type PickRequest,
   PlaybackPicker,
 } from "./picks.ts";
@@ -110,11 +109,11 @@ export abstract class PlayoutSource {
   }
 
   /**
-   * Returns a slice of the picks made so far.
+   * Returns a slice of the pick requests made so far.
    *
    * Available only between {@link startAt} and {@link endPlayout}.
    */
-  getPicks(start?: number, end?: number): PickList {
+  getRequests(start?: number, end?: number): PickRequest[] {
     if (this.state !== "picking") {
       throw new Error(
         `getPicks called in the wrong state. Wanted "picking"; got "${this.state}"`,
@@ -125,17 +124,14 @@ export abstract class PlayoutSource {
     end = end ?? this.depth;
     assert(end >= start);
 
-    return PickList.zip(
-      this.#reqs.slice(start, end),
-      this.getReplies(start, end),
-    );
+    return this.#reqs.slice(start, end);
   }
+
+  abstract getReplies(start?: number, end?: number): number[];
 
   protected abstract startPlayout(depth: number): void;
 
   protected abstract maybePick(req: PickRequest): number | undefined;
-
-  abstract getReplies(start?: number, end?: number): number[];
 
   /** Returns true if the current playout is not filtered out. */
   protected acceptPlayout(): boolean {

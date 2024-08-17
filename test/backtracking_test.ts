@@ -15,7 +15,7 @@ describe("SinglePlayoutPicker", () => {
     assert(first.ok);
     const second = playouts.nextPick(bit);
     assert(second.ok);
-    assertEquals(playouts.getPicks().reqs(), [bit, bit]);
+    assertEquals(playouts.getRequests(), [bit, bit]);
     assertEquals(playouts.getReplies(), [first.val, second.val]);
     assertEquals(playouts.depth, 2);
     assertEquals(playouts.startAt(0), false);
@@ -33,14 +33,6 @@ describe("SinglePlayoutPicker", () => {
       const picker = onePlayout(randomPicker(123));
       assertThrows(() => {
         picker.endPlayout();
-      }, Error);
-    });
-  });
-  describe("getPicks", () => {
-    it("throws if called without starting a playout", () => {
-      const picker = onePlayout(randomPicker(123));
-      assertThrows(() => {
-        picker.getPicks();
       }, Error);
     });
   });

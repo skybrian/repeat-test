@@ -255,7 +255,7 @@ class Maze {
         this.pruneCount++;
         continue;
       }
-      const picks = JSON.stringify(playouts.getPicks().replies());
+      const picks = JSON.stringify(playouts.getReplies());
       if (playouts.endPlayout()) {
         if (this.accepted.has(picks)) {
           fail(`duplicate picks: ${picks}`);
@@ -292,9 +292,9 @@ describe("MultipassSearch", () => {
     while (!search.done) {
       assert(search.startAt(0));
       if (search.nextPick(new PickRequest(0, 2)).ok) {
-        const picks = search.getPicks();
+        const replies = search.getReplies();
         if (search.endPlayout()) {
-          accepted.add(JSON.stringify(picks.replies()));
+          accepted.add(JSON.stringify(replies));
         }
       }
     }

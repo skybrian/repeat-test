@@ -174,13 +174,6 @@ export class PickList {
     return true;
   }
 
-  slice(start?: number, end?: number): PickList {
-    return PickList.zip(
-      this.#reqs.slice(start, end),
-      this.#replies.slice(start, end),
-    );
-  }
-
   splice(start: number, deleteCount: number) {
     this.#reqs.splice(start, deleteCount);
     this.#replies.splice(start, deleteCount);

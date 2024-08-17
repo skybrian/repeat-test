@@ -37,8 +37,8 @@ describe("PlayoutSearch", () => {
       assert(pick.ok);
       assertEquals(pick.val, 0);
       assertEquals(search.depth, 1);
-      assertEquals(search.getPicks().reqs(), [bit]);
-      assertEquals(search.getPicks().replies(), [0]);
+      assertEquals(search.getRequests(), [bit]);
+      assertEquals(search.getReplies(), [0]);
       assert(search.endPlayout());
       assertFalse(search.tree.available([pick.val]));
     });
@@ -98,13 +98,13 @@ describe("PlayoutSearch", () => {
       search = new PlayoutSearch();
     });
 
-    it("disallows calling getPicks afterwards", () => {
+    it("disallows calling getRequests() afterwards", () => {
       assert(search.startAt(0));
       assert(search.nextPick(bit).ok);
       assert(search.nextPick(new PickRequest(0, 0)).ok);
-      assertEquals(search.getPicks().replies(), [0, 0]);
+      assertEquals(search.getReplies(), [0, 0]);
       assert(search.endPlayout());
-      assertThrows(() => search.getPicks(), Error);
+      assertThrows(() => search.getRequests(), Error);
     });
   });
 
@@ -133,8 +133,8 @@ describe("PlayoutSearch", () => {
       search.nextPick(bit);
       assert(search.startAt(0));
       assertEquals(search.depth, 0);
-      assertEquals(search.getPicks().reqs(), []);
-      assertEquals(search.getPicks().replies(), []);
+      assertEquals(search.getRequests(), []);
+      assertEquals(search.getReplies(), []);
     });
 
     it("goes to a different child after a fork", () => {
@@ -180,7 +180,7 @@ describe("PlayoutSearch", () => {
       const search = new PlayoutSearch();
       assert(search.startAt(0));
       search.nextPick(bit);
-      assertEquals(search.getPicks().replies(), [0]);
+      assertEquals(search.getReplies(), [0]);
     });
     it("returns a slice when called with start and end indexes", () => {
       const search = new PlayoutSearch();
@@ -189,9 +189,9 @@ describe("PlayoutSearch", () => {
       search.nextPick(bit);
       assert(search.startAt(1));
       search.nextPick(bit);
-      assertEquals(search.getPicks(0, 2).replies(), [0, 1]);
-      assertEquals(search.getPicks(0, 1).replies(), [0]);
-      assertEquals(search.getPicks(1, 2).replies(), [1]);
+      assertEquals(search.getReplies(0, 2), [0, 1]);
+      assertEquals(search.getReplies(0, 1), [0]);
+      assertEquals(search.getReplies(1, 2), [1]);
     });
   });
 

@@ -4,20 +4,23 @@ import {
   makePickFunction,
   type PickSet,
 } from "./pick_function.ts";
-import type { PickList } from "./picks.ts";
+import { PickList, type PickRequest } from "./picks.ts";
 
 /**
  * Holds a generated value along with the picks that were used to generate it.
  */
 export class Generated<T> {
-  #picks: PickList;
+  #reqs: PickRequest[];
+  #replies: number[];
   #val: T;
 
   constructor(
-    picks: PickList,
+    reqs: PickRequest[],
+    replies: number[],
     val: T,
   ) {
-    this.#picks = picks;
+    this.#reqs = reqs;
+    this.#replies = replies;
     this.#val = val;
   }
 
@@ -28,11 +31,15 @@ export class Generated<T> {
   }
 
   picks(): PickList {
-    return this.#picks.slice();
+    return PickList.zip(this.requests(), this.replies());
+  }
+
+  requests(): PickRequest[] {
+    return this.#reqs.slice();
   }
 
   replies(): number[] {
-    return this.#picks.replies();
+    return this.#replies.slice();
   }
 }
 
@@ -51,9 +58,10 @@ export function generate<T>(
     try {
       const pick = makePickFunction(playouts, opts);
       const val = set.generateFrom(pick);
-      const picks = playouts.getPicks();
+      const reqs = playouts.getRequests();
+      const replies = playouts.getReplies();
       if (playouts.endPlayout()) {
-        return new Generated(picks, val);
+        return new Generated(reqs, replies, val);
       }
     } catch (e) {
       if (!(e instanceof Pruned)) {
