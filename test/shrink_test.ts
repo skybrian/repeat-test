@@ -148,7 +148,7 @@ describe("shrinkLength", () => {
     repeatTest(playout, (ranges) => {
       const reqs = ranges.map((r) => new PickRequest(r.min, r.max));
       const replies = ranges.map((r) => r.val);
-      const picks = PickList.zip(reqs, replies).trim();
+      const picks = PickList.zip(reqs, replies).trimmed();
       const guesses = Array.from(shrinkLength(picks));
 
       if (picks.length === 0) {

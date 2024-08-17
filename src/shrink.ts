@@ -73,7 +73,7 @@ function runStrategy<T>(
 export function* shrinkLength(
   picks: PickList,
 ): Iterable<number[]> {
-  const replies = picks.trim().replies();
+  const replies = picks.trimmed().replies();
   const len = replies.length;
   if (len === 0) {
     return;
@@ -117,7 +117,7 @@ export function shrinkPicksFrom(
   function* shrink(
     picks: PickList,
   ): Iterable<number[]> {
-    picks = picks.trim();
+    picks = picks.trimmed();
     const len = picks.length;
     const reqs = picks.reqs();
     const replies = picks.replies();
@@ -159,7 +159,7 @@ export function shrinkOptionsUntil(limit: number): Strategy {
   function* shrink(
     picks: PickList,
   ): Iterable<number[]> {
-    picks = picks.trim();
+    picks = picks.trimmed();
 
     let end = limit > picks.length ? picks.length : limit;
     for (let start = end - 2; start >= 0; start -= 1) {

@@ -210,22 +210,18 @@ export class Walk {
   }
 
   /** Returns the picks leading to the current branch. */
-  getPicks(start?: number, end?: number): number[] {
-    start = start ?? 0;
-    assert(start >= 0);
-    end = end ?? this.depth;
-    assert(end >= start);
-    return this.pickPath.slice(start + 1, end + 1);
+  getReplies(): number[] {
+    return this.pickPath.slice(1);
   }
 
   /** Returns the pick that led to the current branch */
-  get lastPick(): number {
+  get lastReply(): number {
     return this.pickPath[this.pickPath.length - 1];
   }
 
   /** Returns true if the Walk points to a pruned branch. */
   get pruned(): boolean {
-    return this.parent.getBranch(this.lastPick) === PRUNED;
+    return this.parent.getBranch(this.lastReply) === PRUNED;
   }
 
   /**
@@ -234,7 +230,7 @@ export class Walk {
    */
   follow(picks: number[]): number | undefined {
     let parent = this.parent;
-    let parentPick = this.lastPick;
+    let parentPick = this.lastReply;
     for (let i = 0; i < picks.length; i++) {
       const branch = parent.getBranch(parentPick);
       if (branch === PRUNED) {
@@ -280,12 +276,12 @@ export class Walk {
    * Throws an Error if a request's range doesn't match a previous playout.
    */
   push(req: PickRequest, pick: number): boolean {
-    let last = this.parent.getBranch(this.lastPick);
+    let last = this.parent.getBranch(this.lastReply);
     if (last === PRUNED) {
       return false;
     } else if (last === undefined) {
       // unexplored; add node
-      last = this.parent.addChild(this.lastPick, req);
+      last = this.parent.addChild(this.lastReply, req);
       this.nodePath.push(last);
       this.pickPath.push(pick);
       return true;
@@ -308,7 +304,7 @@ export class Walk {
    */
   pushUnpruned(firstChoice: number, req: PickRequest): number {
     const parent = this.parent;
-    const lastPick = this.lastPick;
+    const lastPick = this.lastReply;
     let branch = parent.getBranch(lastPick);
     assert(branch !== PRUNED, "parent picked a pruned branch");
     if (branch === undefined) {
@@ -331,7 +327,7 @@ export class Walk {
    */
   prune(): boolean {
     let parent = this.parent;
-    if (!parent.prune(this.lastPick)) {
+    if (!parent.prune(this.lastReply)) {
       return false; // already pruned
     }
 
@@ -344,7 +340,7 @@ export class Walk {
       this.nodePath.length -= 1;
       this.pickPath.length -= 1;
       parent = this.parent;
-      parent.prune(this.lastPick);
+      parent.prune(this.lastReply);
     }
 
     if (this.depth > 0) {

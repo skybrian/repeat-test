@@ -25,7 +25,7 @@ export class PlayoutSearch extends PlayoutSource {
   pickSource: IntPicker = alwaysPickMin;
 
   getReplies(): number[] {
-    return this.walk.getPicks();
+    return this.walk.getReplies();
   }
 
   protected startPlayout(depth: number): void {

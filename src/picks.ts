@@ -179,16 +179,11 @@ export class PickList {
     this.#replies.splice(start, deleteCount);
   }
 
-  /** Removes trailing picks that are the same as the request's minimum value. */
-  trim(): PickList {
-    if (this.#reqs.length === 0) return this;
-
+  /** Returns a copy without trailing picks that are the same as the request's minimum value. */
+  trimmed(): PickList {
     let last = this.#reqs.length - 1;
     while (last >= 0 && this.#replies[last] === this.#reqs[last].min) {
       last--;
-    }
-    if (last === this.#reqs.length - 1) {
-      return this;
     }
     return PickList.zip(
       this.#reqs.slice(0, last + 1),

@@ -135,9 +135,9 @@ describe("Walk", () => {
     walk = tree.walk();
   });
 
-  describe("getPicks", () => {
+  describe("getReplies", () => {
     it("returns the empty list for a new Walk", () => {
-      assertEquals(walk.getPicks().length, 0);
+      assertEquals(walk.getReplies().length, 0);
     });
   });
 });
