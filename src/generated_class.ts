@@ -7,37 +7,14 @@ import {
 import type { PickRequest } from "./picks.ts";
 
 /**
- * Holds a generated value along with the picks that were used to generate it.
+ * A generated value and the picks that were used to generate it.
  */
-export class Generated<T> {
-  #reqs: PickRequest[];
-  #replies: number[];
-  #val: T;
-
-  constructor(
-    reqs: PickRequest[],
-    replies: number[],
-    val: T,
-  ) {
-    this.#reqs = reqs;
-    this.#replies = replies;
-    this.#val = val;
-  }
-
-  readonly ok = true;
-
-  get val(): T {
-    return this.#val;
-  }
-
-  requests(): PickRequest[] {
-    return this.#reqs.slice();
-  }
-
-  replies(): number[] {
-    return this.#replies.slice();
-  }
-}
+export type Generated<T> = {
+  ok: true;
+  reqs: PickRequest[];
+  replies: number[];
+  val: T;
+};
 
 /**
  * Generates a value by trying each playout one at a time, given a source of
@@ -57,7 +34,7 @@ export function generate<T>(
       const reqs = playouts.getRequests();
       const replies = playouts.getReplies();
       if (playouts.endPlayout()) {
-        return new Generated(reqs, replies, val);
+        return { ok: true, reqs, replies, val };
       }
     } catch (e) {
       if (!(e instanceof Pruned)) {

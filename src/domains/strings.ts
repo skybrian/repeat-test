@@ -16,7 +16,7 @@ const asciiDom = new Domain(arbAscii, (val, sendErr) => {
     sendErr("not an ascii character");
     return undefined;
   }
-  return gen.replies();
+  return gen.replies;
 });
 
 export function asciiChar(regexp?: RegExp): Domain<string> {

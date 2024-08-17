@@ -29,7 +29,7 @@ export function uniqueArray<T>(
       const gen = item.generate(replies);
       assert(gen.ok, "can't regenerate an accepted value");
 
-      const picks = PickList.zip(gen.requests(), gen.replies());
+      const picks = PickList.zip(gen.reqs, gen.replies);
       if (!seen.prune(picks)) {
         sendErr("duplicate item", { at: i });
         return undefined;
@@ -85,7 +85,7 @@ export function table<R extends AnyRecord>(
         // Regenerate because we need both requests and replies.
         const gen = shape[key].generate(replies);
         assert(gen.ok, "can't regenerate an accepted value");
-        const picks = PickList.zip(gen.requests(), gen.replies());
+        const picks = PickList.zip(gen.reqs, gen.replies);
 
         const seen = trees[key];
         if (seen) {

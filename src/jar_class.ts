@@ -58,13 +58,13 @@ export class Jar<T> {
     const canon = this.dom.regenerate(val);
     assert(canon.ok, "regenerate should always succeed");
 
-    const picks = PickList.zip(canon.requests(), canon.replies());
+    const picks = PickList.zip(canon.reqs, canon.replies);
     return this.remaining.prune(picks);
   };
 
   private refreshExample(): void {
     while (this.example !== undefined) {
-      if (this.remaining.available(this.example.replies())) {
+      if (this.remaining.available(this.example.replies)) {
         return; // still valid
       }
       this.example = this.nextExample();

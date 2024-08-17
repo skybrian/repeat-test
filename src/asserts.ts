@@ -28,7 +28,7 @@ type Gen<T> = { val: T; picks: number[] };
 function takeGen<T>(set: PickSet<T>, n: number): Gen<T>[] {
   return takeGenerated(set, n).map((gen) => ({
     val: gen.val,
-    picks: gen.replies(),
+    picks: gen.replies,
   }));
 }
 

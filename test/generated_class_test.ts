@@ -24,9 +24,12 @@ const fails: PickSet<unknown> = {
 describe("generate", () => {
   it("generates a single value for a constant", () => {
     const gen = generate(hello, minPlayout());
-    assert(gen !== undefined);
-    assertEquals(gen.val, "hi");
-    assertEquals(gen.replies(), []);
+    assertEquals(gen, {
+      ok: true,
+      val: "hi",
+      reqs: [],
+      replies: [],
+    });
   });
 
   it("passes through an error thrown by the PickSet", () => {

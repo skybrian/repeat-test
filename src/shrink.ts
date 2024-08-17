@@ -41,7 +41,7 @@ function* strategiesToTry<T>(
   start: Generated<T>,
 ): Iterable<Strategy> {
   yield shrinkLength;
-  const len = start.replies().length;
+  const len = start.replies.length;
   yield* shrinkPicks(len);
   yield* shrinkOptions(len);
 }
@@ -53,7 +53,7 @@ function runStrategy<T>(
   strategy: Strategy,
 ): Generated<T> | undefined {
   let worked: Generated<T> | undefined = undefined;
-  const picks = PickList.zip(start.requests(), start.replies());
+  const picks = PickList.zip(start.reqs, start.replies);
   for (const guess of strategy(picks)) {
     const shrunk = generate(arb, playback(guess));
     if (!shrunk || !interesting(shrunk.val)) {
