@@ -140,6 +140,9 @@ export function* randomReps<T>(
   }
 }
 
+/**
+ * The console object's methods that are used by {@link repeatTest}.
+ */
 export interface Console {
   error(...data: unknown[]): void;
   log(...data: unknown[]): void;
@@ -205,18 +208,18 @@ export function reportFailure(
 /**
  * Options to {@link repeatTest}.
  */
-export type RepeatOptions = {
+export type RepeatOpts = {
   /** The number of times to run the test. If not specified, defaults to 1000. */
   reps?: number;
 
-  /** If specified, it will rerun a single repetition */
+  /** If specified, repeatTest will rerun a single rep. */
   only?: string;
 
-  /** If specified, it will send output to this console instead of the default. */
+  /** If specified, repeatTest will send output to an alternate console. */
   console?: Console;
 };
 
-function getStartKey(opts?: RepeatOptions): RepKey {
+function getStartKey(opts?: RepeatOpts): RepKey {
   if (!opts?.only) {
     return {
       seed: pickRandomSeed(),
@@ -234,7 +237,7 @@ function getStartKey(opts?: RepeatOptions): RepKey {
  * If the test input is an array, the test will be run once for each item, in
  * the order given. Similarly for a small Arbitrary (less than 1000 items).
  * Otherwise, a thousand inputs will be chosen randomly. The number of
- * repetitions can be overridden using {@link RepeatOptions.reps}.
+ * repetitions can be overridden using {@link RepeatOpts.reps}.
  *
  * If the test is considered to have failed if the test function throws. In that
  * case, the test will be run repeatedly to find the smallest input that causes
@@ -250,7 +253,7 @@ function getStartKey(opts?: RepeatOptions): RepKey {
 export function repeatTest<T>(
   input: T[] | PickSet<T>,
   test: TestFunction<T>,
-  opts?: RepeatOptions,
+  opts?: RepeatOpts,
 ): void {
   const key = getStartKey(opts);
   const repsOpt = opts?.reps;
