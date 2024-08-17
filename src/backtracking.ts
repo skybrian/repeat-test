@@ -113,21 +113,16 @@ export abstract class PlayoutSource {
    *
    * Available only between {@link startAt} and {@link endPlayout}.
    */
-  getRequests(start?: number, end?: number): PickRequest[] {
+  getRequests(): PickRequest[] {
     if (this.state !== "picking") {
       throw new Error(
         `getPicks called in the wrong state. Wanted "picking"; got "${this.state}"`,
       );
     }
-    start = start ?? 0;
-    assert(start >= 0);
-    end = end ?? this.depth;
-    assert(end >= start);
-
-    return this.#reqs.slice(start, end);
+    return this.#reqs.slice();
   }
 
-  abstract getReplies(start?: number, end?: number): number[];
+  abstract getReplies(): number[];
 
   protected abstract startPlayout(depth: number): void;
 

@@ -175,23 +175,12 @@ describe("PlayoutSearch", () => {
     });
   });
 
-  describe("getPicks", () => {
+  describe("getReplies", () => {
     it("returns all the picks when called with no arguments", () => {
       const search = new PlayoutSearch();
       assert(search.startAt(0));
       search.nextPick(bit);
       assertEquals(search.getReplies(), [0]);
-    });
-    it("returns a slice when called with start and end indexes", () => {
-      const search = new PlayoutSearch();
-      assert(search.startAt(0));
-      search.nextPick(bit);
-      search.nextPick(bit);
-      assert(search.startAt(1));
-      search.nextPick(bit);
-      assertEquals(search.getReplies(0, 2), [0, 1]);
-      assertEquals(search.getReplies(0, 1), [0]);
-      assertEquals(search.getReplies(1, 2), [1]);
     });
   });
 

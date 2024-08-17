@@ -47,8 +47,8 @@ export class MultipassSearch extends PlayoutSource {
     return pick;
   }
 
-  getReplies(start?: number, end?: number): number[] {
-    return this.#pass.getPicks(start, end);
+  getReplies(): number[] {
+    return this.#pass.getPicks();
   }
 
   protected acceptPlayout(): boolean {
