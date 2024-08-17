@@ -56,13 +56,13 @@ export function makePickFunction<T>(
   playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): PickFunction {
-  const limit = opts?.limit ?? 1000;
+  const limit = opts?.limit;
   const dispatch = <T>(
     req: PickRequest | PickSet<T>,
     opts?: PickFunctionOpts<T>,
   ): number | T => {
     if (req instanceof PickRequest) {
-      if (playouts.depth >= limit) {
+      if (limit !== undefined && playouts.depth >= limit) {
         req = new PickRequest(req.min, req.min);
       }
       const pick = playouts.nextPick(req);

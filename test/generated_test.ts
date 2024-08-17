@@ -99,13 +99,7 @@ describe("generate", () => {
     return picks;
   });
 
-  it("limits generation to 1000 picks by default", () => {
-    const gen = generate(deep, onePlayout(randomPicker(123)));
-    assert(gen !== undefined);
-    assertEquals(gen.val, 1000);
-  });
-
-  it("limits generation to the provided number of picks", () => {
+  it("can limit generation to the provided number of picks", () => {
     const limit = Arbitrary.from(new PickRequest(0, 10000));
     repeatTest(limit, (limit) => {
       const gen = generate(deep, onePlayout(randomPicker(123)), { limit });
