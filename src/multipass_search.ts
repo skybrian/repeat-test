@@ -1,8 +1,8 @@
 import { alwaysPickMin, PickRequest } from "./picks.ts";
 import { PlayoutSource } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
-import type { PickSet } from "./generate.ts";
-import { generate, type Generated } from "./generated_class.ts";
+import { generate } from "./generated.ts";
+import type { Generated, PickSet } from "./generated.ts";
 
 /**
  * Generates possible playouts with shorter playouts before longer ones.

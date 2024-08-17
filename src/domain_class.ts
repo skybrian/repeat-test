@@ -3,9 +3,9 @@ import { assertEquals } from "@std/assert";
 import { type Failure, failure, type Success, success } from "./results.ts";
 import { PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
-import type { PickCallback, PickSet } from "./generate.ts";
+import { generate } from "./generated.ts";
+import type { Generated, PickCallback, PickSet } from "./generated.ts";
 import type { Arbitrary } from "./arbitrary_class.ts";
-import { generate, type Generated } from "./generated_class.ts";
 
 export type SendErr = (msg: string, opts?: { at: string | number }) => void;
 

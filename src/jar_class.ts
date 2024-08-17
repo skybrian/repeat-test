@@ -1,12 +1,12 @@
 import { assert } from "@std/assert";
 
-import type { PickFunction } from "./generate.ts";
+import { PickList } from "./picks.ts";
+import { generate } from "./generated.ts";
+import type { Generated, PickFunction } from "./generated.ts";
 import { PickTree } from "./pick_tree.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
 import type { Domain } from "./domain_class.ts";
 import { MultipassSearch } from "./multipass_search.ts";
-import { generate, type Generated } from "./generated_class.ts";
-import { PickList } from "./picks.ts";
 
 /**
  * Picks from the possible values in a Domain, without replacement.
