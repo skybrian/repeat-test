@@ -4,7 +4,6 @@ import { PickList } from "./picks.ts";
 import { generate } from "./generated.ts";
 import type { Generated, PickFunction } from "./generated.ts";
 import { PickTree } from "./pick_tree.ts";
-import { Arbitrary } from "./arbitrary_class.ts";
 import type { Domain } from "./domain_class.ts";
 import { MultipassSearch } from "./multipass_search.ts";
 
@@ -30,9 +29,14 @@ export class Jar<T> {
    */
   private readonly moreExamples: MultipassSearch;
 
+  /**
+   * Creates a mutable set of all the values in a domain.
+   *
+   * (Conceptually; the values will be generated when needed.)
+   */
   constructor(readonly dom: Domain<T>) {
     this.moreExamples = new MultipassSearch();
-    this.example = this.nextExample();
+    this.example = this.#nextExample();
   }
 
   /**
@@ -43,17 +47,17 @@ export class Jar<T> {
   }
 
   /**
-   * Takes an unused value from the jar.
+   * Takes a previously-unused value from the jar.
    *
    * @throws {@link Pruned} if the jar is empty.
    */
   take(pick: PickFunction): T {
-    const val = pick(this.dom, { accept: this.accept });
-    this.refreshExample();
+    const val = pick(this.dom, { accept: this.#accept });
+    this.#refreshExample();
     return val;
   }
 
-  private accept = (val: T): boolean => {
+  #accept = (val: T): boolean => {
     // Compare using the canonical picks for this value.
     const canon = this.dom.regenerate(val);
     assert(canon.ok, "regenerate should always succeed");
@@ -62,17 +66,17 @@ export class Jar<T> {
     return this.remaining.prune(picks);
   };
 
-  private refreshExample(): void {
+  #refreshExample(): void {
     while (this.example !== undefined) {
       if (this.remaining.available(this.example.replies)) {
         return; // still valid
       }
-      this.example = this.nextExample();
+      this.example = this.#nextExample();
     }
     return; // empty
   }
 
-  private nextExample(): Generated<T> | undefined {
+  #nextExample(): Generated<T> | undefined {
     const next = generate(this.dom, this.moreExamples);
     if (next === undefined) {
       return undefined;
@@ -80,21 +84,5 @@ export class Jar<T> {
     const regen = this.dom.regenerate(next.val);
     assert(regen.ok, "regenerate should always succeed");
     return regen;
-  }
-
-  /**
-   * Returns all the values in a domain, in a deterministic but arbitrary order.
-   */
-  static takeAll<T>(dom: Domain<T>): T[] {
-    const arb = Arbitrary.from((pick) => {
-      const out: T[] = [];
-      const jar = new Jar(dom);
-      while (!jar.isEmpty()) {
-        const val = jar.take(pick);
-        out.push(val);
-      }
-      return out;
-    });
-    return arb.default().val;
   }
 }

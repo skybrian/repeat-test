@@ -69,15 +69,4 @@ describe("Jar", () => {
       assert(jar.isEmpty());
     });
   });
-  describe("takeAll", () => {
-    it("returns the only value from a constant", () => {
-      assertEquals(Jar.takeAll(dom.of("hi")), ["hi"]);
-    });
-    it("removes duplicates in an overlapping oneOf", () => {
-      const overlap = dom.oneOf([dom.of(1, 2), dom.of(2, 3)]);
-      const vals = Jar.takeAll(overlap);
-      vals.sort();
-      assertEquals(vals, [1, 2, 3]);
-    });
-  });
 });

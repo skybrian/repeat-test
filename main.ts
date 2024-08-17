@@ -14,6 +14,7 @@ export type {
   PickFunctionOpts,
   PickSet,
 } from "./src/generated.ts";
+
 export { Arbitrary } from "./src/arbitrary_class.ts";
 export type { ArbitraryOpts, RecordShape } from "./src/arbitrary_class.ts";
 export * as arb from "./src/arbitraries.ts";
@@ -24,4 +25,4 @@ export * as dom from "./src/domains.ts";
 export { Jar } from "./src/jar_class.ts";
 
 export { repeatTest } from "./src/runner.ts";
-export type { Console, RepeatOpts, TestFunction } from "./src/runner.ts";
+export type { RepeatOpts, TestConsole, TestFunction } from "./src/runner.ts";

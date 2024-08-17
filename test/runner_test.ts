@@ -16,7 +16,6 @@ import * as dom from "../src/domains.ts";
 import { success } from "../src/results.ts";
 
 import {
-  type Console,
   depthFirstReps,
   parseRepKey,
   randomReps,
@@ -27,6 +26,7 @@ import {
   runRep,
   runReps,
   serializeRepKey,
+  type TestConsole,
   type TestFunction,
 } from "../src/runner.ts";
 
@@ -299,7 +299,7 @@ function makeRep<T>(input: Domain<T>, arg: T, test: TestFunction<T>): Rep<T> {
   return rep;
 }
 
-const nullConsole: Console = {
+const nullConsole: TestConsole = {
   log: () => {},
   error: () => {},
 };

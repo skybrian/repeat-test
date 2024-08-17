@@ -143,15 +143,17 @@ export function* randomReps<T>(
 /**
  * The console object's methods that are used by {@link repeatTest}.
  */
-export interface Console {
+export interface TestConsole {
+  /** Called when a test fails. */
   error(...data: unknown[]): void;
+  /** Called to log additional status when a test fails. */
   log(...data: unknown[]): void;
 }
 
 /** Runs one repetition. */
 export function runRep<T>(
   rep: Rep<T>,
-  console: Console,
+  console: TestConsole,
 ): Success<void> | RepFailure<T> {
   const interesting = (arg: T) => {
     try {
@@ -182,7 +184,7 @@ export function runRep<T>(
 export function runReps<T>(
   reps: Iterable<Rep<T> | RepFailure<unknown>>,
   count: number,
-  console: Console,
+  console: TestConsole,
 ): Success<number> | RepFailure<unknown> {
   let passed = 0;
   for (const rep of reps) {
@@ -197,7 +199,7 @@ export function runReps<T>(
 
 export function reportFailure(
   failure: RepFailure<unknown>,
-  console: Console,
+  console: TestConsole,
 ): never {
   const key = serializeRepKey(failure.key);
   console.error(`attempt ${failure.key.index} FAILED, using:`, failure.arg);
@@ -216,7 +218,7 @@ export type RepeatOpts = {
   only?: string;
 
   /** If specified, repeatTest will send output to an alternate console. */
-  console?: Console;
+  console?: TestConsole;
 };
 
 function getStartKey(opts?: RepeatOpts): RepKey {
