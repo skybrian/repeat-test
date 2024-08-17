@@ -7,6 +7,9 @@ import { makePickFunction } from "../src/pick_function.ts";
 import { PlayoutSearch } from "../src/searches.ts";
 
 import { Jar } from "../src/jar_class.ts";
+import { repeatTest } from "../src/runner.ts";
+import { arb } from "../main.ts";
+import { randomPicker } from "../src/random.ts";
 
 describe("Jar", () => {
   let search = new PlayoutSearch();
@@ -30,11 +33,22 @@ describe("Jar", () => {
     });
     it("picks values from an overlapping oneOf", () => {
       const overlap = dom.oneOf([dom.of(1, 2), dom.of(2, 3)]);
-      const jar = new Jar(overlap);
-      assertEquals(jar.take(pick), 1);
-      assertEquals(jar.take(pick), 2);
-      assertEquals(jar.take(pick), 3);
-      assert(jar.isEmpty());
+      repeatTest(arb.int32(), (seed) => {
+        search = new PlayoutSearch();
+        search.pickSource = randomPicker(seed);
+        pick = makePickFunction(search);
+        assert(search.startAt(0));
+
+        const jar = new Jar(overlap);
+        const seen = new Set<number>();
+        for (let i = 0; i < 3; i++) {
+          assertFalse(jar.isEmpty());
+          const val = jar.take(pick);
+          assertFalse(seen.has(val));
+          seen.add(val);
+        }
+        assert(jar.isEmpty(), "should be empty");
+      });
     });
   });
   describe("isEmpty", () => {

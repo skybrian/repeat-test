@@ -5,6 +5,7 @@ import type { PickFunction } from "./pick_function.ts";
 import { PickTree } from "./pick_tree.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
 import type { Domain } from "./domain_class.ts";
+import { generateAll } from "./multipass_search.ts";
 
 /**
  * Picks from the possible values in a Domain, without replacement.
@@ -21,8 +22,10 @@ export class Jar<T> {
 
     const accept = this.remaining.prune(gen.picks());
 
-    // Also prune the non-canonical picks so we know when we're done.
-    this.remaining.prune(picks);
+    if (accept) {
+      // Also prune the non-canonical picks so we know we're done.
+      this.remaining.prune(picks);
+    }
 
     return accept;
   };
@@ -33,7 +36,21 @@ export class Jar<T> {
    * Returns true if there are any values left in the jar.
    */
   isEmpty(): boolean {
-    return this.remaining.done;
+    if (this.remaining.done) {
+      return true;
+    }
+    // Search for a pick whose canonical value hasn't been pruned.
+    // TODO: This is an n^2 algorithm since we always start the search from the beginning.
+    for (const gen of generateAll(this.dom)) {
+      const regen = this.dom.regenerate(gen.val);
+      assert(regen.ok, "regenerate should always succeed");
+      if (this.remaining.available(regen.replies())) {
+        return false;
+      }
+      // Prune non-canonical pick.
+      this.remaining.prune(gen.picks());
+    }
+    return true;
   }
 
   /**
