@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
 import type { AnyRecord } from "./types.ts";
 import { PickRequest } from "./picks.ts";
-import type { PickCallback, PickFunction, PickSet } from "./pick_function.ts";
+import type { PickCallback, PickFunction, PickSet } from "./generate.ts";
 import { generate, type Generated } from "./generated_class.ts";
 import { PlayoutSearch } from "./searches.ts";
 

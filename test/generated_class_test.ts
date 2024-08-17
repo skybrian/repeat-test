@@ -7,7 +7,7 @@ import { PickRequest } from "../src/picks.ts";
 import { minPlayout, onePlayout } from "../src/backtracking.ts";
 import { randomPicker } from "../src/random.ts";
 import { generate } from "../src/generated_class.ts";
-import type { PickSet } from "../src/pick_function.ts";
+import type { PickSet } from "../src/generate.ts";
 
 const hello: PickSet<string> = {
   label: "hello",

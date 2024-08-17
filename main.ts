@@ -7,11 +7,7 @@ export type {
   UniformIntPicker,
 } from "./src/picks.ts";
 
-export type {
-  PickCallback,
-  PickFunction,
-  PickSet,
-} from "./src/pick_function.ts";
+export type { PickCallback, PickFunction, PickSet } from "./src/generate.ts";
 export type { Generated } from "./src/generated_class.ts";
 export { Arbitrary } from "./src/arbitrary_class.ts";
 export type { ArbitraryOpts, RecordShape } from "./src/arbitrary_class.ts";

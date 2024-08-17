@@ -3,7 +3,7 @@ import {
   type GenerateOpts,
   makePickFunction,
   type PickSet,
-} from "./pick_function.ts";
+} from "./generate.ts";
 import type { PickRequest } from "./picks.ts";
 
 /**

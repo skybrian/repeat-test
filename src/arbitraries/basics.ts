@@ -2,7 +2,7 @@ import type { AnyRecord } from "../types.ts";
 import { Arbitrary } from "../arbitrary_class.ts";
 import type { ArbitraryOpts, RecordShape } from "../arbitrary_class.ts";
 import { biasedBit, PickRequest } from "../picks.ts";
-import type { PickCallback, PickSet } from "../pick_function.ts";
+import type { PickCallback, PickSet } from "../generate.ts";
 
 /**
  * An arbitrary based on a callback function.

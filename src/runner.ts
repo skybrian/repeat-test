@@ -4,7 +4,7 @@ import { Arbitrary } from "./arbitrary_class.ts";
 import { type Failure, failure, type Success, success } from "./results.ts";
 import { shrink } from "./shrink.ts";
 import { assert } from "@std/assert";
-import type { PickSet } from "./pick_function.ts";
+import type { PickSet } from "./generate.ts";
 import { generate, type Generated } from "./generated_class.ts";
 
 /** Identifies a repetition to run. */

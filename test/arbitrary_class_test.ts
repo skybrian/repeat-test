@@ -9,7 +9,7 @@ import { repeatTest } from "../src/runner.ts";
 
 import { PickRequest } from "../src/picks.ts";
 import { Pruned } from "../src/backtracking.ts";
-import type { PickCallback, PickSet } from "../src/pick_function.ts";
+import type { PickCallback, PickSet } from "../src/generate.ts";
 import { Arbitrary } from "../src/arbitrary_class.ts";
 
 const bit = new PickRequest(0, 1);

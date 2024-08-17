@@ -3,7 +3,7 @@ import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import * as dom from "../src/domains.ts";
 
 import { Pruned } from "../src/backtracking.ts";
-import { makePickFunction } from "../src/pick_function.ts";
+import { makePickFunction } from "../src/generate.ts";
 import { PlayoutSearch } from "../src/searches.ts";
 
 import { Jar } from "../src/jar_class.ts";

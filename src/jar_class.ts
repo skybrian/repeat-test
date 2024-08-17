@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 
-import type { PickFunction } from "./pick_function.ts";
+import type { PickFunction } from "./generate.ts";
 import { PickTree } from "./pick_tree.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
 import type { Domain } from "./domain_class.ts";

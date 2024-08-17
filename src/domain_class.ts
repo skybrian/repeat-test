@@ -3,7 +3,7 @@ import { assertEquals } from "@std/assert";
 import { type Failure, failure, type Success, success } from "./results.ts";
 import { PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
-import type { PickCallback, PickSet } from "./pick_function.ts";
+import type { PickCallback, PickSet } from "./generate.ts";
 import type { Arbitrary } from "./arbitrary_class.ts";
 import { generate, type Generated } from "./generated_class.ts";
 
