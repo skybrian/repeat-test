@@ -1,4 +1,4 @@
-import { type PickList, PickRequest } from "./picks.ts";
+import { PickRequest } from "./picks.ts";
 import { type PlayoutSource, Pruned } from "./backtracking.ts";
 
 /**
@@ -27,10 +27,8 @@ export interface PickSet<T> {
 export type PickFunctionOpts<T> = {
   /**
    * A callback function that filters values after they're generated.
-   *
-   * (The second argument is used by the Jar class to filter out duplicates.)
    */
-  accept?: (val: T, picks: PickList) => boolean;
+  accept?: (val: T) => boolean;
 };
 
 /**
@@ -98,10 +96,8 @@ export function makePickFunction<T>(
       // filtered pick
       while (true) {
         const depth = playouts.depth;
-        const depthBefore = playouts.depth;
         const val = generate();
-        const picks = playouts.getPicks(depthBefore);
-        if (accept(val, picks)) {
+        if (accept(val)) {
           return val;
         }
         if (!playouts.startAt(depth)) {
