@@ -139,7 +139,7 @@ export function array<T>(
 ): Domain<T[]> {
   const gen = arb.array(item, opts);
   const min = opts?.min ?? 0;
-  const max = opts?.max ?? arb.defaultArrayLimit;
+  const max = opts?.max ?? 1000;
 
   const accept = (
     val: unknown,

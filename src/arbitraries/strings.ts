@@ -37,8 +37,10 @@ const asciiTable: string[] = (() => {
 const asciiTableArb = Arbitrary.from(asciiTable, { label: "asciiChar" });
 
 /**
- * The ascii characters, optionally matching a regular expression. They are
- * reordered to put characters that look nicer in examples first.
+ * Defines an Arbitrary that generates ASCII characters.
+ *
+ * If an argument is provided, the Arbitrary will include the characters that
+ * match the regexp. Otherwise, it will include all ASCII characters.
  */
 export function asciiChar(regexp?: RegExp): Arbitrary<string> {
   if (regexp === undefined) {
@@ -48,13 +50,20 @@ export function asciiChar(regexp?: RegExp): Arbitrary<string> {
   return Arbitrary.from(asciiTable.filter((c) => regexp.test(c)), { label });
 }
 
-/** The characters a-z and A-Z, in that order. */
+/**
+ * Returns an Arbitrary that generates the characters a-z and A-Z.
+ */
 export const asciiLetter: () => Arbitrary<string> = asciiChar(/[a-zA-Z]/)
   .asFunction();
 
-/** The characters 0-9, in that order. */
+/**
+ * Returns an Arbitrary that generates the characters 0-9.
+ */
 export const asciiDigit: () => Arbitrary<string> = asciiChar(/\d/).asFunction();
 
+/**
+ * Returns an Arbitrary that generates an ASCII whitespace character.
+ */
 export const asciiWhitespace: () => Arbitrary<string> = Arbitrary.from(
   " \t\n\v\f\r".split(""),
   {
@@ -62,14 +71,19 @@ export const asciiWhitespace: () => Arbitrary<string> = Arbitrary.from(
   },
 ).asFunction();
 
-/** Ascii characters that are not letters, digits, whitespace, or control characters. */
+/**
+ * Returns an Arbitrary that generates all ASCII characters that are not
+ * letters, digits, whitespace, or control characters.
+ */
 export const asciiSymbol: () => Arbitrary<string> = asciiChar(
   // deno-lint-ignore no-control-regex
   /[^ a-zA-Z0-9\x00-\x1f\x7f]/,
 ).asFunction();
 
 /**
- * All strings of length 1, containing single 16-bit code unit.
+ * Returns an Arbitrary that generates all JavaScript strings of length 1.
+ *
+ * Each string contains a single 16-bit code unit.
  *
  * Some of these strings aren't well-formed because they are unpaired
  * surrogates. It's useful when you want to test your code to handle
@@ -91,9 +105,11 @@ const codePoint = arb.int(0, unicodeMax - surrogateGap).map(
 );
 
 /**
- * All well-formed strings that correspond to a single Unicode code point. The
- * length of the string will be 1 or 2, depending on whether they're encoded
- * using surrogate pairs.
+ * Returns an Arbitrary that generates strings containing a single Unicode code
+ * point.
+ *
+ * The length of the string will be 1 or 2, depending on whether the code point
+ * is encoded using surrogate pairs.
  *
  * Code points in the range 0xd800 to 0xdfff are possible in Javascript, but
  * they aren't included because they decode to unpaired surrogates, which aren't
@@ -107,7 +123,10 @@ export const unicodeChar: () => Arbitrary<string> = codePoint.map((code) => {
 }, { label: "unicodeChar" }).asFunction();
 
 /**
- * Arbitrary strings, well-formed or not. Includes unpaired surrogates.
+ * Defines an Arbitrary that generates JavaScript strings.
+ *
+ * The strings may contain unpaired surrogates. (See {@link wellFormedString} if
+ * you don't want that.)
  *
  * Min and max are measured in code units, the same as `String.length`.
  */
@@ -120,10 +139,10 @@ export function string(
 }
 
 /**
- * Arbitrary well-formed Unicode strings.
+ * Defines an Arbitrary that generates well-formed Unicode strings.
  *
- * Min and max are measured in code points. `String.length` will be longer if it
- * contains surrogate pairs.
+ * Min and max are measured in Unicode code points, rather than code units. (The
+ * length of the string may be longer due to surrogate pairs.)
  */
 export function wellFormedString(
   opts?: { min?: number; max?: number },

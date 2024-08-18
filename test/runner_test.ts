@@ -30,11 +30,17 @@ import {
   type TestFunction,
 } from "../src/runner.ts";
 
+const strangeNumber = Arbitrary.of(
+  Number.POSITIVE_INFINITY,
+  Number.NEGATIVE_INFINITY,
+  Number.NaN,
+);
+
 const anyKey = arb.record({ seed: arb.int32(), index: arb.int(0, 100) });
 const badKey = arb.oneOf([
   arb.record({ seed: arb.int32(), index: arb.int(-100, -1) }),
-  arb.record({ seed: arb.strangeNumber(), index: arb.int(0, 100) }),
-  arb.record({ seed: arb.int32(), index: arb.strangeNumber() }),
+  arb.record({ seed: strangeNumber, index: arb.int(0, 100) }),
+  arb.record({ seed: arb.int32(), index: strangeNumber }),
   arb.of({ seed: Number.MAX_SAFE_INTEGER, index: 0 }),
 ]);
 

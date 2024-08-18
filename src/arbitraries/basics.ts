@@ -5,7 +5,7 @@ import { biasedBit, PickRequest } from "../picks.ts";
 import type { PickCallback, PickSet } from "../generated.ts";
 
 /**
- * An arbitrary based on a callback function.
+ * Defines an Arbitrary implemented by a callback function.
  *
  * For more, see {@link PickCallback}.
  */
@@ -16,22 +16,25 @@ export function from<T>(
   return Arbitrary.from(callback, opts);
 }
 
-/** An arbitrary that returns one of the given arguments. */
+/** Returns an Arbitrary that chooses one of the given arguments. */
 export function of<T>(...values: T[]): Arbitrary<T> {
   return Arbitrary.of(...values);
 }
 
+/** Returns an Arbitrary that generates a boolean. */
 export const boolean: () => Arbitrary<boolean> = Arbitrary.from([false, true], {
   label: "boolean",
 })
   .asFunction();
 
 /**
- * Chooses a safe integer.
+ * Defines an Arbitrary that chooses a safe integer in the given range.
  *
  * Invariant: min <= pick <= max.
  *
- * Negative and non-negative numbers are equally likely, so it's a non-uniform distribution.
+ * When choosing randomly, min is negative, and max is positive, negative and
+ * non-negative numbers are equally likely to be chosen. This will be a
+ * non-uniform distribution when abs(min) !== max.
  */
 export function int(
   min: number,
@@ -50,11 +53,10 @@ export function int(
 }
 
 /**
- * Simulates a biased coin.
+ * Defines an Arbitrary that simulates a biased coin.
  *
  * When set to 0 or 1, this returns a constant. For any other value, it's a hint
- * that's only used when picking randomly. The test case generator will ignore
- * the bias when searching for a playout that meets other constraints.
+ * that's only used when picking randomly.
  *
  * Setting a bias is useful mostly to encourage an Arbitrary to generate larger
  * values when picking randomly.
@@ -78,7 +80,7 @@ export function biased(
 }
 
 /**
- * Creates an Arbitrary for a record with the given shape.
+ * Defines an Arbitrary that generates record with the given shape.
  */
 export function record<T extends AnyRecord>(
   shape: RecordShape<T>,
@@ -86,21 +88,25 @@ export function record<T extends AnyRecord>(
   return Arbitrary.record(shape);
 }
 
+/**
+ * Defines an Arbitrary that generates a value using any of the given PickSets.
+ */
 export function oneOf<T>(cases: PickSet<T>[]): Arbitrary<T> {
   return Arbitrary.oneOf(cases);
 }
 
-export const defaultArrayLimit = 1000;
-
 const addArrayItem = biased(0.9);
 
+/**
+ * Defines an Arbitrary that generates an array of the given item.
+ */
 export function array<T>(
   item: PickSet<T>,
   opts?: { min?: number; max?: number; label?: string },
 ): Arbitrary<T[]> {
   const label = opts?.label ?? "array";
   const min = opts?.min ?? 0;
-  const max = opts?.max ?? defaultArrayLimit;
+  const max = opts?.max ?? 1000;
 
   // Arrays are represented using a fixed-length part (items only) followed by a
   // variable-length part where each item is preceded by a 1, followed by a 0 to

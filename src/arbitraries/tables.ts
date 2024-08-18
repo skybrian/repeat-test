@@ -6,6 +6,12 @@ import { Jar } from "../jar_class.ts";
 import type { Domain } from "../domain_class.ts";
 import { PickRequest } from "../picks.ts";
 
+/**
+ * Defines an Arbitrary that generates an array by taking distinct values from a
+ * Domain.
+ *
+ * (The comparison is done using the canonical pick sequence for each value.)
+ */
 export function uniqueArray<T>(
   item: Domain<T>,
   opts?: { label?: string },
@@ -26,12 +32,24 @@ export function uniqueArray<T>(
   }, { label });
 }
 
+/**
+ * Constraints used when generating or validating tables.
+ */
 export type TableOpts<T extends AnyRecord> = {
   label?: string;
   uniqueKeys?: (keyof T & string)[];
   maxRows?: number;
 };
 
+/**
+ * Defines an Arbitrary that generates arrays of records with a given shape.
+ *
+ * Columns may be further constrained using the uniqueKeys option, so that
+ * generated arrays won't contain duplicate values in that column.
+ *
+ * (Columns are defined using a {@link Domain} instead of an {@link Arbitrary}
+ * due to how unique keys are implemented.)
+ */
 export function table<R extends AnyRecord>(
   shape: dom.RecordShape<R>,
   opts?: TableOpts<R>,

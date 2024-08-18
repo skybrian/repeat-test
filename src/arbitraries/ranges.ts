@@ -1,6 +1,6 @@
 import { Arbitrary } from "../arbitrary_class.ts";
 import { from, int, oneOf, record } from "./basics.ts";
-import { nonInteger, safeInt } from "./numbers.ts";
+import { safeInt } from "./numbers.ts";
 
 export type Range = { min: number; max: number };
 
@@ -65,6 +65,17 @@ export function minMaxVal(
     return { min, max, val };
   });
 }
+
+const strangeNumber = Arbitrary.of(
+  Number.POSITIVE_INFINITY,
+  Number.NEGATIVE_INFINITY,
+  Number.NaN,
+);
+
+const nonInteger: () => Arbitrary<number> = oneOf<number>([
+  strangeNumber,
+  int(-100, 100).map((n) => n + 0.5),
+]).asFunction();
 
 /**
  * Generates a record that satisfies the Range type, but isn't a valid range of
