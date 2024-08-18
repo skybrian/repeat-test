@@ -3,7 +3,6 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 
-import * as arb from "../../src/arbitraries.ts";
 import * as dom from "../../src/domains.ts";
 import {
   intRange,
@@ -200,46 +199,6 @@ describe("oneOf", () => {
     });
     it("rejects values that don't match any case", () => {
       assertThrows(() => multiWay.parse(0), Error, "no case matched");
-    });
-  });
-});
-
-describe("mapped", () => {
-  describe("for even numbers", () => {
-    const roll = dom.int(1, 6);
-
-    const even = dom.mapped(roll, {
-      parse(v, sendErr) {
-        if (typeof v !== "number" || !Number.isSafeInteger(v)) {
-          sendErr("not a safe integer");
-          return undefined;
-        } else if (v % 2 !== 0) {
-          sendErr("not an even number");
-          return undefined;
-        }
-        return v / 2;
-      },
-      unparse(v) {
-        return v * 2;
-      },
-    });
-
-    it("accepts even numbers", () => {
-      repeatTest(arb.of(2, 4, 6, 8, 10, 12), (n) => {
-        assertRoundTrip(even, n);
-      });
-    });
-
-    it("rejects odd numbers", () => {
-      repeatTest(arb.of(1, 3, 5, 7, 9, 11), (n) => {
-        assertThrows(() => even.parse(n), Error, "not an even number");
-      });
-    });
-
-    it("parses every number it generates", () => {
-      repeatTest(even, (n) => {
-        even.parse(n);
-      });
     });
   });
 });

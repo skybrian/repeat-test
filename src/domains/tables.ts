@@ -6,6 +6,11 @@ import { PickTree } from "../pick_tree.ts";
 import { assert } from "@std/assert";
 import { PickList } from "../picks.ts";
 
+/**
+ * Creates a Domain that accepts arrays where each item is different.
+ *
+ * Two items are considered equal if their canonical pick sequences are equal.
+ */
 export function uniqueArray<T>(
   item: Domain<T>,
   opts?: { label?: string },
@@ -43,6 +48,14 @@ export function uniqueArray<T>(
   });
 }
 
+/**
+ * Creates a Domain that accepts arrays of records, where every record has a
+ * given shape.
+ *
+ * A column may be required to be a unique key - that is, a table value won't be
+ * accepted if there is a duplicate value in that column. Keys are compared
+ * using their canonical pick sequences.
+ */
 export function table<R extends AnyRecord>(
   shape: dom.RecordShape<R>,
   opts?: arb.TableOpts<R>,

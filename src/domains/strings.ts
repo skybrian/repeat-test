@@ -19,14 +19,27 @@ const asciiDom = new Domain(arbAscii, (val, sendErr) => {
   return gen.replies;
 });
 
+/**
+ * Creates a domain that accepts ascii characters that match a regular expression.
+ *
+ * If the argument is omitted, any ascii character is accepted.
+ */
 export function asciiChar(regexp?: RegExp): Domain<string> {
   if (!regexp) return asciiDom;
   return asciiDom.filter((val) => regexp.test(val));
 }
 
+/**
+ * Returns a domain that accepts strings containing a single ascii letter.
+ */
 export const asciiLetter: () => Domain<string> = asciiChar(/[a-zA-Z]/)
   .asFunction();
 
+/**
+ * Returns a domain that accepts single-character strings.
+ *
+ * (That is, it accepts 16-bit code units, including unpaired surrogates.)
+ */
 export const char16: () => Domain<string> = new Domain(
   arb.char16(),
   (val, sendErr) => {
@@ -54,6 +67,11 @@ export const char16: () => Domain<string> = new Domain(
 // Using the max array size here because the implementation uses arrays.
 const maxStringLength = 2 ** 32 - 1;
 
+/**
+ * Returns a domain that accepts any JavaScript string.
+ *
+ * (That is, they may contain unpaired surrogates.)
+ */
 export const string: () => Domain<string> = new Domain(
   arb.string({ min: 0, max: maxStringLength }),
   (val, sendErr) => {
@@ -73,6 +91,11 @@ export const string: () => Domain<string> = new Domain(
   },
 ).asFunction();
 
+/**
+ * Returns a domain that accepts well-formed strings.
+ *
+ * (That is, they don't contain unpaired surrogates.)
+ */
 export const wellFormedString: () => Domain<string> = new Domain(
   arb.wellFormedString(),
   (val, sendErr) => {

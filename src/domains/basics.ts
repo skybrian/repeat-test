@@ -3,6 +3,13 @@ import { Arbitrary } from "../arbitrary_class.ts";
 import * as arb from "../arbitraries.ts";
 import { Domain } from "../domain_class.ts";
 
+/**
+ * A domain that accepts only values contained in the array given as its first
+ * argument.
+ *
+ * Comparisons are done using strict equality, the same algorithm used by
+ * `===`.
+ */
 export function from<T>(
   values: T[],
   opts?: { label: string },
@@ -32,15 +39,25 @@ export function from<T>(
   });
 }
 
+/**
+ * A domain that accepts only values equal to the given arguments.
+ *
+ * Comparisons are done using strict equality, the same algorithm used by
+ * `===`.
+ */
 export function of<T>(...values: T[]): Domain<T> {
   return from(values);
 }
 
+/** A domain that accepts only booleans. */
 export const boolean: () => Domain<boolean> = from([false, true], {
   label: "boolean",
 })
   .asFunction();
 
+/**
+ * A domain that accepts safe integers within the given range (inclusive).
+ */
 export function int(min: number, max: number): Domain<number> {
   const gen = arb.int(min, max);
 
@@ -71,10 +88,16 @@ export function int(min: number, max: number): Domain<number> {
   }
 }
 
+/**
+ * Specifies the values accepted for each field of a record.
+ */
 export type RecordShape<T> = {
   [K in keyof T]: Domain<T[K]>;
 };
 
+/**
+ * Creates a Domain that accepts records with matching fields.
+ */
 export function record<T extends AnyRecord>(
   fields: RecordShape<T>,
 ): Domain<T> {
@@ -107,6 +130,9 @@ export function record<T extends AnyRecord>(
   );
 }
 
+/**
+ * Creates a Domain that accepts arrays where every item matches.
+ */
 export function array<T>(
   item: Domain<T>,
   opts?: { min?: number; max?: number },
@@ -160,11 +186,12 @@ export function array<T>(
 }
 
 /**
- * A domain that's the union of the values in each child domain.
+ * Creates a Domain that's the union of other Domains.
  *
- * If the child domains overlap, there will be multiple ways to convert a value
- * into picks. The encoding for the first child that matches will be used when
- * serializing, and any encoding accepted when deserializing.
+ * When multiple child domains accept the same value, the encoding for the first
+ * one that matches will be used. The other Domains can also generate the same
+ * value, but the pick sequences they use will be non-canonical representations
+ * of it.
  */
 export function oneOf<T>(cases: Domain<T>[]): Domain<T> {
   if (cases.length === 0) {
@@ -184,24 +211,4 @@ export function oneOf<T>(cases: Domain<T>[]): Domain<T> {
     sendErr("no case matched");
     return undefined;
   });
-}
-
-export interface Codec<In, Out> {
-  parse: (val: unknown, sendErr: (msg: string) => void) => Out | undefined;
-  unparse: (val: Out) => In;
-}
-
-/**
- * Creates a domain that parses by lowering to another domain, instead of
- * parsing all the way to picks.
- */
-export function mapped<T, L>(lower: Domain<L>, mapper: Codec<T, L>): Domain<T> {
-  return new Domain<T>(
-    lower.arb.map((val: L) => mapper.unparse(val)),
-    (val, sendErr) => {
-      const parsed = mapper.parse(val, sendErr);
-      if (parsed === undefined) return undefined;
-      return lower.innerPickify(parsed, sendErr);
-    },
-  );
 }
