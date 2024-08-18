@@ -223,7 +223,8 @@ export class Arbitrary<T> implements PickSet<T> {
       });
     } else if (arg instanceof PickRequest) {
       const label = opts?.label ?? `${arg.min}..${arg.max}`;
-      return new Arbitrary(label, (pick) => pick(arg), { maxSize: arg.size });
+      const maxSize = arg.max - arg.min + 1;
+      return new Arbitrary(label, (pick) => pick(arg), { maxSize });
     } else if (arg instanceof Arbitrary) {
       return arg;
     }

@@ -17,9 +17,11 @@ export type {
 
 export { Arbitrary } from "./src/arbitrary_class.ts";
 export type { ArbitraryOpts, RecordShape } from "./src/arbitrary_class.ts";
+
 export * as arb from "./src/arbitraries.ts";
 
 export { Domain } from "./src/domain_class.ts";
+export type { PickifyCallback, SendErr } from "./src/domain_class.ts";
 export * as dom from "./src/domains.ts";
 
 export { Jar } from "./src/jar_class.ts";

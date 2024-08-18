@@ -38,7 +38,8 @@ describe("PickTree", () => {
         assert(tree.prune(picks));
         assertFalse(tree.available(path), "not pruned");
         if (path.length > 1) {
-          assertEquals(tree.branchesLeft(path.slice(0, -1)), req.size - 1);
+          const reqSize = req.max - req.min + 1;
+          assertEquals(tree.branchesLeft(path.slice(0, -1)), reqSize - 1);
         }
       });
     });

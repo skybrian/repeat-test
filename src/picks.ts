@@ -38,6 +38,7 @@ function inRange(n: number, min: number, max: number) {
   return Number.isSafeInteger(n) && n >= min && n <= max;
 }
 
+/** Options on a {@link PickRequest}. */
 export type PickRequestOpts = {
   /**
    * Overrides the distribution for this request. The output should satisfy
@@ -92,15 +93,12 @@ export class PickRequest {
     this.bias = opts?.bias ?? uniformBias(min, max);
   }
 
-  get size(): number {
-    return this.max - this.min + 1;
-  }
-
   /** Returns true if the given number satisfies this request. */
   inRange(n: number): boolean {
     return inRange(n, this.min, this.max);
   }
 
+  /** Describes the request's range, for debugging. */
   toString(): string {
     return `${this.min}..${this.max}`;
   }
