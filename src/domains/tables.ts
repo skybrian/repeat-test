@@ -1,6 +1,6 @@
 import type { AnyRecord } from "../types.ts";
 import { Domain } from "../domain_class.ts";
-import * as arb from "../arbitraries.ts";
+import * as arb from "../arb.ts";
 import type * as dom from "./basics.ts";
 import { PickTree } from "../pick_tree.ts";
 import { assert } from "@std/assert";

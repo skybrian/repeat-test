@@ -1,6 +1,6 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
-import * as dom from "../../src/domains.ts";
+import * as dom from "../../src/dom.ts";
 import { repeatTest } from "../../src/runner.ts";
 import { assertThrows } from "@std/assert";
 import { Arbitrary } from "../../src/arbitrary_class.ts";

@@ -1,10 +1,10 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertThrows } from "@std/assert";
-import * as arb from "../../src/arbitraries.ts";
+import * as arb from "../../src/arb.ts";
 import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 
-import * as dom from "../../src/domains.ts";
+import * as dom from "../../src/dom.ts";
 import { isWellFormed } from "../../src/workarounds.ts";
 
 describe("asciiChar", () => {

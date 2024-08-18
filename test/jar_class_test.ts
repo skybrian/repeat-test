@@ -1,6 +1,6 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
-import * as dom from "../src/domains.ts";
+import * as dom from "../src/dom.ts";
 
 import { Pruned } from "../src/backtracking.ts";
 import { makePickFunction } from "../src/generated.ts";

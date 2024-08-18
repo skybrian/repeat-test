@@ -1,7 +1,7 @@
 /**
  * Functions for defining Arbitraries.
  *
- * @module arbs
+ * @module arb
  */
 export * from "./arbitraries/basics.ts";
 export * from "./arbitraries/numbers.ts";

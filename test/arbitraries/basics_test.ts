@@ -9,7 +9,7 @@ import {
 import { repeatTest } from "../../src/runner.ts";
 
 import { Arbitrary } from "../../src/arbitrary_class.ts";
-import * as arb from "../../src/arbitraries.ts";
+import * as arb from "../../src/arb.ts";
 
 describe("boolean", () => {
   it("generates both values", () => {

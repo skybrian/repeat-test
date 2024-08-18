@@ -1,8 +1,8 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 
-import * as arb from "../../src/arbitraries.ts";
-import * as dom from "../../src/domains.ts";
+import * as arb from "../../src/arb.ts";
+import * as dom from "../../src/dom.ts";
 import {
   assertFirstGenerated,
   assertFirstValues,

@@ -1,6 +1,6 @@
 import type { AnyRecord } from "../types.ts";
 import { Arbitrary } from "../arbitrary_class.ts";
-import * as arb from "../arbitraries.ts";
+import * as arb from "../arb.ts";
 import { Domain } from "../domain_class.ts";
 
 /**

@@ -11,8 +11,8 @@ import { minPlayout, Pruned } from "../src/backtracking.ts";
 import { generate } from "../src/generated.ts";
 import { Arbitrary } from "../src/arbitrary_class.ts";
 import type { Domain } from "../src/domain_class.ts";
-import * as arb from "../src/arbitraries.ts";
-import * as dom from "../src/domains.ts";
+import * as arb from "../src/arb.ts";
+import * as dom from "../src/dom.ts";
 import { success } from "../src/results.ts";
 
 import {

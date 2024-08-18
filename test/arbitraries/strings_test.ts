@@ -9,7 +9,7 @@ import {
 import { repeatTest } from "../../src/runner.ts";
 import { isWellFormed } from "../../src/workarounds.ts";
 
-import * as arb from "../../src/arbitraries.ts";
+import * as arb from "../../src/arb.ts";
 import { takeAll } from "../../src/multipass_search.ts";
 import type { PickSet } from "../../src/generated.ts";
 

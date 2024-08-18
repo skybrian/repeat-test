@@ -1,6 +1,6 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, fail } from "@std/assert";
-import * as arb from "../src/arbitraries.ts";
+import * as arb from "../src/arb.ts";
 import { intRange, minMaxVal } from "../src/arbitraries/ranges.ts";
 import { repeatTest } from "../src/runner.ts";
 
@@ -12,7 +12,7 @@ import {
   shrinkPicksFrom,
 } from "../src/shrink.ts";
 import type { Domain } from "../src/domain_class.ts";
-import * as dom from "../src/domains.ts";
+import * as dom from "../src/dom.ts";
 
 function assertShrinks<T>(
   dom: Domain<T>,
