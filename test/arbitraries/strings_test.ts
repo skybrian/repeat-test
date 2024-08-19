@@ -11,7 +11,10 @@ import { isWellFormed } from "../../src/workarounds.ts";
 
 import * as arb from "../../src/arb.ts";
 import { takeAll } from "../../src/multipass_search.ts";
+import { generate } from "../../src/generated.ts";
 import type { PickSet } from "../../src/generated.ts";
+import { randomPicker } from "../../src/random.ts";
+import { onePlayout } from "../../src/backtracking.ts";
 
 function assertCharCodeRange(
   set: PickSet<string>,
@@ -101,6 +104,23 @@ describe("char16", () => {
   });
   it("includes all code points", () => {
     assertCharCodeRange(arb.char16(), 0, 0xFFFF);
+  });
+  it("picks ascii characters half the time", () => {
+    const rand = randomPicker(123);
+    let asciiCount = 0;
+    for (let i = 0; i < 1000; i++) {
+      const gen = generate(arb.char16(), onePlayout(rand));
+      assert(gen !== undefined);
+      const code = gen.val.charCodeAt(0);
+      if (code >= 0 && code < 128) {
+        asciiCount++;
+      }
+    }
+
+    assert(
+      Math.abs(asciiCount - 500) < 50,
+      `expected about 500 ascii characters, got ${asciiCount}`,
+    );
   });
   it("has a label", () => {
     assertEquals(arb.char16().label, "char16");

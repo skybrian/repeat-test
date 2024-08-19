@@ -1,29 +1,29 @@
 /**
- * Randomly picks an integer from a uniform distribution.
+ * A function that randomly picks an integer within the given range.
  *
  * Precondition: min and max are safe integers.
- * Postcondition: see {@link inRange}.
+ * @returns a number satisfying min <= pick <= max.
  */
-export type UniformIntPicker = (min: number, max: number) => number;
+export type UniformRandomSource = (min: number, max: number) => number;
 
 /**
- * Picks an integer from a random distribution.
+ * Picks an integer, given a source of random numbers.
  *
  * The range is unspecified (given by context).
  *
  * @param uniform A source of random numbers.
  */
-export type BiasedIntPicker = (uniform: UniformIntPicker) => number;
+export type BiasedIntPicker = (uniform: UniformRandomSource) => number;
 
 function uniformBias(min: number, max: number): BiasedIntPicker {
-  return (uniform: UniformIntPicker) => uniform(min, max);
+  return (uniform: UniformRandomSource) => uniform(min, max);
 }
 
 /** Options on a {@link PickRequest}. */
 export type PickRequestOpts = {
   /**
-   * Overrides the distribution for this request. The output should satisfy
-   * {@link inRange} for the request.
+   * Overrides the random distribution for this request. The output should be in
+   * range for the request.
    */
   bias?: BiasedIntPicker;
 };
@@ -88,17 +88,67 @@ export class PickRequest {
 const biasBins = 0x100000000;
 
 /**
- * Returns a request for a biased pick between 0 and 1.
+ * Creates a PickRequest that chooses between 0 and 1 with the given bias.
+ *
+ * (Note that the bias only matters when picking randomly.)
  *
  * @param probOne The probability of picking 1.
  */
-export function biasedBit(probOne: number): PickRequest {
-  const bias = (uniform: UniformIntPicker) => {
+export function biasedBitRequest(probOne: number): PickRequest {
+  const bias = (uniform: UniformRandomSource) => {
     const threshold = Math.floor((1 - probOne) * biasBins);
     const choice = uniform(1, biasBins);
     return choice <= threshold ? 0 : 1;
   };
   return new PickRequest(0, 1, { bias });
+}
+
+/**
+ * Creates a PickRequest that chooses a subrange and then a number within the
+ * chosen subrange.
+ *
+ * This can be used to give each subrange an equal chance of being picked, even
+ * if the ranges have very different sizes.
+ *
+ * (Note that the bias only matters when picking randomly.)
+ *
+ * @param starts the start of each range
+ * @param lastMax the last choice in the last range
+ * @returns a number satisfying start[0] <= n <= lastMax
+ */
+export function subrangeRequest(
+  starts: number[],
+  lastMax: number,
+): PickRequest {
+  const last = starts.length - 1;
+  if (last < 0) {
+    throw new Error("starts must be non-empty");
+  }
+  for (let i = 0; i <= last; i++) {
+    if (!Number.isSafeInteger(starts[i])) {
+      throw new Error(`starts[${i}] must be a safe integer; got ${starts[i]}`);
+    }
+  }
+  if (!Number.isSafeInteger(lastMax)) {
+    throw new Error(`lastMax must be a safe integer; got ${lastMax}`);
+  }
+  for (let i = 1; i <= last; i++) {
+    if (starts[i] < starts[i - 1]) {
+      throw new Error(
+        `want: starts[${i}] >= ${starts[i - 1]}; got ${starts[i]}`,
+      );
+    }
+  }
+  if (lastMax < starts[last]) {
+    throw new Error(`want: lastMax >= ${starts[last]}; got ${lastMax}`);
+  }
+  const bias = (uniform: UniformRandomSource) => {
+    const choice = uniform(0, starts.length - 1);
+    const min = starts[choice];
+    const max = choice < starts.length - 1 ? starts[choice + 1] : lastMax;
+    return uniform(min, max);
+  };
+  return new PickRequest(starts[0], lastMax, { bias });
 }
 
 /**

@@ -5,40 +5,12 @@ import { invalidIntRange } from "../src/arbitraries/ranges.ts";
 
 import {
   alwaysPick,
-  biasedBit,
+  biasedBitRequest,
   PickList,
   PickRequest,
   PlaybackPicker,
+  subrangeRequest,
 } from "../src/picks.ts";
-
-describe("biasedBit", () => {
-  function scan(req: PickRequest, bins: number): number[] {
-    const out: number[] = [];
-    for (let i = 0; i < bins; i++) {
-      const arg = i / (bins - 1);
-      const uniform = (min: number, max: number) => arg * (max - min) + min;
-      out.push(req.bias(uniform));
-    }
-    return out;
-  }
-
-  it("switches halfway for a fair coin", () => {
-    const fair = biasedBit(0.5);
-    assertEquals(scan(fair, 10), [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]);
-  });
-  it("switches early for a biased coin", () => {
-    const fair = biasedBit(0.1);
-    assertEquals(scan(fair, 10), [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
-  });
-  it("always picks 0 for 0", () => {
-    const fair = biasedBit(0);
-    assertEquals(scan(fair, 10), [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-  });
-  it("always picks 1 for 1", () => {
-    const fair = biasedBit(1);
-    assertEquals(scan(fair, 10), [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
-  });
-});
 
 describe("PickRequest", () => {
   describe("constructor", () => {
@@ -53,6 +25,99 @@ describe("PickRequest", () => {
     it("prints the range", () => {
       assertEquals(new PickRequest(0, 1).toString(), "0..1");
     });
+  });
+});
+
+describe("biasedBitRequest", () => {
+  function scan(req: PickRequest, bins: number): number[] {
+    const out: number[] = [];
+    for (let i = 0; i < bins; i++) {
+      const arg = i / (bins - 1);
+      const uniform = (min: number, max: number) => arg * (max - min) + min;
+      out.push(req.bias(uniform));
+    }
+    return out;
+  }
+
+  it("switches halfway for a fair coin", () => {
+    const fair = biasedBitRequest(0.5);
+    assertEquals(scan(fair, 10), [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]);
+  });
+  it("switches early for a biased coin", () => {
+    const fair = biasedBitRequest(0.1);
+    assertEquals(scan(fair, 10), [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+  });
+  it("always picks 0 for 0", () => {
+    const fair = biasedBitRequest(0);
+    assertEquals(scan(fair, 10), [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  });
+  it("always picks 1 for 1", () => {
+    const fair = biasedBitRequest(1);
+    assertEquals(scan(fair, 10), [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+  });
+});
+
+describe("subrangeRequest", () => {
+  it("throws if given an empty list of starts", () => {
+    assertThrows(
+      () => subrangeRequest([], 0),
+      Error,
+      "starts must be non-empty",
+    );
+  });
+  it("throws if any start isn't a safe integer", () => {
+    assertThrows(
+      () => subrangeRequest([1, 1.5, 2], 2),
+      Error,
+      "starts[1] must be a safe integer; got 1.5",
+    );
+  });
+  it("throws if lastMax isn't a safe integer", () => {
+    assertThrows(
+      () => subrangeRequest([1], 1.5),
+      Error,
+      "lastMax must be a safe integer; got 1.5",
+    );
+  });
+  it("throws if a start is lower than the previous start", () => {
+    assertThrows(
+      () => subrangeRequest([1, 0], 1),
+      Error,
+      "want: starts[1] >= 1; got 0",
+    );
+  });
+  it("throws if given a start that's higher than lastMax", () => {
+    assertThrows(
+      () => subrangeRequest([1], 0),
+      Error,
+      "want: lastMax >= 1; got 0",
+    );
+  });
+
+  function scan(req: PickRequest, bins: number): number[] {
+    const out: number[] = [];
+    for (let i = 0; i < bins; i++) {
+      const arg = i / (bins - 1);
+      let calls = 0;
+      const uniform = (min: number, max: number) => {
+        calls++;
+        switch (calls) {
+          case 1:
+            return arg * (max - min) + min;
+          case 2:
+            return min;
+          default:
+            throw new Error("too many calls to uniform");
+        }
+      };
+      out.push(req.bias(uniform));
+    }
+    return out;
+  }
+
+  it("chooses each range with equal probability", () => {
+    const req = subrangeRequest([1, 2, 1000], 2000);
+    assertEquals(scan(req, 3), [1, 2, 1000]);
   });
 });
 

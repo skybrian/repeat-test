@@ -1,5 +1,5 @@
 import prand from "pure-rand";
-import type { IntPicker, PickRequest, UniformIntPicker } from "./picks.ts";
+import type { IntPicker, PickRequest, UniformRandomSource } from "./picks.ts";
 import { assert } from "@std/assert";
 
 export function pickRandomSeed(): number {
@@ -14,7 +14,7 @@ function makePicker(rng: prand.RandomGenerator): IntPicker {
   // Clone so we can mutate it.
   rng = rng.clone();
 
-  const uniform: UniformIntPicker = (min, max) =>
+  const uniform: UniformRandomSource = (min, max) =>
     prand.unsafeUniformIntDistribution(min, max, rng);
 
   const picks: number[] = [];

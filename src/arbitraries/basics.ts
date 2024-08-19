@@ -1,7 +1,7 @@
 import type { AnyRecord } from "../types.ts";
 import { Arbitrary } from "../arbitrary_class.ts";
 import type { ArbitraryOpts, RecordShape } from "../arbitrary_class.ts";
-import { biasedBit, PickRequest } from "../picks.ts";
+import { biasedBitRequest, PickRequest } from "../picks.ts";
 import type { PickCallback, PickSet } from "../generated.ts";
 
 /**
@@ -74,7 +74,7 @@ export function biased(
   } else if (probabilityTrue === 1) {
     return Arbitrary.of(true);
   }
-  const req = biasedBit(probabilityTrue);
+  const req = biasedBitRequest(probabilityTrue);
   const label = opts?.label ?? "biased boolean";
   return Arbitrary.from(req).map((v) => v === 1, { label });
 }

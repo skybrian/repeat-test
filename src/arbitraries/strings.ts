@@ -1,3 +1,4 @@
+import { subrangeRequest } from "../picks.ts";
 import { Arbitrary } from "../arbitrary_class.ts";
 import * as arb from "./basics.ts";
 import { surrogateGap, surrogateMin, unicodeMax } from "../unicode.ts";
@@ -89,7 +90,9 @@ export const asciiSymbol: () => Arbitrary<string> = asciiChar(
  * surrogates. It's useful when you want to test your code to handle
  * badly-formed strings.
  */
-export const char16: () => Arbitrary<string> = arb.int(0, 0xffff).map(
+export const char16: () => Arbitrary<string> = Arbitrary.from(
+  subrangeRequest([0, 128], 0xffff),
+).map(
   (code) => {
     if (code < 128) {
       return asciiTable[code];

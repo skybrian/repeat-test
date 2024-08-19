@@ -1,10 +1,10 @@
 export type { Failure, Success } from "./src/results.ts";
 
-export { biasedBit, PickRequest } from "./src/picks.ts";
+export { biasedBitRequest, PickRequest } from "./src/picks.ts";
 export type {
   BiasedIntPicker,
   PickRequestOpts,
-  UniformIntPicker,
+  UniformRandomSource,
 } from "./src/picks.ts";
 
 export type {
