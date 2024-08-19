@@ -156,14 +156,14 @@ describe("record", () => {
 });
 
 describe("oneOf", () => {
-  const oneWay = arb.oneOf([
+  const oneWay = arb.oneOf(
     arb.int(1, 2),
-  ]);
-  const threeWay = arb.oneOf([
+  );
+  const threeWay = arb.oneOf(
     arb.int(1, 2),
     arb.int(3, 4),
     arb.int(5, 6),
-  ]);
+  );
   it("defaults to the first branch", () => {
     assertEquals(oneWay.default().val, 1);
     assertEquals(threeWay.default().val, 1);

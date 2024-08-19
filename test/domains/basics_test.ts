@@ -172,7 +172,7 @@ describe("array", () => {
 
 describe("oneOf", () => {
   it("throws when given an empty array", () => {
-    assertThrows(() => dom.oneOf([]), Error);
+    assertThrows(() => dom.oneOf(), Error);
   });
   describe("for a single-case oneOf", () => {
     it("encodes it the same way as the child domain", () => {
@@ -181,18 +181,18 @@ describe("oneOf", () => {
         const ignore = () => {};
         const expected = child.innerPickify(val, ignore);
         assert(expected !== undefined);
-        const oneWay = dom.oneOf([child]);
+        const oneWay = dom.oneOf(child);
         assertEncoding(oneWay, expected, val);
       });
     });
     it("rejects values that don't match", () => {
       const child = dom.int(1, 3);
-      const oneWay = dom.oneOf([child]);
+      const oneWay = dom.oneOf(child);
       assertThrows(() => oneWay.parse(0), Error, "not in range");
     });
   });
   describe("for a multi-case oneOf", () => {
-    const multiWay = dom.oneOf([dom.int(1, 3), dom.int(4, 6)]);
+    const multiWay = dom.oneOf(dom.int(1, 3), dom.int(4, 6));
     it("encodes distinct cases by putting the case index first", () => {
       assertEncoding(multiWay, [0, 2], 2);
       assertEncoding(multiWay, [1, 5], 5);

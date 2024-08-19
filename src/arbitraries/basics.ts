@@ -49,7 +49,7 @@ export function int(
       label,
     });
   } else {
-    return Arbitrary.oneOf([int(0, max), int(min, -1)], { label });
+    return Arbitrary.oneOf(int(0, max), int(min, -1)).with({ label });
   }
 }
 
@@ -92,8 +92,8 @@ export function record<T extends AnyRecord>(
 /**
  * Defines an Arbitrary that generates a value using any of the given PickSets.
  */
-export function oneOf<T>(cases: PickSet<T>[]): Arbitrary<T> {
-  return Arbitrary.oneOf(cases);
+export function oneOf<T>(...cases: PickSet<T>[]): Arbitrary<T> {
+  return Arbitrary.oneOf(...cases);
 }
 
 const addArrayItem = biased(0.9);

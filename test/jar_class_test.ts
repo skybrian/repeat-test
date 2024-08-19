@@ -32,7 +32,7 @@ describe("Jar", () => {
       assertThrows(() => jar.take(pick), Pruned);
     });
     it("picks values from an overlapping oneOf", () => {
-      const overlap = dom.oneOf([dom.of(1, 2), dom.of(2, 3)]);
+      const overlap = dom.oneOf(dom.of(1, 2), dom.of(2, 3));
       repeatTest(arb.int32(), (seed) => {
         search = new PlayoutSearch();
         search.pickSource = randomPicker(seed);

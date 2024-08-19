@@ -37,12 +37,12 @@ const strangeNumber = Arbitrary.of(
 );
 
 const anyKey = arb.record({ seed: arb.int32(), index: arb.int(0, 100) });
-const badKey = arb.oneOf([
+const badKey = arb.oneOf(
   arb.record({ seed: arb.int32(), index: arb.int(-100, -1) }),
   arb.record({ seed: strangeNumber, index: arb.int(0, 100) }),
   arb.record({ seed: arb.int32(), index: strangeNumber }),
   arb.of({ seed: Number.MAX_SAFE_INTEGER, index: 0 }),
-]);
+);
 
 describe("parseRepKey", () => {
   it("parses any key emitted by serializeRepKey", () => {
@@ -58,12 +58,12 @@ describe("parseRepKey", () => {
     });
   });
   it("returns a failure if the serialized key isn't in the right format", () => {
-    const badString = arb.oneOf([
+    const badString = arb.oneOf(
       arb.string().filter((x) => x.split(":").length !== 2),
       arb.record({ k: anyKey, junk: arb.string() }).map(({ k, junk }) =>
         `${serializeRepKey(k)}:${junk}`
       ),
-    ]);
+    );
 
     repeatTest(badString, (s) => {
       assertEquals(parseRepKey(s).ok, false);
@@ -464,10 +464,10 @@ describe("repeatTest", () => {
     }
   });
   it("uses a constant only once when given an unbalanced choice of examples", () => {
-    const unbalanced = Arbitrary.oneOf([
+    const unbalanced = Arbitrary.oneOf(
       arb.of(123.4),
       arb.int32(),
-    ]);
+    );
     const counts = new Map<number, number>();
     repeatTest(unbalanced, (i) => {
       counts.set(i, (counts.get(i) || 0) + 1);

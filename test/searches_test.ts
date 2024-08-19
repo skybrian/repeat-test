@@ -185,13 +185,13 @@ describe("PlayoutSearch", () => {
   });
 
   it("fully explores a combination lock", () => {
-    const underlyingPickers = arb.oneOf([
+    const underlyingPickers = arb.oneOf(
       arb.of(
         alwaysPickMin,
         alwaysPick(3),
       ),
       arb.int(-(2 ** 32), (2 ** 32) - 1).map((seed) => randomPicker(seed)),
-    ]);
+    );
     const digit = new PickRequest(0, 9);
 
     repeatTest(underlyingPickers, (underlying) => {

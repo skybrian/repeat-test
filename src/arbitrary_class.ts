@@ -264,8 +264,7 @@ export class Arbitrary<T> implements PickSet<T> {
    * Creates an arbitrary that picks one of the given arbitaries and then returns it.
    */
   static oneOf<T>(
-    cases: PickSet<T>[],
-    opts?: ArbitraryOpts,
+    ...cases: PickSet<T>[]
   ): Arbitrary<T> {
     if (cases.length === 0) {
       throw new Error("Arbitrary.oneOf() requires at least one alternative");
@@ -290,7 +289,7 @@ export class Arbitrary<T> implements PickSet<T> {
       const i = pick(req);
       return arbCases[i].#callback(pick);
     };
-    const label = opts?.label ?? "oneOf";
+    const label = "oneOf";
     return new Arbitrary(label, callback, { maxSize });
   }
 

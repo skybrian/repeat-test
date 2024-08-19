@@ -101,13 +101,13 @@ describe("Arbitrary", () => {
   describe("oneOf", () => {
     it("throws if given an empty array", () => {
       assertThrows(
-        () => Arbitrary.oneOf([]),
+        () => Arbitrary.oneOf(),
         Error,
         "Arbitrary.oneOf() requires at least one alternative",
       );
     });
     it("accepts constant alteratives", () => {
-      const arb = Arbitrary.oneOf([Arbitrary.of(1), Arbitrary.of(2)]);
+      const arb = Arbitrary.oneOf(Arbitrary.of(1), Arbitrary.of(2));
       assertGenerated(arb, [{ val: 1, picks: [0] }, { val: 2, picks: [1] }]);
       assertEquals(arb.maxSize, 2);
     });

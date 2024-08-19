@@ -194,14 +194,14 @@ export function array<T>(
  * value, but the pick sequences they use will be non-canonical representations
  * of it.
  */
-export function oneOf<T>(cases: Domain<T>[]): Domain<T> {
+export function oneOf<T>(...cases: Domain<T>[]): Domain<T> {
   if (cases.length === 0) {
     throw new Error("oneOf must have at least one choice");
   } else if (cases.length === 1) {
     return cases[0];
   }
 
-  const gen = arb.oneOf(cases);
+  const gen = arb.oneOf(...cases);
 
   return new Domain(gen, (val, sendErr) => {
     for (const [i, c] of cases.entries()) {

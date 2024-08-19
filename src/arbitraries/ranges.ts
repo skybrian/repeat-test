@@ -39,7 +39,7 @@ export function intRange(opts?: IntRangeOptions): Arbitrary<Range> {
     examples.push({ min: -1, max: minSize - 2 });
   }
 
-  return oneOf<Range>([
+  return oneOf<Range>(
     Arbitrary.of(...examples),
     from((pick) => {
       const size = pick(int(minSize, maxSize));
@@ -49,7 +49,7 @@ export function intRange(opts?: IntRangeOptions): Arbitrary<Range> {
       const max = min + (size - 1);
       return { min, max };
     }),
-  ]);
+  );
 }
 
 /**
@@ -72,10 +72,10 @@ const strangeNumber = Arbitrary.of(
   Number.NaN,
 );
 
-const nonInteger: () => Arbitrary<number> = oneOf<number>([
+const nonInteger: () => Arbitrary<number> = oneOf<number>(
   strangeNumber,
   int(-100, 100).map((n) => n + 0.5),
-]).asFunction();
+).asFunction();
 
 /**
  * Generates a record that satisfies the Range type, but isn't a valid range of
@@ -88,12 +88,12 @@ export function invalidIntRange(opts?: { minMin: number }): Arbitrary<Range> {
 
   let invalidMin = nonInteger();
   if (minMin > Number.MIN_SAFE_INTEGER) {
-    invalidMin = oneOf([invalidMin, int(Number.MIN_SAFE_INTEGER, minMin - 1)]);
+    invalidMin = oneOf(invalidMin, int(Number.MIN_SAFE_INTEGER, minMin - 1));
   }
 
-  return oneOf<Range>([
+  return oneOf<Range>(
     Arbitrary.of({ min: 1, max: 0 }),
     record({ min: validMin, max: nonInteger() }),
     record({ min: invalidMin, max: safeInt() }),
-  ]);
+  );
 }
