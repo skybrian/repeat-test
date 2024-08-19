@@ -74,8 +74,7 @@ export function biased(
   } else if (probabilityTrue === 1) {
     return Arbitrary.of(true);
   }
-  const bias = biasedBit(probabilityTrue);
-  const req = new PickRequest(0, 1, { bias });
+  const req = biasedBit(probabilityTrue);
   const label = opts?.label ?? "biased boolean";
   return Arbitrary.from(req).map((v) => v === 1, { label });
 }

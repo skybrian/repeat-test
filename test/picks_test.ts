@@ -6,19 +6,18 @@ import { invalidIntRange } from "../src/arbitraries/ranges.ts";
 import {
   alwaysPick,
   biasedBit,
-  type BiasedIntPicker,
   PickList,
   PickRequest,
   PlaybackPicker,
 } from "../src/picks.ts";
 
 describe("biasedBit", () => {
-  function scan(bias: BiasedIntPicker, bins: number): number[] {
+  function scan(req: PickRequest, bins: number): number[] {
     const out: number[] = [];
     for (let i = 0; i < bins; i++) {
       const arg = i / (bins - 1);
       const uniform = (min: number, max: number) => arg * (max - min) + min;
-      out.push(bias(uniform));
+      out.push(req.bias(uniform));
     }
     return out;
   }
