@@ -19,10 +19,6 @@ function uniformBias(min: number, max: number): BiasedIntPicker {
   return (uniform: UniformIntPicker) => uniform(min, max);
 }
 
-function inRange(n: number, min: number, max: number) {
-  return Number.isSafeInteger(n) && n >= min && n <= max;
-}
-
 /** Options on a {@link PickRequest}. */
 export type PickRequestOpts = {
   /**
@@ -80,7 +76,7 @@ export class PickRequest {
 
   /** Returns true if the given number satisfies this request. */
   inRange(n: number): boolean {
-    return inRange(n, this.min, this.max);
+    return Number.isSafeInteger(n) && n >= this.min && n <= this.max;
   }
 
   /** Describes the request's range, for debugging. */
