@@ -73,15 +73,6 @@ describe("Arbitrary", () => {
         );
       });
     });
-    describe("given an array", () => {
-      it("throws if given an empty array", () => {
-        assertThrows(
-          () => Arbitrary.from([]),
-          Error,
-          "Arbitrary.from() called with an empty array",
-        );
-      });
-    });
   });
 
   describe("of", () => {

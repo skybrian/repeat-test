@@ -22,10 +22,11 @@ export function of<T>(...values: T[]): Arbitrary<T> {
 }
 
 /** Returns an Arbitrary that generates a boolean. */
-export const boolean: () => Arbitrary<boolean> = Arbitrary.from([false, true], {
-  label: "boolean",
-})
-  .asFunction();
+export const boolean: () => Arbitrary<boolean> = Arbitrary.of(false, true).with(
+  {
+    label: "boolean",
+  },
+).asFunction();
 
 /**
  * Defines an Arbitrary that chooses a safe integer in the given range.

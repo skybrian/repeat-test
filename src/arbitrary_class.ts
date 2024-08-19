@@ -165,6 +165,16 @@ export class Arbitrary<T> implements PickSet<T> {
   }
 
   /**
+   * Returns a new Arbitrary with a different label.
+   */
+  with(opts: { label: string }): Arbitrary<T> {
+    return new Arbitrary(opts.label, this.#callback, {
+      examples: this.#examples,
+      maxSize: this.#maxSize,
+    });
+  }
+
+  /**
    * Creates a function that always returns this Arbitrary.
    *
    * (Useful when optional arguments might be added later.)
@@ -188,39 +198,19 @@ export class Arbitrary<T> implements PickSet<T> {
    * Creates an Arbitrary from a {@link PickCallback}, or an array of examples.
    */
   static from<T>(
-    callback: PickCallback<T> | PickSet<T> | T[],
+    callback: PickCallback<T> | PickSet<T>,
     opts?: { label?: string },
   ): Arbitrary<T>;
   /**
    * Creates an Arbitrary from a {@link PickRequest}, a {@link PickCallback}, or an array of examples.
    */
   static from<T>(
-    arg: PickRequest | PickCallback<T> | PickSet<T> | T[],
+    arg: PickRequest | PickCallback<T> | PickSet<T>,
     opts?: { label?: string },
   ): Arbitrary<T> | Arbitrary<number> {
     if (typeof arg === "function") {
       const label = opts?.label ?? "(unlabeled)";
       return new Arbitrary(label, arg);
-    } else if (Array.isArray(arg)) {
-      if (arg.length === 0) {
-        throw new Error("Arbitrary.from() called with an empty array");
-      } else if (arg.length === 1) {
-        const label = opts?.label ?? "constant";
-        const constant = arg[0];
-        return new Arbitrary(label, () => constant, { maxSize: 1 });
-      }
-
-      const req = new PickRequest(0, arg.length - 1);
-
-      const label = opts?.label ?? "array";
-      const callback: PickCallback<T> = (pick) => {
-        const i = pick(req);
-        return arg[i];
-      };
-      return new Arbitrary(label, callback, {
-        examples: arg,
-        maxSize: arg.length,
-      });
     } else if (arg instanceof PickRequest) {
       const label = opts?.label ?? `${arg.min}..${arg.max}`;
       const maxSize = arg.max - arg.min + 1;
@@ -251,8 +241,23 @@ export class Arbitrary<T> implements PickSet<T> {
   static of<T>(...examples: T[]): Arbitrary<T> {
     if (examples.length === 0) {
       throw new Error("Arbitrary.of() requires at least one argument");
+    } else if (examples.length === 1) {
+      const label = "constant";
+      const constant = examples[0];
+      return new Arbitrary(label, () => constant, { maxSize: 1 });
     }
-    return Arbitrary.from(examples, { label: `${examples.length} examples` });
+
+    const req = new PickRequest(0, examples.length - 1);
+
+    const label = `${examples.length} examples`;
+    const callback: PickCallback<T> = (pick) => {
+      const i = pick(req);
+      return examples[i];
+    };
+    return new Arbitrary(label, callback, {
+      examples,
+      maxSize: examples.length,
+    });
   }
 
   /**

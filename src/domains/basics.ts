@@ -14,7 +14,8 @@ export function from<T>(
   values: T[],
   opts?: { label: string },
 ): Domain<T> {
-  const generator = Arbitrary.from(values, opts);
+  const label = opts?.label ?? "array";
+  const generator = Arbitrary.of(...values).with({ label });
 
   if (values.length === 1) {
     return new Domain(generator, (val, sendErr) => {

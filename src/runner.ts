@@ -271,7 +271,9 @@ export function repeatTest<T>(
   if (Array.isArray(input)) {
     expectedPlayouts = input.length;
   }
-  const arb = Arbitrary.from(input);
+  const arb = Array.isArray(input)
+    ? Arbitrary.of(...input)
+    : Arbitrary.from(input);
 
   const runAll = arb.maxSize !== undefined &&
     arb.maxSize <= expectedPlayouts;

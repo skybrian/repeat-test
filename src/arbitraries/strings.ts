@@ -34,7 +34,7 @@ const asciiTable: string[] = (() => {
   return out;
 })();
 
-const asciiTableArb = Arbitrary.from(asciiTable, { label: "asciiChar" });
+const asciiTableArb = Arbitrary.of(...asciiTable).with({ label: "asciiChar" });
 
 /**
  * Defines an Arbitrary that generates ASCII characters.
@@ -46,8 +46,9 @@ export function asciiChar(regexp?: RegExp): Arbitrary<string> {
   if (regexp === undefined) {
     return asciiTableArb;
   }
-  const label = regexp.toString();
-  return Arbitrary.from(asciiTable.filter((c) => regexp.test(c)), { label });
+  return Arbitrary.of(...asciiTable.filter((c) => regexp.test(c))).with({
+    label: regexp.toString(),
+  });
 }
 
 /**
@@ -64,12 +65,11 @@ export const asciiDigit: () => Arbitrary<string> = asciiChar(/\d/).asFunction();
 /**
  * Returns an Arbitrary that generates an ASCII whitespace character.
  */
-export const asciiWhitespace: () => Arbitrary<string> = Arbitrary.from(
-  " \t\n\v\f\r".split(""),
-  {
-    label: "whitespace",
-  },
-).asFunction();
+export const asciiWhitespace: () => Arbitrary<string> = Arbitrary.of(
+  ..." \t\n\v\f\r".split(""),
+).with({
+  label: "whitespace",
+}).asFunction();
 
 /**
  * Returns an Arbitrary that generates all ASCII characters that are not
