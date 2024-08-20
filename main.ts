@@ -27,4 +27,5 @@ export * as dom from "./src/dom.ts";
 export { Jar } from "./src/jar_class.ts";
 
 export { repeatTest } from "./src/runner.ts";
-export type { RepeatOpts, TestConsole, TestFunction } from "./src/runner.ts";
+export type { TestConsole } from "./src/console.ts";
+export type { RepeatOpts, TestFunction } from "./src/runner.ts";

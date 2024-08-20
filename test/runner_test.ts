@@ -15,6 +15,8 @@ import * as arb from "../src/arb.ts";
 import * as dom from "../src/dom.ts";
 import { success } from "../src/results.ts";
 
+import { nullConsole, type TestConsole } from "../src/console.ts";
+
 import {
   depthFirstReps,
   parseRepKey,
@@ -26,7 +28,6 @@ import {
   runRep,
   runReps,
   serializeRepKey,
-  type TestConsole,
   type TestFunction,
 } from "../src/runner.ts";
 
@@ -305,15 +306,34 @@ function makeRep<T>(input: Domain<T>, arg: T, test: TestFunction<T>): Rep<T> {
   return rep;
 }
 
-const nullConsole: TestConsole = {
-  log: () => {},
-  error: () => {},
+export type LogMessage = {
+  args: unknown[];
+  type: "log" | "error";
 };
+
+export class RecordingConsole implements TestConsole {
+  messages: LogMessage[] = [];
+
+  log(...args: unknown[]) {
+    this.messages.push({ args, type: "log" });
+  }
+  error(...args: unknown[]) {
+    this.messages.push({ args, type: "error" });
+  }
+}
 
 describe("runRep", () => {
   it("returns success if the test passes", () => {
     const rep = makeDefaultRep(arb.int(1, 10), () => {});
     assertEquals(runRep(rep, nullConsole), success());
+  });
+  it("suppresses console output when the test passes", () => {
+    const console = new RecordingConsole();
+    const rep = makeDefaultRep(arb.int(1, 10), (_x, console) => {
+      console.log("hello");
+    });
+    assertEquals(runRep(rep, console), success());
+    assertEquals(console.messages.length, 0);
   });
   it("returns a failure if the test throws", () => {
     const rep = makeDefaultRep(arb.int(1, 10), () => {
@@ -327,6 +347,19 @@ describe("runRep", () => {
       fail("expected caught to be an Error");
     }
     assertEquals(result.caught.message, "test failed");
+  });
+  it("writes output to the console when the test throws", () => {
+    const console = new RecordingConsole();
+    const rep = makeDefaultRep(arb.int(1, 10), (_x, console) => {
+      console.log("hello");
+      throw new Error("test failed");
+    });
+    const result = runRep(rep, console);
+    if (result.ok) fail("expected a failure");
+    assertEquals(console.messages, [
+      { args: ["\nTest failed. Shrinking..."], type: "log" },
+      { args: ["hello"], type: "log" },
+    ]);
   });
   it("shrinks the input to a test that fails", () => {
     const input = dom.int(0, 100);

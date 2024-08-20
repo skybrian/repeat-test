@@ -7,7 +7,17 @@ import { PlayoutSearch } from "./searches.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
 
 import { pickRandomSeed, randomPickers } from "./random.ts";
+import { nullConsole } from "./console.ts";
+import type { TestConsole } from "./console.ts";
 import { shrink } from "./shrink.ts";
+
+/**
+ * A function that runs a test, using generated input.
+ *
+ * @param console Tests can log output using this interface and they will only
+ * be written to the actual console when the test fails.
+ */
+export type TestFunction<T> = (arg: T, console: TestConsole) => void;
 
 /** Identifies a repetition to run. */
 export type RepKey = {
@@ -32,9 +42,6 @@ export function parseRepKey(key: string): Success<RepKey> | Failure {
 export function serializeRepKey(key: RepKey): string {
   return `${key.seed}:${key.index}`;
 }
-
-/** A function that runs a test, using generated input. */
-export type TestFunction<T> = (arg: T) => void;
 
 /** A generated test, ready to run. */
 export type Rep<T> = {
@@ -140,16 +147,6 @@ export function* randomReps<T>(
   }
 }
 
-/**
- * The console object's methods that are used by {@link repeatTest}.
- */
-export interface TestConsole {
-  /** Called when a test fails. */
-  error(...data: unknown[]): void;
-  /** Called to log additional status when a test fails. */
-  log(...data: unknown[]): void;
-}
-
 /** Runs one repetition. */
 export function runRep<T>(
   rep: Rep<T>,
@@ -157,7 +154,7 @@ export function runRep<T>(
 ): Success<void> | RepFailure<T> {
   const interesting = (arg: T) => {
     try {
-      rep.test(arg);
+      rep.test(arg, nullConsole);
       return false;
     } catch (_e) {
       return true;
@@ -168,8 +165,10 @@ export function runRep<T>(
   }
   console.log("\nTest failed. Shrinking...");
   const shrunk = shrink(rep.arb, interesting, rep.arg);
+
+  // Rerun the test using the shrunk value and the original console.
   try {
-    rep.test(shrunk.val);
+    rep.test(shrunk.val, console);
     throw new Error("flaky test passed after shrinking");
   } catch (e) {
     return {
