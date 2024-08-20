@@ -1,3 +1,12 @@
+/**
+ * The repeat-test library provides functions for writing property tests.
+ *
+ * @see repeatTest for the main entry point.
+ * @see arb for functions to generate test data.
+ *
+ * @module repeat-test
+ */
+
 export type { Failure, Success } from "./src/results.ts";
 
 export { biasedBitRequest, PickRequest } from "./src/picks.ts";

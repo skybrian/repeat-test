@@ -34,10 +34,7 @@ export type ArbitraryOpts = {
  * A set of values that can be generated on demand.
  *
  * Every Arbitrary contains a {@link default} value. Some Arbitraries define
- * {@link maxSize}, providing an upper bound on how many values they contain.
- * Others contain an infinite number of values.
- *
- * The values can be iterated over using {@link generateBreadthFirst}.
+ * {@link maxSize}, providing an upper bound on how many values they can generate.
  */
 export class Arbitrary<T> implements PickSet<T> {
   readonly #label: string;
@@ -79,8 +76,8 @@ export class Arbitrary<T> implements PickSet<T> {
   }
 
   /**
-   * An upper bound on the number of values that this Arbitrary can generate
-   * using {@link generateBreadthFirst}. (Only available for some small sets.)
+   * An upper bound on the number of values that this Arbitrary can generate.
+   * (Only available for some small sets.)
    */
   get maxSize(): number | undefined {
     return this.#maxSize;
