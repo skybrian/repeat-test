@@ -51,7 +51,7 @@ export class MultipassSearch extends PlayoutSource {
     return this.#pass.getReplies();
   }
 
-  protected acceptPlayout(): boolean {
+  override acceptPlayout(): boolean {
     return !this.#shared.pruned;
   }
 
