@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { repeatTest } from "../main.ts";
+import { repeatTest } from "../mod.ts";
 
 const examples = ["hello", "world"];
 

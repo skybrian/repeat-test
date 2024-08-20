@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { arb, repeatTest } from "../main.ts";
+import { arb, repeatTest } from "../mod.ts";
 
 // Here are some buggy functions to test:
 
