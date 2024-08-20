@@ -19,7 +19,10 @@ const input = arb.array(arb.string());
 
 // Run the test with 1000 examples.
 // The first will be an empty array, and the rest will be random.
-repeatTest(input, (original) => {
-  const copy = badDecode(badEncode(original));
+repeatTest(input, (original, console) => {
+  const encoded = badEncode(original);
+  console.log("encoded as", `'${encoded}'`); // Has no effect unless the test fails.
+
+  const copy = badDecode(encoded);
   assertEquals(copy, original);
 });

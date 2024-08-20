@@ -54,8 +54,10 @@ function badDecode(input: string): string[] {
 // A round-trip test:
 
 const input = arb.array(arb.string());
-repeatTest(input, (original) => {
-  const copy = badDecode(badEncode(original));
+repeatTest(input, (original, console) => {
+  const encoded = badEncode(original);
+  console.log("encoded as", `'${encoded}'`);
+  const copy = badDecode(encoded);
   assertEquals(copy, original);
 });
 ```
@@ -66,8 +68,9 @@ The test fails pretty quickly:
 % deno run split.ts
 
 Test failed. Shrinking...
-attempt 3 FAILED, using: [ "," ]
-rerun using {only: "1659315698:3"}
+encoded as ',,'
+attempt 4 FAILED, using: [ "," ]
+rerun using {only: "1778525158:4"}
 error: Uncaught (in promise) AssertionError: Values are not equal.
 
 
