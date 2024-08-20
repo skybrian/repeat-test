@@ -30,6 +30,11 @@ export type ArbitraryOpts = {
   label?: string;
 };
 
+type ConstructorOpts<T> = {
+  examples?: T[];
+  maxSize?: number;
+};
+
 /**
  * A set of values that can be generated on demand.
  *
@@ -43,19 +48,35 @@ export class Arbitrary<T> implements PickSet<T> {
   readonly #examples: T[] | undefined;
   readonly #maxSize: number | undefined;
 
-  private constructor(
+  /** Initializer for a subclass that generates the same values as another Arbitrary. */
+  protected constructor(arb: Arbitrary<T>);
+  /** Initializes an Arbitrary, given a callback function. */
+  protected constructor(
     label: string,
     callback: PickCallback<T>,
-    opts?: {
-      examples?: T[];
-      maxSize?: number;
-    },
+    opts?: ConstructorOpts<T>,
+  );
+  /** Initializes a callback or another Arbitrary. */
+  protected constructor(
+    arg: Arbitrary<T> | string,
+    callback?: PickCallback<T>,
+    opts?: ConstructorOpts<T>,
   ) {
-    this.#label = label;
-    this.#callback = callback;
-    this.#examples = opts?.examples;
-    this.#maxSize = opts?.maxSize;
-    this.default(); // dry run
+    if (arg instanceof Arbitrary) {
+      this.#label = arg.#label;
+      this.#callback = arg.#callback;
+      this.#examples = arg.#examples;
+      this.#maxSize = arg.#maxSize;
+    } else {
+      const label = arg;
+      assert(typeof label === "string");
+      assert(typeof callback === "function");
+      this.#label = label;
+      this.#callback = callback;
+      this.#examples = opts?.examples;
+      this.#maxSize = opts?.maxSize;
+      this.default(); // dry run
+    }
   }
 
   /**
