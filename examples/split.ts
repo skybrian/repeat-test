@@ -1,0 +1,25 @@
+import { assertEquals } from "@std/assert";
+import { arb, repeatTest } from "../main.ts";
+
+// Here are some buggy functions to test:
+
+function badEncode(input: string[]): string {
+  if (input.length === 0) return "";
+  return input.join(",") + ",";
+}
+
+function badDecode(input: string): string[] {
+  if (input === "") return [];
+  return input.split(",").slice(0, -1);
+}
+
+// Here's how specify the test input.
+// We want to encode arbitrary arrays of strings:
+const input = arb.array(arb.string());
+
+// Run the test with 1000 examples.
+// The first will be an empty array, and the rest will be random.
+repeatTest(input, (original) => {
+  const copy = badDecode(badEncode(original));
+  assertEquals(copy, original);
+});
