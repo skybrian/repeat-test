@@ -192,4 +192,11 @@ describe("Domain", () => {
       }
     });
   });
+
+  describe("with", () => {
+    it("returns a copy with a new label", () => {
+      const newDom = roll.with({ label: "new label" });
+      assertEquals(newDom.label, "new label");
+    });
+  });
 });
