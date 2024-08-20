@@ -23,7 +23,7 @@ const examples = ["hello", "world"];
 
 repeatTest(examples, (word) => {
   assertEquals(word.length, 5); // This will run twice.
-};
+});
 ```
 
 The first argument to `repeatTest` provides a way of generating examples. The
@@ -37,7 +37,7 @@ So far, we haven't used `repeatTest` to do anything that you need a library for.
 
 ```ts
 import { assertEquals } from "@std/assert";
-import { arb, repeatTest } from "../main.ts";
+import { arb, repeatTest } from "@skybrian/repeat-test";
 
 // Some buggy functions to test:
 
