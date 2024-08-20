@@ -99,9 +99,7 @@ export const char16: () => Arbitrary<string> = Arbitrary.from(
     }
     return String.fromCodePoint(code);
   },
-  { label: "char16" },
-)
-  .asFunction();
+).with({ label: "char16" }).asFunction();
 
 const codePoint = arb.int(0, unicodeMax - surrogateGap).map(
   (code) => (code >= surrogateMin) ? code + surrogateGap : code,
@@ -123,7 +121,7 @@ export const unicodeChar: () => Arbitrary<string> = codePoint.map((code) => {
     return asciiTable[code];
   }
   return String.fromCodePoint(code);
-}, { label: "unicodeChar" }).asFunction();
+}).with({ label: "unicodeChar" }).asFunction();
 
 /**
  * Defines an Arbitrary that generates JavaScript strings.
@@ -136,7 +134,7 @@ export const unicodeChar: () => Arbitrary<string> = codePoint.map((code) => {
 export function string(
   opts?: { min: number; max: number },
 ): Arbitrary<string> {
-  return arb.array(char16(), opts).map((arr) => arr.join(""), {
+  return arb.array(char16(), opts).map((arr) => arr.join("")).with({
     label: "anyString",
   });
 }
@@ -150,7 +148,7 @@ export function string(
 export function wellFormedString(
   opts?: { min?: number; max?: number },
 ): Arbitrary<string> {
-  return arb.array(unicodeChar(), opts).map((arr) => arr.join(""), {
+  return arb.array(unicodeChar(), opts).map((arr) => arr.join("")).with({
     label: "wellFormedString",
   });
 }

@@ -43,9 +43,9 @@ export function int(
 ): Arbitrary<number> {
   const label = `int(${min}, ${max})`;
   if (min >= 0) {
-    return Arbitrary.from(new PickRequest(min, max), { label });
+    return Arbitrary.from(new PickRequest(min, max)).with({ label });
   } else if (max <= 0) {
-    return Arbitrary.from(new PickRequest(-max, -min)).map((v) => -v, {
+    return Arbitrary.from(new PickRequest(-max, -min)).map((v) => -v).with({
       label,
     });
   } else {
@@ -76,7 +76,7 @@ export function biased(
   }
   const req = biasedBitRequest(probabilityTrue);
   const label = opts?.label ?? "biased boolean";
-  return Arbitrary.from(req).map((v) => v === 1, { label });
+  return Arbitrary.from(req).map((v) => v === 1).with({ label });
 }
 
 /**
