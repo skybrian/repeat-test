@@ -7,14 +7,32 @@
  * more about the console object.
  */
 export interface TestConsole {
-  /** Outputs a message at "error" log level. */
+  /**
+   * Outputs a message at "error" log level, and fails the test.
+   */
   error(...data: unknown[]): void;
 
   /** Outputs a message at "log" log level. */
   log(...data: unknown[]): void;
 }
 
-export const nullConsole: TestConsole = {
-  log: () => {},
-  error: () => {},
-};
+export class NullConsole {
+  errorCount = 0;
+  log() {}
+  error() {
+    this.errorCount++;
+  }
+}
+
+export class CountingConsole {
+  constructor(private wrapped: TestConsole) {}
+
+  errorCount = 0;
+  log(...args: unknown[]) {
+    this.wrapped.log(...args);
+  }
+  error(...args: unknown[]) {
+    this.errorCount++;
+    this.wrapped.error(...args);
+  }
+}

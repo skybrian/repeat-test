@@ -7,7 +7,7 @@ import { PlayoutSearch } from "./searches.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
 
 import { pickRandomSeed, randomPickers } from "./random.ts";
-import { nullConsole } from "./console.ts";
+import { CountingConsole, NullConsole } from "./console.ts";
 import type { TestConsole } from "./console.ts";
 import { shrink } from "./shrink.ts";
 
@@ -153,9 +153,10 @@ export function runRep<T>(
   console: TestConsole,
 ): Success<void> | RepFailure<T> {
   const interesting = (arg: T) => {
+    const console = new NullConsole();
     try {
-      rep.test(arg, nullConsole);
-      return false;
+      rep.test(arg, console);
+      return console.errorCount > 0;
     } catch (_e) {
       return true;
     }
@@ -167,8 +168,17 @@ export function runRep<T>(
   const shrunk = shrink(rep.arb, interesting, rep.arg);
 
   // Rerun the test using the shrunk value and the original console.
+  const wrapped = new CountingConsole(console);
   try {
-    rep.test(shrunk.val, console);
+    rep.test(shrunk.val, wrapped);
+    if (wrapped.errorCount > 0) {
+      return {
+        ok: false,
+        key: rep.key,
+        arg: shrunk.val,
+        caught: new Error("test called console.error()"),
+      };
+    }
     throw new Error("flaky test passed after shrinking");
   } catch (e) {
     return {

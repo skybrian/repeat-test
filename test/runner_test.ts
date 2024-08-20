@@ -15,7 +15,7 @@ import * as arb from "../src/arb.ts";
 import * as dom from "../src/dom.ts";
 import { success } from "../src/results.ts";
 
-import { nullConsole, type TestConsole } from "../src/console.ts";
+import { NullConsole, type TestConsole } from "../src/console.ts";
 
 import {
   depthFirstReps,
@@ -325,8 +325,9 @@ export class RecordingConsole implements TestConsole {
 describe("runRep", () => {
   it("returns success if the test passes", () => {
     const rep = makeDefaultRep(arb.int(1, 10), () => {});
-    assertEquals(runRep(rep, nullConsole), success());
+    assertEquals(runRep(rep, new NullConsole()), success());
   });
+
   it("suppresses console output when the test passes", () => {
     const console = new RecordingConsole();
     const rep = makeDefaultRep(arb.int(1, 10), (_x, console) => {
@@ -335,11 +336,12 @@ describe("runRep", () => {
     assertEquals(runRep(rep, console), success());
     assertEquals(console.messages.length, 0);
   });
+
   it("returns a failure if the test throws", () => {
     const rep = makeDefaultRep(arb.int(1, 10), () => {
       throw new Error("test failed");
     });
-    const result = runRep(rep, nullConsole);
+    const result = runRep(rep, new NullConsole());
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     assertEquals(result.arg, rep.arg.val);
@@ -348,6 +350,7 @@ describe("runRep", () => {
     }
     assertEquals(result.caught.message, "test failed");
   });
+
   it("writes output to the console when the test throws", () => {
     const console = new RecordingConsole();
     const rep = makeDefaultRep(arb.int(1, 10), (_x, console) => {
@@ -361,6 +364,26 @@ describe("runRep", () => {
       { args: ["hello"], type: "log" },
     ]);
   });
+
+  it("returns a failure if the test writes an error", () => {
+    const console = new RecordingConsole();
+    const rep = makeDefaultRep(arb.int(1, 10), (_, console) => {
+      console.error("oops!");
+    });
+    const result = runRep(rep, console);
+    if (result.ok) fail("expected a failure");
+    assertEquals(result.key, rep.key);
+    assertEquals(result.arg, rep.arg.val);
+    if (!(result.caught instanceof Error)) {
+      fail("expected caught to be an Error");
+    }
+    assertEquals(result.caught.message, "test called console.error()");
+    assertEquals(console.messages, [
+      { args: ["\nTest failed. Shrinking..."], type: "log" },
+      { args: ["oops!"], type: "error" },
+    ]);
+  });
+
   it("shrinks the input to a test that fails", () => {
     const input = dom.int(0, 100);
     const test = (i: number) => {
@@ -369,7 +392,7 @@ describe("runRep", () => {
       }
     };
     const rep = makeRep(input, 100, test);
-    const result = runRep(rep, nullConsole);
+    const result = runRep(rep, new NullConsole());
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     if (!(result.caught instanceof Error)) {
@@ -377,6 +400,27 @@ describe("runRep", () => {
     }
     assertEquals(result.caught.message, "test failed");
     assertEquals(result.arg, 10);
+  });
+
+  it("reports a failure for a flaky test", () => {
+    let firstTime = true;
+    const rep = makeDefaultRep(arb.int(1, 10), (_) => {
+      if (firstTime) {
+        firstTime = false;
+        throw new Error("test failed");
+      }
+    });
+    const console = new RecordingConsole();
+    const result = runRep(rep, console);
+    if (result.ok) fail("expected a failure");
+    assertEquals(result.key, rep.key);
+    if (!(result.caught instanceof Error)) {
+      fail("expected caught to be an Error");
+    }
+    assertEquals(result.caught.message, "flaky test passed after shrinking");
+    assertEquals(console.messages, [
+      { args: ["\nTest failed. Shrinking..."], type: "log" },
+    ]);
   });
 });
 
@@ -388,7 +432,7 @@ describe("runReps", () => {
       arg: undefined,
       caught: new Error("oops"),
     };
-    const result = runReps([failure], 1, nullConsole);
+    const result = runReps([failure], 1, new NullConsole());
     assertEquals(result, failure);
   });
   it("returns a RepFailure from running the test", () => {
@@ -402,7 +446,7 @@ describe("runReps", () => {
         throw new Error("oops");
       },
     };
-    const result = runReps([rep], 1, nullConsole);
+    const result = runReps([rep], 1, new NullConsole());
     assertRepFailure(result, {
       seed: 1,
       index: 1,
@@ -422,7 +466,7 @@ describe("reportFailure", () => {
     };
     assertThrows(
       () => {
-        reportFailure(failure, nullConsole);
+        reportFailure(failure, new NullConsole());
       },
       Error,
       "oops",
@@ -449,7 +493,7 @@ describe("repeatTest", () => {
     };
     assertThrows(
       () => {
-        repeatTest(Arbitrary.of(1, 2, 3), test, { console: nullConsole });
+        repeatTest(Arbitrary.of(1, 2, 3), test, { console: new NullConsole() });
       },
       Error,
       "oops",
