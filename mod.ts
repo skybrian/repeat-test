@@ -3,8 +3,6 @@
  *
  * @see repeatTest for the main entry point.
  * @see arb for functions to generate test data.
- *
- * @module repeat-test
  */
 
 export type { Failure, Success } from "./src/results.ts";

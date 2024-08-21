@@ -1,6 +1,6 @@
 {
   "name": "@skybrian/repeat-test",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "compilerOptions": {
     "noImplicitOverride": true
   },
@@ -10,7 +10,12 @@
     "pure-rand": "npm:pure-rand@^6.1.0"
   },
   "publish": {
-    "include": ["./README.md", "./examples/*.ts", "./mod.ts", "./src/*.ts", "./src/arbitraries/*.ts", "./src/domains/*.ts"],
+    "include": [
+      "./README.md", "./LICENSE", "./CHANGELOG.md",
+      "./examples/*.ts",
+      "./mod.ts",
+      "./src/*.ts", "./src/arbitraries/*.ts", "./src/domains/*.ts"
+    ],
     "exclude": ["./src/asserts.ts", "./src/arbitraries/ranges.ts"]
   },
   "exports": "./mod.ts",
