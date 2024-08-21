@@ -25,6 +25,7 @@ export type SendErr = (msg: string, opts?: { at: string | number }) => void;
 export type PickifyCallback = (
   val: unknown,
   sendErr: SendErr,
+  label: string,
 ) => number[] | undefined;
 
 /**
@@ -174,7 +175,7 @@ export class Domain<T> extends Arbitrary<T> {
         firstError = at !== undefined ? `${at}: ${msg}` : msg;
       }
     };
-    const picks = this.#callback(val, sendErr);
+    const picks = this.#callback(val, sendErr, this.label);
     if (picks === undefined) {
       const err = firstError ?? defaultMessage ?? "not in domain";
       return failure(err);
@@ -207,7 +208,7 @@ export class Domain<T> extends Arbitrary<T> {
         sendErr(msg, { at });
       };
     }
-    return this.#callback(val, innerErr);
+    return this.#callback(val, innerErr, this.label);
   }
 
   /**

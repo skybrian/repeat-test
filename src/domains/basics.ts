@@ -14,26 +14,23 @@ export function from<T>(
   values: T[],
   opts?: { label: string },
 ): Domain<T> {
-  const label = opts?.label ?? "array";
+  const label = opts?.label ?? "member";
   const generator = Arbitrary.of(...values).with({ label });
 
   if (values.length === 1) {
-    return new Domain(generator, (val, sendErr) => {
+    return new Domain(generator, (val, sendErr, label) => {
       if (val !== values[0]) {
-        sendErr("value didn't match");
+        sendErr(`not a ${label}`);
         return undefined;
       }
       return []; // constant
     });
   }
 
-  const notFoundError = opts?.label
-    ? `not a ${generator.label}`
-    : "value didn't match";
-  return new Domain(generator, (val, sendErr) => {
+  return new Domain(generator, (val, sendErr, label) => {
     const pick = values.indexOf(val as T);
     if (pick === -1) {
-      sendErr(notFoundError);
+      sendErr(`not a ${label}`);
       return undefined;
     }
     return [pick];

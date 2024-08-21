@@ -17,12 +17,16 @@ describe("of", () => {
       assertRoundTrip(one, 1);
     });
     it("rejects items not passed in as arguments", () => {
-      assertThrows(() => one.parse(2), Error, "value didn't match");
+      assertThrows(() => one.parse(2), Error, "not a member");
     });
   });
   it("rejects items not passed in as arguments", () => {
     const items = dom.of(1, 2, 3);
-    assertThrows(() => items.parse(4), Error, "value didn't match");
+    assertThrows(() => items.parse(4), Error, "not a member");
+  });
+  it("uses a label added later in error messages", () => {
+    const items = dom.of(1, 2, 3).with({ label: "digit" });
+    assertThrows(() => items.parse(4), Error, "not a digit");
   });
 });
 
