@@ -10,6 +10,16 @@ import {
   minMaxVal,
 } from "../../src/arbitraries/ranges.ts";
 
+describe("from", () => {
+  it("accepts a constant value", () => {
+    assertRoundTrip(dom.from([1]), 1);
+  });
+  it("accepts a custom label", () => {
+    const one = dom.from([1], { label: "one" });
+    assertEquals(one.label, "one");
+  });
+});
+
 describe("of", () => {
   describe("for a single-item domain", () => {
     const one = dom.of(1);

@@ -1,5 +1,4 @@
 import type { AnyRecord } from "../types.ts";
-import { Arbitrary } from "../arbitrary_class.ts";
 import * as arb from "../arb.ts";
 import { Domain } from "../domain_class.ts";
 
@@ -15,26 +14,7 @@ export function from<T>(
   opts?: { label: string },
 ): Domain<T> {
   const label = opts?.label ?? "member";
-  const generator = Arbitrary.of(...values).with({ label });
-
-  if (values.length === 1) {
-    return new Domain(generator, (val, sendErr, label) => {
-      if (val !== values[0]) {
-        sendErr(`not a ${label}`);
-        return undefined;
-      }
-      return []; // constant
-    });
-  }
-
-  return new Domain(generator, (val, sendErr, label) => {
-    const pick = values.indexOf(val as T);
-    if (pick === -1) {
-      sendErr(`not a ${label}`);
-      return undefined;
-    }
-    return [pick];
-  });
+  return Domain.of(...values).with({ label });
 }
 
 /**
@@ -44,11 +24,11 @@ export function from<T>(
  * `===`.
  */
 export function of<T>(...values: T[]): Domain<T> {
-  return from(values);
+  return Domain.of(...values);
 }
 
 /** A domain that accepts only booleans. */
-export const boolean: () => Domain<boolean> = from([false, true], {
+export const boolean: () => Domain<boolean> = Domain.of(false, true).with({
   label: "boolean",
 })
   .asFunction();

@@ -227,4 +227,33 @@ export class Domain<T> extends Arbitrary<T> {
   override asFunction(): () => Domain<T> {
     return () => this;
   }
+
+  /**
+   * Defines a domain that accepts only values equal to the given arguments.
+   *
+   * Comparisons are done using strict equality, the same algorithm used by
+   * `===`.
+   */
+  static override of<T>(...values: T[]): Domain<T> {
+    const generator = Arbitrary.of(...values).with({ label: "member" });
+
+    if (values.length === 1) {
+      return new Domain(generator, (val, sendErr, label) => {
+        if (val !== values[0]) {
+          sendErr(`not a ${label}`);
+          return undefined;
+        }
+        return []; // constant
+      });
+    }
+
+    return new Domain(generator, (val, sendErr, label) => {
+      const pick = values.indexOf(val as T);
+      if (pick === -1) {
+        sendErr(`not a ${label}`);
+        return undefined;
+      }
+      return [pick];
+    });
+  }
 }
