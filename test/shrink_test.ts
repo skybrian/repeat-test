@@ -25,7 +25,7 @@ function assertShrinks<T>(
     fail(`couldn't regenerate the starting value: ${gen.message}`);
   }
 
-  const smaller = shrink(dom.arb, interesting, gen);
+  const smaller = shrink(dom, interesting, gen);
   assert(smaller, "didn't find the expected smaller value");
   assertEquals(smaller.val, result);
 }

@@ -10,7 +10,7 @@ import { isWellFormed } from "../../src/workarounds.ts";
 describe("asciiChar", () => {
   const char = dom.asciiChar();
   it("round-trips ascii characters", () => {
-    repeatTest(char.arb, (val) => {
+    repeatTest(char, (val) => {
       assertRoundTrip(char, val);
     });
   });
@@ -74,7 +74,7 @@ describe("wellFormedString", () => {
     });
   });
   it("round-trips all string it generates", () => {
-    repeatTest(str.arb, (val) => {
+    repeatTest(str, (val) => {
       assert(isWellFormed(val));
       assertRoundTrip(str, val);
     });

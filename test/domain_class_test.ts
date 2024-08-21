@@ -43,6 +43,13 @@ describe("Domain", () => {
     });
   });
 
+  describe("arb", () => {
+    it("returns the Domain", () => {
+      const dom = Domain.of(1);
+      assertEquals(dom.arb, dom);
+    });
+  });
+
   const bit = new Domain(
     Arbitrary.from(new PickRequest(0, 1)),
     (v) => {
@@ -162,7 +169,7 @@ describe("Domain", () => {
       );
     });
     it("throws due to being filtered out", () => {
-      const weird = new Domain(roll.arb.filter((v) => v === 1), (val) => {
+      const weird = new Domain(roll.filter((v) => v === 1), (val) => {
         if (val !== 1) throw "oops";
         return [val];
       });
@@ -172,7 +179,7 @@ describe("Domain", () => {
       );
     });
     it("throws due to being filtered out, and without reading all picks", () => {
-      const weird = new Domain(roll.arb.filter((v) => v === 1), (val) => {
+      const weird = new Domain(roll.filter((v) => v === 1), (val) => {
         if (val !== 1) throw "oops";
         return [val];
       });

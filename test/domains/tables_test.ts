@@ -23,7 +23,7 @@ describe("uniqueArray", () => {
   it("rejects an array with an unexpected item", () => {
     const badList = Arbitrary.from((pick) => {
       const list = pick(
-        bools.arb.filter((v) => v.length > 0),
+        bools.filter((v) => v.length > 0),
       ) as unknown[];
       const badIndex = pick(dom.int(0, list.length - 1));
       list[badIndex] = undefined;
@@ -38,7 +38,7 @@ describe("uniqueArray", () => {
     });
   });
   it("rejects an array with a duplicate item", () => {
-    const badList = bools.arb.filter((v) => v.length > 0).map((
+    const badList = bools.filter((v) => v.length > 0).map((
       v,
     ) => [
       ...v,
@@ -93,7 +93,7 @@ describe("table", () => {
     it("rejects non-arrays", () => {
       assertThrows(() => table.parse(undefined), Error, "not an array");
     });
-    const nonEmpty = table.arb.filter((v) => v.length > 0);
+    const nonEmpty = table.filter((v) => v.length > 0);
     it("rejects an array with a non-record", () => {
       const hasBadRow = Arbitrary.from((pick) => {
         const list = pick(nonEmpty) as unknown[];
@@ -141,7 +141,7 @@ describe("table", () => {
     });
     it("rejects an array with a duplicate field value", () => {
       const hasBadRow = Arbitrary.from((pick) => {
-        const list = pick(table.arb.filter((v) => v.length === 2));
+        const list = pick(table.filter((v) => v.length === 2));
         list[1].a = list[0].a;
         return list;
       });
