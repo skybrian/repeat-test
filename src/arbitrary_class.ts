@@ -31,8 +31,8 @@ type ConstructorOpts<T> = {
  * {@link maxSize}, providing an upper bound on how many values they can generate.
  */
 export class Arbitrary<T> implements PickSet<T> {
-  readonly #label: string;
   readonly #callback: PickCallback<T>;
+  readonly #label: string;
 
   readonly #examples: T[] | undefined;
   readonly #maxSize: number | undefined;
@@ -41,27 +41,26 @@ export class Arbitrary<T> implements PickSet<T> {
   protected constructor(arb: Arbitrary<T>);
   /** Initializes an Arbitrary, given a callback function. */
   protected constructor(
-    label: string,
     callback: PickCallback<T>,
+    label: string,
     opts?: ConstructorOpts<T>,
   );
   /** Initializes a callback or another Arbitrary. */
   protected constructor(
-    arg: Arbitrary<T> | string,
-    callback?: PickCallback<T>,
+    arg: Arbitrary<T> | PickCallback<T>,
+    label?: string,
     opts?: ConstructorOpts<T>,
   ) {
     if (arg instanceof Arbitrary) {
-      this.#label = arg.#label;
       this.#callback = arg.#callback;
+      this.#label = arg.#label;
       this.#examples = arg.#examples;
       this.#maxSize = arg.#maxSize;
     } else {
-      const label = arg;
-      assert(typeof label === "string");
-      assert(typeof callback === "function");
+      assert(typeof arg === "function");
+      assert(label !== undefined);
+      this.#callback = arg;
       this.#label = label;
-      this.#callback = callback;
       this.#examples = opts?.examples;
       this.#maxSize = opts?.maxSize;
       if (opts?.dryRun !== false) {
@@ -126,7 +125,7 @@ export class Arbitrary<T> implements PickSet<T> {
       return convert(output);
     };
     const maxSize = this.maxSize;
-    return new Arbitrary("map", callback, { maxSize });
+    return new Arbitrary(callback, "map", { maxSize });
   }
 
   /**
@@ -147,7 +146,7 @@ export class Arbitrary<T> implements PickSet<T> {
       return pick(this, { accept });
     };
     const maxSize = this.maxSize;
-    return new Arbitrary(label, callback, { maxSize });
+    return new Arbitrary(callback, label, { maxSize });
   }
 
   /**
@@ -165,14 +164,14 @@ export class Arbitrary<T> implements PickSet<T> {
       const next = convert(output);
       return pick(next);
     };
-    return new Arbitrary("chain", callback);
+    return new Arbitrary(callback, "chain");
   }
 
   /**
    * Returns a new Arbitrary with a different label.
    */
   with(opts: { label: string }): Arbitrary<T> {
-    return new Arbitrary(opts.label, this.#callback, {
+    return new Arbitrary(this.#callback, opts.label, {
       examples: this.#examples,
       maxSize: this.#maxSize,
       dryRun: false,
@@ -212,11 +211,11 @@ export class Arbitrary<T> implements PickSet<T> {
     arg: PickRequest | PickCallback<T> | PickSet<T>,
   ): Arbitrary<T> | Arbitrary<number> {
     if (typeof arg === "function") {
-      return new Arbitrary("(unlabeled)", arg);
+      return new Arbitrary(arg, "(unlabeled)");
     } else if (arg instanceof PickRequest) {
       const label = `${arg.min}..${arg.max}`;
       const maxSize = arg.max - arg.min + 1;
-      return new Arbitrary(label, (pick) => pick(arg), {
+      return new Arbitrary((pick) => pick(arg), label, {
         maxSize,
         dryRun: false,
       });
@@ -227,7 +226,7 @@ export class Arbitrary<T> implements PickSet<T> {
     if (typeof generateFrom === "function") {
       const label = arg["label"];
       assert(typeof label === "string");
-      return new Arbitrary(label, generateFrom);
+      return new Arbitrary(generateFrom, label);
     }
     throw new Error("invalid argument to Arbitrary.from");
   }
@@ -246,9 +245,8 @@ export class Arbitrary<T> implements PickSet<T> {
     if (examples.length === 0) {
       throw new Error("Arbitrary.of() requires at least one argument");
     } else if (examples.length === 1) {
-      const label = "constant";
       const constant = examples[0];
-      return new Arbitrary(label, () => constant, {
+      return new Arbitrary(() => constant, "constant", {
         maxSize: 1,
         dryRun: false,
       });
@@ -261,7 +259,7 @@ export class Arbitrary<T> implements PickSet<T> {
       const i = pick(req);
       return examples[i];
     };
-    return new Arbitrary(label, callback, {
+    return new Arbitrary(callback, label, {
       examples,
       maxSize: examples.length,
       dryRun: false,
@@ -297,8 +295,7 @@ export class Arbitrary<T> implements PickSet<T> {
       const i = pick(req);
       return arbCases[i].#callback(pick);
     };
-    const label = "oneOf";
-    return new Arbitrary(label, callback, { maxSize, dryRun: false });
+    return new Arbitrary(callback, "oneOf", { maxSize, dryRun: false });
   }
 
   /**
@@ -323,7 +320,7 @@ export class Arbitrary<T> implements PickSet<T> {
       const callback: PickCallback<T> = () => {
         return {} as T;
       };
-      return new Arbitrary("empty record", callback, {
+      return new Arbitrary(callback, "empty record", {
         maxSize,
         dryRun: false,
       });
@@ -337,6 +334,6 @@ export class Arbitrary<T> implements PickSet<T> {
       return result as T;
     };
 
-    return new Arbitrary("record", callback, { maxSize, dryRun: false });
+    return new Arbitrary(callback, "record", { maxSize, dryRun: false });
   }
 }
