@@ -173,15 +173,13 @@ export class Arbitrary<T> implements PickSet<T> {
    */
   chain<U>(
     convert: (val: T) => Arbitrary<U>,
-    opts?: ArbitraryOpts,
   ): Arbitrary<U> {
-    const label = opts?.label ?? "chain";
     const callback: PickCallback<U> = (pick) => {
       const output = pick(this);
       const next = convert(output);
       return pick(next);
     };
-    return new Arbitrary(label, callback);
+    return new Arbitrary("chain", callback);
   }
 
   /**

@@ -249,13 +249,6 @@ describe("Arbitrary", () => {
       const world = hello.chain(() => Arbitrary.from(() => "world"));
       assertEquals(world.label, "chain");
     });
-    it("accepts a custom label", () => {
-      const hello = Arbitrary.from(() => "hello");
-      const world = hello.chain(() => Arbitrary.from(() => "world"), {
-        label: "hello",
-      });
-      assertEquals(world.label, "hello");
-    });
   });
 
   describe("maxSize", () => {
