@@ -13,12 +13,15 @@
     "include": [
       "./README.md", "./LICENSE", "./CHANGELOG.md",
       "./examples/*.ts",
-      "./mod.ts",
+      "./mod.ts", "./arbitrary.ts",
       "./src/*.ts", "./src/arbitraries/*.ts", "./src/domains/*.ts"
     ],
     "exclude": ["./src/asserts.ts", "./src/arbitraries/ranges.ts"]
   },
-  "exports": "./mod.ts",
+  "exports": {
+    ".": "./mod.ts",
+    "./arbitrary": "./arbitrary.ts"
+  },
   "tasks": {
     "coverage": "rm -f lcov.info && deno test --coverage --clean && deno coverage --lcov > lcov.info && deno coverage",
     "test": "deno test"
