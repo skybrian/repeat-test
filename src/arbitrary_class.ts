@@ -1,5 +1,4 @@
 import { assert } from "@std/assert";
-import type { AnyRecord } from "./types.ts";
 import { PickRequest } from "./picks.ts";
 import { generate } from "./generated.ts";
 import type {
@@ -325,7 +324,7 @@ export class Arbitrary<T> implements PickSet<T> {
   /**
    * Creates an Arbitrary for a record with the given shape.
    */
-  static record<T extends AnyRecord>(
+  static record<T extends Record<string, unknown>>(
     shape: RecordShape<T>,
     opts?: ArbitraryOpts,
   ): Arbitrary<T> {

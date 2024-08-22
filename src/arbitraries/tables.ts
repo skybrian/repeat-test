@@ -1,4 +1,3 @@
-import type { AnyRecord } from "../types.ts";
 import type { Arbitrary } from "../arbitrary_class.ts";
 import * as arb from "./basics.ts";
 import type * as dom from "../domains/basics.ts";
@@ -35,7 +34,7 @@ export function uniqueArray<T>(
 /**
  * Constraints used when generating or validating tables.
  */
-export type TableOpts<T extends AnyRecord> = {
+export type TableOpts<T extends Record<string, unknown>> = {
   label?: string;
   uniqueKeys?: (keyof T & string)[];
   maxRows?: number;
@@ -50,7 +49,7 @@ export type TableOpts<T extends AnyRecord> = {
  * (Columns are defined using a {@link Domain} instead of an {@link Arbitrary}
  * due to how unique keys are implemented.)
  */
-export function table<R extends AnyRecord>(
+export function table<R extends Record<string, unknown>>(
   shape: dom.RecordShape<R>,
   opts?: TableOpts<R>,
 ): Arbitrary<R[]> {

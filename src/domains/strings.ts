@@ -1,5 +1,4 @@
-import { Domain } from "../domain_class.ts";
-import * as arb from "../arb.ts";
+import { arb, Domain } from "@skybrian/repeat-test";
 import * as unicode from "../unicode.ts";
 import { assert } from "@std/assert";
 import { find } from "../multipass_search.ts";

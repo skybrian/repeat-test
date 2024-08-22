@@ -1,4 +1,3 @@
-import type { AnyRecord } from "../types.ts";
 import { Arbitrary } from "../arbitrary_class.ts";
 import type { ArbitraryOpts, RecordShape } from "../arbitrary_class.ts";
 import { biasedBitRequest, PickRequest } from "../picks.ts";
@@ -82,7 +81,7 @@ export function biased(
 /**
  * Defines an Arbitrary that generates record with the given shape.
  */
-export function record<T extends AnyRecord>(
+export function record<T extends Record<string, unknown>>(
   shape: RecordShape<T>,
 ): Arbitrary<T> {
   return Arbitrary.record(shape);

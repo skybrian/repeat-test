@@ -1,6 +1,4 @@
-import type { AnyRecord } from "../types.ts";
-import { Domain } from "../domain_class.ts";
-import * as arb from "../arb.ts";
+import { arb, Domain } from "@skybrian/repeat-test";
 import type * as dom from "./basics.ts";
 import { PickTree } from "../pick_tree.ts";
 import { assert } from "@std/assert";
@@ -56,7 +54,7 @@ export function uniqueArray<T>(
  * accepted if there is a duplicate value in that column. Keys are compared
  * using their canonical pick sequences.
  */
-export function table<R extends AnyRecord>(
+export function table<R extends Record<string, unknown>>(
   shape: dom.RecordShape<R>,
   opts?: arb.TableOpts<R>,
 ): Domain<R[]> {

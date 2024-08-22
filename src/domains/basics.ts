@@ -1,6 +1,4 @@
-import type { AnyRecord } from "../types.ts";
-import * as arb from "../arb.ts";
-import { Domain } from "../domain_class.ts";
+import { arb, Domain } from "@skybrian/repeat-test";
 
 /**
  * A domain that accepts only values contained in the array given as its first
@@ -76,7 +74,7 @@ export type RecordShape<T> = {
 /**
  * Creates a Domain that accepts records with matching fields.
  */
-export function record<T extends AnyRecord>(
+export function record<T extends Record<string, unknown>>(
   fields: RecordShape<T>,
 ): Domain<T> {
   const fieldKeys = Object.keys(fields) as (keyof T & string)[];
