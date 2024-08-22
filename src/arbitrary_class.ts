@@ -131,14 +131,13 @@ export class Arbitrary<T> implements PickSet<T> {
    * Creates a new Arbitrary by mapping each example to a new value. (The
    * examples are in the same order as in the original.)
    */
-  map<U>(convert: (val: T) => U, opts?: ArbitraryOpts): Arbitrary<U> {
-    const label = opts?.label ?? "map";
+  map<U>(convert: (val: T) => U): Arbitrary<U> {
     const callback: PickCallback<U> = (pick) => {
       const output = pick(this);
       return convert(output);
     };
     const maxSize = this.maxSize;
-    return new Arbitrary(label, callback, { maxSize });
+    return new Arbitrary("map", callback, { maxSize });
   }
 
   /**

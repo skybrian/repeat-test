@@ -228,11 +228,6 @@ describe("Arbitrary", () => {
       const mapped = original.map((n) => n * 2);
       assertEquals(mapped.label, "map");
     });
-    it("accepts a custom label", () => {
-      const original = Arbitrary.from(new PickRequest(1, 6));
-      const mapped = original.map((n) => n * 2, { label: "double" });
-      assertEquals(mapped.label, "double");
-    });
   });
 
   describe("chain", () => {
