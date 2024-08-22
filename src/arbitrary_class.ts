@@ -151,12 +151,10 @@ export class Arbitrary<T> implements PickSet<T> {
    */
   filter(
     accept: (val: T) => boolean,
-    opts?: { label?: string },
   ): Arbitrary<T> {
-    const label = opts?.label ??
-      (this.label.endsWith("(filtered)")
-        ? this.label
-        : `${this.label} (filtered)`);
+    const label = this.label.endsWith("(filtered)")
+      ? this.label
+      : `${this.label} (filtered)`;
     const callback: PickCallback<T> = (pick) => {
       return pick(this, { accept });
     };

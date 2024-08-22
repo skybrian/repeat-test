@@ -204,14 +204,6 @@ describe("Arbitrary", () => {
       ).filter((n) => n === 2);
       assertEquals(filtered.label, "3 examples (filtered)");
     });
-    it("accepts a custom label", () => {
-      const original = Arbitrary.of(1, 2, 3);
-      const filtered = original.filter(
-        (n) => n === 2,
-        { label: "two" },
-      );
-      assertEquals(filtered.label, "two");
-    });
     it("recovers cleanly when the filtered arbitrary throws Pruned", () => {
       const original = Arbitrary.from((pick) => {
         const n = pick(new PickRequest(1, 3));
