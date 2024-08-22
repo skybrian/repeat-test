@@ -321,7 +321,6 @@ export class Arbitrary<T> implements PickSet<T> {
    */
   static record<T extends Record<string, unknown>>(
     shape: RecordShape<T>,
-    opts?: ArbitraryOpts,
   ): Arbitrary<T> {
     const keys = Object.keys(shape) as (keyof T)[];
 
@@ -335,13 +334,14 @@ export class Arbitrary<T> implements PickSet<T> {
       maxSize *= size;
     }
 
-    const label = opts?.label ?? "record";
-
     if (keys.length === 0) {
       const callback: PickCallback<T> = () => {
         return {} as T;
       };
-      return new Arbitrary(label, callback, { maxSize, dryRun: false });
+      return new Arbitrary("empty record", callback, {
+        maxSize,
+        dryRun: false,
+      });
     }
 
     const callback = (pick: PickFunction) => {
@@ -352,6 +352,6 @@ export class Arbitrary<T> implements PickSet<T> {
       return result as T;
     };
 
-    return new Arbitrary(label, callback, { maxSize, dryRun: false });
+    return new Arbitrary("record", callback, { maxSize, dryRun: false });
   }
 }

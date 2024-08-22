@@ -120,12 +120,8 @@ describe("Arbitrary", () => {
       assertEquals(arb.maxSize, 1);
     });
     it("has a default label", () => {
-      const arb = Arbitrary.record({});
-      assertEquals(arb.label, "record");
-    });
-    it("accepts a custom label", () => {
-      const arb = Arbitrary.record({}, { label: "my label" });
-      assertEquals(arb.label, "my label");
+      assertEquals(Arbitrary.record({}).label, "empty record");
+      assertEquals(Arbitrary.record({ a: Arbitrary.of(1) }).label, "record");
     });
   });
 
