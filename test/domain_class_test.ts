@@ -43,13 +43,6 @@ describe("Domain", () => {
     });
   });
 
-  describe("arb", () => {
-    it("returns the Domain", () => {
-      const dom = Domain.of(1);
-      assertEquals(dom.arb, dom);
-    });
-  });
-
   const bit = new Domain(
     Arbitrary.from(new PickRequest(0, 1)),
     (v) => {

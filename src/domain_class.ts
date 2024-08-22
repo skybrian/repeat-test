@@ -86,14 +86,6 @@ export class Domain<T> extends Arbitrary<T> {
   }
 
   /**
-   * The Arbitrary that generates values for this Domain.
-   * @deprecated Domain is now a subclass of Arbitrary.
-   */
-  get arb(): Arbitrary<T> {
-    return this;
-  }
-
-  /**
    * Validates a value, returning a copy created by regenerating it.
    *
    * @throws an Error if the value is not a member of this domain.
