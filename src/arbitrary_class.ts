@@ -18,17 +18,6 @@ export type RecordShape<T> = {
   [K in keyof T]: PickSet<T[K]>;
 };
 
-/**
- * Options when defining a new Arbitrary.
- */
-export type ArbitraryOpts = {
-  /**
-   * A short string that can be used to identify an arbitrary in error messages.
-   * If not provided, a default label will be used.
-   */
-  label?: string;
-};
-
 type ConstructorOpts<T> = {
   examples?: T[];
   maxSize?: number;

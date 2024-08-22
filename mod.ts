@@ -23,7 +23,7 @@ export type {
 } from "./src/generated.ts";
 
 export { Arbitrary } from "./src/arbitrary_class.ts";
-export type { ArbitraryOpts, RecordShape } from "./src/arbitrary_class.ts";
+export type { RecordShape } from "./src/arbitrary_class.ts";
 
 export * as arb from "./src/arb.ts";
 

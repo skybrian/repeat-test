@@ -1,5 +1,5 @@
 import { Arbitrary } from "../arbitrary_class.ts";
-import type { ArbitraryOpts, RecordShape } from "../arbitrary_class.ts";
+import type { RecordShape } from "../arbitrary_class.ts";
 import { biasedBitRequest, PickRequest } from "../picks.ts";
 import type { PickCallback, PickSet } from "../generated.ts";
 
@@ -10,9 +10,8 @@ import type { PickCallback, PickSet } from "../generated.ts";
  */
 export function from<T>(
   callback: PickCallback<T>,
-  opts?: ArbitraryOpts,
 ): Arbitrary<T> {
-  return Arbitrary.from(callback, opts);
+  return Arbitrary.from(callback);
 }
 
 /** Returns an Arbitrary that chooses one of the given arguments. */

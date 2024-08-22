@@ -28,7 +28,7 @@ export function uniqueArray<T>(
       pick(new PickRequest(0, 0));
     }
     return out;
-  }, { label });
+  }).with({ label });
 }
 
 /**
@@ -103,5 +103,5 @@ export function table<R extends Record<string, unknown>>(
       pick(new PickRequest(0, 0));
     }
     return rows;
-  }, { label });
+  }).with({ label });
 }
