@@ -126,5 +126,5 @@ export function array<T>(
       i++;
     }
     return result;
-  }, { label });
+  }).with({ label });
 }

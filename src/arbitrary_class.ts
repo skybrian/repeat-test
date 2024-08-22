@@ -198,26 +198,23 @@ export class Arbitrary<T> implements PickSet<T> {
   /**
    * Converts a {@link PickRequest} to an Arbitrary.
    */
-  static from(req: PickRequest, opts?: { label?: string }): Arbitrary<number>;
+  static from(req: PickRequest): Arbitrary<number>;
   /**
    * Creates an Arbitrary from a {@link PickCallback}, or an array of examples.
    */
   static from<T>(
     callback: PickCallback<T> | PickSet<T>,
-    opts?: { label?: string },
   ): Arbitrary<T>;
   /**
    * Creates an Arbitrary from a {@link PickRequest}, a {@link PickCallback}, or an array of examples.
    */
   static from<T>(
     arg: PickRequest | PickCallback<T> | PickSet<T>,
-    opts?: { label?: string },
   ): Arbitrary<T> | Arbitrary<number> {
     if (typeof arg === "function") {
-      const label = opts?.label ?? "(unlabeled)";
-      return new Arbitrary(label, arg);
+      return new Arbitrary("(unlabeled)", arg);
     } else if (arg instanceof PickRequest) {
-      const label = opts?.label ?? `${arg.min}..${arg.max}`;
+      const label = `${arg.min}..${arg.max}`;
       const maxSize = arg.max - arg.min + 1;
       return new Arbitrary(label, (pick) => pick(arg), {
         maxSize,
@@ -228,9 +225,8 @@ export class Arbitrary<T> implements PickSet<T> {
     }
     const generateFrom = arg["generateFrom"];
     if (typeof generateFrom === "function") {
-      let label = arg["label"];
+      const label = arg["label"];
       assert(typeof label === "string");
-      label = opts?.label ?? label;
       return new Arbitrary(label, generateFrom);
     }
     throw new Error("invalid argument to Arbitrary.from");

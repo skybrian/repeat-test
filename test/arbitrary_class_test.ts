@@ -22,10 +22,6 @@ describe("Arbitrary", () => {
         assertEquals("0..1", arb.label);
         assertValues(arb, [0, 1]);
       });
-      it("accepts a custom label", () => {
-        const arb = Arbitrary.from(bit, { label: "bit" });
-        assertEquals(arb.label, "bit");
-      });
     });
     describe("given a PickSet", () => {
       const answer: PickSet<string> = {
@@ -38,10 +34,6 @@ describe("Arbitrary", () => {
         const arb = Arbitrary.from(answer);
         assertEquals(arb.label, "answer");
         assertValues(arb, ["no", "yes"]);
-      });
-      it("accepts a custom label", () => {
-        const arb = Arbitrary.from(answer, { label: "yes/no" });
-        assertEquals(arb.label, "yes/no");
       });
     });
     describe("given a callback", () => {
@@ -126,7 +118,7 @@ describe("Arbitrary", () => {
   });
 
   describe("filter", () => {
-    const sixSided = Arbitrary.from(new PickRequest(1, 6), {
+    const sixSided = Arbitrary.from(new PickRequest(1, 6)).with({
       label: "sixSided",
     });
 
