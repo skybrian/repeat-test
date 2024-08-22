@@ -7,23 +7,8 @@
 
 export type { Failure, Success } from "./src/results.ts";
 
-export { biasedBitRequest, PickRequest } from "./src/picks.ts";
-export type {
-  BiasedIntPicker,
-  PickRequestOpts,
-  UniformRandomSource,
-} from "./src/picks.ts";
-
-export type {
-  Generated,
-  PickCallback,
-  PickFunction,
-  PickFunctionOpts,
-  PickSet,
-} from "./src/generated.ts";
-
-export { Arbitrary } from "./src/arbitrary_class.ts";
-export type { RecordShape } from "./src/arbitrary_class.ts";
+export * from "./arbitrary.ts";
+export type * from "./arbitrary.ts";
 
 export * as arb from "./src/arb.ts";
 

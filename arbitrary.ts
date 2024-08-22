@@ -4,7 +4,11 @@
  * @module arbitrary
  */
 
-export type { BiasedIntPicker, UniformRandomSource } from "./src/picks.ts";
+export type {
+  BiasedIntPicker,
+  PickRequestOpts,
+  UniformRandomSource,
+} from "./src/picks.ts";
 
 export type {
   Generated,
