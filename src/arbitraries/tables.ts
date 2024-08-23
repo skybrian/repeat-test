@@ -1,8 +1,7 @@
-import type { Arbitrary } from "@skybrian/repeat-test/arbitrary";
+import type { Arbitrary, RecordShape } from "@skybrian/repeat-test/arbitrary";
 import * as arb from "./basics.ts";
-import type * as dom from "../domains/basics.ts";
 import { Jar } from "../jar_class.ts";
-import type { Domain } from "../domain_class.ts";
+import { Domain } from "../domain_class.ts";
 import { PickRequest } from "../picks.ts";
 
 /**
@@ -43,14 +42,12 @@ export type TableOpts<T extends Record<string, unknown>> = {
 /**
  * Defines an Arbitrary that generates arrays of records with a given shape.
  *
- * Columns may be further constrained using the uniqueKeys option, so that
- * generated arrays won't contain duplicate values in that column.
- *
- * (Columns are defined using a {@link Domain} instead of an {@link Arbitrary}
- * due to how unique keys are implemented.)
+ * Fields whose names appear in {@link TableOpts.uniqueKeys} will be constrained
+ * to be unique. The comparison is done using their canonical pick sequences, so
+ * they must be defined using a {@link Domain}.
  */
 export function table<R extends Record<string, unknown>>(
-  shape: dom.RecordShape<R>,
+  shape: RecordShape<R>,
   opts?: TableOpts<R>,
 ): Arbitrary<R[]> {
   const uniqueKeys = opts?.uniqueKeys ?? [];
@@ -60,7 +57,11 @@ export function table<R extends Record<string, unknown>>(
   return arb.from((pick) => {
     const jars: Record<string, Jar<R[keyof R & string]>> = {};
     for (const key of uniqueKeys) {
-      const jar = new Jar(shape[key]);
+      const set = shape[key];
+      if (!(set instanceof Domain)) {
+        throw new Error(`field "${key}" is unique but not a Domain`);
+      }
+      const jar = new Jar(set);
       jars[key] = jar;
     }
 

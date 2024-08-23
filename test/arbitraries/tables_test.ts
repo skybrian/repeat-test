@@ -60,6 +60,16 @@ describe("uniqueArray", () => {
 });
 
 describe("table", () => {
+  it("throws an exception if a unique key isn't a Domain", () => {
+    assertThrows(
+      () =>
+        arb.table({ k: arb.boolean() }, {
+          uniqueKeys: ["k"],
+        }),
+      Error,
+      'field "k" is unique but not a Domain',
+    );
+  });
   describe("with one column and no unique key", () => {
     const table = arb.table({ v: dom.boolean() }, { maxRows: 2 });
     it("defaults to zero rows", () => {
