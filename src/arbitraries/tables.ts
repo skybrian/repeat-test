@@ -1,7 +1,6 @@
 import type { Arbitrary, RecordShape } from "@skybrian/repeat-test/arbitrary";
+import { Domain, Jar } from "@skybrian/repeat-test/domain";
 import * as arb from "./basics.ts";
-import { Jar } from "../jar_class.ts";
-import { Domain } from "../domain_class.ts";
 import { PickRequest } from "../picks.ts";
 
 /**

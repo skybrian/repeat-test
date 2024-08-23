@@ -10,3 +10,4 @@ export {
   type PickifyCallback,
   type SendErr,
 } from "./src/domain_class.ts";
+export { Jar } from "./src/jar_class.ts";
