@@ -64,7 +64,7 @@ describe("table", () => {
     assertThrows(
       () =>
         arb.table({ k: arb.boolean() }, {
-          uniqueKeys: ["k"],
+          keys: ["k"],
         }),
       Error,
       'field "k" is unique but not a Domain',
@@ -100,7 +100,7 @@ describe("table", () => {
     });
   });
   describe("with one unique column", () => {
-    const table = arb.table({ v: dom.boolean() }, { uniqueKeys: ["v"] });
+    const table = arb.table({ v: dom.boolean() }, { keys: ["v"] });
     it("defaults to zero rows", () => {
       assertEquals(table.default().val, []);
     });
@@ -122,7 +122,7 @@ describe("table", () => {
     const table = arb.table({
       k: dom.boolean(),
       v: dom.boolean(),
-    }, { uniqueKeys: ["k"] });
+    }, { keys: ["k"] });
     it("starts with zero and one-row tables", () => {
       assertFirstValues(table, [
         [],
@@ -144,7 +144,7 @@ describe("table", () => {
     const table = arb.table({
       ids: dom.asciiLetter(),
       ranks: dom.int(1, 5),
-    }, { uniqueKeys: ["ids", "ranks"] });
+    }, { keys: ["ids", "ranks"] });
     it("generates unique ids and ranks", () => {
       repeatTest(table, (rows) => {
         const ids = new Set(rows.map((row) => row.ids));

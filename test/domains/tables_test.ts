@@ -78,7 +78,7 @@ describe("table", () => {
   describe("with a single unique column", () => {
     const table = dom.table({
       a: dom.boolean(),
-    }, { uniqueKeys: ["a"] });
+    }, { keys: ["a"] });
     it("encodes it the same way as a unique array", () => {
       assertEncoding(table, [0], []);
       assertEncoding(table, [1, 1, 0], [{ a: true }]);

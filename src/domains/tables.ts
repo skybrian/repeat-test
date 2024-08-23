@@ -50,16 +50,15 @@ export function uniqueArray<T>(
  * Creates a Domain that accepts arrays of records, where every record has a
  * given shape.
  *
- * A column may be required to be a unique key - that is, a table value won't be
- * accepted if there is a duplicate value in that column. Keys are compared
- * using their canonical pick sequences.
+ * Fields whose names appear in {@link TableOpts.keys} will be constrained to be
+ * unique columns. The comparison is done using their canonical pick sequences
  */
 export function table<R extends Record<string, unknown>>(
   shape: dom.RecordShape<R>,
   opts?: arb.TableOpts<R>,
 ): Domain<R[]> {
   const keys = Object.keys(shape) as (keyof R & string)[];
-  const uniqueKeys = opts?.uniqueKeys ?? [];
+  const uniqueKeys = opts?.keys ?? [];
   const generator = arb.table(shape, opts);
 
   return new Domain(generator, (rows, sendErr) => {

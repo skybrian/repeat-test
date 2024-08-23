@@ -35,22 +35,22 @@ export function uniqueArray<T>(
  */
 export type TableOpts<T extends Record<string, unknown>> = {
   label?: string;
-  uniqueKeys?: (keyof T & string)[];
+  keys?: (keyof T & string)[];
   maxRows?: number;
 };
 
 /**
  * Defines an Arbitrary that generates arrays of records with a given shape.
  *
- * Fields whose names appear in {@link TableOpts.uniqueKeys} will be constrained
- * to be unique. The comparison is done using their canonical pick sequences, so
- * they must be defined using a {@link Domain}.
+ * Fields whose names appear in {@link TableOpts.keys} will be constrained to be
+ * unique columns. The comparison is done using their canonical pick sequences,
+ * so they must be defined using a {@link Domain}.
  */
 export function table<R extends Record<string, unknown>>(
   shape: RecordShape<R>,
   opts?: TableOpts<R>,
 ): Arbitrary<R[]> {
-  const uniqueKeys = opts?.uniqueKeys ?? [];
+  const uniqueKeys = opts?.keys ?? [];
 
   const label = opts?.label ?? "table";
 
