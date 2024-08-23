@@ -22,7 +22,8 @@
     ".": "./mod.ts",
     "./arbitrary": "./arbitrary.ts",
     "./domain": "./domain.ts",
-    "./arbs": "./arbs.ts"
+    "./arbs": "./arbs.ts",
+    "./doms": "./doms.ts"
   },
   "tasks": {
     "coverage": "rm -f lcov.info && deno test --coverage --clean && deno coverage --lcov > lcov.info && deno coverage",

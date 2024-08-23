@@ -1,6 +1,8 @@
-import { arb, Domain } from "@skybrian/repeat-test";
-import * as unicode from "../unicode.ts";
 import { assert } from "@std/assert";
+import { Domain } from "@skybrian/repeat-test/domain";
+import * as arb from "@skybrian/repeat-test/arbs";
+
+import * as unicode from "../unicode.ts";
 import { find } from "../multipass_search.ts";
 
 const arbAscii = arb.asciiChar();

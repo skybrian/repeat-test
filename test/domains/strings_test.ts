@@ -5,7 +5,7 @@ import { repeatTest } from "../../src/runner.ts";
 import * as arb from "../../arbs.ts";
 import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
 
-import * as dom from "../../src/dom.ts";
+import * as dom from "@skybrian/repeat-test/doms";
 import { isWellFormed } from "../../src/workarounds.ts";
 
 describe("asciiChar", () => {

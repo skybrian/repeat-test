@@ -1,7 +1,9 @@
-import { arb, Domain } from "@skybrian/repeat-test";
+import { assert } from "@std/assert";
+import { Domain } from "@skybrian/repeat-test/domain";
+import * as arb from "@skybrian/repeat-test/arbs";
+
 import type * as dom from "./basics.ts";
 import { PickTree } from "../pick_tree.ts";
-import { assert } from "@std/assert";
 import { PickList } from "../picks.ts";
 
 /**

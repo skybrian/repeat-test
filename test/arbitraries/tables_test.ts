@@ -3,7 +3,8 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 
 import { repeatTest } from "../../src/runner.ts";
 import * as arb from "@skybrian/repeat-test/arbs";
-import * as dom from "../../src/dom.ts";
+import * as dom from "@skybrian/repeat-test/doms";
+
 import {
   assertFirstGenerated,
   assertFirstValues,

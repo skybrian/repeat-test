@@ -12,7 +12,7 @@ import { generate } from "../src/generated.ts";
 import { Arbitrary } from "../src/arbitrary_class.ts";
 import type { Domain } from "../src/domain_class.ts";
 import * as arb from "@skybrian/repeat-test/arbs";
-import * as dom from "../src/dom.ts";
+import * as dom from "@skybrian/repeat-test/doms";
 import { success } from "../src/results.ts";
 
 import { NullConsole, type TestConsole } from "../src/console.ts";

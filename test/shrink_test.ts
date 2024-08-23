@@ -11,8 +11,8 @@ import {
   shrinkOptionsUntil,
   shrinkPicksFrom,
 } from "../src/shrink.ts";
-import type { Domain } from "../src/domain_class.ts";
-import * as dom from "../src/dom.ts";
+import type { Domain } from "@skybrian/repeat-test/domain";
+import * as dom from "@skybrian/repeat-test/doms";
 
 function assertShrinks<T>(
   dom: Domain<T>,

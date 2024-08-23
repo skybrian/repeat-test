@@ -6,15 +6,11 @@
  * for defining new Arbitraries.
  */
 
-export type { Failure, Success } from "./src/results.ts";
-
 export * from "@skybrian/repeat-test/arbitrary";
 export * from "@skybrian/repeat-test/domain";
 
 export * as arb from "./arbs.ts";
-export * as dom from "./src/dom.ts";
-
-export { Jar } from "./src/jar_class.ts";
+export * as dom from "./doms.ts";
 
 export { repeatTest } from "./src/runner.ts";
 export type { TestConsole } from "./src/console.ts";
