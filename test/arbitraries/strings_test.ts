@@ -6,10 +6,12 @@ import {
   assertSameExamples,
   assertValues,
 } from "../../src/asserts.ts";
+
 import { repeatTest } from "../../src/runner.ts";
+import * as arb from "@skybrian/repeat-test/arbs";
+
 import { isWellFormed } from "../../src/workarounds.ts";
 
-import * as arb from "../../src/arb.ts";
 import { takeAll } from "../../src/multipass_search.ts";
 import { generate } from "../../src/generated.ts";
 import type { PickSet } from "../../src/generated.ts";

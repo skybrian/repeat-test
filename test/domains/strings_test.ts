@@ -1,8 +1,9 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertThrows } from "@std/assert";
-import * as arb from "../../src/arb.ts";
-import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
+
 import { repeatTest } from "../../src/runner.ts";
+import * as arb from "../../arbs.ts";
+import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
 
 import * as dom from "../../src/dom.ts";
 import { isWellFormed } from "../../src/workarounds.ts";

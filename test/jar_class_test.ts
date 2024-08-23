@@ -8,7 +8,7 @@ import { PlayoutSearch } from "../src/searches.ts";
 
 import { Jar } from "../src/jar_class.ts";
 import { repeatTest } from "../src/runner.ts";
-import * as arb from "../src/arb.ts";
+import * as arb from "@skybrian/repeat-test/arbs";
 import { randomPicker } from "../src/random.ts";
 
 describe("Jar", () => {

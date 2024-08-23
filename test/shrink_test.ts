@@ -1,8 +1,8 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, fail } from "@std/assert";
-import * as arb from "../src/arb.ts";
-import { intRange, minMaxVal } from "../src/arbitraries/ranges.ts";
 import { repeatTest } from "../src/runner.ts";
+import * as arb from "@skybrian/repeat-test/arbs";
+import { intRange, minMaxVal } from "../src/arbitraries/ranges.ts";
 
 import { PickList, PickRequest } from "../src/picks.ts";
 import {

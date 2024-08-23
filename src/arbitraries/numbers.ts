@@ -1,5 +1,5 @@
+import type { Arbitrary } from "@skybrian/repeat-test/arbitrary";
 import { int } from "./basics.ts";
-import type { Arbitrary } from "../arbitrary_class.ts";
 
 /**
  * Returns an Arbitrary that generates a signed 32-bit integer.

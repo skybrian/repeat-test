@@ -6,10 +6,10 @@ import {
   assertGenerated,
   assertValues,
 } from "../../src/asserts.ts";
-import { repeatTest } from "../../src/runner.ts";
 
-import { Arbitrary } from "../../src/arbitrary_class.ts";
-import * as arb from "../../src/arb.ts";
+import { repeatTest } from "../../src/runner.ts";
+import { Arbitrary } from "@skybrian/repeat-test/arbitrary";
+import * as arb from "@skybrian/repeat-test/arbs";
 
 describe("boolean", () => {
   it("generates both values", () => {

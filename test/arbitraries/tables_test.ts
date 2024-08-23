@@ -1,14 +1,14 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 
-import * as arb from "../../src/arb.ts";
+import { repeatTest } from "../../src/runner.ts";
+import * as arb from "@skybrian/repeat-test/arbs";
 import * as dom from "../../src/dom.ts";
 import {
   assertFirstGenerated,
   assertFirstValues,
   assertValues,
 } from "../../src/asserts.ts";
-import { repeatTest } from "../../src/runner.ts";
 import { takeAll } from "../../src/multipass_search.ts";
 import { intRange } from "../../src/arbitraries/ranges.ts";
 
