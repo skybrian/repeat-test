@@ -1,16 +1,15 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 
-import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
-import { repeatTest } from "../../src/runner.ts";
+import { repeatTest } from "@skybrian/repeat-test/runner";
+import * as dom from "@skybrian/repeat-test/doms";
 
+import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
 import {
   intRange,
   invalidIntRange,
   minMaxVal,
 } from "../../src/arbitraries/ranges.ts";
-
-import * as dom from "@skybrian/repeat-test/doms";
 
 describe("from", () => {
   it("accepts a constant value", () => {

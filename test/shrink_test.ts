@@ -1,7 +1,11 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, fail } from "@std/assert";
-import { repeatTest } from "../src/runner.ts";
+
+import { repeatTest } from "@skybrian/repeat-test/runner";
 import * as arb from "@skybrian/repeat-test/arbs";
+import type { Domain } from "@skybrian/repeat-test/domain";
+import * as dom from "@skybrian/repeat-test/doms";
+
 import { intRange, minMaxVal } from "../src/arbitraries/ranges.ts";
 
 import { PickList, PickRequest } from "../src/picks.ts";
@@ -11,8 +15,6 @@ import {
   shrinkOptionsUntil,
   shrinkPicksFrom,
 } from "../src/shrink.ts";
-import type { Domain } from "@skybrian/repeat-test/domain";
-import * as dom from "@skybrian/repeat-test/doms";
 
 function assertShrinks<T>(
   dom: Domain<T>,

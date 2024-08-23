@@ -8,10 +8,6 @@
 
 export * from "@skybrian/repeat-test/arbitrary";
 export * from "@skybrian/repeat-test/domain";
-
-export * as arb from "./arbs.ts";
-export * as dom from "./doms.ts";
-
-export { repeatTest } from "./src/runner.ts";
-export type { TestConsole } from "./src/console.ts";
-export type { RepeatOpts, TestFunction } from "./src/runner.ts";
+export * from "@skybrian/repeat-test/runner";
+export * as arb from "@skybrian/repeat-test/arbs";
+export * as dom from "@skybrian/repeat-test/doms";

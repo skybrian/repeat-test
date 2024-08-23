@@ -1,10 +1,10 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
+import { repeatTest } from "@skybrian/repeat-test/runner";
 import { Jar } from "@skybrian/repeat-test/domain";
 import * as arb from "@skybrian/repeat-test/arbs";
 import * as dom from "@skybrian/repeat-test/doms";
-import { repeatTest } from "../src/runner.ts";
 
 import { Pruned } from "../src/backtracking.ts";
 import { makePickFunction } from "../src/generated.ts";

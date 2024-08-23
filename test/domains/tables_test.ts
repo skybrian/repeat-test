@@ -1,7 +1,8 @@
 import { assertThrows } from "@std/assert";
 import { describe, it } from "@std/testing/bdd";
 import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
-import { repeatTest } from "../../src/runner.ts";
+
+import { repeatTest } from "@skybrian/repeat-test/runner";
 import { Arbitrary } from "@skybrian/repeat-test/arbitrary";
 import * as dom from "@skybrian/repeat-test/doms";
 

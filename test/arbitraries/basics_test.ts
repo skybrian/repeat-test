@@ -7,7 +7,7 @@ import {
   assertValues,
 } from "../../src/asserts.ts";
 
-import { repeatTest } from "../../src/runner.ts";
+import { repeatTest } from "@skybrian/repeat-test/runner";
 import { Arbitrary } from "@skybrian/repeat-test/arbitrary";
 import * as arb from "@skybrian/repeat-test/arbs";
 

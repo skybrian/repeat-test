@@ -1,7 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 
-import { repeatTest } from "../../src/runner.ts";
+import { repeatTest } from "@skybrian/repeat-test/runner";
 import * as arb from "@skybrian/repeat-test/arbs";
 import * as dom from "@skybrian/repeat-test/doms";
 

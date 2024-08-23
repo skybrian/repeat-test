@@ -1,14 +1,15 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals } from "@std/assert";
+
+import { repeatTest } from "@skybrian/repeat-test/runner";
+import * as arb from "@skybrian/repeat-test/arbs";
+
 import {
   assertFirstGenerated,
   assertFirstValues,
   assertSameExamples,
   assertValues,
 } from "../../src/asserts.ts";
-
-import { repeatTest } from "../../src/runner.ts";
-import * as arb from "@skybrian/repeat-test/arbs";
 
 import { isWellFormed } from "../../src/workarounds.ts";
 

@@ -7,12 +7,11 @@ import {
   fail,
 } from "@std/assert";
 
+import { repeatTest } from "@skybrian/repeat-test/runner";
+import * as arb from "../src/arbitraries/basics.ts";
+
 import { alwaysPick, alwaysPickMin, PickRequest } from "../src/picks.ts";
 import { randomPicker } from "../src/random.ts";
-
-import * as arb from "../src/arbitraries/basics.ts";
-import { repeatTest } from "../src/runner.ts";
-
 import { PlayoutSearch } from "../src/searches.ts";
 
 const bit = new PickRequest(0, 1);
