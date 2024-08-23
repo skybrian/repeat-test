@@ -1,5 +1,5 @@
+import { Arbitrary } from "@skybrian/repeat-test/arbitrary";
 import { subrangeRequest } from "../picks.ts";
-import { Arbitrary } from "../arbitrary_class.ts";
 import * as arb from "./basics.ts";
 import { surrogateGap, surrogateMin, unicodeMax } from "../unicode.ts";
 

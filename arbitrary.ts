@@ -1,5 +1,5 @@
 /**
- * The symbols needed to implement new Arbitraries.
+ * The symbols needed to define a new {@linkcode Arbitrary}.
  *
  * @module arbitrary
  */

@@ -1,19 +1,17 @@
 /**
  * The repeat-test library provides functions for writing property tests.
  *
- * @see repeatTest for the main entry point.
- * @see arb for functions to generate test data.
+ * Write tests using {@linkcode repeatTest}. Test data can be generated using an
+ * {@link Arbitrary}. The {@linkcode arb} namespace has many useful functions
+ * for defining new Arbitraries.
  */
 
 export type { Failure, Success } from "./src/results.ts";
 
-export * from "./arbitrary.ts";
-export type * from "./arbitrary.ts";
+export * from "@skybrian/repeat-test/arbitrary";
+export * from "@skybrian/repeat-test/domain";
 
 export * as arb from "./src/arb.ts";
-
-export { Domain } from "./src/domain_class.ts";
-export type { PickifyCallback, SendErr } from "./src/domain_class.ts";
 export * as dom from "./src/dom.ts";
 
 export { Jar } from "./src/jar_class.ts";

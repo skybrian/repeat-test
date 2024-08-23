@@ -1,11 +1,11 @@
+import { Arbitrary, type Generated } from "@skybrian/repeat-test/arbitrary";
+
 import { assertEquals } from "@std/assert";
 
 import { type Failure, failure, type Success, success } from "./results.ts";
 import { PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
 import { generate } from "./generated.ts";
-import type { Generated } from "./generated.ts";
-import { Arbitrary } from "./arbitrary_class.ts";
 
 /**
  * A callback for reporting errors while validating a value.

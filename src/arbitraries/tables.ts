@@ -1,4 +1,4 @@
-import type { Arbitrary } from "../arbitrary_class.ts";
+import type { Arbitrary } from "@skybrian/repeat-test/arbitrary";
 import * as arb from "./basics.ts";
 import type * as dom from "../domains/basics.ts";
 import { Jar } from "../jar_class.ts";

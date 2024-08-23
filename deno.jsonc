@@ -20,7 +20,8 @@
   },
   "exports": {
     ".": "./mod.ts",
-    "./arbitrary": "./arbitrary.ts"
+    "./arbitrary": "./arbitrary.ts",
+    "./domain": "./domain.ts"
   },
   "tasks": {
     "coverage": "rm -f lcov.info && deno test --coverage --clean && deno coverage --lcov > lcov.info && deno coverage",
