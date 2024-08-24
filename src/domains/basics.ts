@@ -1,4 +1,5 @@
-import { arb, Domain } from "@skybrian/repeat-test";
+import { Domain } from "@/domain.ts";
+import * as arb from "@/arbs.ts";
 
 /**
  * A domain that accepts only values contained in the array given as its first

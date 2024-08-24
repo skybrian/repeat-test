@@ -11,8 +11,8 @@ import { minPlayout, Pruned } from "../src/backtracking.ts";
 import { generate } from "../src/generated.ts";
 import { Arbitrary } from "../src/arbitrary_class.ts";
 import type { Domain } from "../src/domain_class.ts";
-import * as arb from "@skybrian/repeat-test/arbs";
-import * as dom from "@skybrian/repeat-test/doms";
+import * as arb from "@/arbs.ts";
+import * as dom from "@/doms.ts";
 import { success } from "../src/results.ts";
 
 import { NullConsole, type TestConsole } from "../src/console.ts";

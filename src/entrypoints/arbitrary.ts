@@ -8,7 +8,7 @@ export type {
   BiasedIntPicker,
   PickRequestOpts,
   UniformRandomSource,
-} from "./src/picks.ts";
+} from "../picks.ts";
 
 export type {
   Generated,
@@ -16,9 +16,9 @@ export type {
   PickFunction,
   PickFunctionOpts,
   PickSet,
-} from "./src/generated.ts";
+} from "../generated.ts";
 
-export type { RecordShape } from "./src/arbitrary_class.ts";
+export type { RecordShape } from "../arbitrary_class.ts";
 
-export { biasedBitRequest, PickRequest } from "./src/picks.ts";
-export { Arbitrary } from "./src/arbitrary_class.ts";
+export { biasedBitRequest, PickRequest } from "../picks.ts";
+export { Arbitrary } from "../arbitrary_class.ts";

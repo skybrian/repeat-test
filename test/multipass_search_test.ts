@@ -1,8 +1,8 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows, fail } from "@std/assert";
 
-import { repeatTest } from "@skybrian/repeat-test/runner";
-import { Arbitrary } from "@skybrian/repeat-test/arbitrary";
+import { repeatTest } from "@/runner.ts";
+import { Arbitrary } from "@/arbitrary.ts";
 
 import { PickRequest } from "../src/picks.ts";
 import { type PlayoutSource, Pruned } from "../src/backtracking.ts";

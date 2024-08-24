@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
-import { Domain } from "@skybrian/repeat-test/domain";
-import * as arb from "@skybrian/repeat-test/arbs";
+import { Domain } from "@/domain.ts";
+import * as arb from "@/arbs.ts";
 
 import * as unicode from "../unicode.ts";
 import { find } from "../multipass_search.ts";

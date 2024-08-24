@@ -1,4 +1,4 @@
-import { Arbitrary, type Generated } from "@skybrian/repeat-test/arbitrary";
+import { Arbitrary, type Generated } from "@/arbitrary.ts";
 
 import { assertEquals } from "@std/assert";
 

@@ -1,7 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
-import { repeatTest } from "@skybrian/repeat-test/runner";
+import { repeatTest } from "@/runner.ts";
 import { invalidIntRange } from "../src/arbitraries/ranges.ts";
 
 import {

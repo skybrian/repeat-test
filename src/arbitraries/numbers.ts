@@ -1,4 +1,4 @@
-import type { Arbitrary } from "@skybrian/repeat-test/arbitrary";
+import type { Arbitrary } from "@/arbitrary.ts";
 import { int } from "./basics.ts";
 
 /**

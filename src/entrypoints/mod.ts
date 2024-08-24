@@ -6,8 +6,8 @@
  * for defining new Arbitraries.
  */
 
-export * from "@skybrian/repeat-test/arbitrary";
-export * from "@skybrian/repeat-test/domain";
-export * from "@skybrian/repeat-test/runner";
-export * as arb from "@skybrian/repeat-test/arbs";
-export * as dom from "@skybrian/repeat-test/doms";
+export * from "@/arbitrary.ts";
+export * from "@/domain.ts";
+export * from "@/runner.ts";
+export * as arb from "@/arbs.ts";
+export * as dom from "@/doms.ts";

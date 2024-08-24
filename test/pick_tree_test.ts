@@ -1,7 +1,7 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
-import { repeatTest } from "@skybrian/repeat-test/runner";
+import { repeatTest } from "@/runner.ts";
 
 import * as arb from "../src/arbitraries/basics.ts";
 

@@ -1,10 +1,10 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, fail } from "@std/assert";
 
-import { repeatTest } from "@skybrian/repeat-test/runner";
-import * as arb from "@skybrian/repeat-test/arbs";
-import type { Domain } from "@skybrian/repeat-test/domain";
-import * as dom from "@skybrian/repeat-test/doms";
+import { repeatTest } from "@/runner.ts";
+import * as arb from "@/arbs.ts";
+import type { Domain } from "@/domain.ts";
+import * as dom from "@/doms.ts";
 
 import { intRange, minMaxVal } from "../src/arbitraries/ranges.ts";
 

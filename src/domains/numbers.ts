@@ -1,4 +1,4 @@
-import type { Domain } from "@skybrian/repeat-test";
+import type { Domain } from "@/domain.ts";
 import * as dom from "./basics.ts";
 
 /**

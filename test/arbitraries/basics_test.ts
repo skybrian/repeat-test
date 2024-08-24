@@ -7,9 +7,9 @@ import {
   assertValues,
 } from "../../src/asserts.ts";
 
-import { repeatTest } from "@skybrian/repeat-test/runner";
-import { Arbitrary } from "@skybrian/repeat-test/arbitrary";
-import * as arb from "@skybrian/repeat-test/arbs";
+import { repeatTest } from "@/runner.ts";
+import { Arbitrary } from "@/arbitrary.ts";
+import * as arb from "@/arbs.ts";
 
 describe("boolean", () => {
   it("generates both values", () => {

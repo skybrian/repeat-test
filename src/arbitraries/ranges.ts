@@ -1,4 +1,4 @@
-import { Arbitrary } from "@skybrian/repeat-test/arbitrary";
+import { Arbitrary } from "@/arbitrary.ts";
 import { from, int, oneOf, record } from "./basics.ts";
 import { safeInt } from "./numbers.ts";
 

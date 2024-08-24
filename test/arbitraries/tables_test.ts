@@ -1,9 +1,9 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 
-import { repeatTest } from "@skybrian/repeat-test/runner";
-import * as arb from "@skybrian/repeat-test/arbs";
-import * as dom from "@skybrian/repeat-test/doms";
+import { repeatTest } from "@/runner.ts";
+import * as arb from "@/arbs.ts";
+import * as dom from "@/doms.ts";
 
 import {
   assertFirstGenerated,

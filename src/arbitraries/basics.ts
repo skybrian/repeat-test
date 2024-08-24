@@ -1,14 +1,6 @@
-import {
-  Arbitrary,
-  biasedBitRequest,
-  PickRequest,
-} from "@skybrian/repeat-test/arbitrary";
+import { Arbitrary, biasedBitRequest, PickRequest } from "@/arbitrary.ts";
 
-import type {
-  PickCallback,
-  PickSet,
-  RecordShape,
-} from "@skybrian/repeat-test/arbitrary";
+import type { PickCallback, PickSet, RecordShape } from "@/arbitrary.ts";
 
 /**
  * Defines an Arbitrary implemented by a callback function.

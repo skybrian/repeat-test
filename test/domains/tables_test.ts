@@ -2,9 +2,9 @@ import { assertThrows } from "@std/assert";
 import { describe, it } from "@std/testing/bdd";
 import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
 
-import { repeatTest } from "@skybrian/repeat-test/runner";
-import { Arbitrary } from "@skybrian/repeat-test/arbitrary";
-import * as dom from "@skybrian/repeat-test/doms";
+import { repeatTest } from "@/runner.ts";
+import { Arbitrary } from "@/arbitrary.ts";
+import * as dom from "@/doms.ts";
 
 describe("uniqueArray", () => {
   const bools = dom.uniqueArray(dom.boolean());

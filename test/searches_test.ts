@@ -7,7 +7,7 @@ import {
   fail,
 } from "@std/assert";
 
-import { repeatTest } from "@skybrian/repeat-test/runner";
+import { repeatTest } from "@/runner.ts";
 import * as arb from "../src/arbitraries/basics.ts";
 
 import { alwaysPick, alwaysPickMin, PickRequest } from "../src/picks.ts";
