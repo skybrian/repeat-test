@@ -14,6 +14,8 @@ export function uniformSource(rng: prand.RandomGenerator): UniformRandomSource {
         return min;
       case 2:
         return (rng.unsafeNext() & 0x1) + min;
+      case 128:
+        return (rng.unsafeNext() & 0x7F) + min;
     }
     return prand.unsafeUniformIntDistribution(min, max, rng);
   };

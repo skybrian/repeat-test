@@ -145,7 +145,7 @@ export function subrangeRequest(
   const bias = (uniform: UniformRandomSource) => {
     const choice = uniform(0, starts.length - 1);
     const min = starts[choice];
-    const max = choice < starts.length - 1 ? starts[choice + 1] : lastMax;
+    const max = choice < starts.length - 1 ? starts[choice + 1] - 1 : lastMax;
     return uniform(min, max);
   };
   return new PickRequest(starts[0], lastMax, { bias });
