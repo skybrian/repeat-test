@@ -6,18 +6,42 @@ export function pickRandomSeed(): number {
   return Date.now() ^ (Math.random() * 0x100000000);
 }
 
-export function uniformSource(rng: prand.RandomGenerator): UniformRandomSource {
+type Int32Source = () => number;
+
+class Adapter implements prand.RandomGenerator {
+  constructor(private readonly rng: Int32Source) {}
+  unsafeNext(): number {
+    return this.rng();
+  }
+  clone(): prand.RandomGenerator {
+    assert(false, "not implemented");
+  }
+  next(): [number, prand.RandomGenerator] {
+    assert(false, "not implemented");
+  }
+  jump?(): prand.RandomGenerator {
+    assert(false, "not implemented");
+  }
+  unsafeJump?(): void {
+    assert(false, "not implemented");
+  }
+  getState?(): readonly number[] {
+    assert(false, "not implemented");
+  }
+}
+
+export function uniformSource(next: Int32Source): UniformRandomSource {
   return (min, max) => {
     const size = max - min + 1;
     switch (size) {
       case 1:
         return min;
       case 2:
-        return (rng.unsafeNext() & 0x1) + min;
+        return (next() & 0x1) + min;
       case 128:
-        return (rng.unsafeNext() & 0x7F) + min;
+        return (next() & 0x7F) + min;
     }
-    return prand.unsafeUniformIntDistribution(min, max, rng);
+    return prand.unsafeUniformIntDistribution(min, max, new Adapter(next));
   };
 }
 
@@ -26,7 +50,9 @@ export function uniformSource(rng: prand.RandomGenerator): UniformRandomSource {
  * starting point.
  */
 function makePicker(rng: prand.RandomGenerator): IntPicker {
-  const uniform = uniformSource(rng.clone());
+  rng = rng.clone();
+  const next = rng.unsafeNext.bind(rng);
+  const uniform = uniformSource(next);
 
   return {
     pick(req: PickRequest) {

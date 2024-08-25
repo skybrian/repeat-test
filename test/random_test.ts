@@ -1,12 +1,66 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, fail } from "@std/assert";
+import { repeatTest } from "@/runner.ts";
+import * as arb from "@/arbs.ts";
 
 import {
   type BiasedIntPicker,
   type IntPicker,
   PickRequest,
 } from "../src/picks.ts";
-import { randomPickers } from "../src/random.ts";
+import { randomPickers, uniformSource } from "../src/random.ts";
+
+describe("uniformSource", () => {
+  function mock(result: number, opts?: { expectedCalls: number }) {
+    const expectedCalls = opts?.expectedCalls ?? 1;
+    let calls = 0;
+    return () => {
+      calls++;
+      if (calls > expectedCalls) {
+        fail("should not be called more than once");
+      }
+      return result;
+    };
+  }
+
+  const min = arb.of(0, 1, -1, 1000, -1000);
+  it("returns the only value for a range of size 1", () => {
+    const uniform = uniformSource(mock(0, { expectedCalls: 0 }));
+    repeatTest(min, (min) => {
+      assertEquals(uniform(min, min), min);
+    });
+  });
+
+  describe("for a range of size 2", () => {
+    it("returns the minimum value for an even number", () => {
+      const even = arb.int(-3, 3).map((n) => n * 2);
+      repeatTest(arb.record({ min, even }), ({ min, even }) => {
+        const uniform = uniformSource(mock(even));
+        assertEquals(uniform(min, min + 1), min);
+      });
+    });
+
+    it("returns the maximum value for an odd number", () => {
+      const odd = arb.int(-3, 3).map((n) => n * 2 + 1);
+      repeatTest(arb.record({ min, odd }), ({ min, odd }) => {
+        const uniform = uniformSource(mock(odd));
+        assertEquals(uniform(min, min + 1), min + 1);
+      });
+    });
+  });
+
+  describe("for a range of size 3", () => {
+    it("returns something in range", () => {
+      const next = arb.int(0, 10);
+      repeatTest(arb.record({ min, next }), ({ min, next }) => {
+        const uniform = uniformSource(mock(next));
+        const actual = uniform(min, min + 2);
+        assert(actual >= min);
+        assert(actual <= min + 2);
+      });
+    });
+  });
+});
 
 function checkReturnsAllNumbers(picker: IntPicker, req: PickRequest) {
   const size = req.max - req.min + 1;
