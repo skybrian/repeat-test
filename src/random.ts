@@ -7,7 +7,16 @@ export function pickRandomSeed(): number {
 }
 
 export function uniformSource(rng: prand.RandomGenerator): UniformRandomSource {
-  return (min, max) => prand.unsafeUniformIntDistribution(min, max, rng);
+  return (min, max) => {
+    const size = max - min + 1;
+    switch (size) {
+      case 1:
+        return min;
+      case 2:
+        return (rng.unsafeNext() & 0x1) + min;
+    }
+    return prand.unsafeUniformIntDistribution(min, max, rng);
+  };
 }
 
 /**
