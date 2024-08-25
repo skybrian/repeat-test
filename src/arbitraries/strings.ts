@@ -134,7 +134,8 @@ export const unicodeChar: () => Arbitrary<string> = codePoint.map((code) => {
 export function string(
   opts?: { min: number; max: number },
 ): Arbitrary<string> {
-  return arb.array(char16(), opts).map((arr) => arr.join("")).with({
+  const joinChars = (parts: string[]): string => parts.join("");
+  return arb.array(char16(), opts).map(joinChars).with({
     label: "anyString",
   });
 }

@@ -1,6 +1,11 @@
 import { Arbitrary, biasedBitRequest, PickRequest } from "@/arbitrary.ts";
 
-import type { PickCallback, PickSet, RecordShape } from "@/arbitrary.ts";
+import type {
+  PickCallback,
+  PickFunction,
+  PickSet,
+  RecordShape,
+} from "@/arbitrary.ts";
 
 /**
  * Defines an Arbitrary implemented by a callback function.
@@ -111,7 +116,7 @@ export function array<T>(
   //
   // Since we make a pick request for each item, this makes long arrays unlikely
   // but possible, and it should be easier remove items when shrinking.
-  return Arbitrary.from((pick) => {
+  const pickArray = (pick: PickFunction) => {
     const result = [];
     // fixed-length portion
     let i = 0;
@@ -125,5 +130,6 @@ export function array<T>(
       i++;
     }
     return result;
-  }).with({ label });
+  };
+  return Arbitrary.from(pickArray).with({ label });
 }
