@@ -29,7 +29,7 @@ describe("uniformSource", () => {
   }
 
   describe("for a range of size 1", () => {
-    const min = arb.of(0, 1, -1, 1000, -1000);
+    const min = arb.of(0, 1, 1000, Number.MAX_SAFE_INTEGER);
     it("returns the only possible value", () => {
       const uniform = uniformSource(mock());
       repeatTest(min, (min) => {
@@ -41,7 +41,7 @@ describe("uniformSource", () => {
   });
 
   describe("for small ranges", () => {
-    const min = arb.of(0, 1, -1, 1000, -1000);
+    const min = arb.of(0, 1, 1000, Number.MAX_SAFE_INTEGER - 127);
     const size = arb.of(2, 3, 4, 5, 128);
     const lowest = -0x80000000;
     const rangeStart = arb.int(lowest, lowest + 10);
@@ -72,9 +72,9 @@ describe("uniformSource", () => {
     });
   });
 
-  describe("for a range whose size is odd", () => {
+  describe("for a small range whose size is odd", () => {
     it("tries again if the first input is the maximum value", () => {
-      const min = arb.of(0, 1, -1, 1000, -1000);
+      const min = arb.of(0, 1, 1000, Number.MAX_SAFE_INTEGER - 6);
       const size = arb.of(3, 5, 7);
       repeatTest(arb.record({ min, size }), ({ min, size }) => {
         const max = min + size - 1;
@@ -83,6 +83,14 @@ describe("uniformSource", () => {
         assertEquals(uniform(min, max), min);
         assertEquals(calls, 2);
       });
+    });
+  });
+
+  describe("for the maximum range", () => {
+    it("returns a safe int", () => {
+      const uniform = uniformSource(mock(-0x80000000, -0x80000000));
+      const actual = uniform(0, Number.MAX_SAFE_INTEGER);
+      assert(Number.isSafeInteger(actual));
     });
   });
 });
