@@ -1,6 +1,6 @@
 import { Arbitrary } from "@/arbitrary.ts";
 import { from, int, oneOf, record } from "./basics.ts";
-import { safeInt } from "./numbers.ts";
+import { int32 } from "./numbers.ts";
 
 export type Range = { min: number; max: number };
 
@@ -94,6 +94,6 @@ export function invalidIntRange(opts?: { minMin: number }): Arbitrary<Range> {
   return oneOf<Range>(
     Arbitrary.of({ min: 1, max: 0 }),
     record({ min: validMin, max: nonInteger() }),
-    record({ min: invalidMin, max: safeInt() }),
+    record({ min: invalidMin, max: int32() }),
   );
 }

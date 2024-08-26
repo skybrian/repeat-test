@@ -1,6 +1,6 @@
 import prand from "pure-rand";
 import type { IntPicker, PickRequest, UniformRandomSource } from "./picks.ts";
-import { assert } from "@std/assert";
+import { assert, fail } from "@std/assert";
 
 export function pickRandomSeed(): number {
   return Date.now() ^ (Math.random() * 0x100000000);
@@ -14,20 +14,29 @@ class Adapter implements prand.RandomGenerator {
     return this.rng();
   }
   clone(): prand.RandomGenerator {
-    assert(false, "not implemented");
+    fail("not implemented");
   }
   next(): [number, prand.RandomGenerator] {
-    assert(false, "not implemented");
+    fail("not implemented");
   }
   jump?(): prand.RandomGenerator {
-    assert(false, "not implemented");
+    fail("not implemented");
   }
   unsafeJump?(): void {
-    assert(false, "not implemented");
+    fail("not implemented");
   }
   getState?(): readonly number[] {
-    assert(false, "not implemented");
+    fail("not implemented");
   }
+}
+
+function uniformPick(next: Int32Source, size: number) {
+  const limit = ~~((0x100000000) / size) * size;
+  let val = next() + 0x80000000;
+  while (val >= limit) {
+    val = next() + 0x80000000;
+  }
+  return (val % size);
 }
 
 export function uniformSource(next: Int32Source): UniformRandomSource {
@@ -40,6 +49,9 @@ export function uniformSource(next: Int32Source): UniformRandomSource {
         return (next() & 0x1) + min;
       case 128:
         return (next() & 0x7F) + min;
+    }
+    if (size < 0x100000000) {
+      return uniformPick(next, size) + min;
     }
     return prand.unsafeUniformIntDistribution(min, max, new Adapter(next));
   };

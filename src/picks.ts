@@ -69,7 +69,7 @@ export class PickRequest {
       throw new Error(`max must be a safe integer; got ${max}`);
     }
     if (min > max) {
-      throw new Error(`invalid range: (${min}, ${max})`);
+      throw new Error(`invalid range: ${min}..${max}`);
     }
     this.bias = opts?.bias ?? uniformBias(min, max);
   }
