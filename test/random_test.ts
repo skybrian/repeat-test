@@ -1,4 +1,4 @@
-import { describe, it } from "@std/testing/bdd";
+import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, fail } from "@std/assert";
 import { repeatTest } from "@/runner.ts";
 import * as arb from "@/arbs.ts";
@@ -11,52 +11,77 @@ import {
 import { randomPickers, uniformSource } from "../src/random.ts";
 
 describe("uniformSource", () => {
-  function mock(result: number, opts?: { expectedCalls: number }) {
-    const expectedCalls = opts?.expectedCalls ?? 1;
-    let calls = 0;
+  let calls = 0;
+
+  beforeEach(() => {
+    calls = 0;
+  });
+
+  function mock(...result: number[]): () => number {
+    const expectedCalls = result.length;
     return () => {
       calls++;
       if (calls > expectedCalls) {
-        fail("should not be called more than once");
+        fail(`expected ${expectedCalls} calls to next(), got ${calls}`);
       }
-      return result;
+      return result[calls - 1];
     };
   }
 
-  const min = arb.of(0, 1, -1, 1000, -1000);
-  it("returns the only value for a range of size 1", () => {
-    const uniform = uniformSource(mock(0, { expectedCalls: 0 }));
-    repeatTest(min, (min) => {
-      assertEquals(uniform(min, min), min);
-    });
-  });
-
-  describe("for a range of size 2", () => {
-    it("returns the minimum value for an even number", () => {
-      const even = arb.int(-3, 3).map((n) => n * 2);
-      repeatTest(arb.record({ min, even }), ({ min, even }) => {
-        const uniform = uniformSource(mock(even));
-        assertEquals(uniform(min, min + 1), min);
-      });
-    });
-
-    it("returns the maximum value for an odd number", () => {
-      const odd = arb.int(-3, 3).map((n) => n * 2 + 1);
-      repeatTest(arb.record({ min, odd }), ({ min, odd }) => {
-        const uniform = uniformSource(mock(odd));
-        assertEquals(uniform(min, min + 1), min + 1);
+  describe("for a range of size 1", () => {
+    const min = arb.of(0, 1, -1, 1000, -1000);
+    it("returns the only possible value", () => {
+      const uniform = uniformSource(mock());
+      repeatTest(min, (min) => {
+        calls = 0;
+        assertEquals(uniform(min, min), min);
+        assertEquals(calls, 0);
       });
     });
   });
 
-  describe("for a range of size 3", () => {
-    it("returns something in range", () => {
-      const next = arb.int(0, 10);
-      repeatTest(arb.record({ min, next }), ({ min, next }) => {
-        const uniform = uniformSource(mock(next));
-        const actual = uniform(min, min + 2);
-        assert(actual >= min);
-        assert(actual <= min + 2);
+  describe("for small ranges", () => {
+    const min = arb.of(0, 1, -1, 1000, -1000);
+    const size = arb.of(2, 3, 4, 5, 128);
+    const lowest = -0x80000000;
+    const rangeStart = arb.int(lowest, lowest + 10);
+    it("returns each value for a contiguous range of inputs", () => {
+      repeatTest(
+        arb.record({ min, size, rangeStart }),
+        ({ min, size, rangeStart }, console) => {
+          const max = min + size - 1;
+          console.log(`testing with range ${min}..${max}`);
+          const counts = new Array(size).fill(0);
+          for (let i = rangeStart; i < rangeStart + size; i++) {
+            calls = 0;
+            const uniform = uniformSource(mock(i));
+            const actual = uniform(min, max);
+            assertEquals(calls, 1);
+            assert(min <= actual && actual <= max);
+            counts[actual - min]++;
+          }
+          for (let i = 0; i < counts.length; i++) {
+            assertEquals(
+              counts[i],
+              1,
+              `${i + min} was picked ${counts[i]} times`,
+            );
+          }
+        },
+      );
+    });
+  });
+
+  describe("for a range whose size is odd", () => {
+    it("tries again if the first input is the maximum value", () => {
+      const min = arb.of(0, 1, -1, 1000, -1000);
+      const size = arb.of(3, 5, 7);
+      repeatTest(arb.record({ min, size }), ({ min, size }) => {
+        const max = min + size - 1;
+        const uniform = uniformSource(mock(0x7fffffff, -0x80000000));
+        calls = 0;
+        assertEquals(uniform(min, max), min);
+        assertEquals(calls, 2);
       });
     });
   });
