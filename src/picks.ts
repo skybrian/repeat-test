@@ -1,10 +1,68 @@
 /**
+ * A source of random signed 32-bit integers.
+ */
+export type RandomSource = () => number;
+
+/**
  * A function that randomly picks an integer within the given range.
  *
  * Precondition: min and max are non-negative safe integers.
  * @returns a number satisfying min <= pick <= max.
  */
 export type UniformRandomSource = (min: number, max: number) => number;
+
+/**
+ * Returns a random number such that 0 <= n <= max.
+ * Where max < 2**32.
+ */
+function smallUniformPick(next: RandomSource, max: number) {
+  switch (max) {
+    case 0:
+      return 0;
+    case 1:
+      return next() & 1;
+    case 127:
+      return (next() & 0x7F);
+  }
+  const size = max + 1;
+  const quotient = ~~(0x100000000 / size);
+  const limit = quotient * size;
+  while (true) {
+    const val = next() + 0x80000000;
+    if (val < limit) {
+      return val % size;
+    }
+  }
+}
+
+/**
+ * Returns a random number such that 0 <= n <= max.
+ * Where max >= 2**32 and max <= Math.MAX_SAFE_INTEGER.
+ */
+function largeUniformPick(next: RandomSource, max: number) {
+  const hiMax = (max / 0x100000000) | 0;
+  const loMax = max - hiMax * 0x100000000;
+  while (true) {
+    const hi = smallUniformPick(next, hiMax);
+    const lo = next() + 0x80000000;
+    if (hi < hiMax || lo <= loMax) {
+      return hi * 0x100000000 + lo;
+    }
+  }
+}
+
+/**
+ * Converts a RandomSource into a UniformRandomSource.
+ */
+export function uniformSource(next: RandomSource): UniformRandomSource {
+  return (min, max) => {
+    const innerMax = max - min;
+    if (innerMax < 0x100000000) {
+      return smallUniformPick(next, innerMax) + min;
+    }
+    return largeUniformPick(next, innerMax) + min;
+  };
+}
 
 /**
  * Picks an integer, given a source of random numbers.
