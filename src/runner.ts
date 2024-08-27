@@ -211,7 +211,7 @@ export function reportFailure(
   console: TestConsole,
 ): never {
   const key = serializeRepKey(failure.key);
-  console.error(`attempt ${failure.key.index} FAILED, using:`, failure.arg);
+  console.error(`attempt ${failure.key.index + 1} FAILED, using:`, failure.arg);
   console.log(`rerun using {only: "${key}"}`);
   throw failure.caught;
 }

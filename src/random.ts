@@ -1,6 +1,6 @@
 import prand from "pure-rand";
 import type { IntPicker, PickRequest, UniformRandomSource } from "./picks.ts";
-import { assert, fail } from "@std/assert";
+import { assert } from "@std/assert";
 
 export function pickRandomSeed(): number {
   return Date.now() ^ (Math.random() * 0x100000000);
@@ -8,52 +8,53 @@ export function pickRandomSeed(): number {
 
 type Int32Source = () => number;
 
-class Adapter implements prand.RandomGenerator {
-  constructor(private readonly rng: Int32Source) {}
-  unsafeNext(): number {
-    return this.rng();
+/**
+ * Returns a random number such that 0 <= n <= max.
+ * Where max < 2**32.
+ */
+function smallUniformPick(next: Int32Source, max: number) {
+  switch (max) {
+    case 0:
+      return 0;
+    case 1:
+      return next() & 1;
+    case 127:
+      return (next() & 0x7F);
   }
-  clone(): prand.RandomGenerator {
-    fail("not implemented");
-  }
-  next(): [number, prand.RandomGenerator] {
-    fail("not implemented");
-  }
-  jump?(): prand.RandomGenerator {
-    fail("not implemented");
-  }
-  unsafeJump?(): void {
-    fail("not implemented");
-  }
-  getState?(): readonly number[] {
-    fail("not implemented");
+  const size = max + 1;
+  const quotient = ~~(0x100000000 / size);
+  const limit = quotient * size;
+  while (true) {
+    const val = next() + 0x80000000;
+    if (val < limit) {
+      return val % size;
+    }
   }
 }
 
-function uniformPick(next: Int32Source, size: number) {
-  const limit = ~~((0x100000000) / size) * size;
-  let val = next() + 0x80000000;
-  while (val >= limit) {
-    val = next() + 0x80000000;
+/**
+ * Returns a random number such that 0 <= n <= max.
+ * Where max >= 2**32 and max <= Math.MAX_SAFE_INTEGER.
+ */
+function largeUniformPick(next: Int32Source, max: number) {
+  const hiMax = (max / 0x100000000) | 0;
+  const loMax = max - hiMax * 0x100000000;
+  while (true) {
+    const hi = smallUniformPick(next, hiMax);
+    const lo = next() + 0x80000000;
+    if (hi < hiMax || lo <= loMax) {
+      return hi * 0x100000000 + lo;
+    }
   }
-  return (val % size);
 }
 
 export function uniformSource(next: Int32Source): UniformRandomSource {
   return (min, max) => {
-    const size = max - min + 1;
-    switch (size) {
-      case 1:
-        return min;
-      case 2:
-        return (next() & 0x1) + min;
-      case 128:
-        return (next() & 0x7F) + min;
+    const innerMax = max - min;
+    if (innerMax < 0x100000000) {
+      return smallUniformPick(next, innerMax) + min;
     }
-    if (size < 0x100000000) {
-      return uniformPick(next, size) + min;
-    }
-    return prand.unsafeUniformIntDistribution(min, max, new Adapter(next));
+    return largeUniformPick(next, innerMax) + min;
   };
 }
 

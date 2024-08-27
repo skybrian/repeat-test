@@ -1,7 +1,7 @@
 /**
  * A function that randomly picks an integer within the given range.
  *
- * Precondition: min and max are safe integers.
+ * Precondition: min and max are non-negative safe integers.
  * @returns a number satisfying min <= pick <= max.
  */
 export type UniformRandomSource = (min: number, max: number) => number;
