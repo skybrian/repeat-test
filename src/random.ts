@@ -1,6 +1,5 @@
 import { assert } from "@std/assert";
 import prand from "pure-rand";
-import { uniformSource } from "./picks.ts";
 import type { IntPicker, PickRequest } from "./picks.ts";
 
 export function pickRandomSeed(): number {
@@ -14,11 +13,10 @@ export function pickRandomSeed(): number {
 function makePicker(rng: prand.RandomGenerator): IntPicker {
   rng = rng.clone();
   const next = rng.unsafeNext.bind(rng);
-  const uniform = uniformSource(next);
 
   return {
     pick(req: PickRequest) {
-      return req.bias(uniform);
+      return req.random(next);
     },
   };
 }

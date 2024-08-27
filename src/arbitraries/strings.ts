@@ -1,5 +1,4 @@
-import { Arbitrary } from "@/arbitrary.ts";
-import { subrangeRequest } from "../picks.ts";
+import { Arbitrary, PickRequest, type RandomSource } from "@/arbitrary.ts";
 import * as arb from "./basics.ts";
 import { surrogateGap, surrogateMin, unicodeMax } from "../unicode.ts";
 
@@ -81,6 +80,20 @@ export const asciiSymbol: () => Arbitrary<string> = asciiChar(
   /[^ a-zA-Z0-9\x00-\x1f\x7f]/,
 ).asFunction();
 
+const bitReq = new PickRequest(0, 1);
+const asciiReq = new PickRequest(0, 127);
+const anyChar16Req = new PickRequest(0, 0xffff);
+
+const char16Req = new PickRequest(0, 0xffff, {
+  bias: (next: RandomSource) => {
+    if (bitReq.random(next) === 0) {
+      return asciiReq.random(next);
+    } else {
+      return anyChar16Req.random(next);
+    }
+  },
+});
+
 /**
  * Returns an Arbitrary that generates all JavaScript strings of length 1.
  *
@@ -91,7 +104,7 @@ export const asciiSymbol: () => Arbitrary<string> = asciiChar(
  * badly-formed strings.
  */
 export const char16: () => Arbitrary<string> = Arbitrary.from(
-  subrangeRequest([0, 128], 0xffff),
+  char16Req,
 ).map(
   (code) => {
     if (code < 128) {

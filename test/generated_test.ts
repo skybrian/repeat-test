@@ -89,7 +89,7 @@ describe("generate", () => {
   });
 
   const biased = new PickRequest(0, 1, {
-    bias: ((uniform) => uniform(0, 99999) > 0 ? 1 : 0),
+    bias: () => 1,
   });
   const deep = Arbitrary.from((pick) => {
     let picks = 0;

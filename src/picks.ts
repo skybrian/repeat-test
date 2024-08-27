@@ -4,28 +4,15 @@
 export type RandomSource = () => number;
 
 /**
- * A function that randomly picks an integer within the given range.
- *
- * Precondition: min and max are non-negative safe integers.
- * @returns a number satisfying min <= pick <= max.
- */
-export type UniformRandomSource = (min: number, max: number) => number;
-
-/**
  * Returns a random number such that 0 <= n <= max.
  * Where max < 2**32.
  */
 function smallUniformPick(next: RandomSource, max: number) {
-  switch (max) {
-    case 0:
-      return 0;
-    case 1:
-      return next() & 1;
-    case 127:
-      return (next() & 0x7F);
+  if (max === 1) {
+    return next() & 1;
   }
   const size = max + 1;
-  const quotient = ~~(0x100000000 / size);
+  const quotient = ~~(0x100000000 / size); // does not work for size === 2
   const limit = quotient * size;
   while (true) {
     const val = next() + 0x80000000;
@@ -52,29 +39,34 @@ function largeUniformPick(next: RandomSource, max: number) {
 }
 
 /**
- * Converts a RandomSource into a UniformRandomSource.
- */
-export function uniformSource(next: RandomSource): UniformRandomSource {
-  return (min, max) => {
-    const innerMax = max - min;
-    if (innerMax < 0x100000000) {
-      return smallUniformPick(next, innerMax) + min;
-    }
-    return largeUniformPick(next, innerMax) + min;
-  };
-}
-
-/**
  * Picks an integer, given a source of random numbers.
  *
  * The range is unspecified (given by context).
- *
- * @param uniform A source of random numbers.
  */
-export type BiasedIntPicker = (uniform: UniformRandomSource) => number;
+export type RandomPicker = (source: RandomSource) => number;
 
-function uniformBias(min: number, max: number): BiasedIntPicker {
-  return (uniform: UniformRandomSource) => uniform(min, max);
+/**
+ * Given a range, returns a function that picks an integer in that range using a uniform distribution.
+ *
+ * min <= pick <= max.
+ *
+ * min and max are non-negative safe integers.
+ */
+function uniformPicker(min: number, max: number): RandomPicker {
+  const innerMax = max - min;
+  switch (innerMax) {
+    case 0:
+      return () => min;
+    case 1:
+      return (source) => (source() & 1) + min;
+    case 127:
+      return (source) => (source() & 0x7F) + min;
+  }
+  if (innerMax < 0x100000000) {
+    return (source) => smallUniformPick(source, innerMax) + min;
+  } else {
+    return (source) => largeUniformPick(source, innerMax) + min;
+  }
 }
 
 /** Options on a {@link PickRequest}. */
@@ -83,24 +75,25 @@ export type PickRequestOpts = {
    * Overrides the random distribution for this request. The output should be in
    * range for the request.
    */
-  bias?: BiasedIntPicker;
+  bias?: RandomPicker;
 };
 
 /**
- * Requests a safe, non-negative integer in a given range, with optional hints
- * to the picker.
+ * Requests a safe, non-negative integer in a given range.
  *
- * When {@link IntPicker.isRandom} is true and {@link PickRequestOpts.bias}
- * isn't set, requests that the number should be picked using a uniform
- * distribution. Otherwise, the reply can be any number within range.
+ * The reply may be any number within range, chosen either deterministically or
+ * randomly.
+ *
+ * When picking randomly, the {@link random} function implements the requested
+ * probability distribution.
  */
 export class PickRequest {
   /**
-   * The distribution to use when picking randomly.
+   * The function to call when picking randomly.
    *
    * The output is assumed to satisfy {@link PickRequest.inRange}.
    */
-  readonly bias: BiasedIntPicker;
+  readonly random: RandomPicker;
 
   /**
    * Constructs a request an integer in a given range.
@@ -108,9 +101,7 @@ export class PickRequest {
    * The range must be over non-negative integers and have at at least one
    * choice: min <= max.
    *
-   * The request's default value will be the number closest to zero that's
-   * between min and max, unless overridden by
-   * {@link PickRequestOpts.default}.
+   * If no bias is provided, {@link random} implements a uniform distribution.
    */
   constructor(
     readonly min: number,
@@ -129,7 +120,7 @@ export class PickRequest {
     if (min > max) {
       throw new Error(`invalid range: ${min}..${max}`);
     }
-    this.bias = opts?.bias ?? uniformBias(min, max);
+    this.random = opts?.bias ?? uniformPicker(min, max);
   }
 
   /** Returns true if the given number satisfies this request. */
@@ -143,70 +134,19 @@ export class PickRequest {
   }
 }
 
-const biasBins = 0x100000000;
-
 /**
- * Creates a PickRequest that chooses between 0 and 1 with the given bias.
- *
- * (Note that the bias only matters when picking randomly.)
+ * Creates a PickRequest where {@link PickRequest.random} chooses 0 or 1
+ * with the given probability.
  *
  * @param probOne The probability of picking 1.
  */
 export function biasedBitRequest(probOne: number): PickRequest {
-  const bias = (uniform: UniformRandomSource) => {
-    const threshold = Math.floor((1 - probOne) * biasBins);
-    const choice = uniform(1, biasBins);
-    return choice <= threshold ? 0 : 1;
+  // There are 2**32 bins and (2**32 + 1) places to put a partition.
+  const threshold = Math.floor((1 - probOne) * 0x100000001) - 0x80000000;
+  const bias = (next: RandomSource) => {
+    return next() < threshold ? 0 : 1;
   };
   return new PickRequest(0, 1, { bias });
-}
-
-/**
- * Creates a PickRequest that chooses a subrange and then a number within the
- * chosen subrange.
- *
- * This can be used to give each subrange an equal chance of being picked, even
- * if the ranges have very different sizes.
- *
- * (Note that the bias only matters when picking randomly.)
- *
- * @param starts the start of each range
- * @param lastMax the last choice in the last range
- * @returns a number satisfying start[0] <= n <= lastMax
- */
-export function subrangeRequest(
-  starts: number[],
-  lastMax: number,
-): PickRequest {
-  const last = starts.length - 1;
-  if (last < 0) {
-    throw new Error("starts must be non-empty");
-  }
-  for (let i = 0; i <= last; i++) {
-    if (!Number.isSafeInteger(starts[i])) {
-      throw new Error(`starts[${i}] must be a safe integer; got ${starts[i]}`);
-    }
-  }
-  if (!Number.isSafeInteger(lastMax)) {
-    throw new Error(`lastMax must be a safe integer; got ${lastMax}`);
-  }
-  for (let i = 1; i <= last; i++) {
-    if (starts[i] < starts[i - 1]) {
-      throw new Error(
-        `want: starts[${i}] >= ${starts[i - 1]}; got ${starts[i]}`,
-      );
-    }
-  }
-  if (lastMax < starts[last]) {
-    throw new Error(`want: lastMax >= ${starts[last]}; got ${lastMax}`);
-  }
-  const bias = (uniform: UniformRandomSource) => {
-    const choice = uniform(0, starts.length - 1);
-    const min = starts[choice];
-    const max = choice < starts.length - 1 ? starts[choice + 1] - 1 : lastMax;
-    return uniform(min, max);
-  };
-  return new PickRequest(starts[0], lastMax, { bias });
 }
 
 /**

@@ -17,11 +17,9 @@ import {
   PickList,
   PickRequest,
   PlaybackPicker,
-  subrangeRequest,
-  uniformSource,
 } from "../src/picks.ts";
 
-describe("uniformSource", () => {
+describe("PickRequest.random", () => {
   let calls = 0;
 
   beforeEach(() => {
@@ -42,10 +40,9 @@ describe("uniformSource", () => {
   describe("for a range of size 1", () => {
     const min = arb.of(0, 1, 1000, Number.MAX_SAFE_INTEGER);
     it("returns the only possible value", () => {
-      const uniform = uniformSource(mock());
       repeatTest(min, (min) => {
         calls = 0;
-        assertEquals(uniform(min, min), min);
+        assertEquals(new PickRequest(min, min).random(mock()), min);
         assertEquals(calls, 0);
       });
     });
@@ -66,8 +63,7 @@ describe("uniformSource", () => {
           const counts = new Array(size).fill(0);
           for (let i = rangeStart; i < rangeStart + size; i++) {
             calls = 0;
-            const uniform = uniformSource(mock(i));
-            const actual = uniform(min, max);
+            const actual = new PickRequest(min, max).random(mock(i));
             assertEquals(calls, 1);
             assert(min <= actual && actual <= max);
             counts[actual - min]++;
@@ -90,9 +86,9 @@ describe("uniformSource", () => {
       const size = arb.of(3, 5, 7);
       repeatTest(arb.record({ min, size }), ({ min, size }) => {
         const max = min + size - 1;
-        const uniform = uniformSource(mock(0x7fffffff, -0x80000000));
+        const next = mock(0x7fffffff, -0x80000000);
         calls = 0;
-        assertEquals(uniform(min, max), min);
+        assertEquals(new PickRequest(min, max).random(next), min);
         assertEquals(calls, 2);
       });
     });
@@ -113,9 +109,9 @@ describe("uniformSource", () => {
         2 ** 32 - 1,
       );
       repeatTest(max, (max) => {
-        const uniform = uniformSource(mock(max - 0x80000000));
+        const next = mock(max - 0x80000000);
         calls = 0;
-        const actual = uniform(0, max);
+        const actual = new PickRequest(0, max).random(next);
         assertEquals(actual, max);
         assertEquals(calls, 1);
       });
@@ -131,9 +127,9 @@ describe("uniformSource", () => {
       );
       repeatTest(max, (max) => {
         const [hi, lo] = splitInt(max);
-        const uniform = uniformSource(mock(hi - 0x80000000, lo - 0x80000000));
+        const next = mock(hi - 0x80000000, lo - 0x80000000);
         calls = 0;
-        const actual = uniform(0, max);
+        const actual = new PickRequest(0, max).random(next);
         assertEquals(actual, max);
         assertEquals(calls, 2, "expected 2 calls to next()");
       });
@@ -150,13 +146,14 @@ describe("uniformSource", () => {
       Number.MAX_SAFE_INTEGER - 1,
       Number.MAX_SAFE_INTEGER,
     );
+    const req = new PickRequest(0, Number.MAX_SAFE_INTEGER);
 
     it("round-trips a value in two picks", () => {
       repeatTest(n, (n) => {
         const [hi, lo] = splitInt(n);
-        const uniform = uniformSource(mock(hi - 0x80000000, lo - 0x80000000));
+        const next = mock(hi - 0x80000000, lo - 0x80000000);
         calls = 0;
-        const actual = uniform(0, Number.MAX_SAFE_INTEGER);
+        const actual = req.random(next);
         assertEquals(calls, 2);
         assertEquals(actual, n);
       });
@@ -168,15 +165,13 @@ describe("uniformSource", () => {
 
       repeatTest(n, (n) => {
         const [hi, lo] = splitInt(n);
-        const uniform = uniformSource(
-          mock(
-            bigLimit,
-            hi - 0x80000000,
-            lo - 0x80000000,
-          ),
+        const next = mock(
+          bigLimit,
+          hi - 0x80000000,
+          lo - 0x80000000,
         );
         calls = 0;
-        const actual = uniform(0, Number.MAX_SAFE_INTEGER);
+        const actual = req.random(next);
         assertEquals(actual, n, "round trip failed");
         assertEquals(calls, 3, "expected 3 calls to next()");
       });
@@ -187,16 +182,14 @@ describe("uniformSource", () => {
 
       repeatTest(n, (n) => {
         const [hi, lo] = splitInt(n);
-        const uniform = uniformSource(
-          mock(
-            bigHi,
-            bigLo + 1,
-            hi - 0x80000000,
-            lo - 0x80000000,
-          ),
+        const next = mock(
+          bigHi,
+          bigLo + 1,
+          hi - 0x80000000,
+          lo - 0x80000000,
         );
         calls = 0;
-        const actual = uniform(0, Number.MAX_SAFE_INTEGER);
+        const actual = req.random(next);
         assertEquals(actual, n, "round trip failed");
         assertEquals(calls, 4, "expected 4 calls to next()");
       });
@@ -224,9 +217,8 @@ describe("biasedBitRequest", () => {
   function scan(req: PickRequest, bins: number): number[] {
     const out: number[] = [];
     for (let i = 0; i < bins; i++) {
-      const arg = i / (bins - 1);
-      const uniform = (min: number, max: number) => arg * (max - min) + min;
-      out.push(req.bias(uniform));
+      const input = 0x100000000 * (i / (bins - 1)) - 0x80000000;
+      out.push(req.random(() => input));
     }
     return out;
   }
@@ -246,70 +238,6 @@ describe("biasedBitRequest", () => {
   it("always picks 1 for 1", () => {
     const fair = biasedBitRequest(1);
     assertEquals(scan(fair, 10), [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
-  });
-});
-
-describe("subrangeRequest", () => {
-  it("throws if given an empty list of starts", () => {
-    assertThrows(
-      () => subrangeRequest([], 0),
-      Error,
-      "starts must be non-empty",
-    );
-  });
-  it("throws if any start isn't a safe integer", () => {
-    assertThrows(
-      () => subrangeRequest([1, 1.5, 2], 2),
-      Error,
-      "starts[1] must be a safe integer; got 1.5",
-    );
-  });
-  it("throws if lastMax isn't a safe integer", () => {
-    assertThrows(
-      () => subrangeRequest([1], 1.5),
-      Error,
-      "lastMax must be a safe integer; got 1.5",
-    );
-  });
-  it("throws if a start is lower than the previous start", () => {
-    assertThrows(
-      () => subrangeRequest([1, 0], 1),
-      Error,
-      "want: starts[1] >= 1; got 0",
-    );
-  });
-  it("throws if given a start that's higher than lastMax", () => {
-    assertThrows(
-      () => subrangeRequest([1], 0),
-      Error,
-      "want: lastMax >= 1; got 0",
-    );
-  });
-
-  function scan(req: PickRequest, bins: number): number[] {
-    const out: number[] = [];
-    for (let i = 0; i < bins; i++) {
-      const arg = i / (bins - 1);
-      let calls = 0;
-      const uniform = (min: number, max: number) => {
-        calls++;
-        switch (calls) {
-          case 1:
-            return arg * (max - min) + min;
-          case 2:
-            return min;
-          default:
-            throw new Error("too many calls to uniform");
-        }
-      };
-      out.push(req.bias(uniform));
-    }
-    return out;
-  }
-
-  it("chooses each range with equal probability", () => {
-    const req = subrangeRequest([1, 2, 1000], 2000);
-    assertEquals(scan(req, 3), [1, 2, 1000]);
   });
 });
 
