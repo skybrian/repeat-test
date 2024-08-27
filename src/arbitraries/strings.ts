@@ -80,16 +80,13 @@ export const asciiSymbol: () => Arbitrary<string> = asciiChar(
   /[^ a-zA-Z0-9\x00-\x1f\x7f]/,
 ).asFunction();
 
-const bitReq = new PickRequest(0, 1);
-const asciiReq = new PickRequest(0, 127);
-const anyChar16Req = new PickRequest(0, 0xffff);
-
 const char16Req = new PickRequest(0, 0xffff, {
   bias: (next: RandomSource) => {
-    if (bitReq.random(next) === 0) {
-      return asciiReq.random(next);
+    const r = next();
+    if (r < 0) {
+      return r & 0x7F;
     } else {
-      return anyChar16Req.random(next);
+      return r & 0xFFFF;
     }
   },
 });
