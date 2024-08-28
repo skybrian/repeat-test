@@ -1,8 +1,11 @@
 import { assert, assertEquals } from "@std/assert";
-import type { PickSet } from "./generated.ts";
-import type { Arbitrary } from "./arbitrary_class.ts";
-import type { Domain } from "./domain_class.ts";
+import type { Arbitrary } from "@/arbitrary.ts";
+import type { Domain } from "@/domain.ts";
+
+import { generate, type PickSet } from "./generated.ts";
 import { take, takeAll, takeGenerated } from "./multipass_search.ts";
+import { onePlayout } from "./backtracking.ts";
+import { randomPicker } from "./random.ts";
 
 export function assertRoundTrip<T>(dom: Domain<T>, val: T) {
   assertEquals(dom.parse(val), val, "regenerated value didn't match");
@@ -12,6 +15,26 @@ export function assertEncoding<T>(dom: Domain<T>, picks: number[], val: T) {
   const gen = dom.regenerate(val);
   assert(gen.ok, "can't regenerate value");
   assertEquals(gen.val, val, `dom.generate(${picks}) didn't match val`);
+}
+
+export function assertSometimes<T>(
+  input: Arbitrary<T>,
+  predicate: (val: T) => boolean,
+  expectedMin: number,
+  expectedMax: number,
+) {
+  const rand = randomPicker(123);
+  let count = 0;
+  for (let i = 0; i < 1000; i++) {
+    const gen = generate(input, onePlayout(rand));
+    assert(gen !== undefined);
+    if (predicate(gen.val)) {
+      count++;
+    }
+  }
+
+  assert(count >= expectedMin, `want at least ${expectedMin}, got ${count}`);
+  assert(count <= expectedMax, `want at most ${expectedMax}, got ${count}`);
 }
 
 export function assertSameExamples<T>(

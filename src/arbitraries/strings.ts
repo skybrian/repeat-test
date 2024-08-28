@@ -83,7 +83,9 @@ export const asciiSymbol: () => Arbitrary<string> = asciiChar(
 const char16Req = new PickRequest(0, 0xffff, {
   bias: (next: RandomSource) => {
     const r = next();
-    if (r < 0) {
+    if (r < -0x70000000) {
+      return r & 0x7FF | 0xd800; // surrogates
+    } else if (r < 0) {
       return r & 0x7F;
     } else {
       return r & 0xFFFF;
@@ -146,7 +148,7 @@ export function string(
 ): Arbitrary<string> {
   const joinChars = (parts: string[]): string => parts.join("");
   return arb.array(char16(), opts).map(joinChars).with({
-    label: "anyString",
+    label: "string",
   });
 }
 
