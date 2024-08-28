@@ -112,11 +112,19 @@ export function record<T extends Record<string, unknown>>(
  */
 export function array<T>(
   item: Domain<T>,
-  opts?: { min?: number; max?: number },
+  opts?: arb.ArrayOpts,
 ): Domain<T[]> {
   const gen = arb.array(item, opts);
-  const min = opts?.min ?? 0;
-  const max = opts?.max ?? 1000;
+
+  let min = 0;
+  let max = 1000;
+  if (typeof opts?.length === "number") {
+    min = opts.length;
+    max = opts.length;
+  } else if (opts?.length !== undefined) {
+    min = opts.length.min ?? 0;
+    max = opts.length.max ?? 1000;
+  }
 
   const accept = (
     val: unknown,
@@ -126,8 +134,11 @@ export function array<T>(
       sendErr("not an array");
       return false;
     }
-    if (val.length < min || val.length > max) {
-      sendErr(`array length not in range [${min}, ${max}]`);
+    if (val.length < min) {
+      sendErr(`array too short; want len >= ${min}, got: ${val.length}`);
+      return false;
+    } else if (val.length > max) {
+      sendErr(`array too long; want len <= ${max}, got: ${val.length}`);
       return false;
     }
     return true;

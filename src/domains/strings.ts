@@ -74,7 +74,7 @@ const maxStringLength = 2 ** 32 - 1;
  * (That is, they may contain unpaired surrogates.)
  */
 export const string: () => Domain<string> = new Domain(
-  arb.string({ min: 0, max: maxStringLength }),
+  arb.string({ length: { min: 0, max: maxStringLength } }),
   (val, sendErr) => {
     if (typeof val !== "string") {
       sendErr("not a string");

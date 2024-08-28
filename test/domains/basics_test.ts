@@ -170,14 +170,34 @@ describe("array", () => {
       assertThrows(() => arr.parse([1, 0]), Error, "1: not in range");
     });
   });
-  describe("for a fixed-length array", () => {
-    const arr = dom.array(dom.int(1, 3), { min: 2, max: 2 });
+  describe("with a minimum length", () => {
+    const arr = dom.array(dom.int(1, 3), { length: { min: 2 } });
+    it("rejects arrays that are too short", () => {
+      assertThrows(
+        () => arr.parse([1]),
+        Error,
+        "array too short; want len >= 2, got: 1",
+      );
+    });
+  });
+  describe("with a maximum length", () => {
+    const arr = dom.array(dom.int(1, 3), { length: { max: 2 } });
+    it("rejects arrays that are too long", () => {
+      assertThrows(
+        () => arr.parse([1, 2, 3]),
+        Error,
+        "array too long; want len <= 2, got: 3",
+      );
+    });
+  });
+  describe("with a fixed-length array", () => {
+    const arr = dom.array(dom.int(1, 3), { length: 2 });
     it("encodes the items without prefixes", () => {
       assertEncoding(arr, [2, 3], [2, 3]);
     });
     it("rejects arrays of the wrong length", () => {
-      assertThrows(() => arr.parse([]), Error, "not in range");
-      assertThrows(() => arr.parse([1, 2, 3]), Error, "not in range");
+      assertThrows(() => arr.parse([]), Error, "array too short");
+      assertThrows(() => arr.parse([1, 2, 3]), Error, "array too long");
     });
     it("rejects arrays with an invalid item", () => {
       assertThrows(() => arr.parse([2, 0]), Error, "1: not in range");

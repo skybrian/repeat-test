@@ -100,15 +100,33 @@ export function oneOf<T>(...cases: PickSet<T>[]): Arbitrary<T> {
 const addArrayItem = biased(0.9);
 
 /**
+ * Defines constraints on generated arrays.
+ */
+export type ArrayOpts = {
+  length?: number | { min?: number; max?: number };
+};
+
+/**
  * Defines an Arbitrary that generates an array of the given item.
  */
 export function array<T>(
   item: PickSet<T>,
-  opts?: { min?: number; max?: number; label?: string },
+  opts?: ArrayOpts,
 ): Arbitrary<T[]> {
-  const label = opts?.label ?? "array";
-  const min = opts?.min ?? 0;
-  const max = opts?.max ?? 1000;
+  let min = 0;
+  let max = 1000;
+  if (typeof opts?.length === "number") {
+    min = opts.length;
+    max = opts.length;
+  } else if (opts?.length !== undefined) {
+    min = opts.length.min ?? 0;
+    max = opts.length.max ?? 1000;
+  }
+  if (min > max) {
+    throw new Error(
+      `length constraint for array is invalid; want: min <= max, got: ${min}..${max}`,
+    );
+  }
 
   // Arrays are represented using a fixed-length part (items only) followed by a
   // variable-length part where each item is preceded by a 1, followed by a 0 to
@@ -131,5 +149,5 @@ export function array<T>(
     }
     return result;
   };
-  return Arbitrary.from(pickArray).with({ label });
+  return Arbitrary.from(pickArray).with({ label: "array" });
 }

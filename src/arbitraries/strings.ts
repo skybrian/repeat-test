@@ -142,7 +142,7 @@ export const unicodeChar: () => Arbitrary<string> = codePoint.map((code) => {
  * Min and max are measured in code units, the same as `String.length`.
  */
 export function string(
-  opts?: { min: number; max: number },
+  opts?: arb.ArrayOpts,
 ): Arbitrary<string> {
   const joinChars = (parts: string[]): string => parts.join("");
   return arb.array(char16(), opts).map(joinChars).with({
@@ -157,7 +157,7 @@ export function string(
  * length of the string may be longer due to surrogate pairs.)
  */
 export function wellFormedString(
-  opts?: { min?: number; max?: number },
+  opts?: arb.ArrayOpts,
 ): Arbitrary<string> {
   return arb.array(unicodeChar(), opts).map((arr) => arr.join("")).with({
     label: "wellFormedString",

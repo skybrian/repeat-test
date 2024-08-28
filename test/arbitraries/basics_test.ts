@@ -44,7 +44,7 @@ describe("biased", () => {
     });
   });
   it("almost always picks false for a very small probability", () => {
-    const samples = arb.array(arb.biased(0.0000001), { min: 100, max: 100 });
+    const samples = arb.array(arb.biased(0.0000001), { length: 100 });
     const wrapped = Arbitrary.from((pick) => {
       const result = pick(samples);
       pick(arb.int(1, 10000000)); // prevent backtracking
@@ -187,6 +187,7 @@ describe("array", () => {
       });
     });
   });
+
   describe("of unsigned ints", () => {
     const ints = arb.array(arb.int(0, 2 ** 32));
     it("defaults to an empty array", () => {
@@ -202,5 +203,43 @@ describe("array", () => {
         ]);
       });
     });
+  });
+
+  describe("with a minimum length", () => {
+    const bools = arb.array(arb.boolean(), { length: { min: 3 } });
+    it("defaults to the minimum length", () => {
+      assertEquals(bools.default().val, [false, false, false]);
+    });
+  });
+
+  describe("with a maximum length", () => {
+    const bools = arb.array(arb.boolean(), { length: { max: 1 } });
+    it("generates arrays within that length", () => {
+      assertValues(bools, [
+        [],
+        [false],
+        [true],
+      ]);
+    });
+  });
+
+  describe("with a fixed length", () => {
+    const bools = arb.array(arb.boolean(), { length: 2 });
+    it("generates arrays of that length", () => {
+      assertValues(bools, [
+        [false, false],
+        [true, false],
+        [false, true],
+        [true, true],
+      ]);
+    });
+  });
+
+  it("throws an Error if min > max", () => {
+    assertThrows(
+      () => arb.array(arb.boolean(), { length: { min: 3, max: 2 } }),
+      Error,
+      "length constraint for array is invalid; want: min <= max, got: 3..2",
+    );
   });
 });
