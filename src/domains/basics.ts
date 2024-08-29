@@ -1,6 +1,8 @@
 import { Domain } from "@/domain.ts";
 import * as arb from "@/arbs.ts";
 
+import { parseArrayOpts } from "../options.ts";
+
 /**
  * A domain that accepts only values contained in the array given as its first
  * argument.
@@ -115,16 +117,7 @@ export function array<T>(
   opts?: arb.ArrayOpts,
 ): Domain<T[]> {
   const gen = arb.array(item, opts);
-
-  let min = 0;
-  let max = 1000;
-  if (typeof opts?.length === "number") {
-    min = opts.length;
-    max = opts.length;
-  } else if (opts?.length !== undefined) {
-    min = opts.length.min ?? 0;
-    max = opts.length.max ?? 1000;
-  }
+  const { min, max } = parseArrayOpts(opts);
 
   const accept = (
     val: unknown,

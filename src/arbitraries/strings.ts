@@ -1,5 +1,6 @@
 import { Arbitrary, PickRequest, type RandomSource } from "@/arbitrary.ts";
 import * as arb from "./basics.ts";
+import type { ArrayOpts } from "../options.ts";
 import { surrogateGap, surrogateMin, unicodeMax } from "../unicode.ts";
 
 const asciiTable: string[] = (() => {
@@ -144,7 +145,7 @@ export const unicodeChar: () => Arbitrary<string> = codePoint.map((code) => {
  * Min and max are measured in code units, the same as `String.length`.
  */
 export function string(
-  opts?: arb.ArrayOpts,
+  opts?: ArrayOpts,
 ): Arbitrary<string> {
   const joinChars = (parts: string[]): string => parts.join("");
   return arb.array(char16(), opts).map(joinChars).with({
@@ -159,7 +160,7 @@ export function string(
  * length of the string may be longer due to surrogate pairs.)
  */
 export function wellFormedString(
-  opts?: arb.ArrayOpts,
+  opts?: ArrayOpts,
 ): Arbitrary<string> {
   return arb.array(unicodeChar(), opts).map((arr) => arr.join("")).with({
     label: "wellFormedString",
