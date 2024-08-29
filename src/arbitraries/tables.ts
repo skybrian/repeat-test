@@ -3,7 +3,7 @@ import { Domain, Jar } from "@/domain.ts";
 import * as arb from "./basics.ts";
 import { PickList, PickRequest } from "../picks.ts";
 
-import { parseArrayOpts, type TableOpts } from "../options.ts";
+import { type ArrayOpts, parseArrayOpts, type TableOpts } from "../options.ts";
 import { generateAll } from "../multipass_search.ts";
 import { PickTree } from "../pick_tree.ts";
 import { assert } from "@std/assert/assert";
@@ -16,22 +16,33 @@ import { assert } from "@std/assert/assert";
  */
 export function uniqueArray<T>(
   item: Domain<T>,
-  opts?: { label?: string },
+  opts?: ArrayOpts,
 ): Arbitrary<T[]> {
-  const label = opts?.label ?? "uniqueArray";
+  const { min, max } = parseArrayOpts(opts);
 
   return arb.from((pick) => {
     const jar = new Jar(item);
     const out: T[] = [];
-    while (!jar.isEmpty() && pick(arb.boolean())) {
+    while (out.length < min) {
+      if (jar.isEmpty()) {
+        throw new Error(
+          `not enough unique values; want length.min <= ${out.length}, got: ${min}`,
+        );
+      }
       out.push(jar.take(pick));
     }
-    if (jar.isEmpty()) {
-      // Add an ending pick to match a regular array.
-      pick(new PickRequest(0, 0));
+    while (out.length < max) {
+      if (jar.isEmpty()) {
+        // Add an ending pick to match a regular array.
+        pick(new PickRequest(0, 0));
+        return out;
+      } else if (!pick(arb.boolean())) {
+        return out;
+      }
+      out.push(jar.take(pick));
     }
     return out;
-  }).with({ label });
+  }).with({ label: "uniqueArray" });
 }
 
 function countDistinct(dom: Domain<unknown>, max: number): number {
@@ -78,7 +89,7 @@ export function table<R extends Record<string, unknown>>(
     const count = countDistinct(set, min);
     if (count < min) {
       throw new Error(
-        `field "${key}" can't have ${min} unique values; want length.min <= ${count}, got: ${min}`,
+        `field "${key}": not enough unique keys; want length.min <= ${count}, got: ${min}`,
       );
     }
   }

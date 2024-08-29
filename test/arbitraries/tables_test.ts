@@ -14,17 +14,30 @@ import { takeAll } from "../../src/multipass_search.ts";
 import { intRange } from "../../src/arbitraries/ranges.ts";
 
 describe("uniqueArray", () => {
-  const bools = arb.uniqueArray(dom.boolean());
   it("defaults to an empty array", () => {
+    const bools = arb.uniqueArray(dom.boolean());
     assertEquals(bools.default().val, []);
   });
+  it("defaults to a larger array when min is set", () => {
+    const bools = arb.uniqueArray(dom.boolean(), { length: { min: 1 } });
+    assertEquals(bools.default().val.length, 1);
+  });
   it("generates all combinations of a boolean", () => {
+    const bools = arb.uniqueArray(dom.boolean());
     assertValues(bools, [
       [],
       [false],
       [true],
       [true, false],
       [false, true],
+    ]);
+  });
+  it("generates shorter arrays when max is set", () => {
+    const bools = arb.uniqueArray(dom.boolean(), { length: { max: 1 } });
+    assertValues(bools, [
+      [],
+      [false],
+      [true],
     ]);
   });
   it("generates unique ids within an integer range", () => {
@@ -45,18 +58,23 @@ describe("uniqueArray", () => {
     });
   });
   it("rejects impossible filters", () => {
+    const bools = arb.uniqueArray(dom.boolean());
     assertThrows(
       () => bools.filter((v) => v.length > 2),
       Error,
       "uniqueArray (filtered) didn't generate any values",
     );
   });
-  it("has a label", () => {
-    assertEquals(bools.label, "uniqueArray");
+  it("rejects an impossible minimum size", () => {
+    assertThrows(
+      () => arb.uniqueArray(dom.boolean(), { length: { min: 3 } }),
+      Error,
+      "not enough unique values; want length.min <= 2, got: 3",
+    );
   });
-  it("can be configured with a label", () => {
-    const array = arb.uniqueArray(dom.int(1, 3), { label: "my array" });
-    assertEquals(array.label, "my array");
+  it("has a label", () => {
+    const bools = arb.uniqueArray(dom.boolean());
+    assertEquals(bools.label, "uniqueArray");
   });
 });
 
@@ -71,18 +89,7 @@ describe("table", () => {
       'field "k" is unique but not a Domain',
     );
   });
-  it("throws an Error if min is greater than a boolean domain's size", () => {
-    assertThrows(
-      () =>
-        arb.table({ k: dom.boolean() }, {
-          keys: ["k"],
-          length: 3,
-        }),
-      Error,
-      `field "k" can't have 3 unique values; want length.min <= 2, got: 3`,
-    );
-  });
-  it("throws an Error if min is greater than a filtered domain's size", () => {
+  it("rejects an impossible minimum size", () => {
     const justTrue = dom.boolean().filter((v) => v);
     assertThrows(
       () =>
@@ -91,7 +98,7 @@ describe("table", () => {
           length: 2,
         }),
       Error,
-      `field "k" can't have 2 unique values; want length.min <= 1, got: 2`,
+      `field "k": not enough unique keys; want length.min <= 1, got: 2`,
     );
   });
   describe("with one column and no unique key", () => {

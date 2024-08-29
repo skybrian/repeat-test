@@ -13,9 +13,8 @@ import { PickList } from "../picks.ts";
  */
 export function uniqueArray<T>(
   item: Domain<T>,
-  opts?: { label?: string },
 ): Domain<T[]> {
-  const generator = arb.uniqueArray(item, opts);
+  const generator = arb.uniqueArray(item);
 
   return new Domain(generator, (val, sendErr) => {
     if (!Array.isArray(val)) {
