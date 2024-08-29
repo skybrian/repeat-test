@@ -4,6 +4,7 @@ import * as arb from "@/arbs.ts";
 
 import * as unicode from "../unicode.ts";
 import { find } from "../multipass_search.ts";
+import { parseArrayOpts } from "../options.ts";
 
 const arbAscii = arb.asciiChar();
 
@@ -73,24 +74,37 @@ const maxStringLength = 2 ** 32 - 1;
  *
  * (That is, they may contain unpaired surrogates.)
  */
-export const string: () => Domain<string> = new Domain(
-  arb.string({ length: { min: 0, max: maxStringLength } }),
-  (val, sendErr) => {
+export function string(opts?: arb.ArrayOpts): Domain<string> {
+  if (opts === undefined) {
+    opts = { length: { min: 0, max: maxStringLength } };
+  }
+  const { min, max } = parseArrayOpts(opts);
+  return new Domain(arb.string(opts), (val, sendErr) => {
     if (typeof val !== "string") {
       sendErr("not a string");
+      return undefined;
+    } else if (val.length < min) {
+      sendErr(`string too short; want length >= ${min}, got: ${val.length}`);
+      return undefined;
+    } else if (val.length > max) {
+      sendErr(`string too long; want length <= ${max}, got: ${val.length}`);
       return undefined;
     }
     const out: number[] = [];
     for (let i = 0; i < val.length; i++) {
       const picks = char16().innerPickify(val.charAt(i), sendErr, i);
       assert(picks !== undefined, "char16 should accept any character");
-      out.push(1);
+      if (i >= min) {
+        out.push(1);
+      }
       out.push(...picks);
     }
-    out.push(0);
+    if (val.length < max) {
+      out.push(0);
+    }
     return out;
-  },
-).asFunction();
+  });
+}
 
 /**
  * Returns a domain that accepts well-formed strings.

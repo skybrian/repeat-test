@@ -49,6 +49,12 @@ describe("string", () => {
       assertRoundTrip(dom.string(), val);
     });
   });
+  it("round-trips any generated string, with a length constraint", () => {
+    const str = dom.string({ length: { min: 1, max: 2 } });
+    repeatTest(str, (val) => {
+      assertRoundTrip(str, val);
+    });
+  });
   it("encodes characters as an array of ints, using our modified ascii table", () => {
     assertEncoding(dom.string(), [1, 0, 1, 1, 0], "ab");
   });
@@ -58,6 +64,22 @@ describe("string", () => {
   it("rejects non-strings", () => {
     const str = dom.string();
     assertThrows(() => str.parse(null), Error, "not a string");
+  });
+  it("rejects strings that are too short", () => {
+    const str = dom.string({ length: { min: 1 } });
+    assertThrows(
+      () => str.parse(""),
+      Error,
+      "string too short; want length >= 1, got: 0",
+    );
+  });
+  it("rejects strings that are too long", () => {
+    const str = dom.string({ length: { max: 1 } });
+    assertThrows(
+      () => str.parse("ab"),
+      Error,
+      "string too long; want length <= 1, got: 2",
+    );
   });
 });
 
