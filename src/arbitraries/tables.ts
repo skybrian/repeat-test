@@ -44,8 +44,6 @@ export function table<R extends Record<string, unknown>>(
 ): Arbitrary<R[]> {
   const uniqueKeys = opts?.keys ?? [];
 
-  const label = opts?.label ?? "table";
-
   return arb.from((pick) => {
     const jars: Record<string, Jar<R[keyof R & string]>> = {};
     for (const key of uniqueKeys) {
@@ -96,5 +94,5 @@ export function table<R extends Record<string, unknown>>(
       pick(new PickRequest(0, 0));
     }
     return rows;
-  }).with({ label });
+  }).with({ label: "table" });
 }

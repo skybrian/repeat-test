@@ -40,7 +40,6 @@ export function parseArrayOpts(
  * Constraints used when generating or validating tables.
  */
 export type TableOpts<T extends Record<string, unknown>> = {
-  label?: string;
   keys?: (keyof T & string)[];
   maxRows?: number;
 };

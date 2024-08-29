@@ -95,10 +95,6 @@ describe("table", () => {
     it("has a label", () => {
       assertEquals(table.label, "table");
     });
-    it("can be configured with a label", () => {
-      const table = arb.table({ k: dom.int32() }, { label: "my table" });
-      assertEquals(table.label, "my table");
-    });
   });
   describe("with one unique column", () => {
     const table = arb.table({ v: dom.boolean() }, { keys: ["v"] });
