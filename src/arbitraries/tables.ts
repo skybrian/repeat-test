@@ -1,9 +1,12 @@
 import type { Arbitrary, RecordShape } from "@/arbitrary.ts";
 import { Domain, Jar } from "@/domain.ts";
 import * as arb from "./basics.ts";
-import { PickRequest } from "../picks.ts";
+import { PickList, PickRequest } from "../picks.ts";
 
-import type { TableOpts } from "../options.ts";
+import { parseArrayOpts, type TableOpts } from "../options.ts";
+import { generateAll } from "../multipass_search.ts";
+import { PickTree } from "../pick_tree.ts";
+import { assert } from "@std/assert/assert";
 
 /**
  * Defines an Arbitrary that generates an array by taking distinct values from a
@@ -31,6 +34,26 @@ export function uniqueArray<T>(
   }).with({ label });
 }
 
+function countDistinct(dom: Domain<unknown>, max: number): number {
+  if (max === 0) {
+    return 0;
+  }
+  const remaining = new PickTree();
+  let count = 0;
+  for (const gen of generateAll(dom)) {
+    const regen = dom.regenerate(gen.val);
+    assert(regen.ok);
+    const picks = PickList.zip(regen.reqs, regen.replies);
+    if (remaining.prune(picks)) {
+      count++;
+      if (count >= max) {
+        return max;
+      }
+    }
+  }
+  return count;
+}
+
 /**
  * Defines an Arbitrary that generates arrays of records with a given shape.
  *
@@ -42,17 +65,28 @@ export function table<R extends Record<string, unknown>>(
   shape: RecordShape<R>,
   opts?: TableOpts<R>,
 ): Arbitrary<R[]> {
+  const { min, max } = parseArrayOpts(opts);
   const uniqueKeys = opts?.keys ?? [];
+
+  const domains: Record<string, Domain<R[keyof R & string]>> = {};
+  for (const key of uniqueKeys) {
+    const set = shape[key];
+    if (!(set instanceof Domain)) {
+      throw new Error(`field "${key}" is unique but not a Domain`);
+    }
+    domains[key] = set;
+    const count = countDistinct(set, min);
+    if (count < min) {
+      throw new Error(
+        `field "${key}" can't have ${min} unique values; want length.min <= ${count}, got: ${min}`,
+      );
+    }
+  }
 
   return arb.from((pick) => {
     const jars: Record<string, Jar<R[keyof R & string]>> = {};
     for (const key of uniqueKeys) {
-      const set = shape[key];
-      if (!(set instanceof Domain)) {
-        throw new Error(`field "${key}" is unique but not a Domain`);
-      }
-      const jar = new Jar(set);
-      jars[key] = jar;
+      jars[key] = new Jar(domains[key]);
     }
 
     const emptyJar = () => {
@@ -64,16 +98,25 @@ export function table<R extends Record<string, unknown>>(
       return false;
     };
 
-    const maxRows = opts?.maxRows;
     const rows: R[] = [];
 
     const addRow: Arbitrary<R | undefined> = arb.from((pick) => {
-      if (maxRows !== undefined && rows.length >= maxRows) {
-        return undefined;
+      if (rows.length < min) {
+        for (const jar of Object.values(jars)) {
+          assert(!jar.isEmpty());
+        }
+      } else {
+        if (max !== undefined && rows.length >= max) {
+          return undefined;
+        }
+        if (emptyJar()) {
+          return undefined;
+        }
+        if (!pick(arb.boolean())) {
+          return undefined;
+        }
       }
-      if (emptyJar() || !pick(arb.boolean())) {
-        return undefined;
-      }
+
       const row: Record<string, unknown> = {};
       for (const key of Object.keys(shape)) {
         const jar = jars[key];

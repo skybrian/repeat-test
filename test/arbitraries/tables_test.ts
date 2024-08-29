@@ -61,7 +61,7 @@ describe("uniqueArray", () => {
 });
 
 describe("table", () => {
-  it("throws an exception if a unique key isn't a Domain", () => {
+  it("throws an Error if a unique key isn't a Domain", () => {
     assertThrows(
       () =>
         arb.table({ k: arb.boolean() }, {
@@ -71,17 +71,38 @@ describe("table", () => {
       'field "k" is unique but not a Domain',
     );
   });
+  it("throws an Error if min is greater than a boolean domain's size", () => {
+    assertThrows(
+      () =>
+        arb.table({ k: dom.boolean() }, {
+          keys: ["k"],
+          length: 3,
+        }),
+      Error,
+      `field "k" can't have 3 unique values; want length.min <= 2, got: 3`,
+    );
+  });
+  it("throws an Error if min is greater than a filtered domain's size", () => {
+    const justTrue = dom.boolean().filter((v) => v);
+    assertThrows(
+      () =>
+        arb.table({ k: justTrue }, {
+          keys: ["k"],
+          length: 2,
+        }),
+      Error,
+      `field "k" can't have 2 unique values; want length.min <= 1, got: 2`,
+    );
+  });
   describe("with one column and no unique key", () => {
-    const table = arb.table({ v: dom.boolean() }, { maxRows: 2 });
     it("defaults to zero rows", () => {
+      const table = arb.table({ v: dom.boolean() });
       assertFirstGenerated(table, [{ val: [], picks: [0] }]);
     });
     it("generates every combination of a boolean", () => {
+      const table = arb.table({ v: dom.boolean() }, { length: 2 });
       const combos: boolean[][] = [];
       for (const val of takeAll(table)) {
-        if (val.length < 2) {
-          continue;
-        }
         const bools = val.map((row) => row.v);
         combos.push(bools);
       }
@@ -92,14 +113,18 @@ describe("table", () => {
         [true, true],
       ]);
     });
-    it("has a label", () => {
-      assertEquals(table.label, "table");
-    });
   });
   describe("with one unique column", () => {
     const table = arb.table({ v: dom.boolean() }, { keys: ["v"] });
     it("defaults to zero rows", () => {
       assertEquals(table.default().val, []);
+    });
+    it("defaults to one row when min is set", () => {
+      const table = arb.table({ v: dom.boolean() }, {
+        keys: ["v"],
+        length: { min: 1 },
+      });
+      assertEquals(table.default().val.length, 1);
     });
     it("generates the same values as uniqueArray", () => {
       const expected = takeAll(

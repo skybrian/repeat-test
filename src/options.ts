@@ -39,7 +39,6 @@ export function parseArrayOpts(
 /**
  * Constraints used when generating or validating tables.
  */
-export type TableOpts<T extends Record<string, unknown>> = {
+export type TableOpts<T extends Record<string, unknown>> = ArrayOpts & {
   keys?: (keyof T & string)[];
-  maxRows?: number;
 };
