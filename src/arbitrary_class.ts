@@ -1,22 +1,16 @@
 import { assert } from "@std/assert";
 import { PickRequest } from "./picks.ts";
 import { generate } from "./generated.ts";
+
 import type {
   Generated,
   PickCallback,
   PickFunction,
   PickSet,
 } from "./generated.ts";
-import { PlayoutSearch } from "./searches.ts";
+import type { RecordShape } from "./options.ts";
 
-/**
- * Specifies a record to be generated.
- *
- * Each field will be independently generated.
- */
-export type RecordShape<T> = {
-  [K in keyof T]: PickSet<T[K]>;
-};
+import { PlayoutSearch } from "./searches.ts";
 
 type ConstructorOpts<T> = {
   examples?: T[];

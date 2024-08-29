@@ -4,7 +4,7 @@
  * @module arbs
  */
 
-export type { ArrayOpts } from "../options.ts";
+export type { ArrayOpts, TableOpts } from "../options.ts";
 
 export * from "../arbitraries/basics.ts";
 export * from "../arbitraries/numbers.ts";

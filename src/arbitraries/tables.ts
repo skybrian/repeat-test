@@ -3,6 +3,8 @@ import { Domain, Jar } from "@/domain.ts";
 import * as arb from "./basics.ts";
 import { PickRequest } from "../picks.ts";
 
+import type { TableOpts } from "../options.ts";
+
 /**
  * Defines an Arbitrary that generates an array by taking distinct values from a
  * Domain.
@@ -28,15 +30,6 @@ export function uniqueArray<T>(
     return out;
   }).with({ label });
 }
-
-/**
- * Constraints used when generating or validating tables.
- */
-export type TableOpts<T extends Record<string, unknown>> = {
-  label?: string;
-  keys?: (keyof T & string)[];
-  maxRows?: number;
-};
 
 /**
  * Defines an Arbitrary that generates arrays of records with a given shape.

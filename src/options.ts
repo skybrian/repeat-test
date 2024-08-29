@@ -1,3 +1,14 @@
+import type { PickSet } from "./generated.ts";
+
+/**
+ * Specifies a record to be generated.
+ *
+ * Each field will be independently generated.
+ */
+export type RecordShape<T> = {
+  [K in keyof T]: PickSet<T[K]>;
+};
+
 /**
  * Defines constraints on generated arrays.
  */
@@ -24,3 +35,12 @@ export function parseArrayOpts(
   }
   return { min, max };
 }
+
+/**
+ * Constraints used when generating or validating tables.
+ */
+export type TableOpts<T extends Record<string, unknown>> = {
+  label?: string;
+  keys?: (keyof T & string)[];
+  maxRows?: number;
+};
