@@ -7,7 +7,6 @@ import {
 import * as arb from "./basics.ts";
 import { type ArrayOpts, parseArrayOpts } from "../options.ts";
 import { surrogateGap, surrogateMin, unicodeMax } from "../unicode.ts";
-import { isWellFormed } from "../workarounds.ts";
 
 const asciiTable: string[] = (() => {
   const out: string[] = [];
@@ -142,6 +141,17 @@ export const unicodeChar: () => Arbitrary<string> = codePoint.map((code) => {
   return String.fromCodePoint(code);
 }).with({ label: "unicodeChar" }).asFunction();
 
+const basicPlaneCodePoint = arb.int(0, 65536 - surrogateGap).map(
+  (code) => (code >= surrogateMin) ? code + surrogateGap : code,
+);
+
+const basicPlaneChar = basicPlaneCodePoint.map((code) => {
+  if (code < 128) {
+    return asciiTable[code];
+  }
+  return String.fromCodePoint(code);
+});
+
 /**
  * Defines an Arbitrary that generates JavaScript strings.
  *
@@ -169,8 +179,7 @@ export function wellFormedString(
 ): Arbitrary<string> {
   const { min, max } = parseArrayOpts(opts);
 
-  const codepoint = unicodeChar();
-  const single = char16().filter((c) => isWellFormed(c));
+  const anyPlane = unicodeChar();
   const addChar = arb.biased(0.9);
 
   const pickArray = (pick: PickFunction) => {
@@ -178,9 +187,9 @@ export function wellFormedString(
     // fixed-length portion
     while (out.length < min) {
       if (out.length < max - 1) {
-        out += pick(codepoint);
+        out += pick(anyPlane);
       } else {
-        out += pick(single);
+        out += pick(basicPlaneChar);
       }
     }
     // variable-length portion
@@ -189,9 +198,9 @@ export function wellFormedString(
         break;
       }
       if (out.length < max - 1) {
-        out += pick(codepoint);
+        out += pick(anyPlane);
       } else {
-        out += pick(single);
+        out += pick(basicPlaneChar);
       }
     }
     return out;

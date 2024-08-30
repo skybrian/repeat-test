@@ -111,37 +111,53 @@ export function string(opts?: arb.ArrayOpts): Domain<string> {
  *
  * (That is, they don't contain unpaired surrogates.)
  */
-export const wellFormedString: () => Domain<string> = new Domain(
-  arb.wellFormedString(),
-  (val, sendErr) => {
-    if (typeof val !== "string") {
-      sendErr("not a string");
-      return undefined;
-    }
-
-    const out: number[] = [];
-    let i = 0;
-    for (const char of val) {
-      const code = char.codePointAt(0);
-      assert(code !== undefined, "for loop should return code points");
-      if (unicode.isSurrogate(code)) {
-        sendErr("unpaired surrogate", { at: i });
+export function wellFormedString(opts?: arb.ArrayOpts): Domain<string> {
+  const { min, max } = parseArrayOpts(opts);
+  return new Domain(
+    arb.wellFormedString(opts),
+    (val, sendErr) => {
+      if (typeof val !== "string") {
+        sendErr("not a string");
+        return undefined;
+      } else if (val.length < min) {
+        sendErr(`string too short; want length >= ${min}, got: ${val.length}`);
+        return undefined;
+      } else if (val.length > max) {
+        sendErr(`string too long; want length <= ${max}, got: ${val.length}`);
         return undefined;
       }
-      out.push(1);
-      if (code < 128) {
-        const picks = asciiChar().innerPickify(char, sendErr, i);
-        assert(picks !== undefined, "asciiChar should accept characters < 128");
-        out.push(...picks);
-      } else {
-        const pick = code < unicode.surrogateMin
-          ? code
-          : code - unicode.surrogateGap;
-        out.push(pick);
+
+      const out: number[] = [];
+      let i = 0;
+      for (const char of val) {
+        const code = char.codePointAt(0);
+        assert(code !== undefined, "for loop should return code points");
+        if (unicode.isSurrogate(code)) {
+          sendErr("unpaired surrogate", { at: i });
+          return undefined;
+        }
+        if (i >= min) {
+          out.push(1);
+        }
+        if (code < 128) {
+          const picks = asciiChar().innerPickify(char, sendErr, i);
+          assert(
+            picks !== undefined,
+            "asciiChar should accept characters < 128",
+          );
+          out.push(...picks);
+        } else {
+          const pick = code < unicode.surrogateMin
+            ? code
+            : code - unicode.surrogateGap;
+          out.push(pick);
+        }
+        i += char.length;
       }
-    }
-    out.push(0);
-    i++;
-    return out;
-  },
-).asFunction();
+      if (i < max) {
+        out.push(0);
+      }
+      return out;
+    },
+  );
+}

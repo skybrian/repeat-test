@@ -8,7 +8,11 @@ import { onePlayout } from "./backtracking.ts";
 import { randomPicker } from "./random.ts";
 
 export function assertRoundTrip<T>(dom: Domain<T>, val: T) {
-  assertEquals(dom.parse(val), val, "regenerated value didn't match");
+  const picks = dom.pickify(val);
+  assert(picks.ok);
+  const gen = dom.generate(picks.val);
+  assert(gen.ok, `can't generate value ${val} from picks ${picks.val}`);
+  assertEquals(gen.val, val, "regenerated value didn't match");
 }
 
 export function assertEncoding<T>(dom: Domain<T>, picks: number[], val: T) {

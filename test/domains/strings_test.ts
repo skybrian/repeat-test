@@ -44,15 +44,19 @@ describe("char16", () => {
 });
 
 describe("string", () => {
-  it("round-trips any generated string", () => {
+  it("round-trips any string", () => {
     repeatTest(arb.string(), (val) => {
       assertRoundTrip(dom.string(), val);
     });
   });
-  it("round-trips any generated string, with a length constraint", () => {
-    const str = dom.string({ length: { min: 1, max: 2 } });
-    repeatTest(str, (val) => {
-      assertRoundTrip(str, val);
+  it("round-trips strings with a given length", () => {
+    const example = arb.from((pick) => {
+      const length = pick(arb.int(0, 5));
+      const s = pick(arb.string({ length }));
+      return { length, s };
+    });
+    repeatTest(example, ({ length, s }) => {
+      assertRoundTrip(dom.string({ length }), s);
     });
   });
   it("encodes characters as an array of ints, using our modified ascii table", () => {
@@ -96,10 +100,21 @@ describe("wellFormedString", () => {
       }
     });
   });
-  it("round-trips all string it generates", () => {
+  it("round-trips well-formed strings", () => {
     repeatTest(str, (val) => {
       assert(isWellFormed(val));
       assertRoundTrip(str, val);
+    });
+  });
+  it("round-trips well-formed strings with a length constraint", () => {
+    const example = arb.from((pick) => {
+      const length = pick(arb.int(0, 5));
+      const s = pick(arb.wellFormedString({ length }));
+      return { length, s };
+    });
+    repeatTest(example, ({ length, s }, console) => {
+      console.log("chars", [...s].map((c) => c.charCodeAt(0)));
+      assertRoundTrip(dom.wellFormedString({ length }), s);
     });
   });
   it("rejects a non-string", () => {
@@ -107,6 +122,32 @@ describe("wellFormedString", () => {
   });
   it("rejects an unpaired surrogates", () => {
     assertThrows(() => str.parse("\uD800"), Error, "0: unpaired surrogate");
+  });
+  it("rejects strings that are too short", () => {
+    const example = arb.from((pick) => {
+      const length = pick(arb.int(1, 5));
+      const shorter = pick(arb.int(0, length - 1));
+      const s = pick(arb.wellFormedString({ length: shorter }));
+      return { length, s };
+    });
+    repeatTest(example, ({ length, s }) => {
+      assert(s.length < length);
+      const d = dom.wellFormedString({ length });
+      assertThrows(() => d.parse(s), Error, `string too short`);
+    });
+  });
+  it("rejects strings that are too long", () => {
+    const example = arb.from((pick) => {
+      const length = pick(arb.int(1, 5));
+      const longer = pick(arb.int(length + 1, length + 3));
+      const s = pick(arb.wellFormedString({ length: longer }));
+      return { length, s };
+    });
+    repeatTest(example, ({ length, s }) => {
+      assert(s.length > length);
+      const d = dom.wellFormedString({ length });
+      assertThrows(() => d.parse(s), Error, `string too long`);
+    });
   });
   it("parses an array of ints using a modified ascii table", () => {
     assertEncoding(str, [1, 0, 1, 1, 0], "ab");
