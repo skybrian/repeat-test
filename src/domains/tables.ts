@@ -5,6 +5,7 @@ import * as arb from "@/arbs.ts";
 import type * as dom from "./basics.ts";
 import { PickTree } from "../pick_tree.ts";
 import { PickList } from "../picks.ts";
+import { parseArrayOpts } from "../options.ts";
 
 /**
  * Creates a Domain that accepts arrays where each item is different.
@@ -13,12 +14,20 @@ import { PickList } from "../picks.ts";
  */
 export function uniqueArray<T>(
   item: Domain<T>,
+  opts?: arb.ArrayOpts,
 ): Domain<T[]> {
-  const generator = arb.uniqueArray(item);
+  const generator = arb.uniqueArray(item, opts);
+  const { min, max } = parseArrayOpts(opts);
 
   return new Domain(generator, (val, sendErr) => {
     if (!Array.isArray(val)) {
       sendErr("not an array");
+      return undefined;
+    } else if (val.length < min) {
+      sendErr(`array too short; want len >= ${min}, got: ${val.length}`);
+      return undefined;
+    } else if (val.length > max) {
+      sendErr(`array too long; want len <= ${max}, got: ${val.length}`);
       return undefined;
     }
 
@@ -38,11 +47,15 @@ export function uniqueArray<T>(
         sendErr("duplicate item", { at: i });
         return undefined;
       }
-      out.push(1);
+      if (i >= min) {
+        out.push(1);
+      }
       out.push(...picks.replies());
       i++;
     }
-    out.push(0);
+    if (i < max) {
+      out.push(0);
+    }
     return out;
   });
 }

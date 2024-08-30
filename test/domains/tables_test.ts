@@ -5,6 +5,7 @@ import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
 import { repeatTest } from "@/runner.ts";
 import { Arbitrary } from "@/arbitrary.ts";
 import * as dom from "@/doms.ts";
+import { arb } from "@/mod.ts";
 
 describe("uniqueArray", () => {
   const bools = dom.uniqueArray(dom.boolean());
@@ -16,6 +17,16 @@ describe("uniqueArray", () => {
   it("round-trips unique arrays", () => {
     repeatTest(bools, (val) => {
       assertRoundTrip(bools, val);
+    });
+  });
+  it("round-trips arrays with a length constraint", () => {
+    const example = Arbitrary.from((pick) => {
+      const length = pick(dom.int(0, 2));
+      const array = pick(arb.uniqueArray(dom.int32(), { length }));
+      return { array, length };
+    });
+    repeatTest(example, ({ array, length }) => {
+      assertRoundTrip(dom.uniqueArray(dom.int32(), { length }), array);
     });
   });
   it("rejects non-arrays", () => {
@@ -50,6 +61,36 @@ describe("uniqueArray", () => {
         () => bools.parse(list),
         Error,
         `${list.length - 1}: duplicate item`,
+      );
+    });
+  });
+  it("rejects an array that's too short", () => {
+    const example = Arbitrary.from((pick) => {
+      const length = pick(dom.int(1, 5));
+      const shorter = pick(arb.int(0, length - 1));
+      const array = pick(arb.uniqueArray(dom.int32(), { length: shorter }));
+      return { array, length };
+    });
+    repeatTest(example, ({ array, length }) => {
+      assertThrows(
+        () => dom.uniqueArray(dom.int32(), { length }).parse(array),
+        Error,
+        `array too short; want len >= ${length}, got: ${array.length}`,
+      );
+    });
+  });
+  it("rejects an array that's too long", () => {
+    const example = Arbitrary.from((pick) => {
+      const length = pick(dom.int(0, 2));
+      const longer = pick(arb.int(length + 1, length + 2));
+      const array = pick(arb.uniqueArray(dom.int32(), { length: longer }));
+      return { array, length };
+    });
+    repeatTest(example, ({ array, length }) => {
+      assertThrows(
+        () => dom.uniqueArray(dom.int32(), { length }).parse(array),
+        Error,
+        `array too long; want len <= ${length}, got: ${array.length}`,
       );
     });
   });
