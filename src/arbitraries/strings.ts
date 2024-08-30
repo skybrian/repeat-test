@@ -1,7 +1,13 @@
-import { Arbitrary, PickRequest, type RandomSource } from "@/arbitrary.ts";
+import {
+  Arbitrary,
+  type PickFunction,
+  PickRequest,
+  type RandomSource,
+} from "@/arbitrary.ts";
 import * as arb from "./basics.ts";
-import type { ArrayOpts } from "../options.ts";
+import { type ArrayOpts, parseArrayOpts } from "../options.ts";
 import { surrogateGap, surrogateMin, unicodeMax } from "../unicode.ts";
+import { isWellFormed } from "../workarounds.ts";
 
 const asciiTable: string[] = (() => {
   const out: string[] = [];
@@ -156,13 +162,39 @@ export function string(
 /**
  * Defines an Arbitrary that generates well-formed Unicode strings.
  *
- * Min and max are measured in Unicode code points, rather than code units. (The
- * length of the string may be longer due to surrogate pairs.)
+ * Min and max are measured in code units, the same as `String.length`.
  */
 export function wellFormedString(
   opts?: ArrayOpts,
 ): Arbitrary<string> {
-  return arb.array(unicodeChar(), opts).map((arr) => arr.join("")).with({
-    label: "wellFormedString",
-  });
+  const { min, max } = parseArrayOpts(opts);
+
+  const codepoint = unicodeChar();
+  const single = char16().filter((c) => isWellFormed(c));
+  const addChar = arb.biased(0.9);
+
+  const pickArray = (pick: PickFunction) => {
+    let out = "";
+    // fixed-length portion
+    while (out.length < min) {
+      if (out.length < max - 1) {
+        out += pick(codepoint);
+      } else {
+        out += pick(single);
+      }
+    }
+    // variable-length portion
+    while (out.length < max) {
+      if (!pick(addChar)) {
+        break;
+      }
+      if (out.length < max - 1) {
+        out += pick(codepoint);
+      } else {
+        out += pick(single);
+      }
+    }
+    return out;
+  };
+  return Arbitrary.from(pickArray).with({ label: "wellFormedString" });
 }

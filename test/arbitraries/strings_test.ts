@@ -187,6 +187,27 @@ describe("wellFormedString", () => {
       );
     });
   });
+  it("generates strings with a fixed length", () => {
+    const example = arb.from((pick) => {
+      const length = pick(arb.int(0, 5));
+      const s = pick(arb.wellFormedString({ length }));
+      return { length, s };
+    });
+    repeatTest(example, ({ length, s }) => {
+      assertEquals(s.length, length);
+    });
+  });
+  it("generates strings with a maximum length", () => {
+    const example = arb.from((pick) => {
+      const max = pick(arb.int(0, 5));
+      const s = pick(arb.wellFormedString({ length: { max } }));
+      return { max, s };
+    });
+    repeatTest(example, ({ max, s }, console) => {
+      console.log("code points", [...s].map((c) => c.codePointAt(0)));
+      assert(s.length <= max);
+    });
+  });
   it("has a label", () => {
     assertEquals(arb.wellFormedString().label, "wellFormedString");
   });
