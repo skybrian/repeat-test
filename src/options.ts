@@ -10,6 +10,14 @@ export type RecordShape<T> = {
 };
 
 /**
+ * A callback for reporting errors while validating a value.
+ *
+ * The 'at' argument is an optional string or number that identifies where the
+ * error occurred, such as an array index or a property name.
+ */
+export type SendErr = (msg: string, opts?: { at: string | number }) => void;
+
+/**
  * Defines constraints on generated arrays.
  */
 export type ArrayOpts = {
@@ -34,6 +42,25 @@ export function parseArrayOpts(
     );
   }
   return { min, max };
+}
+
+export function checkArray(
+  val: unknown,
+  min: number,
+  max: number,
+  sendErr: SendErr,
+): val is unknown[] {
+  if (!Array.isArray(val)) {
+    sendErr("not an array");
+    return false;
+  } else if (val.length < min) {
+    sendErr(`array too short; want len >= ${min}, got: ${val.length}`);
+    return false;
+  } else if (val.length > max) {
+    sendErr(`array too long; want len <= ${max}, got: ${val.length}`);
+    return false;
+  }
+  return true;
 }
 
 /**

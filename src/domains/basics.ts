@@ -1,7 +1,7 @@
 import { Domain } from "@/domain.ts";
 import * as arb from "@/arbs.ts";
 
-import { parseArrayOpts } from "../options.ts";
+import { checkArray, parseArrayOpts } from "../options.ts";
 
 /**
  * A domain that accepts only values contained in the array given as its first
@@ -119,26 +119,8 @@ export function array<T>(
   const gen = arb.array(item, opts);
   const { min, max } = parseArrayOpts(opts);
 
-  const accept = (
-    val: unknown,
-    sendErr: (msg: string) => void,
-  ): val is T[] => {
-    if (!Array.isArray(val)) {
-      sendErr("not an array");
-      return false;
-    }
-    if (val.length < min) {
-      sendErr(`array too short; want len >= ${min}, got: ${val.length}`);
-      return false;
-    } else if (val.length > max) {
-      sendErr(`array too long; want len <= ${max}, got: ${val.length}`);
-      return false;
-    }
-    return true;
-  };
-
   return new Domain(gen, (val, sendErr) => {
-    if (!accept(val, sendErr)) return undefined;
+    if (!checkArray(val, min, max, sendErr)) return undefined;
     const out: number[] = [];
 
     let i = 0;

@@ -5,7 +5,7 @@ import * as arb from "@/arbs.ts";
 import type * as dom from "./basics.ts";
 import { PickTree } from "../pick_tree.ts";
 import { PickList } from "../picks.ts";
-import { parseArrayOpts } from "../options.ts";
+import { checkArray, parseArrayOpts } from "../options.ts";
 
 /**
  * Creates a Domain that accepts arrays where each item is different.
@@ -20,14 +20,7 @@ export function uniqueArray<T>(
   const { min, max } = parseArrayOpts(opts);
 
   return new Domain(generator, (val, sendErr) => {
-    if (!Array.isArray(val)) {
-      sendErr("not an array");
-      return undefined;
-    } else if (val.length < min) {
-      sendErr(`array too short; want len >= ${min}, got: ${val.length}`);
-      return undefined;
-    } else if (val.length > max) {
-      sendErr(`array too long; want len <= ${max}, got: ${val.length}`);
+    if (!checkArray(val, min, max, sendErr)) {
       return undefined;
     }
 
@@ -73,11 +66,11 @@ export function table<R extends Record<string, unknown>>(
 ): Domain<R[]> {
   const keys = Object.keys(shape) as (keyof R & string)[];
   const uniqueKeys = opts?.keys ?? [];
+  const { min, max } = parseArrayOpts(opts);
   const generator = arb.table(shape, opts);
 
   return new Domain(generator, (rows, sendErr) => {
-    if (!Array.isArray(rows)) {
-      sendErr("not an array");
+    if (!checkArray(rows, min, max, sendErr)) {
       return undefined;
     }
 
@@ -100,7 +93,9 @@ export function table<R extends Record<string, unknown>>(
         }
       }
 
-      out.push(1);
+      if (i >= min) {
+        out.push(1);
+      }
       for (const key of keys) {
         const field = row[key];
         const replies = shape[key].innerPickify(field, sendErr, `${i}.${key}`);
@@ -122,7 +117,9 @@ export function table<R extends Record<string, unknown>>(
       }
       i++;
     }
-    out.push(0);
+    if (i < max) {
+      out.push(0);
+    }
     return out;
   });
 }

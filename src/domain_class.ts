@@ -7,13 +7,7 @@ import { PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
 import { generate } from "./generated.ts";
 
-/**
- * A callback for reporting errors while validating a value.
- *
- * The 'at' argument is an optional string or number that identifies where the
- * error occurred, such as an array index or a property name.
- */
-export type SendErr = (msg: string, opts?: { at: string | number }) => void;
+import type { SendErr } from "./options.ts";
 
 /**
  * Validates a value, converting it to a pick sequence that can be used to make

@@ -117,6 +117,51 @@ describe("table", () => {
     });
   });
 
+  describe("with no unique columns and a length constraint", () => {
+    it("round-trips generated tables", () => {
+      const example = Arbitrary.from((pick) => {
+        const length = pick(dom.int(0, 2));
+        const array = pick(dom.table({
+          a: dom.boolean(),
+          b: dom.boolean(),
+        }, { length }));
+        return { array, length };
+      });
+      repeatTest(example, ({ array, length }) => {
+        assertRoundTrip(
+          dom.table({
+            a: dom.boolean(),
+            b: dom.boolean(),
+          }, { length }),
+          array,
+        );
+      });
+    });
+
+    it("rejects an array that's too short", () => {
+      const example = Arbitrary.from((pick) => {
+        const length = pick(dom.int(1, 5));
+        const shorter = pick(arb.int(0, length - 1));
+        const array = pick(dom.table({
+          a: dom.boolean(),
+          b: dom.boolean(),
+        }, { length: shorter }));
+        return { array, length };
+      });
+      repeatTest(example, ({ array, length }) => {
+        assertThrows(
+          () =>
+            dom.table({
+              a: dom.boolean(),
+              b: dom.boolean(),
+            }, { length }).parse(array),
+          Error,
+          `array too short; want len >= ${length}, got: ${array.length}`,
+        );
+      });
+    });
+  });
+
   describe("with a single unique column", () => {
     const table = dom.table({
       a: dom.boolean(),
