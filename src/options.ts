@@ -1,6 +1,14 @@
 import type { PickSet } from "./generated.ts";
 
 /**
+ * A callback for reporting errors while validating a value.
+ *
+ * The 'at' argument is an optional string or number that identifies where the
+ * error occurred, such as an array index or a property name.
+ */
+export type SendErr = (msg: string, opts?: { at: string | number }) => void;
+
+/**
  * Specifies a record to be generated.
  *
  * Each field will be independently generated.
@@ -9,13 +17,24 @@ export type RecordShape<T> = {
   [K in keyof T]: PickSet<T[K]>;
 };
 
-/**
- * A callback for reporting errors while validating a value.
- *
- * The 'at' argument is an optional string or number that identifies where the
- * error occurred, such as an array index or a property name.
- */
-export type SendErr = (msg: string, opts?: { at: string | number }) => void;
+export function checkRecordKeys<T extends Record<string, unknown>>(
+  val: unknown,
+  fields: RecordShape<T>,
+  sendErr: SendErr,
+  opts?: { at: string | number },
+): val is Partial<T> {
+  if (val === null || typeof val !== "object") {
+    sendErr("not an object", opts);
+    return false;
+  }
+  for (const key of Object.keys(val)) {
+    if (!(key in fields)) {
+      sendErr(`extra field: ${key}`, opts);
+      return false;
+    }
+  }
+  return true;
+}
 
 /**
  * Defines constraints on generated arrays.

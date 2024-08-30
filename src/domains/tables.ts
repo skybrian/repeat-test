@@ -5,7 +5,7 @@ import * as arb from "@/arbs.ts";
 import type * as dom from "./basics.ts";
 import { PickTree } from "../pick_tree.ts";
 import { PickList } from "../picks.ts";
-import { checkArray, parseArrayOpts } from "../options.ts";
+import { checkArray, checkRecordKeys, parseArrayOpts } from "../options.ts";
 
 /**
  * Creates a Domain that accepts arrays where each item is different.
@@ -82,15 +82,8 @@ export function table<R extends Record<string, unknown>>(
     const out: number[] = [];
     let i = 0;
     for (const row of rows as Partial<Record<keyof R, unknown>>[]) {
-      if (typeof row !== "object" || row === null) {
-        sendErr("not a record", { at: i });
+      if (!checkRecordKeys(row, shape, sendErr, { at: i })) {
         return undefined;
-      }
-      for (const key of Object.keys(row)) {
-        if (!keys.includes(key)) {
-          sendErr(`extra field: ${key}`, { at: i });
-          return undefined;
-        }
       }
 
       if (i >= min) {

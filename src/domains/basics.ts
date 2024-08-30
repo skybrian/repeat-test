@@ -1,7 +1,7 @@
 import { Domain } from "@/domain.ts";
 import * as arb from "@/arbs.ts";
 
-import { checkArray, parseArrayOpts } from "../options.ts";
+import { checkArray, checkRecordKeys, parseArrayOpts } from "../options.ts";
 
 /**
  * A domain that accepts only values contained in the array given as its first
@@ -86,15 +86,8 @@ export function record<T extends Record<string, unknown>>(
   return new Domain(
     gen,
     (val, sendErr) => {
-      if (val === null || typeof val !== "object") {
-        sendErr("not an object");
+      if (!checkRecordKeys(val, fields, sendErr)) {
         return undefined;
-      }
-      for (const key of Object.keys(val)) {
-        if (!(key in fields)) {
-          sendErr(`extra field: ${key}`);
-          return undefined;
-        }
       }
 
       const out: number[] = [];

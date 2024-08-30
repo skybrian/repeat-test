@@ -192,7 +192,7 @@ describe("table", () => {
         assertThrows(
           () => table.parse(list),
           Error,
-          `${badIndex}: not a record`,
+          `${badIndex}: not an object`,
         );
       });
     });
