@@ -1,3 +1,11 @@
+## 0.3.0
+
+* API: all array-like arbitraries and domains now take a length option
+* API: removed label option on tables
+* API: PickRequest's bias option takes a source of random int32's as input.
+* API: PickRequest.bias => PickRequest.random
+* Improved performance on generating strings and changed the character distribution
+
 ## 0.2.0
 
 * Added separate entrypoints for parts of repeat-test

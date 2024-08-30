@@ -1,6 +1,6 @@
 The *repeat-test* library is my attempt to come up with a nicer API for writing property tests in TypeScript.
 
-## Attention conservation notice
+## Warning
 
 This library is brand new, incomplete, and should be considered experimental.
 I've only used *repeat-test* to test itself. It only works with Deno. I don't plan to stabilize the API or support more platforms until
