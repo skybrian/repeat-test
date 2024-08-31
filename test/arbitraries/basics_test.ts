@@ -1,5 +1,5 @@
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 import {
   assertFirstGenerated,
   assertFirstValues,
@@ -10,6 +10,9 @@ import {
 import { repeatTest } from "@/runner.ts";
 import { Arbitrary } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
+import { generate } from "../../src/generated.ts";
+import { onePlayout } from "../../src/backtracking.ts";
+import { randomPicker } from "../../src/random.ts";
 
 describe("boolean", () => {
   it("generates both values", () => {
@@ -50,10 +53,10 @@ describe("biased", () => {
       pick(arb.int(1, 10000000)); // prevent backtracking
       return result;
     });
-    repeatTest(wrapped, (samples) => {
-      const falseCount = samples.filter((val) => val === false).length;
-      assertEquals(falseCount, 100);
-    });
+    const gen = generate(wrapped, onePlayout(randomPicker(123)));
+    assert(gen !== undefined);
+    const falseCount = gen.val.filter((val) => val === false).length;
+    assertEquals(falseCount, 100);
   });
   it("has maxSize set to 2", () => {
     assertEquals(arb.biased(0.9).maxSize, 2);
