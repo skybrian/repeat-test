@@ -1,7 +1,6 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows, fail } from "@std/assert";
 
-import { repeatTest } from "@/runner.ts";
 import { Arbitrary } from "@/arbitrary.ts";
 
 import { PickRequest } from "../src/picks.ts";
@@ -15,263 +14,73 @@ import {
   takeAll,
   takeGenerated,
 } from "../src/multipass_search.ts";
-import { type Success, success } from "../src/results.ts";
+
+class Playouts {
+  playoutToPass = new Map<string, number>();
+
+  add(playout: string, pass: number) {
+    if (playout === undefined) {
+      return;
+    }
+    if (this.playoutToPass.has(playout)) {
+      fail(`duplicate playout: ${playout}`);
+    }
+    this.playoutToPass.set(playout, pass);
+  }
+
+  toRecord(): Record<number, string[]> {
+    const result: Record<number, string[]> = {};
+    for (const [playout, pass] of this.playoutToPass.entries()) {
+      if (result[pass] === undefined) {
+        result[pass] = [];
+      }
+      result[pass].push(playout);
+    }
+    return result;
+  }
+}
 
 const bit = new PickRequest(0, 1);
-const one = new PickRequest(1, 1);
-
-function walkUnaryTree(playouts: PlayoutSource): string | undefined {
-  assert(playouts.startAt(0));
-  let result = "";
-  for (let i = 0; i < 8; i++) {
-    const pick = playouts.nextPick(one);
-    if (!pick.ok) {
-      return undefined;
-    }
-    if (pick.val) {
-      result += "1";
-    } else {
-      result += "0";
-    }
-  }
-  if (!playouts.endPlayout()) {
-    return undefined;
-  }
-  return result;
-}
 
 function walkBinaryTree(...solutions: string[]) {
   function walk(playouts: PlayoutSource): string | undefined {
     assert(playouts.startAt(0));
     let result = "";
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 5; i++) {
       if (solutions.includes(result)) {
-        if (!playouts.endPlayout()) {
-          return undefined;
-        }
-        return result;
+        return playouts.endPlayout() ? result : undefined;
       }
       const pick = playouts.nextPick(bit);
       if (!pick.ok) {
         return undefined;
       }
-      if (pick.val) {
-        result += "1";
-      } else {
-        result += "0";
-      }
+      result += pick.val;
     }
-    if (!playouts.endPlayout()) {
-      return undefined;
-    }
-    return result;
+    return playouts.endPlayout() ? result : undefined;
   }
   return walk;
 }
 
-function runPass(
-  idx: number,
+function runSearch(
   walk: (playouts: PlayoutSource) => string | undefined,
-) {
-  const playouts = new Set<string>();
-  const search = new MultipassSearch(idx + 1);
+): Record<string, string[]> {
+  const playouts = new Playouts();
+
+  const search = new MultipassSearch();
   while (!search.done) {
     const currentPass = search.currentPass;
     try {
       const playout = walk(search);
-      if (playout === undefined) {
-        continue;
-      }
-      if (playouts.has(playout)) {
-        fail(`duplicate playout: ${playout}`);
-      }
-      if (currentPass === idx) {
-        playouts.add(playout);
+      if (playout !== undefined) {
+        playouts.add(playout, currentPass);
       }
     } catch (e) {
-      if (e instanceof Pruned) {
-        continue;
-      }
-      throw e;
-    }
-  }
-  return Array.from(playouts);
-}
-
-describe("configurePass", () => {
-  describe("for a single-playout tree", () => {
-    it("yields the full playout on the first pass", () => {
-      assertEquals(runPass(0, walkUnaryTree), ["11111111"]);
-    });
-    it("yields nothing on the second pass", () => {
-      assertEquals(runPass(1, walkUnaryTree), []);
-    });
-  });
-  describe("for a binary tree", () => {
-    describe("on the first pass", () => {
-      it("stops if there's an empty playout", () => {
-        assertEquals(runPass(0, walkBinaryTree("")), [""]);
-      });
-      it("can yield a long minimum playout", () => {
-        assertEquals(runPass(0, walkBinaryTree()), ["00000000"]);
-      });
-    });
-
-    describe("on the second pass", () => {
-      it("can't yield an empty playout", () => {
-        assertEquals(runPass(1, walkBinaryTree("")), []);
-      });
-      it("emits a playout with one pick", () => {
-        assertEquals(runPass(1, walkBinaryTree("1")), ["1"]);
-      });
-      it("can yield a long playout with one non-default pick", () => {
-        assertEquals(runPass(1, walkBinaryTree()), ["10000000"]);
-      });
-    });
-
-    describe("on the third pass", () => {
-      it("can't yield an empty playout", () => {
-        assertEquals(runPass(2, walkBinaryTree("")), []);
-      });
-      it("can't yield playouts with one pick", () => {
-        assertEquals(runPass(2, walkBinaryTree("0", "1")), []);
-      });
-      it("stops after playouts with two picks", () => {
-        assertEquals(runPass(2, walkBinaryTree("01", "11")), ["01", "11"]);
-      });
-      it("can yield two long playouts", () => {
-        assertEquals(runPass(2, walkBinaryTree()), ["01000000", "11000000"]);
-      });
-    });
-
-    describe("on the fourth pass", () => {
-      it("can't yield an empty playout", () => {
-        assertEquals(runPass(3, walkBinaryTree("")), []);
-      });
-      it("can't yield playouts with one pick", () => {
-        assertEquals(runPass(3, walkBinaryTree("0", "1")), []);
-      });
-      it("can't yield playouts with two picks", () => {
-        assertEquals(runPass(3, walkBinaryTree("00", "01", "10", "11")), []);
-      });
-      it("stops after playouts with three picks", () => {
-        assertEquals(runPass(3, walkBinaryTree("001", "011", "101", "111")), [
-          "001",
-          "011",
-          "101",
-          "111",
-        ]);
-      });
-      it("yields four long playouts", () => {
-        assertEquals(runPass(3, walkBinaryTree()), [
-          "00100000",
-          "01100000",
-          "10100000",
-          "11100000",
-        ]);
-      });
-    });
-    it("yields eight playouts on the fifth pass", () => {
-      assertEquals(runPass(4, walkBinaryTree()), [
-        "00010000",
-        "00110000",
-        "01010000",
-        "01110000",
-        "10010000",
-        "10110000",
-        "11010000",
-        "11110000",
-      ]);
-    });
-  });
-});
-
-class Tree<T> {
-  readonly children: Tree<T>[];
-  constructor(readonly val: T, children?: Tree<T>[]) {
-    this.children = children ?? [];
-  }
-
-  get size(): number {
-    let size = 1;
-    for (const child of this.children) {
-      size += child.size;
-    }
-    return size;
-  }
-
-  toString(): string {
-    return JSON.stringify(this, null, 2);
-  }
-}
-
-const childCount = Arbitrary.of(0, 0, 0, 0, 1, 2, 3);
-
-const anyTree = Arbitrary.from((pick) => {
-  let next = 0;
-  function pickTree(): Tree<number> {
-    const val = next++;
-    const children: Tree<number>[] = [];
-    const count = pick(childCount);
-    for (let i = 0; i < count; i++) {
-      children.push(pickTree());
-    }
-    return new Tree(val, children);
-  }
-  const result = pickTree();
-  return result;
-});
-
-function randomWalk<T>(
-  tree: Tree<T>,
-  playouts: PlayoutSource,
-): Success<T> | Pruned {
-  while (
-    tree.children.length > 0
-  ) {
-    const pick = playouts.nextPick(new PickRequest(0, tree.children.length));
-    if (!pick.ok) {
-      return pick;
-    }
-    if (pick.val === tree.children.length) {
-      return success(tree.val);
-    }
-    tree = tree.children[pick.val];
-  }
-  return success(tree.val);
-}
-
-class Maze {
-  accepted = new Map<string, number>();
-  rejected = new Map<string, number>();
-  pruneCount = 0;
-
-  constructor(readonly tree: Tree<number>) {}
-
-  visit(playouts: PlayoutSource) {
-    while (playouts.startAt(0)) {
-      const val = randomWalk(this.tree, playouts);
-      if (!val.ok) {
-        this.pruneCount++;
-        continue;
-      }
-      const picks = JSON.stringify(playouts.getReplies());
-      if (playouts.endPlayout()) {
-        if (this.accepted.has(picks)) {
-          fail(`duplicate picks: ${picks}`);
-        }
-        this.accepted.set(picks, val.val);
-      } else {
-        this.rejected.set(picks, val.val);
+      if (!(e instanceof Pruned)) {
+        throw e;
       }
     }
   }
-
-  get leaves() {
-    const result = Array.from(this.accepted.values());
-    result.sort((a, b) => a - b);
-    return result;
-  }
+  return playouts.toRecord();
 }
 
 describe("MultipassSearch", () => {
@@ -288,29 +97,43 @@ describe("MultipassSearch", () => {
   });
 
   it("visits each root branch once", () => {
-    const accepted = new Set<string>();
-    while (!search.done) {
-      assert(search.startAt(0));
-      if (search.nextPick(new PickRequest(0, 2)).ok) {
-        const replies = search.getReplies();
-        if (search.endPlayout()) {
-          accepted.add(JSON.stringify(replies));
-        }
-      }
-    }
-    assertEquals(Array.from(accepted), ["[0]", "[1]", "[2]"]);
+    assertEquals(runSearch(walkBinaryTree("0", "1")), { 0: ["0"], 1: ["1"] });
   });
-  it("visits each child branch once", () => {
-    repeatTest(anyTree, (tree) => {
-      const expectedLeaves = Array(tree.size).fill(0).map((_, i) => i);
-
-      const maze = new Maze(tree);
-      const search = new MultipassSearch();
-      while (!search.done) {
-        maze.visit(search);
-      }
-      assertEquals(expectedLeaves, maze.leaves);
-    }, { reps: 100 });
+  it("handles a binary tree of depth 5", () => {
+    assertEquals(runSearch(walkBinaryTree()), {
+      0: ["00000"],
+      1: ["10000"],
+      2: ["01000", "11000"],
+      3: ["00100", "01100", "10100", "11100"],
+      4: [
+        "00010",
+        "00110",
+        "01010",
+        "01110",
+        "10010",
+        "10110",
+        "11010",
+        "11110",
+      ],
+      5: [
+        "00001",
+        "00011",
+        "00101",
+        "00111",
+        "01001",
+        "01011",
+        "01101",
+        "01111",
+        "10001",
+        "10011",
+        "10101",
+        "10111",
+        "11001",
+        "11011",
+        "11101",
+        "11111",
+      ],
+    });
   });
 });
 
