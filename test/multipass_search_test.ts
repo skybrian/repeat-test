@@ -11,9 +11,11 @@ import {
   find,
   generateAll,
   MultipassSearch,
+  take,
   takeAll,
   takeGenerated,
 } from "../src/multipass_search.ts";
+import { arb } from "@/mod.ts";
 
 class Playouts {
   playoutToPass = new Map<string, number>();
@@ -216,6 +218,35 @@ describe("find", () => {
       Error,
       "findBreadthFirst for '3 examples': no match found in the first 2 values",
     );
+  });
+});
+
+describe("take", () => {
+  const one = Arbitrary.from(() => 1);
+  it("returns the only value of a constant", () => {
+    assertEquals(take(one, 2), [1]);
+  });
+
+  it("returns the shortest arrays of ones", () => {
+    assertEquals(take(arb.array(one), 5), [
+      [],
+      [1],
+      [1, 1],
+      [1, 1, 1],
+      [1, 1, 1, 1],
+    ]);
+  });
+
+  it("returns pairs of arrays of ones", () => {
+    const pair = arb.array(arb.array(one), { length: 2 });
+    assertEquals(take(pair, 6), [
+      [[], []],
+      [[1], []],
+      [[], [1]],
+      [[1, 1], []],
+      [[], [1, 1]],
+      [[1], [1]],
+    ]);
   });
 });
 
