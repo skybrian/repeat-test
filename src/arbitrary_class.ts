@@ -10,7 +10,7 @@ import type {
 } from "./generated.ts";
 import type { RecordShape } from "./options.ts";
 
-import { PlayoutSearch } from "./searches.ts";
+import { MultipassSearch } from "./multipass_search.ts";
 
 type ConstructorOpts<T> = {
   examples?: T[];
@@ -99,7 +99,7 @@ export class Arbitrary<T> implements PickSet<T> {
    * will fail otherwise.)
    */
   default(): Generated<T> {
-    const search = new PlayoutSearch();
+    const search = new MultipassSearch();
     const gen = generate(this, search);
     if (gen === undefined) {
       throw new Error(

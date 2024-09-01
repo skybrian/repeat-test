@@ -2,6 +2,7 @@ import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import {
   assertFirstGenerated,
+  assertFirstValues,
   assertGenerated,
   assertValues,
 } from "../src/asserts.ts";
@@ -10,7 +11,9 @@ import { repeatTest } from "../src/runner.ts";
 import { PickRequest } from "../src/picks.ts";
 import { Pruned } from "../src/backtracking.ts";
 import type { PickCallback, PickSet } from "../src/generated.ts";
-import { Arbitrary } from "../src/arbitrary_class.ts";
+
+import { Arbitrary } from "@/arbitrary.ts";
+import * as arb from "@/arbs.ts";
 
 const bit = new PickRequest(0, 1);
 
@@ -139,6 +142,19 @@ describe("Arbitrary", () => {
       const keepEvens = (n: number) => n % 2 === 0;
       const filtered = sixSided.filter(keepEvens);
       assertValues(filtered, [2, 4, 6]);
+    });
+    it("finds a default in the first field of a record", () => {
+      const rec = Arbitrary.record({
+        a: Arbitrary.of(1, 2),
+        b: arb.array(arb.boolean()),
+      });
+      const filtered = rec.filter((r) => r.a === 2);
+      assertFirstValues(filtered, [
+        { b: [], a: 2 },
+        { b: [false], a: 2 },
+        { b: [true], a: 2 },
+        { b: [false, false], a: 2 },
+      ]);
     });
     it("filters out values that don't satisfy the predicate", () => {
       const not3 = sixSided.filter((n) => n !== 3);
