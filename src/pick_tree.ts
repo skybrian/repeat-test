@@ -193,6 +193,7 @@ export class PickTree {
  * Points to a branch in a PickTree.
  */
 export class Walk {
+  // Invariant: nodePath.length === pickPath.length
   private readonly nodePath: Node[];
   private readonly pickPath: number[];
 
@@ -337,8 +338,8 @@ export class Walk {
         // we pruned the entire tree
         return true;
       }
-      this.nodePath.length -= 1;
-      this.pickPath.length -= 1;
+      this.nodePath.pop();
+      this.pickPath.pop();
       parent = this.parent;
       parent.prune(this.lastReply);
     }
@@ -346,8 +347,8 @@ export class Walk {
     if (this.depth > 0) {
       // Still pointing at a pruned node.
       // Pop this node so that we pick again.
-      this.nodePath.length -= 1;
-      this.pickPath.length -= 1;
+      this.nodePath.pop();
+      this.pickPath.pop();
     }
     return true;
   }

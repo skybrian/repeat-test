@@ -83,3 +83,16 @@ benchmark              time (avg)        iter/s             (min … max)       
 generate a string       6.89 µs/iter     145,032.6   (6.12 µs … 146.38 µs) 6.71 µs 9.33 µs 14.08 µs
 take 10k char16       121.09 ms/iter           8.3 (120.51 ms … 121.99 ms) 121.44 ms 121.99 ms 121.99 ms
 ```
+
+### After making Walk.prune() a little faster
+
+```
+cpu: Apple M2
+runtime: deno 1.46.1 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+benchmark              time (avg)        iter/s             (min … max)       p75       p99      p995
+----------------------------------------------------------------------- -----------------------------
+generate a string       6.97 µs/iter     143,492.6   (6.17 µs … 108.25 µs) 6.83 µs 7.54 µs 9.58 µs
+take 10k char16       115.15 ms/iter           8.7 (114.18 ms … 116.82 ms) 115.6 ms 116.82 ms 116.82 ms
+```
