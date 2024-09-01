@@ -42,19 +42,28 @@ class Playouts {
   }
 }
 
-const bit = new PickRequest(0, 1);
+type WalkFunction = (playouts: PlayoutSource) => string | undefined;
 
-function walkBinaryTree(...solutions: string[]) {
+function walkFunction(
+  width: number,
+  depth: number,
+  ...solutions: string[]
+): WalkFunction {
+  const branch = new PickRequest(0, width - 1);
+
   function walk(playouts: PlayoutSource): string | undefined {
     assert(playouts.startAt(0));
     let result = "";
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < depth; i++) {
       if (solutions.includes(result)) {
         return playouts.endPlayout() ? result : undefined;
       }
-      const pick = playouts.nextPick(bit);
+      const pick = playouts.nextPick(branch);
       if (!pick.ok) {
         return undefined;
+      }
+      if (width > 10 && result.length > 0) {
+        result += ",";
       }
       result += pick.val;
     }
@@ -64,11 +73,12 @@ function walkBinaryTree(...solutions: string[]) {
 }
 
 function runSearch(
-  walk: (playouts: PlayoutSource) => string | undefined,
+  walk: WalkFunction,
+  maxPasses?: number,
 ): Record<string, string[]> {
   const playouts = new Playouts();
 
-  const search = new MultipassSearch();
+  const search = new MultipassSearch(maxPasses);
   while (!search.done) {
     const currentPass = search.currentPass;
     try {
@@ -99,10 +109,13 @@ describe("MultipassSearch", () => {
   });
 
   it("visits each root branch once", () => {
-    assertEquals(runSearch(walkBinaryTree("0", "1")), { 0: ["0"], 1: ["1"] });
+    assertEquals(runSearch(walkFunction(2, 1)), {
+      0: ["0"],
+      1: ["1"],
+    });
   });
   it("handles a binary tree of depth 5", () => {
-    assertEquals(runSearch(walkBinaryTree()), {
+    assertEquals(runSearch(walkFunction(2, 5)), {
       0: ["00000"],
       1: ["10000"],
       2: ["01000", "11000"],
@@ -135,6 +148,51 @@ describe("MultipassSearch", () => {
         "11101",
         "11111",
       ],
+    });
+  });
+  it("handles a three-way tree", () => {
+    assertEquals(runSearch(walkFunction(3, 3)), {
+      0: ["000"],
+      1: ["100"],
+      2: ["010", "020", "110", "120", "200", "210", "220"],
+      3: [
+        "001",
+        "002",
+        "011",
+        "012",
+        "021",
+        "022",
+        "101",
+        "102",
+        "111",
+        "112",
+        "121",
+        "122",
+        "201",
+        "202",
+        "211",
+        "212",
+        "221",
+        "222",
+      ],
+    });
+  });
+  it("gradually widens a 100-way search", () => {
+    assertEquals(runSearch(walkFunction(100, 2), 5), {
+      0: ["0,0"],
+      1: ["1,0"],
+      2: ["0,1", "0,2", "1,1", "1,2", "2,0", "2,1", "2,2"],
+      3: ["0,3", "1,3", "2,3", "3,0", "3,1", "3,2", "3,3"],
+      4: ["0,4", "1,4", "2,4", "3,4", "4,0", "4,1", "4,2", "4,3", "4,4"],
+    });
+  });
+  it("gradually widens a 1000-way search", () => {
+    assertEquals(runSearch(walkFunction(1000, 1), 5), {
+      0: ["0"],
+      1: ["1"],
+      2: ["2"],
+      3: ["3"],
+      4: ["4"],
     });
   });
 });

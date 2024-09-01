@@ -128,6 +128,11 @@ export class PickRequest {
     return Number.isSafeInteger(n) && n >= this.min && n <= this.max;
   }
 
+  /** Returns the number of possible replies for this request. */
+  get size() {
+    return this.max - this.min + 1;
+  }
+
   /** Describes the request's range, for debugging. */
   toString(): string {
     return `${this.min}..${this.max}`;

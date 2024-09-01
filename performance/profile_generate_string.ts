@@ -4,7 +4,7 @@ import { generate } from "../src/generated.ts";
 import { pickRandomSeed, randomPicker } from "../src/random.ts";
 import { onePlayout } from "../src/backtracking.ts";
 
-const str = arb.string({ min: 100, max: 100 });
+const str = arb.string({ length: 100 });
 const rand = randomPicker(pickRandomSeed());
 
 for (let i = 0; i < 10000; i++) {

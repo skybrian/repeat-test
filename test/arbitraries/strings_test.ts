@@ -172,10 +172,17 @@ describe("wellFormedString", () => {
   it("defaults to an empty string", () => {
     assertFirstGenerated(arb.wellFormedString(), [{ val: "", picks: [0] }]);
   });
-  it("starts with the empty string, followed by single ascii characters", () => {
+  it("starts with the empty string, followed by ascii letters", () => {
     assertFirstValues(arb.wellFormedString(), [
       "",
-      ...("abcdefghijklmnopqrstuvwxyz".split("")),
+      "a",
+      "b",
+      "c",
+      "aa",
+      "ba",
+      "ca",
+      "d",
+      "da",
     ]);
   });
   it("always returns a well-formed string", () => {

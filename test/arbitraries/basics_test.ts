@@ -81,7 +81,7 @@ describe("int", () => {
       assertValues(arb.int(-3, -2), [-2, -3]);
     });
     it("includes positive and negative numbers within range", () => {
-      assertValues(arb.int(-3, 3), [0, -1, 1, 2, 3, -2, -3]);
+      assertValues(arb.int(-3, 3), [0, -1, 1, 2, -2, -3, 3]);
     });
   });
   describe("default", () => {

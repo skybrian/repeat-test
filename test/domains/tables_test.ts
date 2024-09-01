@@ -68,12 +68,12 @@ describe("uniqueArray", () => {
     const example = Arbitrary.from((pick) => {
       const length = pick(dom.int(1, 4));
       const shorter = pick(arb.int(0, length - 1));
-      const array = pick(arb.uniqueArray(dom.int(0, 5), { length: shorter }));
+      const array = pick(arb.uniqueArray(dom.int32(), { length: shorter }));
       return { array, length };
     });
     repeatTest(example, ({ array, length }) => {
       assertThrows(
-        () => dom.uniqueArray(dom.int(0, 5), { length }).parse(array),
+        () => dom.uniqueArray(dom.int32(), { length }).parse(array),
         Error,
         `array too short; want len >= ${length}, got: ${array.length}`,
       );

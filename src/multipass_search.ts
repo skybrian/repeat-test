@@ -34,8 +34,15 @@ export class MultipassSearch extends PlayoutSource {
 
   protected maybePick(req: PickRequest): number | undefined {
     let replaced = req;
-    if (this.depth >= this.#currentPass) {
-      replaced = new PickRequest(req.min, req.min);
+
+    let maxSize = this.#currentPass + 1;
+    if (this.#currentPass > 10) {
+      maxSize *= this.#currentPass - 10;
+    }
+    if (maxSize < 1 || this.depth >= this.#currentPass) maxSize = 1;
+
+    if (maxSize < req.size) {
+      replaced = new PickRequest(req.min, req.min + maxSize - 1);
       this.#filteredThisPass = true;
     }
 
