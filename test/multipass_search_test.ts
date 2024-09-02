@@ -59,13 +59,13 @@ function walkFunction(
         return playouts.endPlayout() ? result : undefined;
       }
       const pick = playouts.nextPick(branch);
-      if (!pick.ok) {
+      if (pick === undefined) {
         return undefined;
       }
       if (width > 10 && result.length > 0) {
         result += ",";
       }
-      result += pick.val;
+      result += pick;
     }
     return playouts.endPlayout() ? result : undefined;
   }

@@ -12,11 +12,11 @@ describe("SinglePlayoutPicker", () => {
     const playouts = onePlayout(randomPicker(123));
     assert(playouts.startAt(0));
     const first = playouts.nextPick(bit);
-    assert(first.ok);
+    assert(first !== undefined);
     const second = playouts.nextPick(bit);
-    assert(second.ok);
+    assert(second !== undefined);
     assertEquals(playouts.getRequests(), [bit, bit]);
-    assertEquals(playouts.getReplies(), [first.val, second.val]);
+    assertEquals(playouts.getReplies(), [first, second]);
     assertEquals(playouts.depth, 2);
     assertEquals(playouts.startAt(0), false);
   });

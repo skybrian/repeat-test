@@ -72,8 +72,8 @@ export function makePickFunction<T>(
         req = new PickRequest(req.min, req.min);
       }
       const pick = playouts.nextPick(req);
-      if (!pick.ok) throw new Pruned(pick.message);
-      return pick.val;
+      if (pick === undefined) throw new Pruned("cancelled in PlayoutSource");
+      return pick;
     }
     const generateFrom = req["generateFrom"];
     if (typeof generateFrom === "function") {

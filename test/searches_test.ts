@@ -33,28 +33,28 @@ describe("PlayoutSearch", () => {
     it("picks the minimum value by default", () => {
       assert(search.startAt(0));
       const pick = search.nextPick(bit);
-      assert(pick.ok);
-      assertEquals(pick.val, 0);
+      assertEquals(pick, 0);
       assertEquals(search.depth, 1);
       assertEquals(search.getRequests(), [bit]);
       assertEquals(search.getReplies(), [0]);
       assert(search.endPlayout());
-      assertFalse(search.tree.available([pick.val]));
+      assert(pick !== undefined);
+      assertFalse(search.tree.available([pick]));
     });
 
     it("prunes a pick in a wide node", () => {
       assert(search.startAt(0));
       const uint32 = new PickRequest(0, 2 ** 32 - 1);
       const pick = search.nextPick(uint32);
-      assert(pick.ok);
-      assertEquals(pick.val, 0);
+      assertEquals(pick, 0);
       assert(search.endPlayout());
-      assertFalse(search.tree.available([pick.val]), "not pruned");
+      assert(pick !== undefined);
+      assertFalse(search.tree.available([pick]), "not pruned");
     });
 
     it("requires the same range as last time", () => {
       assert(search.startAt(0));
-      assertEquals(search.nextPick(bit), { ok: true, val: 0 });
+      assertEquals(search.nextPick(bit), 0);
       search.startAt(0);
       assertThrows(() => search.nextPick(new PickRequest(-1, 0)), Error);
     });
@@ -72,11 +72,11 @@ describe("PlayoutSearch", () => {
         for (let i = 0; i < 1000; i++) {
           assert(search.startAt(0));
           const pick = search.nextPick(bit);
-          assert(pick.ok);
-          if (pick.val == 1) {
+          if (pick === 1) {
             search.nextPick(new PickRequest(1, 2 ** 40));
             counts.other++;
           } else {
+            assert(pick === 0);
             search.nextPick(new PickRequest(1, 2));
             counts.constants++;
           }
@@ -99,8 +99,8 @@ describe("PlayoutSearch", () => {
 
     it("disallows calling getRequests() afterwards", () => {
       assert(search.startAt(0));
-      assert(search.nextPick(bit).ok);
-      assert(search.nextPick(new PickRequest(0, 0)).ok);
+      assertEquals(search.nextPick(bit), 0);
+      assertEquals(search.nextPick(new PickRequest(0, 0)), 0);
       assertEquals(search.getReplies(), [0, 0]);
       assert(search.endPlayout());
       assertThrows(() => search.getRequests(), Error);
@@ -140,7 +140,7 @@ describe("PlayoutSearch", () => {
       assert(search.startAt(0));
       search.nextPick(bit);
       search.startAt(0);
-      assertEquals(search.nextPick(bit), { ok: true, val: 1 });
+      assertEquals(search.nextPick(bit), 1);
     });
 
     it("ends the search when both sides of a fork were visited", () => {
@@ -165,7 +165,7 @@ describe("PlayoutSearch", () => {
       search.nextPick(bit);
       assert(search.startAt(1));
 
-      assertEquals(search.nextPick(bit), { ok: true, val: 1 });
+      assertEquals(search.nextPick(bit), 1);
       assertFalse(
         search.startAt(1),
         "should fail because picks are exhausted",
@@ -201,8 +201,8 @@ describe("PlayoutSearch", () => {
         const picks: number[] = [];
         for (let j = 0; j < 3; j++) {
           const pick = search.nextPick(digit);
-          assert(pick.ok);
-          picks.push(pick.val);
+          assert(pick !== undefined);
+          picks.push(pick);
         }
         assert(search.endPlayout());
         assertFalse(search.tree.available(picks));

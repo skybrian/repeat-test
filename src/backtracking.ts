@@ -1,5 +1,4 @@
 import { assert } from "@std/assert";
-import { type Success, success } from "./results.ts";
 import {
   alwaysPickMin,
   type IntPicker,
@@ -71,20 +70,20 @@ export abstract class PlayoutSource {
    *
    * If successful, the pick is recorded and the depth is incremented.
    *
-   * Returns {@link Pruned} if the current playout is cancelled.
+   * Returns undefined if the current playout is cancelled.
    */
-  nextPick(req: PickRequest): Success<number> | Pruned {
+  nextPick(req: PickRequest): number | undefined {
     assert(this.state === "picking", "nextPick called in the wrong state");
 
     const result = this.maybePick(req);
     if (result === undefined) {
       this.next();
-      return new Pruned("playout cancelled in nextPick");
+      return undefined;
     }
 
     const last = this.#depth++;
     this.#reqs[last] = req;
-    return success(result);
+    return result;
   }
 
   /**
