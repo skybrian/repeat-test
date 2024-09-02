@@ -186,8 +186,24 @@ Runtime | Deno 1.46.2 (aarch64-apple-darwin)
 
 file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
 
-benchmark           time/iter (avg)        iter/s      (min … max)           p75      p99     p995
-------------------- ----------------------------- --------------------- --------------------------
-generate a string            4.4 µs       225,700 (  3.9 µs … 158.5 µs)   4.3 µs   5.6 µs   6.1 µs
-take 10k char16              4.1 ms         243.9 (  4.0 ms …   4.6 ms)   4.1 ms   4.3 ms   4.6 ms
+benchmark               time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+----------------------- ----------------------------- --------------------- --------------------------
+generate a string                4.5 µs       221,200 (  3.9 µs … 143.0 µs)   4.4 µs   5.5 µs   6.2 µs
+take 10k char16                  4.0 ms         247.9 (  3.9 ms …   4.6 ms)   4.1 ms   4.3 ms   4.6 ms
+uniqueArray of 5 ints           63.9 ms          15.6 ( 63.4 ms …  65.9 ms)  63.8 ms  65.9 ms  65.9 ms
+```
+
+### After changing multipass search to narrow width with depth
+
+```
+    CPU | Apple M2
+Runtime | Deno 1.46.2 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+
+benchmark               time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+----------------------- ----------------------------- --------------------- --------------------------
+generate a string                4.5 µs       223,300 (  3.8 µs … 189.7 µs)   4.4 µs   5.4 µs   6.1 µs
+take 10k char16                  4.0 ms         247.8 (  4.0 ms …   4.6 ms)   4.1 ms   4.3 ms   4.6 ms
+uniqueArray of 5 ints           11.8 ms          85.0 ( 11.6 ms …  12.2 ms)  11.8 ms  12.2 ms  12.2 ms
 ```

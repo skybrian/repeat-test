@@ -17,6 +17,6 @@ Deno.bench("take 10k char16", () => {
   take(arb.char16(), 10000);
 });
 
-Deno.bench("find a unique array with 5 items", () => {
+Deno.bench("uniqueArray of 5 ints", () => {
   dom.uniqueArray(dom.int32(), { length: 5 });
 });
