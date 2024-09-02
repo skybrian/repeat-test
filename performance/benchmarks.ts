@@ -20,3 +20,7 @@ Deno.bench("take 10k char16", () => {
 Deno.bench("uniqueArray of 5 ints", () => {
   dom.uniqueArray(dom.int32(), { length: 5 });
 });
+
+Deno.bench("uniqueArray of 6 ints", () => {
+  dom.uniqueArray(dom.int32(), { length: 6 });
+});

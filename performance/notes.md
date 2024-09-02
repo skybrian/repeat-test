@@ -203,7 +203,8 @@ file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
 
 benchmark               time/iter (avg)        iter/s      (min … max)           p75      p99     p995
 ----------------------- ----------------------------- --------------------- --------------------------
-generate a string                4.5 µs       223,300 (  3.8 µs … 189.7 µs)   4.4 µs   5.4 µs   6.1 µs
-take 10k char16                  4.0 ms         247.8 (  4.0 ms …   4.6 ms)   4.1 ms   4.3 ms   4.6 ms
-uniqueArray of 5 ints           11.8 ms          85.0 ( 11.6 ms …  12.2 ms)  11.8 ms  12.2 ms  12.2 ms
+generate a string                4.4 µs       225,300 (  3.8 µs … 210.9 µs)   4.3 µs   5.7 µs   6.1 µs
+take 10k char16                  4.1 ms         243.2 (  4.0 ms …   6.1 ms)   4.1 ms   4.9 ms   6.1 ms
+uniqueArray of 5 ints           11.2 ms          89.6 ( 11.1 ms …  11.3 ms)  11.2 ms  11.3 ms  11.3 ms
+uniqueArray of 6 ints          150.6 ms           6.6 (148.0 ms … 159.2 ms) 151.2 ms 159.2 ms 159.2 ms
 ```

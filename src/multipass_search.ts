@@ -37,6 +37,9 @@ export class MultipassSearch extends PlayoutSource {
 
     let maxSize = this.#currentPass - this.depth + 1;
     if (this.#currentPass > 10) {
+      // Widen more rapidly to handle scanning over a very wide PickRequest like
+      // char16 without an excessive number of passes. (Which pass to start at
+      // doesn't seem to effect performance that much.)
       maxSize *= this.#currentPass - 10;
     }
     if (maxSize < 1 || this.depth >= this.#currentPass) maxSize = 1;
