@@ -163,3 +163,17 @@ benchmark              time (avg)        iter/s             (min … max)       
 generate a string       6.81 µs/iter     146,842.9    (6.04 µs … 243.5 µs) 6.67 µs 8.58 µs 9.58 µs
 take 10k char16        52.65 ms/iter          19.0   (52.22 ms … 55.25 ms) 52.62 ms 55.25 ms 55.25 ms
 ```
+
+### After inlining code into take()
+
+```
+    CPU | Apple M2
+Runtime | Deno 1.46.2 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+
+benchmark           time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+------------------- ----------------------------- --------------------- --------------------------
+generate a string            4.4 µs       224,900 (  3.9 µs … 185.1 µs)   4.3 µs   5.5 µs   6.1 µs
+take 10k char16             31.4 ms          31.8 ( 31.1 ms …  31.9 ms)  31.7 ms  31.9 ms  31.9 ms
+```

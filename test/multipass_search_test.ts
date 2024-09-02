@@ -306,6 +306,14 @@ describe("take", () => {
       [[1], [1]],
     ]);
   });
+
+  it("throws if the callback throws", () => {
+    const one = Arbitrary.from((pick) => {
+      if (pick(new PickRequest(0, 1)) === 0) return 0;
+      throw new Error("oh no!");
+    });
+    assertThrows(() => take(one, 2), Error, "oh no!");
+  });
 });
 
 describe("takeAll", () => {

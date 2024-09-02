@@ -152,4 +152,5 @@ export function generate<T>(
       }
     }
   }
+  return undefined;
 }

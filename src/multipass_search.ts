@@ -1,7 +1,7 @@
 import { alwaysPickMin, PickRequest } from "./picks.ts";
-import { PlayoutSource } from "./backtracking.ts";
+import { PlayoutSource, Pruned } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
-import { generate } from "./generated.ts";
+import { generate, makePickFunction } from "./generated.ts";
 import type { Generated, PickSet } from "./generated.ts";
 
 /**
@@ -145,7 +145,22 @@ export function takeGenerated<T>(set: PickSet<T>, n: number): Generated<T>[] {
  * There may be duplicates.
  */
 export function take<T>(set: PickSet<T>, n: number): T[] {
-  return takeGenerated(set, n).map((gen) => gen.val);
+  const result = [];
+  const playouts = new MultipassSearch();
+  while (playouts.startAt(0) && result.length < n) {
+    try {
+      const pick = makePickFunction(playouts);
+      const val = set.generateFrom(pick);
+      if (playouts.endPlayout()) {
+        result.push(val);
+      }
+    } catch (e) {
+      if (!(e instanceof Pruned)) {
+        throw e;
+      }
+    }
+  }
+  return result;
 }
 
 /**
