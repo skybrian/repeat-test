@@ -107,3 +107,14 @@ benchmark              time (avg)        iter/s             (min … max)       
 ----------------------------------------------------------------------- -----------------------------
 generate a string       6.85 µs/iter     145,964.1   (6.08 µs … 111.62 µs) 6.71 µs 8.67 µs 9.75 µs
 take 10k char16        89.91 ms/iter          11.1   (89.25 ms … 92.37 ms) 90.06 ms 92.37 ms 92.37 ms
+
+### After changing Walk to not pop pickPath
+
+cpu: Apple M2
+runtime: deno 1.46.1 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+benchmark              time (avg)        iter/s             (min … max)       p75       p99      p995
+----------------------------------------------------------------------- -----------------------------
+generate a string       6.88 µs/iter     145,306.6   (6.12 µs … 103.12 µs) 6.75 µs 7.92 µs 10.96 µs
+take 10k char16        84.77 ms/iter          11.8   (84.36 ms … 86.29 ms) 84.82 ms 86.29 ms 86.29 ms

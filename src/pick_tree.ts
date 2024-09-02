@@ -193,7 +193,7 @@ export class PickTree {
  * Points to a branch in a PickTree.
  */
 export class Walk {
-  // Invariant: nodePath.length === pickPath.length
+  /** Invariant: nodePath.length <= pickPath.length */
   private readonly nodePath: Node[];
   private readonly pickPath: number[];
 
@@ -212,17 +212,22 @@ export class Walk {
 
   /** Returns the picks leading to the current branch. */
   getReplies(): number[] {
-    return this.pickPath.slice(1);
+    return this.pickPath.slice(1, this.nodePath.length);
   }
 
   /** Returns the pick that led to the current branch */
   get lastReply(): number {
-    return this.pickPath[this.pickPath.length - 1];
+    return this.pickPath[this.nodePath.length - 1];
   }
 
   /** Returns true if the Walk points to a pruned branch. */
   get pruned(): boolean {
     return this.parent.getBranch(this.lastReply) === PRUNED;
+  }
+
+  private pushNode(n: Node, pick: number) {
+    this.nodePath.push(n);
+    this.pickPath[this.nodePath.length - 1] = pick;
   }
 
   /**
@@ -241,8 +246,7 @@ export class Walk {
       }
       parent = branch;
       parentPick = picks[i];
-      this.nodePath.push(parent);
-      this.pickPath.push(parentPick);
+      this.pushNode(parent, parentPick);
     }
 
     const branch = parent.getBranch(parentPick);
@@ -283,14 +287,12 @@ export class Walk {
     } else if (last === undefined) {
       // unexplored; add node
       last = this.parent.addChild(this.lastReply, req);
-      this.nodePath.push(last);
-      this.pickPath.push(pick);
+      this.pushNode(last, pick);
       return true;
     } else {
       // revisit node
       last.checkRangeMatches(req);
-      this.nodePath.push(last);
-      this.pickPath.push(pick);
+      this.pushNode(last, pick);
       return true;
     }
   }
@@ -315,8 +317,7 @@ export class Walk {
     }
 
     const pick = branch.findUnpruned(firstChoice);
-    this.nodePath.push(branch);
-    this.pickPath.push(pick);
+    this.pushNode(branch, pick);
     return pick;
   }
 
@@ -357,7 +358,6 @@ export class Walk {
     assert(depth >= 0);
     if (depth < this.depth) {
       this.nodePath.length = depth + 1;
-      this.pickPath.length = depth + 1;
     }
   }
 }
