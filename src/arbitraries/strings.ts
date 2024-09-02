@@ -105,13 +105,12 @@ const char16Req = new PickRequest(0, 0xffff, {
  * Each string contains a single 16-bit code unit.
  *
  * Some of these strings aren't well-formed because they are unpaired
- * surrogates. It's useful when you want to test your code to handle
+ * surrogates. This is useful when you want to test your code to handle
  * badly-formed strings.
  */
 export const char16: () => Arbitrary<string> = Arbitrary.from(
-  char16Req,
-).map(
-  (code) => {
+  function char16Callback(pick) {
+    const code = pick(char16Req);
     if (code < 128) {
       return asciiTable[code];
     }
