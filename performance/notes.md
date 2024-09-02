@@ -128,7 +128,6 @@ take 10k char16        84.77 ms/iter          11.8   (84.36 ms … 86.29 ms) 84.
 ### After changing Walk to not pop its lists
 
 ```
-Check file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
 cpu: Apple M2
 runtime: deno 1.46.1 (aarch64-apple-darwin)
 
@@ -150,4 +149,17 @@ benchmark              time (avg)        iter/s             (min … max)       
 ----------------------------------------------------------------------- -----------------------------
 generate a string        6.9 µs/iter     144,927.5   (6.08 µs … 108.04 µs) 6.71 µs 9.21 µs 13.96 µs
 take 10k char16        66.75 ms/iter          15.0    (66.4 ms … 68.67 ms) 66.77 ms 68.67 ms 68.67 ms
+```
+
+### After changing PlayoutSource to not pop requests
+
+```
+cpu: Apple M2
+runtime: deno 1.46.1 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+benchmark              time (avg)        iter/s             (min … max)       p75       p99      p995
+----------------------------------------------------------------------- -----------------------------
+generate a string       6.81 µs/iter     146,842.9    (6.04 µs … 243.5 µs) 6.67 µs 8.58 µs 9.58 µs
+take 10k char16        52.65 ms/iter          19.0   (52.22 ms … 55.25 ms) 52.62 ms 55.25 ms 55.25 ms
 ```

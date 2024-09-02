@@ -29,6 +29,7 @@ export class Pruned extends Error {
  */
 export abstract class PlayoutSource {
   #state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
+  #depth = 0;
   readonly #reqs: PickRequest[] = [];
 
   get state(): "ready" | "picking" | "playoutDone" | "searchDone" {
@@ -60,7 +61,7 @@ export abstract class PlayoutSource {
       return false;
     }
     this.startPlayout(depth);
-    this.#reqs.length = depth;
+    this.#depth = depth;
     this.#state = "picking";
     return true;
   }
@@ -81,7 +82,8 @@ export abstract class PlayoutSource {
       return new Pruned("playout cancelled in nextPick");
     }
 
-    this.#reqs.push(req);
+    const last = this.#depth++;
+    this.#reqs[last] = req;
     return success(result);
   }
 
@@ -105,7 +107,7 @@ export abstract class PlayoutSource {
    * tree.)
    */
   get depth(): number {
-    return this.#reqs.length;
+    return this.#depth;
   }
 
   /**
@@ -119,7 +121,7 @@ export abstract class PlayoutSource {
         `getPicks called in the wrong state. Wanted "picking"; got "${this.state}"`,
       );
     }
-    return this.#reqs.slice();
+    return this.#reqs.slice(0, this.#depth); // trailing reqs are garbage
   }
 
   abstract getReplies(): number[];
@@ -143,10 +145,10 @@ export abstract class PlayoutSource {
     const newDepth = this.nextPlayout();
     if (newDepth === undefined) {
       this.#state = "searchDone";
-      this.#reqs.length = 0;
+      this.#depth = 0;
     } else {
       this.#state = "playoutDone";
-      this.#reqs.length = newDepth;
+      this.#depth = newDepth;
     }
   }
 }
