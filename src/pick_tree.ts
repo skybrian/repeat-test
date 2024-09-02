@@ -22,7 +22,8 @@ type Branch = undefined | Node | typeof PRUNED;
 class Node {
   [key: number]: Branch;
 
-  /** Invariant: reqMin <= min <= max */
+  /** Invariant: #reqMin <= #min <= #max */
+  /** Invariant: this[#min] was not pruned unless #min === #max */
 
   /** The original minimum from the pick request. */
   #reqMin: number;
@@ -32,6 +33,9 @@ class Node {
   #max: number;
 
   #branchesLeft: number;
+
+  /** The number of children that have been added to this node. */
+  #children = 0;
 
   /** A dummy node for pointing to the root of a tree. */
   static makeStart(): Node {
@@ -67,6 +71,8 @@ class Node {
   }
 
   addChild(pick: number, req: PickRequest): Node {
+    assert(this[pick] === undefined);
+    this.#children++;
     const node = Node.from(req);
     this[pick] = node;
     return node;
@@ -106,7 +112,10 @@ class Node {
     if (pick === this.#min && pick < this.#max) {
       // Prune by increasing #min.
       this.#branchesLeft--;
-      delete this[pick];
+      if (this.#children > 0 && this[pick] instanceof Node) {
+        this.#children--;
+        delete this[pick];
+      }
       this.#min++;
       // Consolidate with previous prunes. This preserves the invariant that
       // #min isn't pruned unless it's the only branch.
@@ -114,7 +123,7 @@ class Node {
         delete this[this.#min];
         this.#min++;
       }
-      return true;
+      return true; // (due to invariant)
     } else if (pick < this.#min || pick > this.#max) {
       return false;
     } else if (this[pick] === PRUNED) {
