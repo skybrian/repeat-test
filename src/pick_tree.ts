@@ -196,28 +196,30 @@ export class Walk {
   /** Invariant: nodePath.length <= pickPath.length */
   private readonly nodePath: Node[];
   private readonly pickPath: number[];
+  private len: number;
 
   constructor(start: Node, startPick: number) {
     this.nodePath = [start];
     this.pickPath = [startPick];
+    this.len = 1;
   }
 
   private get parent(): Node {
-    return this.nodePath[this.nodePath.length - 1];
+    return this.nodePath[this.len - 1];
   }
 
   get depth(): number {
-    return this.nodePath.length - 1;
+    return this.len - 1;
   }
 
   /** Returns the picks leading to the current branch. */
   getReplies(): number[] {
-    return this.pickPath.slice(1, this.nodePath.length);
+    return this.pickPath.slice(1, this.len);
   }
 
   /** Returns the pick that led to the current branch */
   get lastReply(): number {
-    return this.pickPath[this.nodePath.length - 1];
+    return this.pickPath[this.len - 1];
   }
 
   /** Returns true if the Walk points to a pruned branch. */
@@ -226,8 +228,9 @@ export class Walk {
   }
 
   private pushNode(n: Node, pick: number) {
-    this.nodePath.push(n);
-    this.pickPath[this.nodePath.length - 1] = pick;
+    const last = this.len++;
+    this.nodePath[last] = n;
+    this.pickPath[last] = pick;
   }
 
   /**
@@ -339,8 +342,7 @@ export class Walk {
         // we pruned the entire tree
         return true;
       }
-      this.nodePath.pop();
-      this.pickPath.pop();
+      this.len--;
       parent = this.parent;
       parent.prune(this.lastReply);
     }
@@ -348,8 +350,7 @@ export class Walk {
     if (this.depth > 0) {
       // Still pointing at a pruned node.
       // Pop this node so that we pick again.
-      this.nodePath.pop();
-      this.pickPath.pop();
+      this.len--;
     }
     return true;
   }
@@ -357,7 +358,7 @@ export class Walk {
   trim(depth: number) {
     assert(depth >= 0);
     if (depth < this.depth) {
-      this.nodePath.length = depth + 1;
+      this.len = depth + 1;
     }
   }
 }

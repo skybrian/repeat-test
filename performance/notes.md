@@ -71,6 +71,8 @@ benchmark              time (avg)        iter/s             (min … max)       
 generate a string        6.3 µs/iter     158,679.8   (5.62 µs … 115.83 µs) 6.12 µs 8.12 µs 9.25 µs
 ```
 
+## 0.3.0
+
 ### After changing multipass search to widen gradually
 
 ```
@@ -99,6 +101,7 @@ take 10k char16       115.15 ms/iter           8.7 (114.18 ms … 116.82 ms) 115
 
 ### After making Walk.trim() faster
 
+```
 cpu: Apple M2
 runtime: deno 1.46.1 (aarch64-apple-darwin)
 
@@ -107,9 +110,11 @@ benchmark              time (avg)        iter/s             (min … max)       
 ----------------------------------------------------------------------- -----------------------------
 generate a string       6.85 µs/iter     145,964.1   (6.08 µs … 111.62 µs) 6.71 µs 8.67 µs 9.75 µs
 take 10k char16        89.91 ms/iter          11.1   (89.25 ms … 92.37 ms) 90.06 ms 92.37 ms 92.37 ms
+```
 
 ### After changing Walk to not pop pickPath
 
+```
 cpu: Apple M2
 runtime: deno 1.46.1 (aarch64-apple-darwin)
 
@@ -118,3 +123,18 @@ benchmark              time (avg)        iter/s             (min … max)       
 ----------------------------------------------------------------------- -----------------------------
 generate a string       6.88 µs/iter     145,306.6   (6.12 µs … 103.12 µs) 6.75 µs 7.92 µs 10.96 µs
 take 10k char16        84.77 ms/iter          11.8   (84.36 ms … 86.29 ms) 84.82 ms 86.29 ms 86.29 ms
+```
+
+### After changing Walk to not pop its lists
+
+```
+Check file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+cpu: Apple M2
+runtime: deno 1.46.1 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+benchmark              time (avg)        iter/s             (min … max)       p75       p99      p995
+----------------------------------------------------------------------- -----------------------------
+generate a string       6.84 µs/iter     146,134.7   (6.08 µs … 178.17 µs) 6.71 µs 7.96 µs 9.5 µs
+take 10k char16        74.58 ms/iter          13.4   (74.04 ms … 76.03 ms) 74.64 ms 76.03 ms 76.03 ms
+```
