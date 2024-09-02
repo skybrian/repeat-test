@@ -1,4 +1,4 @@
-import { alwaysPickMin, PickRequest } from "./picks.ts";
+import { PickRequest } from "./picks.ts";
 import { PlayoutSource, Pruned } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
 import { generate, makePickFunction } from "./generated.ts";
@@ -46,8 +46,13 @@ export class MultipassSearch extends PlayoutSource {
       this.#filteredThisPass = true;
     }
 
-    const firstChoice = alwaysPickMin.pick(replaced);
-    const pick = this.#pass.pushUnpruned(firstChoice, replaced);
+    const lowest = this.#shared.lowestUnpruned();
+    if (lowest !== undefined) {
+      // No need to revisit branches already pruned in a previous pass.
+      this.#pass.pruneBranchTo(lowest);
+    }
+
+    const pick = this.#pass.pushUnpruned(req.min, replaced);
     if (!this.#shared.push(req, pick)) {
       return undefined; // pruned in previous pass
     }

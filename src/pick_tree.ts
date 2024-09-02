@@ -133,6 +133,14 @@ class Node {
     this.#branchesLeft--;
     return true;
   }
+
+  /** Prunes all branches below the given pick. */
+  pruneTo(pick: number) {
+    assert(pick <= this.#max);
+    while (this.#min < pick) {
+      this.prune(this.#min);
+    }
+  }
 }
 
 /**
@@ -234,6 +242,17 @@ export class Walk {
   /** Returns true if the Walk points to a pruned branch. */
   get pruned(): boolean {
     return this.parent.getBranch(this.lastReply) === PRUNED;
+  }
+
+  /**
+   * If current branch is a Node, returns its minimum unpruned pick.
+   */
+  lowestUnpruned(): number | undefined {
+    const branch = this.parent.getBranch(this.lastReply);
+    if (branch instanceof Node) {
+      return branch.findUnpruned(0);
+    }
+    return undefined;
   }
 
   private pushNode(n: Node, pick: number) {
@@ -362,6 +381,14 @@ export class Walk {
       this.len--;
     }
     return true;
+  }
+
+  /** If the current branch is a Node, prune any lower picks. */
+  pruneBranchTo(pick: number) {
+    const branch = this.parent.getBranch(this.lastReply);
+    if (branch instanceof Node) {
+      branch.pruneTo(pick);
+    }
   }
 
   trim(depth: number) {
