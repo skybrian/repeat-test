@@ -20,7 +20,7 @@ export function uniqueArray<T>(
 ): Arbitrary<T[]> {
   const { min, max } = parseArrayOpts(opts);
 
-  return arb.from((pick) => {
+  return arb.from(function uniqueArrayCallback(pick) {
     const jar = new Jar(item);
     const out: T[] = [];
     while (out.length < min) {

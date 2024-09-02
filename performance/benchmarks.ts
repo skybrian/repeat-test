@@ -1,4 +1,5 @@
-import { arb } from "@/mod.ts";
+import * as arb from "@/arbs.ts";
+import * as dom from "@/doms.ts";
 
 import { generate } from "../src/generated.ts";
 import { pickRandomSeed, randomPicker } from "../src/random.ts";
@@ -14,4 +15,8 @@ Deno.bench("generate a string", () => {
 
 Deno.bench("take 10k char16", () => {
   take(arb.char16(), 10000);
+});
+
+Deno.bench("find a unique array with 5 items", () => {
+  dom.uniqueArray(dom.int32(), { length: 5 });
 });
