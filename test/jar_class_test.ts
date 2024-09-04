@@ -6,10 +6,11 @@ import { Jar } from "@/domain.ts";
 import * as arb from "@/arbs.ts";
 import * as dom from "@/doms.ts";
 
-import { Pruned } from "../src/backtracking.ts";
+import { onePlayout, Pruned } from "../src/backtracking.ts";
 import { makePickFunction } from "../src/generated.ts";
 import { PlayoutSearch } from "../src/searches.ts";
 import { randomPicker } from "../src/random.ts";
+import { alwaysPickMin } from "../src/picks.ts";
 
 describe("Jar", () => {
   let search = new PlayoutSearch();
@@ -49,6 +50,16 @@ describe("Jar", () => {
         }
         assert(jar.isEmpty(), "should be empty");
       });
+    });
+    it("takes values given a minimum playout", () => {
+      const jar = new Jar(dom.int32());
+      const search = onePlayout(alwaysPickMin);
+      assert(search.startAt(0));
+      const pick = makePickFunction(search);
+      assertEquals(jar.take(pick), 0);
+      assertEquals(jar.take(pick), 1);
+      assertEquals(jar.take(pick), 2);
+      assertEquals(jar.take(pick), 3);
     });
   });
   describe("isEmpty", () => {

@@ -208,3 +208,20 @@ take 10k char16                  4.1 ms         243.2 (  4.0 ms …   6.1 ms)   
 uniqueArray of 5 ints           11.2 ms          89.6 ( 11.1 ms …  11.3 ms)  11.2 ms  11.3 ms  11.3 ms
 uniqueArray of 6 ints          150.6 ms           6.6 (148.0 ms … 159.2 ms) 151.2 ms 159.2 ms 159.2 ms
 ```
+
+### Jar.take() now picks a value for all minimum picks
+
+```
+    CPU | Apple M2
+Runtime | Deno 1.46.2 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+
+benchmark                 time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+------------------------- ----------------------------- --------------------- --------------------------
+generate a string                  4.6 µs       217,600 (  4.0 µs … 198.7 µs)   4.5 µs   6.0 µs   6.4 µs
+take 10k char16                    4.1 ms         246.3 (  3.9 ms …   4.5 ms)   4.1 ms   4.3 ms   4.5 ms
+uniqueArray of 5 ints             18.2 µs        54,960 ( 16.5 µs … 537.5 µs)  17.6 µs  26.7 µs  50.4 µs
+uniqueArray of 6 ints             19.8 µs        50,490 ( 18.6 µs … 130.3 µs)  19.5 µs  21.0 µs  83.7 µs
+uniqueArray of 100 ints          246.1 µs         4,064 (233.6 µs … 372.0 µs) 242.7 µs 355.8 µs 363.6 µs
+```

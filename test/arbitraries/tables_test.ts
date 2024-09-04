@@ -28,8 +28,8 @@ describe("uniqueArray", () => {
       [],
       [false],
       [true],
-      [true, false],
       [false, true],
+      [true, false],
     ]);
   });
   it("generates shorter arrays when max is set", () => {
@@ -159,7 +159,7 @@ describe("table", () => {
         [{ k: true, v: false }],
         [{ k: false, v: true }],
         [{ k: true, v: true }],
-        [{ k: true, v: false }, { k: false, v: false }],
+        [{ k: false, v: false }, { k: true, v: false }],
       ]);
     });
     it("never generates duplicate keys", () => {

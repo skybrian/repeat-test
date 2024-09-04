@@ -255,6 +255,21 @@ export class Walk {
     return undefined;
   }
 
+  /**
+   * Decreases the range of a PickRequest to match the current branch.
+   */
+  narrow(req: PickRequest): PickRequest {
+    const branch = this.parent.getBranch(this.lastReply);
+    if (branch instanceof Node) {
+      const min = branch.findUnpruned(0);
+      if (min > req.min) {
+        assert(min <= req.max);
+        return req.with({ min });
+      }
+    }
+    return req;
+  }
+
   private pushNode(n: Node, pick: number) {
     const last = this.len++;
     this.nodePath[last] = n;

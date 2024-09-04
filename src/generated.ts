@@ -1,5 +1,6 @@
 import { PickRequest } from "./picks.ts";
 import { type PlayoutSource, Pruned } from "./backtracking.ts";
+import type { PickTree } from "./pick_tree.ts";
 
 /**
  * A function that generates a value, given some picks.
@@ -28,6 +29,12 @@ export interface PickSet<T> {
  * Options for {@link PickFunction}.
  */
 export type PickFunctionOpts<T> = {
+  /**
+   * Narrows the available picks during this request to those not yet pruned
+   * in the given tree.
+   */
+  narrow?: PickTree;
+
   /**
    * Filters the generated value.
    *
@@ -77,11 +84,30 @@ export function makePickFunction<T>(
     }
     const generateFrom = req["generateFrom"];
     if (typeof generateFrom === "function") {
+      const narrow = opts?.narrow;
       const generate = () => {
         while (true) {
           const depth = playouts.depth;
           try {
-            const val = generateFrom(dispatch);
+            let innerPick: PickFunction = dispatch;
+            if (narrow !== undefined) {
+              const walk = narrow.walk();
+              innerPick = function narrowPick<T>(
+                req: PickRequest | PickSet<T>,
+                opts?: PickFunctionOpts<T>,
+              ) {
+                if (req instanceof PickRequest) {
+                  const innerReq = walk.narrow(req);
+                  const n = dispatch(innerReq) as number;
+                  walk.push(req, n);
+                  return n as T;
+                } else {
+                  return dispatch(req, opts) as T;
+                }
+              };
+            }
+
+            const val = generateFrom(innerPick);
             return val;
           } catch (e) {
             if (!(e instanceof Pruned)) {

@@ -2,7 +2,7 @@ import { assert } from "@std/assert";
 
 import { PickList } from "./picks.ts";
 import { generate } from "./generated.ts";
-import type { Generated, PickFunction } from "./generated.ts";
+import type { Generated, PickFunction, PickSet } from "./generated.ts";
 import { PickTree } from "./pick_tree.ts";
 import type { Domain } from "./domain_class.ts";
 import { MultipassSearch } from "./multipass_search.ts";
@@ -52,7 +52,9 @@ export class Jar<T> {
    * @throws {@link Pruned} if the jar is empty.
    */
   take(pick: PickFunction): T {
-    const val = pick(this.dom, { accept: this.#accept });
+    const label = `take(${this.dom.label})`;
+    const wrapped: PickSet<T> = { label, generateFrom: this.dom.generateFrom };
+    const val = pick(wrapped, { narrow: this.remaining, accept: this.#accept });
     this.#refreshExample();
     return val;
   }
