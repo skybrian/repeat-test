@@ -129,19 +129,8 @@ export class PickRequest {
   }
 
   /** Returns the number of possible replies for this request. */
-  get size() {
+  get size(): number {
     return this.max - this.min + 1;
-  }
-
-  /** Returns a copy with a different range. */
-  with(opts: { min: number }) {
-    const min = opts.min;
-    const innerBias = this.random;
-    const bias = (source: RandomSource) => {
-      const pick = innerBias(source);
-      return pick < min ? min : pick;
-    };
-    return new PickRequest(min, this.max, { bias });
   }
 
   /** Describes the request's range, for debugging. */

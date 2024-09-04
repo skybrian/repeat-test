@@ -1,6 +1,5 @@
 import { PickRequest } from "./picks.ts";
 import { type PlayoutSource, Pruned } from "./backtracking.ts";
-import type { PickTree } from "./pick_tree.ts";
 
 /**
  * A function that generates a value, given some picks.
@@ -26,14 +25,27 @@ export interface PickSet<T> {
 }
 
 /**
+ * Picks an integer in the given range.
+ *
+ * A minimum implementation will just call next(), but it can also substitute a
+ * different PickRequest, such as one with a narrower range.
+ */
+export type IntPickerMiddleware = (
+  req: PickRequest,
+  next: (req: PickRequest) => number,
+) => number;
+
+/**
  * Options for {@link PickFunction}.
  */
 export type PickFunctionOpts<T> = {
   /**
-   * Narrows the available picks during this request to those not yet pruned
-   * in the given tree.
+   * A function that initializes middleware to respond to PickRequests.
+   *
+   * Multiple attempts may be needed to generate a value. The middle() function
+   * will be called once before each attempt.
    */
-  narrow?: PickTree;
+  middle?: () => IntPickerMiddleware;
 
   /**
    * Filters the generated value.
@@ -84,25 +96,23 @@ export function makePickFunction<T>(
     }
     const generateFrom = req["generateFrom"];
     if (typeof generateFrom === "function") {
-      const narrow = opts?.narrow;
+      const startMiddle = opts?.middle;
       const generate = () => {
         while (true) {
           const depth = playouts.depth;
           try {
             let innerPick: PickFunction = dispatch;
-            if (narrow !== undefined) {
-              const walk = narrow.walk();
-              innerPick = function narrowPick<T>(
+
+            if (startMiddle !== undefined) {
+              const middle = startMiddle();
+              innerPick = function dispatchWithMiddleware<T>(
                 req: PickRequest | PickSet<T>,
                 opts?: PickFunctionOpts<T>,
               ) {
                 if (req instanceof PickRequest) {
-                  const innerReq = walk.narrow(req);
-                  const n = dispatch(innerReq) as number;
-                  walk.push(req, n);
-                  return n as T;
+                  return middle(req, dispatch);
                 } else {
-                  return dispatch(req, opts) as T;
+                  return dispatch(req, opts);
                 }
               };
             }

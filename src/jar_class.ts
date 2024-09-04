@@ -1,8 +1,13 @@
 import { assert } from "@std/assert";
 
-import { PickList } from "./picks.ts";
+import { PickList, type PickRequest } from "./picks.ts";
 import { generate } from "./generated.ts";
-import type { Generated, PickFunction, PickSet } from "./generated.ts";
+import type {
+  Generated,
+  IntPickerMiddleware,
+  PickFunction,
+  PickSet,
+} from "./generated.ts";
 import { PickTree } from "./pick_tree.ts";
 import type { Domain } from "./domain_class.ts";
 import { MultipassSearch } from "./multipass_search.ts";
@@ -54,7 +59,23 @@ export class Jar<T> {
   take(pick: PickFunction): T {
     const label = `take(${this.dom.label})`;
     const wrapped: PickSet<T> = { label, generateFrom: this.dom.generateFrom };
-    const val = pick(wrapped, { narrow: this.remaining, accept: this.#accept });
+
+    const remaining = this.remaining;
+    function middle(): IntPickerMiddleware {
+      const walk = remaining.walk();
+      function narrowToRemaining(
+        req: PickRequest,
+        next: (req: PickRequest) => number,
+      ): number {
+        const innerReq = walk.narrow(req);
+        const n = next(innerReq);
+        walk.push(req, n);
+        return n;
+      }
+      return narrowToRemaining;
+    }
+
+    const val = pick(wrapped, { middle, accept: this.#accept });
     this.#refreshExample();
     return val;
   }

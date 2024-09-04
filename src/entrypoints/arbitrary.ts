@@ -8,6 +8,7 @@ export type { PickRequestOpts, RandomPicker, RandomSource } from "../picks.ts";
 
 export type {
   Generated,
+  IntPickerMiddleware,
   PickCallback,
   PickFunction,
   PickFunctionOpts,

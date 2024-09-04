@@ -1,5 +1,6 @@
 import { assert } from "@std/assert";
-import type { PickList, PickRequest } from "./picks.ts";
+import { PickRequest } from "./picks.ts";
+import type { PickList, RandomSource } from "./picks.ts";
 
 /** Indicates that the subtree rooted at a branch has been fully explored. */
 export const PRUNED = Symbol("pruned");
@@ -264,7 +265,12 @@ export class Walk {
       const min = branch.findUnpruned(0);
       if (min > req.min) {
         assert(min <= req.max);
-        return req.with({ min });
+        const innerBias = req.random;
+        const bias = (source: RandomSource) => {
+          const pick = innerBias(source);
+          return pick < min ? min : pick;
+        };
+        return new PickRequest(min, req.max, { bias });
       }
     }
     return req;
