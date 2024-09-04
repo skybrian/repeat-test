@@ -140,7 +140,7 @@ export const unicodeChar: () => Arbitrary<string> = codePoint.map((code) => {
   return String.fromCodePoint(code);
 }).with({ label: "unicodeChar" }).asFunction();
 
-const basicPlaneCodePoint = arb.int(0, 65536 - surrogateGap).map(
+const basicPlaneCodePoint = arb.int(0, 65535 - surrogateGap).map(
   (code) => (code >= surrogateMin) ? code + surrogateGap : code,
 );
 
