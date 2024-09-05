@@ -16,6 +16,8 @@ export class PlayoutSearch extends PlayoutSource {
   readonly tree: PickTree = new PickTree();
   private readonly walk = this.tree.walk();
 
+  private odds: number[] = [];
+
   /**
    * Used when deciding which branch to take in the search tree.
    *
@@ -30,11 +32,18 @@ export class PlayoutSearch extends PlayoutSource {
 
   protected startPlayout(depth: number): void {
     this.walk.trim(depth);
+    this.odds.length = depth;
   }
 
   protected maybePick(req: PickRequest): number {
+    const depth = this.odds.length;
+    const newOdds = depth > 0 ? this.odds[depth - 1] * (1 / req.size) : 1;
+    this.odds.push(newOdds);
+
     const firstChoice = this.pickSource.pick(req);
-    const pick = this.walk.pushUnpruned(firstChoice, req);
+    const pick = this.walk.pushUnpruned(firstChoice, req, {
+      track: newOdds > 0.000001,
+    });
     return pick;
   }
 

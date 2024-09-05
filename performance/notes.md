@@ -225,3 +225,21 @@ uniqueArray of 5 ints             18.2 µs        54,960 ( 16.5 µs … 537.5 µ
 uniqueArray of 6 ints             19.8 µs        50,490 ( 18.6 µs … 130.3 µs)  19.5 µs  21.0 µs  83.7 µs
 uniqueArray of 100 ints          246.1 µs         4,064 (233.6 µs … 372.0 µs) 242.7 µs 355.8 µs 363.6 µs
 ```
+
+### Partially track duplicates for random generation 
+
+```
+    CPU | Apple M2
+Runtime | Deno 1.46.3 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+
+benchmark                 time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+------------------------- ----------------------------- --------------------- --------------------------
+generate a string                  4.6 µs       217,300 (  4.0 µs … 143.7 µs)   4.5 µs   5.4 µs   6.2 µs
+take 10k char16                    4.1 ms         241.4 (  4.1 ms …   4.7 ms)   4.2 ms   4.5 ms   4.7 ms
+uniqueArray of 5 ints             18.1 µs        55,260 ( 16.5 µs … 605.5 µs)  17.5 µs  28.4 µs  75.4 µs
+uniqueArray of 6 ints             20.2 µs        49,610 ( 18.8 µs … 448.0 µs)  19.8 µs  24.0 µs  91.2 µs
+uniqueArray of 100 ints          253.8 µs         3,941 (243.4 µs … 357.6 µs) 247.9 µs 336.7 µs 337.9 µs
+generate 10k strings              78.0 ms          12.8 ( 77.3 ms …  80.5 ms)  78.0 ms  80.5 ms  80.5 ms
+```

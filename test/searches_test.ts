@@ -8,11 +8,12 @@ import {
 } from "@std/assert";
 
 import { repeatTest } from "@/runner.ts";
-import * as arb from "../src/arbitraries/basics.ts";
+import * as arb from "@/arbs.ts";
 
 import { alwaysPick, alwaysPickMin, PickRequest } from "../src/picks.ts";
 import { randomPicker } from "../src/random.ts";
 import { PlayoutSearch } from "../src/searches.ts";
+import { generate } from "../src/generated.ts";
 
 const bit = new PickRequest(0, 1);
 
@@ -221,5 +222,20 @@ describe("PlayoutSearch", () => {
         assertEquals(playouts[999], "[9,9,9]");
       }
     }, { reps: 100 });
+  });
+
+  it("doesn't generate duplicate small strings", () => {
+    search.pickSource = randomPicker(123);
+    const str = arb.string();
+    const seen = new Set<string>();
+    for (let i = 0; i < 100000; i++) {
+      const gen = generate(str, search);
+      assert(gen !== undefined);
+      const s = gen.val;
+      if (s.length <= 1) {
+        assert(!seen.has(s), `duplicate string: ${s}`);
+        seen.add(s);
+      }
+    }
   });
 });

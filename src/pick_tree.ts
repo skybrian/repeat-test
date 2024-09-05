@@ -357,13 +357,22 @@ export class Walk {
    * Preconditions: the Walk doesn't point at a pruned branch.
    * If the node exists, it has at least one unpruned branch.
    */
-  pushUnpruned(firstChoice: number, req: PickRequest): number {
+  pushUnpruned(
+    firstChoice: number,
+    req: PickRequest,
+    opts?: { track?: boolean },
+  ): number {
     const parent = this.parent;
     const lastPick = this.lastReply;
     let branch = parent.getBranch(lastPick);
     assert(branch !== PRUNED, "parent picked a pruned branch");
     if (branch === undefined) {
-      branch = parent.addChild(lastPick, req);
+      const track = opts?.track ?? true;
+      if (track) {
+        branch = parent.addChild(lastPick, req);
+      } else {
+        branch = Node.from(req);
+      }
     } else {
       branch.checkRangeMatches(req);
     }
