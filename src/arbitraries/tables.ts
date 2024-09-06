@@ -1,4 +1,4 @@
-import type { Arbitrary, RecordShape } from "@/arbitrary.ts";
+import type { Arbitrary, PickSet, RecordShape } from "@/arbitrary.ts";
 import { Domain, Jar } from "@/domain.ts";
 import * as arb from "./basics.ts";
 import { PickList, PickRequest } from "../picks.ts";
@@ -111,34 +111,37 @@ export function table<R extends Record<string, unknown>>(
 
     const rows: R[] = [];
 
-    const addRow: Arbitrary<R | undefined> = arb.from((pick) => {
-      if (rows.length < min) {
-        for (const jar of Object.values(jars)) {
-          assert(!jar.isEmpty());
-        }
-      } else {
-        if (max !== undefined && rows.length >= max) {
-          return undefined;
-        }
-        if (emptyJar()) {
-          return undefined;
-        }
-        if (!pick(arb.boolean())) {
-          return undefined;
-        }
-      }
-
-      const row: Record<string, unknown> = {};
-      for (const key of Object.keys(shape)) {
-        const jar = jars[key];
-        if (jar) {
-          row[key] = jar.take(pick);
+    const addRow: PickSet<R | undefined> = {
+      label: "addRow",
+      generateFrom: (pick) => {
+        if (rows.length < min) {
+          for (const jar of Object.values(jars)) {
+            assert(!jar.isEmpty());
+          }
         } else {
-          row[key] = pick(shape[key]);
+          if (max !== undefined && rows.length >= max) {
+            return undefined;
+          }
+          if (emptyJar()) {
+            return undefined;
+          }
+          if (!pick(arb.boolean())) {
+            return undefined;
+          }
         }
-      }
-      return row as R;
-    });
+
+        const row: Record<string, unknown> = {};
+        for (const key of Object.keys(shape)) {
+          const jar = jars[key];
+          if (jar) {
+            row[key] = jar.take(pick);
+          } else {
+            row[key] = pick(shape[key]);
+          }
+        }
+        return row as R;
+      },
+    };
 
     for (let row = pick(addRow); row !== undefined; row = pick(addRow)) {
       rows.push(row);

@@ -13,6 +13,9 @@ import type { ArrayOpts } from "../options.ts";
 /**
  * Defines an Arbitrary implemented by a callback function.
  *
+ * Note: the callback will be executed immediately to verify that it works. If
+ * this would cause problems, perhaps implement {@link PickSet} instead.
+ *
  * For more, see {@link PickCallback}.
  */
 export function from<T>(

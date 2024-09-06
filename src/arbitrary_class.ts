@@ -10,12 +10,25 @@ import {
 import type { RecordShape } from "./options.ts";
 import { PlayoutSearch } from "./searches.ts";
 import { randomPicker } from "./random.ts";
+import { generateDefault } from "./multipass_search.ts";
 
 type ConstructorOpts<T> = {
   examples?: T[];
   maxSize?: number;
   dryRun?: boolean;
 };
+
+function checkRandomGenerate(set: PickSet<unknown>, tries: number) {
+  const search = new PlayoutSearch();
+  search.pickSource = randomPicker(123);
+  const gen = generate(set, search, { limit: 1000 });
+  if (gen !== undefined) {
+    return;
+  }
+  throw new Error(
+    `${set.label} didn't generate any values in ${tries} tries`,
+  );
+}
 
 /**
  * A set of values that can be generated on demand.
@@ -57,18 +70,8 @@ export class Arbitrary<T> implements PickSet<T> {
       this.#examples = opts?.examples;
       this.#maxSize = opts?.maxSize;
       if (opts?.dryRun !== false) {
-        // Verify that we can generate an example in 100 tries.
-        const search = new PlayoutSearch();
-        search.pickSource = randomPicker(123);
-        for (let i = 0; i < 100; i++) {
-          const gen = generate(this, search, { limit: 1000 });
-          if (gen !== undefined) {
-            return;
-          }
-        }
-        throw new Error(
-          `${this.label} didn't generate any values in 100 tries`,
-        );
+        checkRandomGenerate(this, 10);
+        generateDefault(this);
       }
     }
   }

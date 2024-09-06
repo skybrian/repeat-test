@@ -53,7 +53,7 @@ describe("Arbitrary", () => {
         assertThrows(
           () => Arbitrary.from(callback),
           Error,
-          "(unlabeled) didn't generate any values in 100 tries",
+          "(unlabeled) didn't generate any values in 10 tries",
         );
       });
       it("throws an Error if given a callback that calls pick incorrectly", () => {
@@ -128,9 +128,9 @@ describe("Arbitrary", () => {
     it("disallows filters that don't allow any values through", () => {
       const rejectEverything = () => false;
       assertThrows(
-        () => sixSided.filter(rejectEverything),
+        () => arb.string().filter(rejectEverything),
         Error,
-        "sixSided (filtered) didn't generate any values in 100 tries",
+        "string (filtered) didn't generate any values in 10 tries",
       );
     });
     it("keeps the default the same if it works", () => {
