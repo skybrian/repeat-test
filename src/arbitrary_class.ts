@@ -1,16 +1,9 @@
 import { assert } from "@std/assert";
 import { PickRequest } from "./picks.ts";
-import { generate } from "./generated.ts";
+import { generateDefault } from "./multipass_search.ts";
 
-import type {
-  Generated,
-  PickCallback,
-  PickFunction,
-  PickSet,
-} from "./generated.ts";
+import type { PickCallback, PickFunction, PickSet } from "./generated.ts";
 import type { RecordShape } from "./options.ts";
-
-import { MultipassSearch } from "./multipass_search.ts";
 
 type ConstructorOpts<T> = {
   examples?: T[];
@@ -58,7 +51,7 @@ export class Arbitrary<T> implements PickSet<T> {
       this.#examples = opts?.examples;
       this.#maxSize = opts?.maxSize;
       if (opts?.dryRun !== false) {
-        this.default(); // dry run
+        generateDefault(this); // dry run
       }
     }
   }
@@ -86,27 +79,6 @@ export class Arbitrary<T> implements PickSet<T> {
    */
   get maxSize(): number | undefined {
     return this.#maxSize;
-  }
-
-  /**
-   * Returns one of the values of this Arbitrary, along with the picks used to
-   * generate it.
-   *
-   * Usually it's a zero or minimum value. Shrinking will return this value when
-   * possible.
-   *
-   * It's guaranteed that every Arbitrary has a default value. (The constructor
-   * will fail otherwise.)
-   */
-  default(): Generated<T> {
-    const search = new MultipassSearch();
-    const gen = generate(this, search);
-    if (gen === undefined) {
-      throw new Error(
-        `${this.label} didn't generate any values`,
-      );
-    }
-    return gen;
   }
 
   /**

@@ -6,6 +6,7 @@ import { type Failure, failure, type Success, success } from "./results.ts";
 import { PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
 import { generate } from "./generated.ts";
+import { generateDefault } from "./multipass_search.ts";
 
 import type { SendErr } from "./options.ts";
 
@@ -61,7 +62,7 @@ export class Domain<T> extends Arbitrary<T> {
 
     if (opts?.dryRun !== false) {
       // Verify that we can round-trip the default value.
-      const def = arb.default();
+      const def = generateDefault(arb);
       const picks = this.pickify(
         def.val,
         "callback returned undefined",

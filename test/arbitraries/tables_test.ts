@@ -10,17 +10,17 @@ import {
   assertFirstValues,
   assertValues,
 } from "../../src/asserts.ts";
-import { takeAll } from "../../src/multipass_search.ts";
+import { generateDefault, takeAll } from "../../src/multipass_search.ts";
 import { intRange } from "../../src/arbitraries/ranges.ts";
 
 describe("uniqueArray", () => {
   it("defaults to an empty array", () => {
     const bools = arb.uniqueArray(dom.boolean());
-    assertEquals(bools.default().val, []);
+    assertEquals(generateDefault(bools).val, []);
   });
   it("defaults to a larger array when min is set", () => {
     const bools = arb.uniqueArray(dom.boolean(), { length: { min: 1 } });
-    assertEquals(bools.default().val.length, 1);
+    assertEquals(generateDefault(bools).val.length, 1);
   });
   it("generates all combinations of a boolean", () => {
     const bools = arb.uniqueArray(dom.boolean());
@@ -124,14 +124,14 @@ describe("table", () => {
   describe("with one unique column", () => {
     const table = arb.table({ v: dom.boolean() }, { keys: ["v"] });
     it("defaults to zero rows", () => {
-      assertEquals(table.default().val, []);
+      assertEquals(generateDefault(table).val, []);
     });
     it("defaults to one row when min is set", () => {
       const table = arb.table({ v: dom.boolean() }, {
         keys: ["v"],
         length: { min: 1 },
       });
-      assertEquals(table.default().val.length, 1);
+      assertEquals(generateDefault(table).val.length, 1);
     });
     it("generates the same values as uniqueArray", () => {
       const expected = takeAll(

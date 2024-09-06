@@ -1,4 +1,4 @@
-# Getting Started
+# Part 1: Getting Started
 
 ## Hello world
 

@@ -13,6 +13,7 @@ import * as arb from "@/arbs.ts";
 import { generate } from "../../src/generated.ts";
 import { onePlayout } from "../../src/backtracking.ts";
 import { randomPicker } from "../../src/random.ts";
+import { generateDefault } from "../../src/multipass_search.ts";
 
 describe("boolean", () => {
   it("generates both values", () => {
@@ -86,13 +87,13 @@ describe("int", () => {
   });
   describe("default", () => {
     it("defaults to min for positive numbers", () => {
-      assertEquals(arb.int(1, 6).default().val, 1);
+      assertEquals(generateDefault(arb.int(1, 6)).val, 1);
     });
     it("defaults to max for negative numbers", () => {
-      assertEquals(arb.int(-6, -1).default().val, -1);
+      assertEquals(generateDefault(arb.int(-6, -1)).val, -1);
     });
     it("defaults to 0 for a range that includes 0", () => {
-      assertEquals(arb.int(-6, 6).default().val, 0);
+      assertEquals(generateDefault(arb.int(-6, 6)).val, 0);
     });
   });
   describe("maxSize", () => {
@@ -133,7 +134,7 @@ describe("record", () => {
       a: arb.int(1, 2),
     });
     it("defaults to the default value of the field", () => {
-      assertEquals(oneField.default().val, { a: 1 });
+      assertEquals(generateDefault(oneField).val, { a: 1 });
     });
     it("makes one pick", () => {
       assertGenerated(oneField, [
@@ -168,8 +169,8 @@ describe("oneOf", () => {
     arb.int(5, 6),
   );
   it("defaults to the first branch", () => {
-    assertEquals(oneWay.default().val, 1);
-    assertEquals(threeWay.default().val, 1);
+    assertEquals(generateDefault(oneWay).val, 1);
+    assertEquals(generateDefault(threeWay).val, 1);
   });
 });
 
@@ -194,7 +195,7 @@ describe("array", () => {
   describe("of unsigned ints", () => {
     const ints = arb.array(arb.int(0, 2 ** 32));
     it("defaults to an empty array", () => {
-      assertEquals(ints.default().val, []);
+      assertEquals(generateDefault(ints).val, []);
     });
     describe("examples", () => {
       it("returns each combination in increasing order", () => {
@@ -215,7 +216,7 @@ describe("array", () => {
   describe("with a minimum length", () => {
     const bools = arb.array(arb.boolean(), { length: { min: 3 } });
     it("defaults to the minimum length", () => {
-      assertEquals(bools.default().val, [false, false, false]);
+      assertEquals(generateDefault(bools).val, [false, false, false]);
     });
   });
 

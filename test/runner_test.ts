@@ -14,6 +14,7 @@ import type { Domain } from "../src/domain_class.ts";
 import * as arb from "@/arbs.ts";
 import * as dom from "@/doms.ts";
 import { success } from "../src/results.ts";
+import { generateDefault } from "../src/multipass_search.ts";
 
 import { NullConsole, type TestConsole } from "../src/console.ts";
 
@@ -441,7 +442,7 @@ describe("runReps", () => {
       ok: true,
       key: { seed: 1, index: 1 },
       arb: example,
-      arg: example.default(),
+      arg: generateDefault(example),
       test: () => {
         throw new Error("oops");
       },

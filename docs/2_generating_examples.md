@@ -71,7 +71,14 @@ repeatTest(arb.string({ length: { min: 1, max: 5 } }), (s) => {
 });
 ```
 
-TODO: more
+
+### Filtering
+
+Another thing you can do with *any* Arbitrary is filter out some values that you don't want to test with.
+
+...
+
+Filtering needs to be used with caution; if you filter out too much, `repeat-test` will get stuck searching for examples 
 
 [^1]: In practice, there is a limit. Very large strings aren't actually generated.
 
