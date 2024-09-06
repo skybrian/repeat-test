@@ -1,9 +1,15 @@
 import { assert } from "@std/assert";
 import { PickRequest } from "./picks.ts";
-import { generateDefault } from "./multipass_search.ts";
 
-import type { PickCallback, PickFunction, PickSet } from "./generated.ts";
+import {
+  generate,
+  type PickCallback,
+  type PickFunction,
+  type PickSet,
+} from "./generated.ts";
 import type { RecordShape } from "./options.ts";
+import { PlayoutSearch } from "./searches.ts";
+import { randomPicker } from "./random.ts";
 
 type ConstructorOpts<T> = {
   examples?: T[];
@@ -51,7 +57,18 @@ export class Arbitrary<T> implements PickSet<T> {
       this.#examples = opts?.examples;
       this.#maxSize = opts?.maxSize;
       if (opts?.dryRun !== false) {
-        generateDefault(this); // dry run
+        // Verify that we can generate an example in 100 tries.
+        const search = new PlayoutSearch();
+        search.pickSource = randomPicker(123);
+        for (let i = 0; i < 100; i++) {
+          const gen = generate(this, search, { limit: 1000 });
+          if (gen !== undefined) {
+            return;
+          }
+        }
+        throw new Error(
+          `${this.label} didn't generate any values in 100 tries`,
+        );
       }
     }
   }

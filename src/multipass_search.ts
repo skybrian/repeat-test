@@ -1,3 +1,5 @@
+import { assert } from "@std/assert";
+
 import { PickRequest } from "./picks.ts";
 import { PlayoutSource, Pruned } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
@@ -100,11 +102,7 @@ export class MultipassSearch extends PlayoutSource {
 export function generateDefault<T>(set: PickSet<T>): Generated<T> {
   const search = new MultipassSearch();
   const gen = generate(set, search);
-  if (gen === undefined) {
-    throw new Error(
-      `${set.label} didn't generate any values`,
-    );
-  }
+  assert(gen !== undefined, `${set.label} has no default`);
   return gen;
 }
 

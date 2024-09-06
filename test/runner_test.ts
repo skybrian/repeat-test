@@ -139,12 +139,14 @@ describe("sequentialReps", () => {
   });
 
   it("records an exception while generating a rep and continues", () => {
+    let fail = false;
     const example = arb.int(1, 3).map((id) => {
-      if (id === 2) {
+      if (id === 2 && fail) {
         throw new Error("oops!");
       }
       return id;
     });
+    fail = true;
     const test = () => {};
     const reps = depthFirstReps(example, test);
 
@@ -222,12 +224,14 @@ describe("randomReps", () => {
   });
 
   it("records an exception while generating a rep and continues", () => {
+    let fail = false;
     const example = arb.int(1, 3).map((id) => {
-      if (id === 2) {
+      if (id === 2 && fail) {
         throw new Error("oops!");
       }
       return id;
     });
+    fail = true;
     const test = () => {};
 
     const seed = 123;
