@@ -10,7 +10,7 @@ import {
   assertSameExamples,
   assertSometimes,
   assertValues,
-} from "../../src/asserts.ts";
+} from "../lib/asserts.ts";
 
 import { isWellFormed } from "../../src/workarounds.ts";
 

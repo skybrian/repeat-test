@@ -5,7 +5,7 @@ import {
   assertFirstValues,
   assertGenerated,
   assertValues,
-} from "../../src/asserts.ts";
+} from "../lib/asserts.ts";
 
 import { repeatTest } from "@/runner.ts";
 import { Arbitrary } from "@/arbitrary.ts";

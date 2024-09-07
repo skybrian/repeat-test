@@ -6,7 +6,7 @@ import { Arbitrary } from "@/arbitrary.ts";
 import { PickRequest } from "../src/picks.ts";
 import { type PlayoutSource, Pruned } from "../src/backtracking.ts";
 
-import { assertGenerated, assertValues } from "../src/asserts.ts";
+import { assertGenerated, assertValues } from "./lib/asserts.ts";
 import {
   find,
   generateAll,

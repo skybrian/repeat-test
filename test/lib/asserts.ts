@@ -2,10 +2,10 @@ import { assert, assertEquals } from "@std/assert";
 import type { Arbitrary } from "@/arbitrary.ts";
 import type { Domain } from "@/domain.ts";
 
-import { generate, type PickSet } from "./generated.ts";
-import { take, takeAll, takeGenerated } from "./multipass_search.ts";
-import { onePlayout } from "./backtracking.ts";
-import { randomPicker } from "./random.ts";
+import { generate, type PickSet } from "../../src/generated.ts";
+import { take, takeAll, takeGenerated } from "../../src/multipass_search.ts";
+import { onePlayout } from "../../src/backtracking.ts";
+import { randomPicker } from "../../src/random.ts";
 
 export function assertRoundTrip<T>(dom: Domain<T>, val: T) {
   const picks = dom.pickify(val);

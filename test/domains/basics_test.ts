@@ -4,7 +4,7 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { repeatTest } from "@/runner.ts";
 import * as dom from "@/doms.ts";
 
-import { assertEncoding, assertRoundTrip } from "../../src/asserts.ts";
+import { assertEncoding, assertRoundTrip } from "../lib/asserts.ts";
 import {
   intRange,
   invalidIntRange,
