@@ -2,7 +2,7 @@
 
 ## Introducing Arbitraries
 
-In [Part 1]("../1_getting_started.md") we saw a test that uses two examples, defined like this:
+In [Part 1](./1_getting_started.md) we saw a test that uses two examples, defined like this:
 
 ```
 const examples = ["hello", "world"];

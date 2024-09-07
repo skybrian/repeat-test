@@ -185,4 +185,6 @@ String.length ... ok (0ms)
 ok | 1 passed (1 step) | 0 failed (1ms)
 ```
 
-Since repeatTest doesn't print anything itself for passing tests, all the output comes from the bdd framework.
+Since repeatTest doesn't print anything itself for passing tests, the above output comes from the bdd framework.
+
+That should be enough about the `repeatTest` function to get started. To learn about generating examples, see [Part 2](./2_generating_examples.md).
