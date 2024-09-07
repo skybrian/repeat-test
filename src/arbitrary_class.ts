@@ -125,14 +125,52 @@ export class Arbitrary<T> implements PickSet<T> {
   filter(
     accept: (val: T) => boolean,
   ): Arbitrary<T> {
-    const label = this.label.endsWith("(filtered)")
-      ? this.label
-      : `${this.label} (filtered)`;
+    // Check that accept() returns often enough.
+    // Based on biased coin simulation:
+    // https://claude.site/artifacts/624afebe-b86f-4e33-9e30-5414dc7c810b
+
+    let threshold = 2;
+    const search = new PlayoutSearch();
+    search.pickSource = randomPicker(123);
+    let accepted = 0;
+    let total = 0;
+    const maxTries = 50;
+    while (total < maxTries) {
+      const gen = generate(this, search, { limit: 1000 });
+      if (gen === undefined) {
+        break; // visited all values
+      }
+      total++;
+      if (accept(gen.val)) {
+        accepted++;
+        if (accepted >= threshold) {
+          break;
+        }
+      }
+    }
+
+    if (total < maxTries) {
+      threshold = 1; // small arbitraries only need to pass one value through
+    }
+    if (accepted < threshold) {
+      throw new Error(
+        `${this.#label} filter didn't allow enough values through; want: ${threshold} of ${total}, got: ${accepted}`,
+      );
+    }
+
     const callback: PickCallback<T> = (pick) => {
       return pick(this, { accept });
     };
+
+    const label = this.label.endsWith("(filtered)")
+      ? this.label
+      : `${this.label} (filtered)`;
+
+    // Check that a default exists
+    generateDefault({ label, generateFrom: callback });
+
     const maxSize = this.maxSize;
-    return new Arbitrary(callback, label, { maxSize });
+    return new Arbitrary(callback, label, { maxSize, dryRun: false });
   }
 
   /**

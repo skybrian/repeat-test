@@ -11,6 +11,7 @@ import { randomPicker } from "../src/random.ts";
 
 import { generate, makePickFunction } from "../src/generated.ts";
 import type { PickSet } from "../src/generated.ts";
+import { arb } from "@/mod.ts";
 
 const bit = new PickRequest(0, 1);
 const hi = Arbitrary.of("hi", "there");
@@ -40,6 +41,15 @@ describe("makePickFunction", () => {
   it("can filter out every value", () => {
     const accept = () => false;
     assertThrows(() => pick(hi, { accept }), Pruned);
+  });
+
+  it("gives up eventually", () => {
+    const accept = () => false;
+    assertThrows(
+      () => pick(arb.string(), { accept }),
+      Error,
+      "accept() returned false 1000 times for string; giving up",
+    );
   });
 
   it("retries a pick with a different playout", () => {

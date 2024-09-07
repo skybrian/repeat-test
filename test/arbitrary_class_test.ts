@@ -130,7 +130,7 @@ describe("Arbitrary", () => {
       assertThrows(
         () => arb.string().filter(rejectEverything),
         Error,
-        "string (filtered) didn't generate any values in 10 tries",
+        "string filter didn't allow enough values through; want: 2 of 50, got: 0",
       );
     });
     it("keeps the default the same if it works", () => {

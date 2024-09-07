@@ -617,13 +617,4 @@ describe("repeatTest", () => {
       );
     });
   });
-  it("doesn't run out of memory for a filtered string", () => {
-    const example = arb.string().filter((s) => s.startsWith("a"));
-    repeatTest(example, (s) => {
-      assert(
-        s.startsWith("a"),
-        `expected string to start with 'a', got '${s}'`,
-      );
-    });
-  });
 });

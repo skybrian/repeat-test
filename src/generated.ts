@@ -153,9 +153,9 @@ export function makePickFunction<T>(
           throw new Pruned("accept() returned false for all possible values");
         }
       }
-      // Throw pruned at the starting depth so this pick won't be retried.
-      // (If depth is zero, this will end the search.)
-      throw new Pruned(`accept() returned false ${maxTries} times; giving up`);
+      throw new Error(
+        `accept() returned false ${maxTries} times for ${req.label}; giving up`,
+      );
     }
     throw new Error("pick function called with an invalid argument");
   };

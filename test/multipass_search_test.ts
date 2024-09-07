@@ -371,25 +371,6 @@ describe("takeAll", () => {
     assertValues(hello, ["hi", "there"]);
   });
 
-  it("generates all values for a combination lock", () => {
-    const digit = new PickRequest(1, 9);
-    const digitCount = 3;
-    const accepted = new Set(["[1,2,3]", "[1,4,3]"]);
-
-    const digits = Arbitrary.from((pick) => {
-      const picks: number[] = [];
-      for (let i = 0; i < digitCount; i++) {
-        picks.push(pick(digit));
-      }
-      return JSON.stringify(picks);
-    });
-    const lock = digits.filter((pick) => accepted.has(pick));
-    assertValues(lock, [
-      "[1,2,3]",
-      "[1,4,3]",
-    ]);
-  });
-
   it("throws an exception if it can't find a value", () => {
     const letters = Arbitrary.of("a", "b", "c");
     assertThrows(
