@@ -5,5 +5,5 @@
  */
 
 export { repeatTest } from "../runner.ts";
-export type { TestConsole } from "../console.ts";
+export type { AnyConsole } from "../console.ts";
 export type { RepeatOpts, TestFunction } from "../runner.ts";

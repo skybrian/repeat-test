@@ -27,7 +27,7 @@
     "./runner": "./src/entrypoints/runner.ts"
   },
   "tasks": {
-    "coverage": "rm -f lcov.info && deno test --coverage --clean && deno coverage --lcov > lcov.info && deno coverage",
+    "coverage": "rm -f lcov.info && deno test --coverage --clean && deno coverage --lcov > lcov.info && deno coverage --exclude=coverage_exclusions.ts",
     "test": "deno test"
   }
 }

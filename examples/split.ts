@@ -24,6 +24,8 @@ repeatTest(input, (original, console) => {
   console.log("encoded as", `'${encoded}'`); // Has no effect unless the test fails.
 
   const copy = badDecode(encoded);
+
+  console.debugger();
   assertEquals(copy, original);
 });
 

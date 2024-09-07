@@ -7,8 +7,8 @@ import { PlayoutSearch } from "./searches.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
 
 import { pickRandomSeed, randomPickers } from "./random.ts";
-import { CountingConsole, NullConsole } from "./console.ts";
-import type { TestConsole } from "./console.ts";
+import { FailingTestConsole, NullConsole } from "./console.ts";
+import type { AnyConsole, TestConsole } from "./console.ts";
 import { shrink } from "./shrink.ts";
 
 /**
@@ -150,13 +150,13 @@ export function* randomReps<T>(
 /** Runs one repetition. */
 export function runRep<T>(
   rep: Rep<T>,
-  console: TestConsole,
+  outerConsole: AnyConsole,
 ): Success<void> | RepFailure<T> {
   const interesting = (arg: T) => {
-    const console = new NullConsole();
+    const innerConsole = new NullConsole();
     try {
-      rep.test(arg, console);
-      return console.errorCount > 0;
+      rep.test(arg, innerConsole);
+      return innerConsole.errorCount > 0;
     } catch (_e) {
       return true;
     }
@@ -164,14 +164,14 @@ export function runRep<T>(
   if (!interesting(rep.arg.val)) {
     return success();
   }
-  console.log("\nTest failed. Shrinking...");
+  outerConsole.log("\nTest failed. Shrinking...");
   const shrunk = shrink(rep.arb, interesting, rep.arg);
 
   // Rerun the test using the shrunk value and the original console.
-  const wrapped = new CountingConsole(console);
+  const innerConsole = new FailingTestConsole(outerConsole);
   try {
-    rep.test(shrunk.val, wrapped);
-    if (wrapped.errorCount > 0) {
+    rep.test(shrunk.val, innerConsole);
+    if (innerConsole.errorCount > 0) {
       return {
         ok: false,
         key: rep.key,
@@ -193,7 +193,7 @@ export function runRep<T>(
 export function runReps<T>(
   reps: Iterable<Rep<T> | RepFailure<unknown>>,
   count: number,
-  console: TestConsole,
+  console: AnyConsole,
 ): Success<number> | RepFailure<unknown> {
   let passed = 0;
   for (const rep of reps) {
@@ -208,7 +208,7 @@ export function runReps<T>(
 
 export function reportFailure(
   failure: RepFailure<unknown>,
-  console: TestConsole,
+  console: AnyConsole,
 ): never {
   const key = serializeRepKey(failure.key);
   console.error(`attempt ${failure.key.index + 1} FAILED, using:`, failure.arg);
@@ -227,7 +227,7 @@ export type RepeatOpts = {
   only?: string;
 
   /** If specified, repeatTest will send output to an alternate console. */
-  console?: TestConsole;
+  console?: AnyConsole;
 };
 
 function getStartKey(opts?: RepeatOpts): RepKey {
@@ -302,10 +302,10 @@ export function repeatTest<T>(
 
   const count = opts?.only ? 1 : expectedPlayouts;
 
-  const testConsole = opts?.console ?? console;
-  const ran = runReps(reps, count, testConsole);
+  const outerConsole = opts?.console ?? console;
+  const ran = runReps(reps, count, outerConsole);
   if (!ran.ok) {
-    reportFailure(ran, testConsole);
+    reportFailure(ran, outerConsole);
   } else if (ran.val === 0) {
     throw new Error(`skipped all ${skipCount} reps`);
   } else if (opts?.only !== undefined) {

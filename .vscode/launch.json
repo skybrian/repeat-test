@@ -5,8 +5,23 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug Current File",
             "request": "launch",
-            "name": "Debug Current Test File",
+            "type": "node",
+            "program": "${file}",
+            "cwd": "${workspaceFolder}",
+            "env": {},
+            "runtimeExecutable": "/Users/skybrian/.deno/bin/deno",
+            "runtimeArgs": [
+                "--inspect-brk",
+                "--allow-all"
+            ],
+            "attachSimplePort": 9229,
+            "outputCapture": "std",
+        },
+        {
+            "name": "Debug Current Test",
+            "request": "launch",
             "type": "node",
             "program": "${file}",
             "cwd": "${workspaceFolder}",

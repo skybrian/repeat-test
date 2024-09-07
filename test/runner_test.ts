@@ -16,7 +16,7 @@ import * as dom from "@/doms.ts";
 import { success } from "../src/results.ts";
 import { generateDefault } from "../src/multipass_search.ts";
 
-import { NullConsole, type TestConsole } from "../src/console.ts";
+import { type AnyConsole, NullConsole } from "../src/console.ts";
 
 import {
   depthFirstReps,
@@ -316,7 +316,7 @@ export type LogMessage = {
   type: "log" | "error";
 };
 
-export class RecordingConsole implements TestConsole {
+export class RecordingConsole implements AnyConsole {
   messages: LogMessage[] = [];
 
   log(...args: unknown[]) {
@@ -336,6 +336,7 @@ describe("runRep", () => {
   it("suppresses console output when the test passes", () => {
     const console = new RecordingConsole();
     const rep = makeDefaultRep(arb.int(1, 10), (_x, console) => {
+      console.debugger();
       console.log("hello");
     });
     assertEquals(runRep(rep, console), success());
