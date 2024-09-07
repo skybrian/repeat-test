@@ -104,6 +104,24 @@ Normally we take `console.log` calls out when we're done debugging, but since
 TestConsole output is normally suppressed, feel free to leave the log statement
 in if you feel the output might be useful someday.
 
+## Stopping in the debugger
+
+Using a debugger can also be annoying when repeating a test. If you put a
+breakpoint in a test, the debugger will stop at it repeatedly, whether or not
+the test passes or fails.
+
+Here is a better way:
+
+```ts
+repeatTest(examples, (word, console) => {
+  console.debugger(); // Only stop sometimes
+  assertEquals(word.length, 5);
+});
+```
+
+The `console.debugger()` method does nothing normally. It will execute a
+`debugger` statement only in a test that's about to fail, allowing you to step through the failing test.
+
 ## Skipping to a failing test
 
 In the output of the failed test run, `repeatTest` printed a message that looks like this:
