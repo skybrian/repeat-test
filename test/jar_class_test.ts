@@ -8,16 +8,16 @@ import * as dom from "@/doms.ts";
 
 import { onePlayout, Pruned } from "../src/backtracking.ts";
 import { makePickFunction } from "../src/generated.ts";
-import { PlayoutSearch } from "../src/searches.ts";
+import { PartialTracker } from "../src/searches.ts";
 import { randomPicker } from "../src/random.ts";
 import { alwaysPickMin } from "../src/picks.ts";
 
 describe("Jar", () => {
-  let search = new PlayoutSearch();
+  let search = new PartialTracker();
   let pick = makePickFunction(search);
 
   beforeEach(() => {
-    search = new PlayoutSearch();
+    search = new PartialTracker();
     pick = makePickFunction(search);
     assert(search.startAt(0));
   });
@@ -35,7 +35,7 @@ describe("Jar", () => {
     it("picks values from an overlapping oneOf", () => {
       const overlap = dom.oneOf(dom.of(1, 2), dom.of(2, 3));
       repeatTest(arb.int32(), (seed) => {
-        search = new PlayoutSearch();
+        search = new PartialTracker();
         search.pickSource = randomPicker(seed);
         pick = makePickFunction(search);
         assert(search.startAt(0));

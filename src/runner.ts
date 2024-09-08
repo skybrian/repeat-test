@@ -3,7 +3,7 @@ import { assert } from "@std/assert";
 import { type Failure, failure, type Success, success } from "./results.ts";
 import { generate, type Generated } from "./generated.ts";
 import type { PickSet } from "./generated.ts";
-import { PlayoutSearch } from "./searches.ts";
+import { PartialTracker } from "./searches.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
 
 import { pickRandomSeed, randomPickers } from "./random.ts";
@@ -77,7 +77,7 @@ export function* depthFirstReps<T>(
 
   let index = 0;
 
-  const search = new PlayoutSearch();
+  const search = new PartialTracker();
   while (!search.done) {
     const key: RepKey = { seed: 0, index };
     try {
@@ -100,7 +100,7 @@ export function* depthFirstReps<T>(
  * default value of the Arbitrary. The rest will be chosen randomly, but
  * avoiding duplicates.
  *
- * Since it uses a {@link PlayoutSearch} to avoid generating duplicates, the
+ * Since it uses a {@link PartialTracker} to avoid generating duplicates, the
  * stream must be generated sequentially, even if the caller skips most of them.
  *
  * If an exception happens in {@link Arbitrary.generate}, a failed Rep will be
@@ -114,7 +114,7 @@ export function* randomReps<T>(
   test: TestFunction<T>,
 ): Generator<Rep<T> | RepFailure<unknown>> {
   // All Reps are generated using the same search to avoid duplicates.
-  const search = new PlayoutSearch();
+  const search = new PartialTracker();
 
   // Dry run: the first test uses the default value.
   const arg = generate(arb, search);
@@ -129,7 +129,7 @@ export function* randomReps<T>(
   // affect later Reps.
   //
   // (It's not guaranteed, though, because it will change what's recorded in the
-  // PlayoutSearch.)
+  // PartialTracker.)
   const pickers = randomPickers(seed);
 
   while (!search.done) {

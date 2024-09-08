@@ -5,7 +5,7 @@ import { generate } from "../src/generated.ts";
 import { pickRandomSeed, randomPicker } from "../src/random.ts";
 import { onePlayout } from "../src/backtracking.ts";
 import { take } from "../src/multipass_search.ts";
-import { PlayoutSearch } from "../src/searches.ts";
+import { PartialTracker } from "../src/searches.ts";
 
 const str = arb.string({ length: 100 });
 const rand = randomPicker(pickRandomSeed());
@@ -31,7 +31,7 @@ Deno.bench("uniqueArray of 100 ints", () => {
 });
 
 Deno.bench("generate 10k strings", () => {
-  const search = new PlayoutSearch();
+  const search = new PartialTracker();
   search.pickSource = randomPicker(123);
   for (let i = 0; i < 10000; i++) {
     generate(str, search);

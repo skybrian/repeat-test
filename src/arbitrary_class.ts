@@ -8,7 +8,7 @@ import {
   type PickSet,
 } from "./generated.ts";
 import type { RecordShape } from "./options.ts";
-import { PlayoutSearch } from "./searches.ts";
+import { PartialTracker } from "./searches.ts";
 import { randomPicker } from "./random.ts";
 import { generateDefault } from "./multipass_search.ts";
 
@@ -19,7 +19,7 @@ type ConstructorOpts<T> = {
 };
 
 function checkRandomGenerate(set: PickSet<unknown>, tries: number) {
-  const search = new PlayoutSearch();
+  const search = new PartialTracker();
   search.pickSource = randomPicker(123);
   const gen = generate(set, search, { limit: 1000 });
   if (gen !== undefined) {
@@ -130,7 +130,7 @@ export class Arbitrary<T> implements PickSet<T> {
     // https://claude.site/artifacts/624afebe-b86f-4e33-9e30-5414dc7c810b
 
     let threshold = 2;
-    const search = new PlayoutSearch();
+    const search = new PartialTracker();
     search.pickSource = randomPicker(123);
     let accepted = 0;
     let total = 0;

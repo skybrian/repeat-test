@@ -6,7 +6,7 @@ import { Arbitrary } from "@/arbitrary.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
 import { minPlayout, onePlayout, Pruned } from "../src/backtracking.ts";
-import { PlayoutSearch } from "../src/searches.ts";
+import { PartialTracker } from "../src/searches.ts";
 import { randomPicker } from "../src/random.ts";
 
 import { generate, makePickFunction } from "../src/generated.ts";
@@ -20,7 +20,7 @@ describe("makePickFunction", () => {
   let pick = makePickFunction(minPlayout());
 
   beforeEach(() => {
-    const search = new PlayoutSearch();
+    const search = new PartialTracker();
     search.startAt(0);
     pick = makePickFunction(search);
   });
@@ -62,7 +62,7 @@ describe("makePickFunction", () => {
       return n;
     });
 
-    const search = new PlayoutSearch();
+    const search = new PartialTracker();
     search.pickSource = alwaysPick(3);
     search.startAt(0);
     pick = makePickFunction(search);

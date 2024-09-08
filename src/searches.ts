@@ -3,16 +3,18 @@ import { PlayoutSource } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
 
 /**
- * A search over all possible pick sequences (playouts).
+ * Picks playouts, sometimes remembering them to avoid duplicates.
  *
- * It avoids duplicate playouts by recording each pick in a search tree. For
- * small search trees where every pick is recorded, eventually every playout
- * will be eliminated and the search will end.
+ * For a small search trees, it records every pick. Eventually every playout
+ * will be pruned and no more playouts will be generated. The search will end.
+ *
+ * For very wide search trees, sometimes playouts won't be recorded to save
+ * memory. This happens when the probability of revisiting them is too low.
  *
  * The default search is depth-first, but it can also be configured to pick
  * randomly using {@link pickSource}.
  */
-export class PlayoutSearch extends PlayoutSource {
+export class PartialTracker extends PlayoutSource {
   readonly tree: PickTree = new PickTree();
   private readonly walk = this.tree.walk();
 

@@ -12,16 +12,16 @@ import * as arb from "@/arbs.ts";
 
 import { alwaysPick, alwaysPickMin, PickRequest } from "../src/picks.ts";
 import { randomPicker } from "../src/random.ts";
-import { PlayoutSearch } from "../src/searches.ts";
+import { PartialTracker } from "../src/searches.ts";
 import { generate } from "../src/generated.ts";
 
 const bit = new PickRequest(0, 1);
 
-describe("PlayoutSearch", () => {
-  let search = new PlayoutSearch();
+describe("PartialTracker", () => {
+  let search = new PartialTracker();
 
   beforeEach(() => {
-    search = new PlayoutSearch();
+    search = new PartialTracker();
   });
 
   describe("constructor", () => {
@@ -92,10 +92,10 @@ describe("PlayoutSearch", () => {
   });
 
   describe("finishPlayout", () => {
-    let search = new PlayoutSearch();
+    let search = new PartialTracker();
 
     beforeEach(() => {
-      search = new PlayoutSearch();
+      search = new PartialTracker();
     });
 
     it("disallows calling getRequests() afterwards", () => {
@@ -109,10 +109,10 @@ describe("PlayoutSearch", () => {
   });
 
   describe("startAt", () => {
-    let search = new PlayoutSearch();
+    let search = new PartialTracker();
 
     beforeEach(() => {
-      search = new PlayoutSearch();
+      search = new PartialTracker();
     });
 
     it("ends the search if no root was created (for a constant)", () => {
@@ -177,7 +177,7 @@ describe("PlayoutSearch", () => {
 
   describe("getReplies", () => {
     it("returns all the picks when called with no arguments", () => {
-      const search = new PlayoutSearch();
+      const search = new PartialTracker();
       assert(search.startAt(0));
       search.nextPick(bit);
       assertEquals(search.getReplies(), [0]);
@@ -195,7 +195,7 @@ describe("PlayoutSearch", () => {
     const digit = new PickRequest(0, 9);
 
     repeatTest(underlyingPickers, (underlying) => {
-      const search = new PlayoutSearch();
+      const search = new PartialTracker();
       const seen = new Set<string>();
       for (let i = 0; i < 1000; i++) {
         assert(search.startAt(0));
