@@ -212,10 +212,10 @@ export function runReps<T>(
   for (const key in coverage) {
     const covered = coverage[key];
     if (covered.true === 0) {
-      throw new Error(`assertSometimes(${key}) is never true`);
+      throw new Error(`sometimes(${key}) was never true`);
     }
     if (covered.false === 0) {
-      throw new Error(`assertSometimes(${key}) is never false`);
+      throw new Error(`sometimes(${key}) was never false`);
     }
   }
   return success(passed);

@@ -524,36 +524,55 @@ describe("repeatTest", () => {
     assertFalse(inputs.includes(3));
   });
 
-  const sometimesZero = (val: number, console: TestConsole) => {
-    console.assertSometimes(val === 0, "oops");
-  };
+  describe("with console.sometimes()", () => {
+    const sometimesZero = (val: number, console: TestConsole) => {
+      console.sometimes("zero", val === 0);
+    };
 
-  it("passes if the reps cover both sides of assertSomething", () => {
-    repeatTest(arb.int(0, 1), sometimesZero, { console: new NullConsole() });
-  });
+    it("passes when sometimes true", () => {
+      repeatTest(arb.int(0, 1), sometimesZero, { console: new NullConsole() });
+    });
 
-  it("fails if assertSomething is never true", () => {
-    assertThrows(
-      () => {
-        repeatTest(arb.int(1, 2), sometimesZero, {
-          console: new NullConsole(),
-        });
-      },
-      Error,
-      "assertSometimes(oops) is never true",
-    );
-  });
+    it("fails when never true", () => {
+      assertThrows(
+        () => {
+          repeatTest(arb.int(1, 2), sometimesZero, {
+            console: new NullConsole(),
+          });
+        },
+        Error,
+        "sometimes(zero) was never true",
+      );
+    });
 
-  it("fails if assertSomething is never false", () => {
-    assertThrows(
-      () => {
-        repeatTest(arb.of(0), sometimesZero, {
-          console: new NullConsole(),
-        });
-      },
-      Error,
-      "assertSometimes(oops) is never false",
-    );
+    it("fails when never false", () => {
+      assertThrows(
+        () => {
+          repeatTest(arb.of(0), sometimesZero, {
+            console: new NullConsole(),
+          });
+        },
+        Error,
+        "sometimes(zero) was never false",
+      );
+    });
+
+    it("logs when the test fails for some other reason", () => {
+      const console = new RecordingConsole();
+      assertThrows(
+        () =>
+          repeatTest(arb.of(123), (val, console) => {
+            console.sometimes("zero", val === 0);
+            fail("oops");
+          }, { console }),
+        Error,
+        "oops",
+      );
+      assertEquals(console.messages[1], {
+        args: ["sometimes(zero) =>", false],
+        type: "log",
+      });
+    });
   });
 
   it("accepts a list of test arguments", () => {

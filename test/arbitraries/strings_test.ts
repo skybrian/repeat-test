@@ -155,7 +155,7 @@ describe("string", () => {
   it("sometimes has each length <= 20", () => {
     repeatTest(arb.string(), (str, console) => {
       for (let len = 0; len < 20; len++) {
-        console.assertSometimes(str.length === len, `=== ${len}`);
+        console.sometimes(`length is ${len}`, str.length === len);
       }
     });
   });
@@ -185,7 +185,7 @@ describe("wellFormedString", () => {
   it("sometimes has each length <= 20", () => {
     repeatTest(arb.string(), (str, console) => {
       for (let len = 0; len < 20; len++) {
-        console.assertSometimes(str.length === len, `=== ${len}`);
+        console.sometimes(`length is ${len}`, str.length === len);
       }
     });
   });

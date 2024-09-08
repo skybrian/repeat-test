@@ -35,19 +35,27 @@ export interface TestConsole extends SystemConsole {
   error(...data: unknown[]): void;
 
   /**
+   * Records a key-value pair and asserts that it is sometimes true and
+   * sometimes false in a test.
+   *
+   * That is, `sometimes` must be called more than once with the given key, and
+   * true and false must be passed at different times for that key's value.
+   *
+   * If the test is expected to fail, `sometimes` also writes a log message with
+   * the key and its value.
+   *
+   * Returns the value passed in.
+   */
+  sometimes(key: string, val: boolean): boolean;
+
+  /**
    * If the test is expected to fail, executes a debugger statement.
    */
   debugger(): void;
-
-  /**
-   * Asserts that given value is sometimes true and sometimes false, possibly in
-   * different repetitions of a test.
-   */
-  assertSometimes(val: boolean, key: string): boolean;
 }
 
 /**
- * Records calls to {@link TestConsole.assertSometimes}.
+ * Records calls to {@link TestConsole.sometimes}.
  */
 export type Coverage = Record<string, Record<"true" | "false", number>>;
 
@@ -66,9 +74,7 @@ export class CountingTestConsole implements TestConsole {
     this.#errorCount++;
   }
 
-  debugger() {}
-
-  assertSometimes(val: boolean, key: string): boolean {
+  sometimes(key: string, val: boolean): boolean {
     this.coverage[key] ??= { true: 0, false: 0 };
     if (val) {
       this.coverage[key].true++;
@@ -77,6 +83,8 @@ export class CountingTestConsole implements TestConsole {
     }
     return val;
   }
+
+  debugger() {}
 }
 
 /**
@@ -84,17 +92,23 @@ export class CountingTestConsole implements TestConsole {
  * expected to fail.
  */
 export class FailingTestConsole extends CountingTestConsole {
-  constructor(private wrapped: SystemConsole) {
+  constructor(private system: SystemConsole) {
     super();
   }
 
   override log(...args: unknown[]) {
-    this.wrapped.log(...args);
+    this.system.log(...args);
   }
 
   override error(...args: unknown[]) {
     super.error(...args);
-    this.wrapped.error(...args);
+    this.system.error(...args);
+  }
+
+  override sometimes(key: string, val: boolean): boolean {
+    super.sometimes(key, val);
+    this.log(`sometimes(${key}) =>`, val);
+    return val;
   }
 
   override readonly debugger = stopInDebugger;

@@ -50,7 +50,8 @@ required to have a *default value* [^3] and that example is always run first. Fo
 `arb.string()`, the default is the empty string. This serves as a "smoke test;"
 if your test fails with an empty string, there's not much point looking further.
 
-Depending on how fast your test runs, you might want to adjust how many examples get chosen. This can be adjusted with the `reps` option:
+Depending on how fast your test runs, you might want to adjust how many examples
+get chosen. This can be adjusted with the `reps` option:
 
 ```ts
 repeatTest(arb.string(), (s) => {
@@ -58,24 +59,50 @@ repeatTest(arb.string(), (s) => {
 }, { reps: 100000 }); // Just to be really sure.
 ```
 
+## Learning more about randomly-generated examples
+
+When we generate examples randomly instead of writing them out explicitly, our
+tests become shorter, more abstract, and in some ways, harder to review: it's
+difficult to say whether or not specific cases are covered. There's a danger
+that we will get a false sense of security about our test coverage.
+
+A *sometimes* assertion can help with that. For example, let's say we want to
+know whether `arb.string()` automatically includes strings that are long enough
+to test something we care about. Here's how to explicitly assert that:
+
+```ts
+repeatTest(arb.string(), (s, console) => {
+  console.sometimes("s is long enough", s.length >= 50);
+});
+```
+
+*Sometimes* assertions inform the reader that a case is covered and can help
+ensure that a project's test coverage doesn't regress. (For example,
+`arb.string()`'s random distribution might change in a new release of
+*repeat-test.*)
+
 ## What's a property test?
 
 Tests written in this style are called *property tests*. This has nothing to do
 with JavaScript properties. They're called that because each test has an
-interpretation as a *mathematical* property. In this case, we are saying "for
-all strings, length >= 0." This is a pretty trivial property, but it's
-definitely mathematics.
+interpretation as a *mathematical* property. For example, we wrote a test that
+seems to be saying "for all strings, length >= 0." This is a pretty trivial
+property, but it's definitely mathematics, and for JavaScript strings, we're
+pretty sure it's true.
 
-The mathematical interpretation is only conceptual; our test can't prove that
-statement because it's picking examples randomly, and even worse, large strings
-won't be generated at all. But when you can define mathematical properties for a
-function, it's helpful in clarifying what *counts* as a bug. [^4]
+But it's important to remember that the mathematical interpretation is
+*conceptual* and somewhat misleading; the tests do something different. Our test
+can't prove the statement it seems to imply because it's picking examples
+randomly, and even worse, large strings won't be generated at all! (You can
+prove this by writing a *sometimes* assertion.)
 
-Also, even though `repeat-test` is not that smart about picking examples [^5],
-random testing can still be pretty good at flushing out *trivial* bugs.
-Sometimes it surprises me by finding a bug for a case I didn't think of.
+It's helpful to define the mathematical properties for a function because it
+clarifies what *counts* as a bug. In this way, property tests can serve as
+useful documentation. Running the tests helps us gain confidence that the
+property isn't trivially false, and sometimes they can surprise us by finding a
+new bug. But bugs can still happen where we're not looking.
 
-## Adding a length constraint
+## Using length constraints
 
 Maybe you don't want to test with *any* string? Many arbitraries take options that restrict the examples they generate. All built-in Arbitraries that generate strings or arrays take a *length* constraint, which can be used like this:
 
@@ -110,7 +137,5 @@ The `arb` namespace contains functions for defining other kinds of Arbitraries. 
 [^3]: Yes, this implies that empty Arbitraries are not allowed in `repeat-test`.
     Other property-testing libraries have Arbitraries that work differently.
 
-[^4]: Unlike, say, throwing an LLM at the problem.
-
-[^5]: This is because it picks examples blindly. There are fuzz-testing
+[^4]: This is because it picks examples blindly. There are fuzz-testing
     libraries that are much better at finding rare bugs.
