@@ -16,6 +16,11 @@ import { randomPicker } from "../../src/random.ts";
 import { generateDefault } from "../../src/multipass_search.ts";
 
 describe("boolean", () => {
+  it("is somtimes true", () => {
+    repeatTest(arb.boolean(), (val, console) => {
+      console.assertSometimes(val, "boolean");
+    });
+  });
   it("generates both values", () => {
     assertGenerated(arb.boolean(), [
       { val: false, picks: [0] },

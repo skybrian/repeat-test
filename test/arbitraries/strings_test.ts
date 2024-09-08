@@ -151,8 +151,13 @@ describe("string", () => {
   it("defaults to an empty string", () => {
     assertFirstGenerated(arb.string(), [{ val: "", picks: [0] }]);
   });
-  it("has a label", () => {
-    assertEquals(arb.string().label, "string");
+
+  it("sometimes has each length <= 20", () => {
+    repeatTest(arb.string(), (str, console) => {
+      for (let len = 0; len < 20; len++) {
+        console.assertSometimes(str.length === len, `=== ${len}`);
+      }
+    });
   });
 
   describe("with length 1", () => {
@@ -166,12 +171,25 @@ describe("string", () => {
       assertSometimes(arb.string({ length: 2 }), isWellFormed, 850, 950);
     });
   });
+
+  it("has a label", () => {
+    assertEquals(arb.string().label, "string");
+  });
 });
 
 describe("wellFormedString", () => {
   it("defaults to an empty string", () => {
     assertFirstGenerated(arb.wellFormedString(), [{ val: "", picks: [0] }]);
   });
+
+  it("sometimes has each length <= 20", () => {
+    repeatTest(arb.string(), (str, console) => {
+      for (let len = 0; len < 20; len++) {
+        console.assertSometimes(str.length === len, `=== ${len}`);
+      }
+    });
+  });
+
   it("starts with the empty string, followed by ascii letters", () => {
     assertFirstValues(arb.wellFormedString(), [
       "",
@@ -188,6 +206,7 @@ describe("wellFormedString", () => {
       "da",
     ]);
   });
+
   it("always returns a well-formed string", () => {
     repeatTest(arb.wellFormedString(), (str) => {
       assertEquals(
@@ -197,6 +216,7 @@ describe("wellFormedString", () => {
       );
     });
   });
+
   it("generates strings with a fixed length", () => {
     const example = arb.from((pick) => {
       const length = pick(arb.int(0, 5));
@@ -207,6 +227,7 @@ describe("wellFormedString", () => {
       assertEquals(s.length, length);
     });
   });
+
   it("generates strings with a maximum length", () => {
     const example = arb.from((pick) => {
       const max = pick(arb.int(0, 5));
@@ -218,6 +239,7 @@ describe("wellFormedString", () => {
       assert(s.length <= max);
     });
   });
+
   it("has a label", () => {
     assertEquals(arb.wellFormedString().label, "wellFormedString");
   });

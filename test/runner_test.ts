@@ -1,4 +1,4 @@
-import { describe, it } from "@std/testing/bdd";
+import { beforeEach, describe, it } from "@std/testing/bdd";
 import {
   assert,
   assertEquals,
@@ -16,7 +16,7 @@ import * as dom from "@/doms.ts";
 import { success } from "../src/results.ts";
 import { generateDefault } from "../src/multipass_search.ts";
 
-import { type AnyConsole, NullConsole } from "../src/console.ts";
+import type { Coverage, SystemConsole, TestConsole } from "../src/console.ts";
 
 import {
   depthFirstReps,
@@ -316,7 +316,7 @@ export type LogMessage = {
   type: "log" | "error";
 };
 
-export class RecordingConsole implements AnyConsole {
+export class RecordingConsole implements SystemConsole {
   messages: LogMessage[] = [];
 
   log(...args: unknown[]) {
@@ -327,10 +327,21 @@ export class RecordingConsole implements AnyConsole {
   }
 }
 
+class NullConsole implements SystemConsole {
+  log() {}
+  error() {}
+}
+
 describe("runRep", () => {
+  let coverage: Coverage = {};
+
+  beforeEach(() => {
+    coverage = {};
+  });
+
   it("returns success if the test passes", () => {
     const rep = makeDefaultRep(arb.int(1, 10), () => {});
-    assertEquals(runRep(rep, new NullConsole()), success());
+    assertEquals(runRep(rep, new NullConsole(), coverage), success());
   });
 
   it("suppresses console output when the test passes", () => {
@@ -339,7 +350,7 @@ describe("runRep", () => {
       console.debugger();
       console.log("hello");
     });
-    assertEquals(runRep(rep, console), success());
+    assertEquals(runRep(rep, console, coverage), success());
     assertEquals(console.messages.length, 0);
   });
 
@@ -347,7 +358,7 @@ describe("runRep", () => {
     const rep = makeDefaultRep(arb.int(1, 10), () => {
       throw new Error("test failed");
     });
-    const result = runRep(rep, new NullConsole());
+    const result = runRep(rep, new NullConsole(), coverage);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     assertEquals(result.arg, rep.arg.val);
@@ -363,7 +374,7 @@ describe("runRep", () => {
       console.log("hello");
       throw new Error("test failed");
     });
-    const result = runRep(rep, console);
+    const result = runRep(rep, console, coverage);
     if (result.ok) fail("expected a failure");
     assertEquals(console.messages, [
       { args: ["\nTest failed. Shrinking..."], type: "log" },
@@ -376,7 +387,7 @@ describe("runRep", () => {
     const rep = makeDefaultRep(arb.int(1, 10), (_, console) => {
       console.error("oops!");
     });
-    const result = runRep(rep, console);
+    const result = runRep(rep, console, coverage);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     assertEquals(result.arg, rep.arg.val);
@@ -398,7 +409,7 @@ describe("runRep", () => {
       }
     };
     const rep = makeRep(input, 100, test);
-    const result = runRep(rep, new NullConsole());
+    const result = runRep(rep, new NullConsole(), coverage);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     if (!(result.caught instanceof Error)) {
@@ -417,7 +428,7 @@ describe("runRep", () => {
       }
     });
     const console = new RecordingConsole();
-    const result = runRep(rep, console);
+    const result = runRep(rep, console, coverage);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     if (!(result.caught instanceof Error)) {
@@ -441,6 +452,7 @@ describe("runReps", () => {
     const result = runReps([failure], 1, new NullConsole());
     assertEquals(result, failure);
   });
+
   it("returns a RepFailure from running the test", () => {
     const example = arb.int(1, 10);
     const rep: Rep<number> = {
@@ -489,6 +501,7 @@ describe("repeatTest", () => {
     repeatTest(Arbitrary.of(1, 2, 3), test);
     assertEquals(inputs, [1, 2, 3]);
   });
+
   it("stops running reps when the first one fails", () => {
     const inputs: number[] = [];
     const test = (val: number) => {
@@ -499,7 +512,7 @@ describe("repeatTest", () => {
     };
     assertThrows(
       () => {
-        repeatTest(Arbitrary.of(1, 2, 3), test, { console: new NullConsole() });
+        repeatTest([1, 2, 3], test, { console: new NullConsole() });
       },
       Error,
       "oops",
@@ -510,6 +523,39 @@ describe("repeatTest", () => {
     assertEquals(inputs.slice(-1), [2]);
     assertFalse(inputs.includes(3));
   });
+
+  const sometimesZero = (val: number, console: TestConsole) => {
+    console.assertSometimes(val === 0, "oops");
+  };
+
+  it("passes if the reps cover both sides of assertSomething", () => {
+    repeatTest(arb.int(0, 1), sometimesZero, { console: new NullConsole() });
+  });
+
+  it("fails if assertSomething is never true", () => {
+    assertThrows(
+      () => {
+        repeatTest(arb.int(1, 2), sometimesZero, {
+          console: new NullConsole(),
+        });
+      },
+      Error,
+      "assertSometimes(oops) is never true",
+    );
+  });
+
+  it("fails if assertSomething is never false", () => {
+    assertThrows(
+      () => {
+        repeatTest(arb.of(0), sometimesZero, {
+          console: new NullConsole(),
+        });
+      },
+      Error,
+      "assertSometimes(oops) is never false",
+    );
+  });
+
   it("accepts a list of test arguments", () => {
     const inputs: number[] = [];
     const collect = (val: number) => {
@@ -557,6 +603,7 @@ describe("repeatTest", () => {
     });
     assertEquals(counts.get(123.4), 1);
   });
+
   describe("when the 'only' option is set", () => {
     it("throws an Error if it's invalid", () => {
       assertThrows(

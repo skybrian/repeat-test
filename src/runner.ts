@@ -7,8 +7,12 @@ import { PlayoutSearch } from "./searches.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
 
 import { pickRandomSeed, randomPickers } from "./random.ts";
-import { FailingTestConsole, NullConsole } from "./console.ts";
-import type { AnyConsole, TestConsole } from "./console.ts";
+import {
+  CountingTestConsole,
+  FailingTestConsole,
+  type TestConsole,
+} from "./console.ts";
+import type { Coverage, SystemConsole } from "./console.ts";
 import { shrink } from "./shrink.ts";
 
 /**
@@ -150,10 +154,11 @@ export function* randomReps<T>(
 /** Runs one repetition. */
 export function runRep<T>(
   rep: Rep<T>,
-  outerConsole: AnyConsole,
+  system: SystemConsole,
+  coverage: Coverage,
 ): Success<void> | RepFailure<T> {
   const interesting = (arg: T) => {
-    const innerConsole = new NullConsole();
+    const innerConsole = new CountingTestConsole(coverage);
     try {
       rep.test(arg, innerConsole);
       return innerConsole.errorCount > 0;
@@ -164,11 +169,11 @@ export function runRep<T>(
   if (!interesting(rep.arg.val)) {
     return success();
   }
-  outerConsole.log("\nTest failed. Shrinking...");
+  system.log("\nTest failed. Shrinking...");
   const shrunk = shrink(rep.arb, interesting, rep.arg);
 
   // Rerun the test using the shrunk value and the original console.
-  const innerConsole = new FailingTestConsole(outerConsole);
+  const innerConsole = new FailingTestConsole(system);
   try {
     rep.test(shrunk.val, innerConsole);
     if (innerConsole.errorCount > 0) {
@@ -193,22 +198,32 @@ export function runRep<T>(
 export function runReps<T>(
   reps: Iterable<Rep<T> | RepFailure<unknown>>,
   count: number,
-  console: AnyConsole,
+  console: SystemConsole,
 ): Success<number> | RepFailure<unknown> {
   let passed = 0;
+  const coverage: Coverage = {};
   for (const rep of reps) {
     if (!rep.ok) return rep;
-    const ran = runRep(rep, console);
+    const ran = runRep(rep, console, coverage);
     if (!ran.ok) return ran;
     passed++;
     if (passed >= count) break;
+  }
+  for (const key in coverage) {
+    const covered = coverage[key];
+    if (covered.true === 0) {
+      throw new Error(`assertSometimes(${key}) is never true`);
+    }
+    if (covered.false === 0) {
+      throw new Error(`assertSometimes(${key}) is never false`);
+    }
   }
   return success(passed);
 }
 
 export function reportFailure(
   failure: RepFailure<unknown>,
-  console: AnyConsole,
+  console: SystemConsole,
 ): never {
   const key = serializeRepKey(failure.key);
   console.error(`attempt ${failure.key.index + 1} FAILED, using:`, failure.arg);
@@ -227,7 +242,7 @@ export type RepeatOpts = {
   only?: string;
 
   /** If specified, repeatTest will send output to an alternate console. */
-  console?: AnyConsole;
+  console?: SystemConsole;
 };
 
 function getStartKey(opts?: RepeatOpts): RepKey {
