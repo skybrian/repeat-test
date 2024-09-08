@@ -15,8 +15,7 @@
       "./README.md", "./LICENSE", "./CHANGELOG.md",
       "./examples/*.ts",
       "./src/*.ts", "./src/entrypoints/*.ts", "./src/arbitraries/*.ts", "./src/domains/*.ts"
-    ],
-    "exclude": ["./src/asserts.ts", "./src/arbitraries/ranges.ts"]
+    ]
   },
   "exports": {
     ".": "./src/entrypoints/mod.ts",

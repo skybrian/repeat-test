@@ -9,7 +9,7 @@ import {
 
 import { repeatTest } from "@/runner.ts";
 import * as arb from "@/arbs.ts";
-import { invalidIntRange } from "../src/arbitraries/ranges.ts";
+import { invalidIntRange } from "./lib/ranges.ts";
 
 import {
   alwaysPick,

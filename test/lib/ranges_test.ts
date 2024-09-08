@@ -1,6 +1,6 @@
 import { assertThrows } from "@std/assert";
 import { describe, it } from "@std/testing/bdd";
-import { intRange } from "../../src/arbitraries/ranges.ts";
+import { intRange } from "./ranges.ts";
 
 describe("intRange", () => {
   it("throws if minSize is < 1", () => {

@@ -1,6 +1,6 @@
 import { Arbitrary } from "@/arbitrary.ts";
-import { from, int, oneOf, record } from "./basics.ts";
-import { int32 } from "./numbers.ts";
+import { from, int, oneOf, record } from "../../src/arbitraries/basics.ts";
+import { int32 } from "../../src/arbitraries/numbers.ts";
 
 export type Range = { min: number; max: number };
 

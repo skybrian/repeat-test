@@ -5,11 +5,7 @@ import { repeatTest } from "@/runner.ts";
 import * as dom from "@/doms.ts";
 
 import { assertEncoding, assertRoundTrip } from "../lib/asserts.ts";
-import {
-  intRange,
-  invalidIntRange,
-  minMaxVal,
-} from "../../src/arbitraries/ranges.ts";
+import { intRange, invalidIntRange, minMaxVal } from "../lib/ranges.ts";
 
 describe("from", () => {
   it("accepts a constant value", () => {

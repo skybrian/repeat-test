@@ -6,7 +6,7 @@ import * as arb from "@/arbs.ts";
 import type { Domain } from "@/domain.ts";
 import * as dom from "@/doms.ts";
 
-import { intRange, minMaxVal } from "../src/arbitraries/ranges.ts";
+import { intRange, minMaxVal } from "./lib/ranges.ts";
 
 import { PickList, PickRequest } from "../src/picks.ts";
 import {

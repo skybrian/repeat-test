@@ -11,7 +11,7 @@ import {
   assertValues,
 } from "../lib/asserts.ts";
 import { generateDefault, takeAll } from "../../src/multipass_search.ts";
-import { intRange } from "../../src/arbitraries/ranges.ts";
+import { intRange } from "../lib/ranges.ts";
 
 describe("uniqueArray", () => {
   it("defaults to an empty array", () => {
