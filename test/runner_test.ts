@@ -19,9 +19,8 @@ import { generateDefault } from "../src/multipass_search.ts";
 import type { Coverage, SystemConsole, TestConsole } from "../src/console.ts";
 
 import {
-  depthFirstReps,
+  generateReps,
   parseRepKey,
-  randomReps,
   type Rep,
   repeatTest,
   type RepFailure,
@@ -124,53 +123,7 @@ function assertRepFailure<T>(
   );
 }
 
-describe("sequentialReps", () => {
-  it("generates reps with the right keys", () => {
-    const example = arb.int(1, 10).filter((x) => x !== 10);
-    const test = () => {};
-    const reps = depthFirstReps(example, test);
-
-    let index = 0;
-    for (const rep of reps) {
-      assertRep(rep, { seed: 0, index, arg: index + 1, test });
-      index++;
-    }
-    assertEquals(index, 9);
-  });
-
-  it("records an exception while generating a rep and continues", () => {
-    let fail = false;
-    const example = arb.int(1, 3).map((id) => {
-      if (id === 2 && fail) {
-        throw new Error("oops!");
-      }
-      return id;
-    });
-    fail = true;
-    const test = () => {};
-    const reps = depthFirstReps(example, test);
-
-    const first = reps.next();
-    assertFalse(first.done);
-    assertRep(first.value, { seed: 0, index: 0, arg: 1, test });
-
-    const second = reps.next();
-    assertFalse(second.done);
-    assertRepFailure(second.value, {
-      seed: 0,
-      index: 1,
-      messageIncludes: "oops!",
-    });
-
-    const third = reps.next();
-    assertFalse(third.done);
-    assertRep(third.value, { seed: 0, index: 2, arg: 3, test });
-
-    assert(reps.next().done, "expected reps to be done");
-  });
-});
-
-describe("randomReps", () => {
+describe("generateReps", () => {
   it("generates reps with the right keys", () => {
     repeatTest(arb.int32(), (seed) => {
       const ten = arb.from((pick) => {
@@ -180,7 +133,7 @@ describe("randomReps", () => {
 
       const test = () => {};
 
-      const reps = randomReps(seed, ten, test);
+      const reps = generateReps([ten], test, { seed });
 
       const picks = new Set<number>();
       for (const rep of reps) {
@@ -188,13 +141,30 @@ describe("randomReps", () => {
           console.log(rep.caught);
           fail(`failed to generate rep: ${rep.caught}`);
         }
-        assertEquals(rep.key, { seed, index: picks.size });
+        const index = picks.size;
+        const expectedKey = { seed: index === 0 ? 0 : seed, index };
+        assertEquals(rep.key, expectedKey);
         assertEquals(rep.test, test);
         assertFalse(picks.has(rep.arg.val));
         picks.add(rep.arg.val);
       }
       assertEquals(picks.size, 10, "didn't generate the right number of reps");
     });
+  });
+
+  it("can generate a rep for each value in an array", () => {
+    const examples = ["a", "b", "c"];
+    const arbs = examples.map((ex) => arb.of(ex));
+    const test = () => {};
+    const seed = 123;
+    const reps = generateReps(arbs, test, { seed });
+    let index = 0;
+    for (const rep of reps) {
+      assert(rep.ok);
+      assertRep(rep, { seed: 0, index, arg: examples[index], test });
+      index++;
+    }
+    assertEquals(index, 3);
   });
 
   it("retries when a pick fails", () => {
@@ -211,12 +181,12 @@ describe("randomReps", () => {
     const test = () => {};
 
     repeatTest(arb.int32(), (seed) => {
-      const reps = randomReps(seed, rerollTwos, test);
+      const reps = generateReps([rerollTwos], test, { seed });
 
       for (let i = 0; i < 4; i++) {
         const rep = reps.next().value;
         assert(rep.ok);
-        assertEquals(rep.key, { seed, index: i });
+        assertEquals(rep.key, { seed: i === 0 ? 0 : seed, index: i });
         assertEquals(rep.arg.val, "good");
         assertEquals(rep.test, test);
       }
@@ -235,11 +205,11 @@ describe("randomReps", () => {
     const test = () => {};
 
     const seed = 123;
-    const reps = randomReps(seed, example, test);
+    const reps = generateReps([example], test, { seed });
 
     const first = reps.next();
     assertFalse(first.done);
-    assertRep(first.value, { seed, index: 0, arg: 1, test });
+    assertRep(first.value, { seed: 0, index: 0, arg: 1, test });
 
     const second = reps.next();
     assertFalse(second.done);
@@ -265,11 +235,11 @@ describe("randomReps", () => {
     const test = () => {};
 
     const seed = 123;
-    const reps = randomReps(seed, example, test);
+    const reps = generateReps([example], test, { seed });
 
     const first = reps.next();
     assertFalse(first.done);
-    assertRep(first.value, { seed, index: 0, arg: 1, test });
+    assertRep(first.value, { seed: 0, index: 0, arg: 1, test });
 
     const second = reps.next();
     assertFalse(second.done);
@@ -498,11 +468,21 @@ describe("repeatTest", () => {
     const test = (val: number) => {
       inputs.push(val);
     };
-    repeatTest(Arbitrary.of(1, 2, 3), test);
+    repeatTest([1, 2, 3], test);
     assertEquals(inputs, [1, 2, 3]);
   });
 
-  it("stops running reps when the first one fails", () => {
+  it("runs a test function on a list of examples and Arbitraries", () => {
+    const inputs: number[] = [];
+    const test = (val: number) => {
+      inputs.push(val);
+    };
+    repeatTest([1, 2, 3, arb.int32()], test);
+    assertEquals(inputs.length, 1004, "unexpected number of test runs");
+    assertEquals(inputs.slice(0, 4), [1, 2, 3, 0]);
+  });
+
+  it("stops running when a deterministic rep fails", () => {
     const inputs: number[] = [];
     const test = (val: number) => {
       inputs.push(val);
@@ -517,11 +497,29 @@ describe("repeatTest", () => {
       Error,
       "oops",
     );
-    // There will be additional calls to the test function due to shrinking.
-    assert(inputs.length > 3);
-    assertEquals(inputs.slice(0, 2), [1, 2]);
-    assertEquals(inputs.slice(-1), [2]);
-    assertFalse(inputs.includes(3));
+    // The failed test will be run a second time with logging enabled.
+    assertEquals(inputs, [1, 2, 2]);
+  });
+
+  it("shrinks the test input when a random test fails", () => {
+    const args: number[] = [];
+    const test = (i: number) => {
+      args.push(i);
+      if (i >= 10) {
+        throw new Error(`test failed with ${i}`);
+      }
+    };
+    assertThrows(
+      () => {
+        repeatTest(arb.int32(), test, { console: new NullConsole() });
+      },
+      Error,
+      "test failed with 10",
+    );
+    // There may be additional calls to the test function due to shrinking.
+    assert(args.length > 1);
+    assertEquals(args[0], 0);
+    assertEquals(args[args.length - 1], 10);
   });
 
   describe("with console.sometimes()", () => {
@@ -592,23 +590,23 @@ describe("repeatTest", () => {
       "reps option must be an integer; got 0.5",
     );
   });
-  it("throws an exception if reps is 0", () => {
+  it("throws an exception if reps is -1", () => {
     assertThrows(
       () => {
-        repeatTest(arb.int32(), () => {}, { reps: 0 });
+        repeatTest(arb.int32(), () => {}, { reps: -1 });
       },
       Error,
-      "reps option must be at least 1; got 0",
+      "reps option must be non-negative; got -1",
     );
   });
-  it("stops running the test function after the limit given by `reps`", () => {
-    for (let expected = 1; expected < 100; expected++) {
+  it("stops running the test function after the limit given by `randomReps`", () => {
+    for (let randomReps = 0; randomReps < 100; randomReps++) {
       let actual = 0;
       const increment = () => {
         actual++;
       };
-      repeatTest(arb.int32(), increment, { reps: expected });
-      assertEquals(actual, expected);
+      repeatTest(arb.int32(), increment, { reps: randomReps });
+      assertEquals(actual, 1 + randomReps);
     }
   });
   it("uses a constant only once when given an unbalanced choice of examples", () => {
@@ -638,7 +636,10 @@ describe("repeatTest", () => {
       };
       assertThrows(
         () =>
-          repeatTest(arb.int32(), increment, { reps: 100, only: "123:456" }),
+          repeatTest(arb.int32(), increment, {
+            reps: 100,
+            only: "123:456",
+          }),
         Error,
         "only option is set",
       );
@@ -657,13 +658,12 @@ describe("repeatTest", () => {
         );
       });
     });
-    it("reproduces a previous test run for a small arbitrary", () => {
+    it("reproduces a previous test run for a list of examples", () => {
       assertThrows(
         () =>
-          repeatTest(arb.int(0, 100), (i) => {
-            // assert(i != 42);
-            assertEquals(i, 42);
-          }, { only: "0:42" }),
+          repeatTest(["a", "b", "c", "d"], (i) => {
+            assertEquals(i, "c");
+          }, { only: "0:2" }),
         Error,
         "only option is set",
       );
