@@ -6,41 +6,10 @@ import {
 } from "@/arbitrary.ts";
 import * as arb from "./basics.ts";
 import { type ArrayOpts, parseArrayOpts } from "../options.ts";
+import { pickToAscii } from "../ascii.ts";
 import { surrogateGap, surrogateMin, unicodeMax } from "../unicode.ts";
 
-const asciiTable: string[] = (() => {
-  const out: string[] = [];
-
-  function pushRange(start: number, end: number): void {
-    for (let i = start; i <= end; i++) {
-      out.push(String.fromCharCode(i));
-    }
-  }
-
-  pushRange(97, 122); // lowercase
-  pushRange(65, 90); // uppercase
-  pushRange(48, 57); // digits
-  pushRange(33, 47); // ! " # $ % & ' ( ) * + , - . /
-  pushRange(58, 64); // : ; < = > ? @
-  pushRange(91, 96); // [ \ ] ^ _ `
-  pushRange(123, 126); // { | } ~
-
-  const whitespaces = [9, 10, 11, 12, 13, 32]; // \t, \n, \v, \f, \r, space
-  whitespaces.forEach((code) => {
-    out.push(String.fromCharCode(code));
-  });
-
-  // all other control characters
-  for (let i = 0; i < 32; i++) {
-    if (!whitespaces.includes(i)) {
-      out.push(String.fromCharCode(i));
-    }
-  }
-  out.push(String.fromCharCode(127)); // DEL
-  return out;
-})();
-
-const asciiTableArb = Arbitrary.of(...asciiTable).with({ label: "asciiChar" });
+const asciiTableArb = Arbitrary.of(...pickToAscii).with({ label: "asciiChar" });
 
 /**
  * Defines an Arbitrary that generates ASCII characters.
@@ -52,7 +21,7 @@ export function asciiChar(regexp?: RegExp): Arbitrary<string> {
   if (regexp === undefined) {
     return asciiTableArb;
   }
-  return Arbitrary.of(...asciiTable.filter((c) => regexp.test(c))).with({
+  return Arbitrary.of(...pickToAscii.filter((c) => regexp.test(c))).with({
     label: regexp.toString(),
   });
 }
@@ -112,7 +81,7 @@ export const char16: () => Arbitrary<string> = Arbitrary.from(
   function char16Callback(pick) {
     const code = pick(char16Req);
     if (code < 128) {
-      return asciiTable[code];
+      return pickToAscii[code];
     }
     return String.fromCodePoint(code);
   },
@@ -135,7 +104,7 @@ const codePoint = arb.int(0, unicodeMax - surrogateGap).map(
  */
 export const unicodeChar: () => Arbitrary<string> = codePoint.map((code) => {
   if (code < 128) {
-    return asciiTable[code];
+    return pickToAscii[code];
   }
   return String.fromCodePoint(code);
 }).with({ label: "unicodeChar" }).asFunction();
@@ -146,7 +115,7 @@ const basicPlaneCodePoint = arb.int(0, 65535 - surrogateGap).map(
 
 const basicPlaneChar = basicPlaneCodePoint.map((code) => {
   if (code < 128) {
-    return asciiTable[code];
+    return pickToAscii[code];
   }
   return String.fromCodePoint(code);
 });

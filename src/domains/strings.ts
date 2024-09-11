@@ -3,8 +3,8 @@ import { Domain } from "@/domain.ts";
 import * as arb from "@/arbs.ts";
 
 import * as unicode from "../unicode.ts";
-import { find } from "../multipass_search.ts";
 import { parseArrayOpts } from "../options.ts";
+import { asciiToPick } from "../ascii.ts";
 
 const arbAscii = arb.asciiChar();
 
@@ -13,12 +13,12 @@ const asciiDom = new Domain(arbAscii, (val, sendErr) => {
     sendErr("not a string");
     return undefined;
   }
-  const gen = find(arbAscii, (s) => s === val, { limit: 1000 });
-  if (!gen) {
+  const code = val.charCodeAt(0);
+  if (code < 0 || code >= 128 || val.length !== 1) {
     sendErr("not an ascii character");
     return undefined;
   }
-  return gen.replies;
+  return [asciiToPick[code]];
 });
 
 /**
@@ -66,18 +66,12 @@ export const char16: () => Domain<string> = new Domain(
   },
 ).asFunction();
 
-// Using the max array size here because the implementation uses arrays.
-const maxStringLength = 2 ** 32 - 1;
-
 /**
  * Returns a domain that accepts any JavaScript string.
  *
  * (That is, they may contain unpaired surrogates.)
  */
 export function string(opts?: arb.ArrayOpts): Domain<string> {
-  if (opts === undefined) {
-    opts = { length: { min: 0, max: maxStringLength } };
-  }
   const { min, max } = parseArrayOpts(opts);
   return new Domain(arb.string(opts), (val, sendErr) => {
     if (typeof val !== "string") {

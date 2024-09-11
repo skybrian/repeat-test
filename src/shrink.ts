@@ -156,7 +156,7 @@ function* shrinkOptions(pickCount: number): Iterable<Strategy> {
  * @param limit the index beyond which the playout should be preserved.
  */
 export function shrinkOptionsUntil(limit: number): Strategy {
-  function* shrink(
+  function* shrinkOptions(
     picks: PickList,
   ): Iterable<number[]> {
     picks = picks.trimmed();
@@ -170,5 +170,5 @@ export function shrinkOptionsUntil(limit: number): Strategy {
       }
     }
   }
-  return shrink;
+  return shrinkOptions;
 }
