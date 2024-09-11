@@ -180,8 +180,32 @@ describe("oneOf", () => {
 });
 
 describe("array", () => {
+  const bools = arb.array(arb.boolean());
+
+  describe("sometimes generates short and max lengths", () => {
+    it("by default", () => {
+      repeatTest(bools, (arr, console) => {
+        for (let len = 0; len < 20; len++) {
+          console.sometimes(`length is ${len}`, arr.length === len);
+        }
+        console.sometimes(`length is 1000`, arr.length === 1000);
+      });
+    });
+
+    it("for 10k", () => {
+      repeatTest(
+        arb.array(arb.boolean(), { length: { max: 10000 } }),
+        (arr, console) => {
+          for (let len = 0; len < 20; len++) {
+            console.sometimes(`length is ${len}`, arr.length === len);
+          }
+          console.sometimes(`length is 10000`, arr.length === 10000);
+        },
+      );
+    });
+  });
+
   describe("of booleans", () => {
-    const bools = arb.array(arb.boolean());
     describe("generateAll", () => {
       it("returns each combination in increasing order", () => {
         assertFirstGenerated(bools, [

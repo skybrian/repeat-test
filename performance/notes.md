@@ -243,3 +243,21 @@ uniqueArray of 6 ints             20.2 µs        49,610 ( 18.8 µs … 448.0 µ
 uniqueArray of 100 ints          253.8 µs         3,941 (243.4 µs … 357.6 µs) 247.9 µs 336.7 µs 337.9 µs
 generate 10k strings              78.0 ms          12.8 ( 77.3 ms …  80.5 ms)  78.0 ms  80.5 ms  80.5 ms
 ```
+
+### arb.array() and arb.string() sometimes generate arrays of maximum length
+
+```
+    CPU | Apple M2
+Runtime | Deno 1.46.3 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+
+benchmark                 time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+------------------------- ----------------------------- --------------------- --------------------------
+generate a string                  5.8 µs       171,900 (  4.9 µs … 406.6 µs)   5.7 µs   7.8 µs  11.4 µs
+take 10k char16                    4.4 ms         224.8 (  4.0 ms …   6.6 ms)   4.6 ms   5.9 ms   6.6 ms
+uniqueArray of 5 ints             27.2 µs        36,760 ( 22.3 µs … 898.3 µs)  25.4 µs 104.3 µs 143.5 µs
+uniqueArray of 6 ints             30.6 µs        32,640 ( 25.2 µs …   1.6 ms)  28.1 µs 109.2 µs 152.9 µs
+uniqueArray of 100 ints          351.0 µs         2,849 (320.2 µs … 660.8 µs) 348.7 µs 495.9 µs 507.9 µs
+generate 10k strings              86.6 ms          11.5 ( 85.9 ms …  88.8 ms)  86.9 ms  88.8 ms  88.8 ms
+```

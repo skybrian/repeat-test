@@ -226,7 +226,7 @@ describe("PartialTracker", () => {
 
   it("doesn't generate duplicate small strings", () => {
     search.pickSource = randomPicker(123);
-    const str = arb.string();
+    const str = arb.string({ length: { max: 10 } });
     const seen = new Set<string>();
     for (let i = 0; i < 100000; i++) {
       const gen = generate(str, search);

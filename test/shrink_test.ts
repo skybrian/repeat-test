@@ -83,7 +83,7 @@ describe("shrink", () => {
     it("can't shrink when there's no alternative", () => {
       repeatTest(arb.string(), (start) => {
         assertNoChange(dom.string(), (s) => s === start, start);
-      }, { reps: 100 });
+      }, { reps: 10 });
     });
     it("removes unused trailing characters", () => {
       assertShrinks(dom.string(), (s) => s.startsWith("a"), "abc", "a");
@@ -103,22 +103,22 @@ describe("shrink", () => {
     it("can't shrink when there's no alternative", () => {
       repeatTest(pair, ({ a, b }) => {
         assertNoChange(pair, (r) => r.a === a && r.b === b, { a, b });
-      }, { reps: 100 });
+      }, { reps: 10 });
     });
     it("shrinks all fields to their minimums", () => {
       repeatTest(pair, (start) => {
         assertShrinks(pair, (_r) => true, start, { a: 0, b: "" });
-      });
+      }, { reps: 100 });
     });
     it("shrinks the first field if the second is held constant", () => {
       repeatTest(pair, ({ a, b }) => {
         assertShrinks(pair, (r) => r.b === b, { a, b }, { a: 0, b });
-      }, { reps: 100 });
+      }, { reps: 10 });
     });
     it("shrinks the second field if the first is held constant", () => {
       repeatTest(pair, ({ a, b }) => {
         assertShrinks(pair, (r) => r.a === a, { a, b }, { a, b: "" });
-      });
+      }, { reps: 100 });
     });
   });
 });

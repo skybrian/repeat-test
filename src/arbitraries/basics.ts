@@ -9,6 +9,7 @@ import type {
 
 import { parseArrayOpts } from "../options.ts";
 import type { ArrayOpts } from "../options.ts";
+import { calculateBias } from "../math.ts";
 
 /**
  * Defines an Arbitrary implemented by a callback function.
@@ -103,8 +104,6 @@ export function oneOf<T>(...cases: PickSet<T>[]): Arbitrary<T> {
   return Arbitrary.oneOf(...cases);
 }
 
-const addArrayItem = biased(0.9);
-
 /**
  * Defines an Arbitrary that generates an array of the given item.
  */
@@ -114,26 +113,52 @@ export function array<T>(
 ): Arbitrary<T[]> {
   const { min, max } = parseArrayOpts(opts);
 
+  const flips = max - min;
+  // At least 1% of picks should have max length.
+  const endBias = Math.max(1 / (flips + 1), 0.01);
+
+  const bias = calculateBias(1.0, endBias, flips);
+  // At least 1% of picks have each length to start. (Decays.)
+  const startingBias = Math.min(bias, 0.99);
+
+  // Use a different bias at >= 100 so we reach the end.
+  const extendedBias = flips <= 100
+    ? startingBias
+    : calculateBias(Math.pow(startingBias, 100), endBias, flips - 100);
+
+  const startingCoin = biased(startingBias);
+  const extendedCoin = biased(extendedBias);
+
   // Arrays are represented using a fixed-length part (items only) followed by a
   // variable-length part where each item is preceded by a 1, followed by a 0 to
   // terminate.
   //
-  // Since we make a pick request for each item, this makes long arrays unlikely
+  // Since we make a pick request for each item, this makes longer arrays unlikely
   // but possible, and it should be easier remove items when shrinking.
-  const pickArray = (pick: PickFunction) => {
-    const result = [];
-    // fixed-length portion
-    let i = 0;
-    while (i < min) {
-      result.push(pick(item));
-      i++;
+
+  function wantItem(i: number, pick: PickFunction): boolean {
+    if (i >= max) {
+      return false; // done
     }
-    // variable-length portion
-    while (i < max && pick(addArrayItem)) {
+    if (i < min) {
+      return true; // fixed-length portion
+    }
+    if (i < min + 100) {
+      return pick(startingCoin);
+    } else {
+      return pick(extendedCoin);
+    }
+  }
+
+  function pickArray(pick: PickFunction) {
+    const result = [];
+    let i = 0;
+    while (wantItem(i, pick)) {
       result.push(pick(item));
       i++;
     }
     return result;
-  };
+  }
+
   return Arbitrary.from(pickArray).with({ label: "array" });
 }

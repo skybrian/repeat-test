@@ -152,11 +152,12 @@ describe("string", () => {
     assertFirstGenerated(arb.string(), [{ val: "", picks: [0] }]);
   });
 
-  it("sometimes has each length <= 20", () => {
+  it("sometimes generates short and max lengths", () => {
     repeatTest(arb.string(), (str, console) => {
       for (let len = 0; len < 20; len++) {
         console.sometimes(`length is ${len}`, str.length === len);
       }
+      console.sometimes(`length is 1000`, str.length === 1000);
     });
   });
 
@@ -182,7 +183,7 @@ describe("wellFormedString", () => {
     assertFirstGenerated(arb.wellFormedString(), [{ val: "", picks: [0] }]);
   });
 
-  it("sometimes has each length <= 20", () => {
+  it("sometimes generates has each length <= 20", () => {
     repeatTest(arb.string(), (str, console) => {
       for (let len = 0; len < 20; len++) {
         console.sometimes(`length is ${len}`, str.length === len);
