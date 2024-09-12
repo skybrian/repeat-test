@@ -3,6 +3,7 @@ import {
   assert,
   assertEquals,
   assertFalse,
+  AssertionError,
   assertThrows,
   fail,
 } from "@std/assert";
@@ -538,7 +539,7 @@ describe("repeatTest", () => {
             console: new NullConsole(),
           });
         },
-        Error,
+        AssertionError,
         "sometimes(zero) was never true",
       );
     });
@@ -550,7 +551,7 @@ describe("repeatTest", () => {
             console: new NullConsole(),
           });
         },
-        Error,
+        AssertionError,
         "sometimes(zero) was never false",
       );
     });

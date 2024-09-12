@@ -130,6 +130,15 @@ describe("table", () => {
         [true, true],
       ]);
     });
+    it("sometimes generates short and max lengths", () => {
+      const table = arb.table({ v: dom.boolean() });
+      repeatTest(table, (table, console) => {
+        for (let len = 0; len < 20; len++) {
+          console.sometimes(`length is ${len}`, table.length === len);
+        }
+        console.sometimes(`length is 1000`, table.length === 1000);
+      });
+    });
   });
   describe("with one unique column", () => {
     const table = arb.table({ v: dom.boolean() }, { keys: ["v"] });
@@ -176,6 +185,18 @@ describe("table", () => {
       repeatTest(table.filter((t) => t.length > 1), (rows) => {
         const keys = new Set(rows.map((row) => row.k));
         assertEquals(keys.size, rows.length);
+      });
+    });
+    it("sometimes generates short and max lengths", () => {
+      const table = arb.table({
+        k: dom.int(1, 1000),
+        v: dom.boolean(),
+      }, { keys: ["k"] });
+      repeatTest(table, (table, console) => {
+        for (let len = 0; len < 20; len++) {
+          console.sometimes(`length is ${len}`, table.length === len);
+        }
+        console.sometimes(`length is 1000`, table.length === 1000);
       });
     });
   });

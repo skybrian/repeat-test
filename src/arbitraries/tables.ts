@@ -26,7 +26,7 @@ export function uniqueArray<T>(
 ): Arbitrary<T[]> {
   const { min, max } = parseArrayOpts(opts);
 
-  const startRegionSize = 10;
+  const startRegionSize = 20;
   const [startBias, extendedBias] = arrayLengthBiases(max - min, {
     startRegionSize,
   });
@@ -116,6 +116,22 @@ export function table<R extends Record<string, unknown>>(
     }
   }
 
+  const startRegionSize = 20;
+  const [startBias, extendedBias] = arrayLengthBiases(max - min, {
+    startRegionSize,
+  });
+
+  const startCoin = arb.biased(startBias);
+  const extendedCoin = arb.biased(extendedBias);
+
+  function wantItem(i: number, pick: PickFunction): boolean {
+    if ((i - min) < startRegionSize) {
+      return pick(startCoin);
+    } else {
+      return pick(extendedCoin);
+    }
+  }
+
   return arb.from((pick) => {
     const jars: Record<string, Jar<R[keyof R & string]>> = {};
     for (const key of uniqueKeys) {
@@ -147,7 +163,7 @@ export function table<R extends Record<string, unknown>>(
           if (emptyJar()) {
             return undefined;
           }
-          if (!pick(arb.boolean())) {
+          if (!wantItem(rows.length, pick)) {
             return undefined;
           }
         }

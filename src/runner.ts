@@ -1,4 +1,4 @@
-import { assert } from "@std/assert";
+import { assert, AssertionError } from "@std/assert";
 
 import { type Failure, failure, type Success, success } from "./results.ts";
 import { generate, type Generated } from "./generated.ts";
@@ -223,14 +223,28 @@ export function runReps<T>(
     passed++;
     if (passed >= count) break;
   }
+  let err: AssertionError | undefined = undefined;
   for (const key in coverage) {
     const covered = coverage[key];
     if (covered.true === 0) {
-      throw new Error(`sometimes(${key}) was never true`);
+      if (err === undefined) {
+        err = new AssertionError(`sometimes(${key}) was never true`);
+      }
     }
     if (covered.false === 0) {
-      throw new Error(`sometimes(${key}) was never false`);
+      if (err === undefined) {
+        err = new AssertionError(`sometimes(${key}) was never false`);
+      }
     }
+  }
+  if (err !== undefined) {
+    for (const key in coverage) {
+      const covered = coverage[key];
+      console.log(
+        `sometimes(${key}): true: ${covered.true}, false: ${covered.false}`,
+      );
+    }
+    throw err;
   }
   return success(passed);
 }
