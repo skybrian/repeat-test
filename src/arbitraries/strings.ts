@@ -8,7 +8,7 @@ import * as arb from "./basics.ts";
 import { type ArrayOpts, parseArrayOpts } from "../options.ts";
 import { pickToAscii } from "../ascii.ts";
 import { surrogateGap, surrogateMin, unicodeMax } from "../unicode.ts";
-import { calculateBias } from "../math.ts";
+import { arrayLengthBiases } from "../math.ts";
 
 const asciiTableArb = Arbitrary.of(...pickToAscii).with({ label: "asciiChar" });
 
@@ -148,20 +148,12 @@ export function wellFormedString(
 ): Arbitrary<string> {
   const { min, max } = parseArrayOpts(opts);
 
-  const flips = max - min;
-  // At least 1% of picks should have max length.
-  const endBias = Math.max(1 / (flips + 1), 0.01);
+  const [startBias, extendedBias] = arrayLengthBiases(max - min, {
+    startRegionSize: 20,
+    minProbEmpty: 0.03,
+  });
 
-  const bias = calculateBias(1.0, endBias, flips);
-  // At least 3% of picks have each length to start. (Decays.)
-  const startingBias = Math.min(bias, 0.97);
-
-  // Use a different bias at >= 40 so we reach the end.
-  const extendedBias = flips <= 40
-    ? startingBias
-    : calculateBias(Math.pow(startingBias, 40), endBias, flips - 40);
-
-  const startingCoin = arb.biased(startingBias);
+  const startCoin = arb.biased(startBias);
   const extendedCoin = arb.biased(extendedBias);
 
   function wantItem(i: number, pick: PickFunction): boolean {
@@ -172,7 +164,7 @@ export function wellFormedString(
       return true; // fixed-length portion
     }
     if (i < min + 100) {
-      return pick(startingCoin);
+      return pick(startCoin);
     } else {
       return pick(extendedCoin);
     }

@@ -9,7 +9,7 @@ import type {
 
 import { parseArrayOpts } from "../options.ts";
 import type { ArrayOpts } from "../options.ts";
-import { calculateBias } from "../math.ts";
+import { arrayLengthBiases } from "../math.ts";
 
 /**
  * Defines an Arbitrary implemented by a callback function.
@@ -113,28 +113,24 @@ export function array<T>(
 ): Arbitrary<T[]> {
   const { min, max } = parseArrayOpts(opts);
 
-  const flips = max - min;
-  // At least 1% of picks should have max length.
-  const endBias = Math.max(1 / (flips + 1), 0.01);
-
-  const bias = calculateBias(1.0, endBias, flips);
-  // At least 1% of picks have each length to start. (Decays.)
-  const startingBias = Math.min(bias, 0.99);
-
-  // Use a different bias at >= 100 so we reach the end.
-  const extendedBias = flips <= 100
-    ? startingBias
-    : calculateBias(Math.pow(startingBias, 100), endBias, flips - 100);
-
-  const startingCoin = biased(startingBias);
-  const extendedCoin = biased(extendedBias);
-
-  // Arrays are represented using a fixed-length part (items only) followed by a
-  // variable-length part where each item is preceded by a 1, followed by a 0 to
+  // Arrays are represented as a fixed-length part followed by a variable-length
+  // part. The fixed-length part only contains picks for items themselves. In
+  // the variable-length-part, each item is preceded by a 1, followed by a 0 to
   // terminate.
   //
-  // Since we make a pick request for each item, this makes longer arrays unlikely
-  // but possible, and it should be easier remove items when shrinking.
+  // Since we make a pick request for each item, this makes longer arrays less
+  // likely but possible, and it should be easier remove items when shrinking.
+
+  // The variable-length-part is further subdivided into a start region and an
+  // extended region.
+
+  const startRegionSize = 100;
+  const [startBias, extendedBias] = arrayLengthBiases(max - min, {
+    startRegionSize,
+  });
+
+  const startCoin = biased(startBias);
+  const extendedCoin = biased(extendedBias);
 
   function wantItem(i: number, pick: PickFunction): boolean {
     if (i >= max) {
@@ -143,8 +139,8 @@ export function array<T>(
     if (i < min) {
       return true; // fixed-length portion
     }
-    if (i < min + 100) {
-      return pick(startingCoin);
+    if (i < min + startRegionSize) {
+      return pick(startCoin);
     } else {
       return pick(extendedCoin);
     }

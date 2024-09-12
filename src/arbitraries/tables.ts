@@ -1,4 +1,9 @@
-import type { Arbitrary, PickSet, RecordShape } from "@/arbitrary.ts";
+import type {
+  Arbitrary,
+  PickFunction,
+  PickSet,
+  RecordShape,
+} from "@/arbitrary.ts";
 import { Domain, Jar } from "@/domain.ts";
 import * as arb from "./basics.ts";
 import { PickList, PickRequest } from "../picks.ts";
@@ -7,6 +12,7 @@ import { type ArrayOpts, parseArrayOpts, type TableOpts } from "../options.ts";
 import { generateAll } from "../multipass_search.ts";
 import { PickTree } from "../pick_tree.ts";
 import { assert } from "@std/assert/assert";
+import { arrayLengthBiases } from "../math.ts";
 
 /**
  * Defines an Arbitrary that generates an array by taking distinct values from a
@@ -19,6 +25,22 @@ export function uniqueArray<T>(
   opts?: ArrayOpts,
 ): Arbitrary<T[]> {
   const { min, max } = parseArrayOpts(opts);
+
+  const startRegionSize = 10;
+  const [startBias, extendedBias] = arrayLengthBiases(max - min, {
+    startRegionSize,
+  });
+
+  const startCoin = arb.biased(startBias);
+  const extendedCoin = arb.biased(extendedBias);
+
+  function wantItem(i: number, pick: PickFunction): boolean {
+    if ((i - min) < startRegionSize) {
+      return pick(startCoin);
+    } else {
+      return pick(extendedCoin);
+    }
+  }
 
   return arb.from(function uniqueArrayCallback(pick) {
     const jar = new Jar(item);
@@ -36,7 +58,7 @@ export function uniqueArray<T>(
         // Add an ending pick to match a regular array.
         pick(new PickRequest(0, 0));
         return out;
-      } else if (!pick(arb.boolean())) {
+      } else if (!wantItem(out.length, pick)) {
         return out;
       }
       out.push(jar.take(pick));

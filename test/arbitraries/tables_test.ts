@@ -51,8 +51,18 @@ describe("uniqueArray", () => {
       assert(ids.every((id) => id >= min && id <= max));
     });
   });
+  it("sometimes generates short and max lengths", () => {
+    const ids = arb.uniqueArray(dom.int(1, 1000));
+    repeatTest(ids, (ids, console) => {
+      for (let len = 0; len < 20; len++) {
+        console.sometimes(`length is ${len}`, ids.length === len);
+      }
+      console.sometimes(`length is 1000`, ids.length === 1000);
+    });
+  });
   it("generates string identifiers", () => {
-    const ids = arb.uniqueArray(dom.wellFormedString());
+    // TODO: this is too slow for longer strings
+    const ids = arb.uniqueArray(dom.wellFormedString({ length: 4 }));
     repeatTest(ids, (ids) => {
       assertEquals(ids.length, new Set(ids).size);
     });

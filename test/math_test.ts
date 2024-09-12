@@ -1,7 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
 import { arb, type Arbitrary, repeatTest } from "@/mod.ts";
 
-import { calculateBias } from "../src/math.ts";
+import { arrayLengthBiases, calculateBias } from "../src/math.ts";
 import { assertAlmostEquals } from "@std/assert/almost-equals";
 import { assert } from "@std/assert";
 
@@ -42,5 +42,13 @@ describe("calculateBias", () => {
         assertAlmostEquals(actualEnd, end);
       },
     );
+  });
+});
+
+describe("arrayLengthBiases", () => {
+  it("calculates the biases for default options", () => {
+    const [start, end] = arrayLengthBiases(1000);
+    assertAlmostEquals(start, 0.99);
+    assertAlmostEquals(end, 0.9960078);
   });
 });
