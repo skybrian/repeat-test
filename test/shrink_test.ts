@@ -183,43 +183,47 @@ describe("shrinkLength", () => {
 });
 
 describe("shrinkPicksFrom", () => {
-  const shrink = shrinkPicksFrom(0);
+  const strategy = shrinkPicksFrom(0);
   it("can't shrink an empty playout", () => {
-    const guesses = shrink(PickList.fromReplies([]));
+    const guesses = strategy.guesses(PickList.fromReplies([]));
     assertEquals(Array.from(guesses), []);
   });
   it("replaces each pick with the minimum", () => {
     const roll = new PickRequest(1, 2);
     const picks = PickList.zip([roll, roll], [2, 2]);
-    const guesses = shrink(picks);
+    const guesses = strategy.guesses(picks);
     assertEquals(Array.from(guesses), [[1, 2], [1, 1]]);
   });
 });
 
 describe("shrinkOptionsUntil", () => {
   it("can't shrink an empty playout", () => {
-    const guesses = shrinkOptionsUntil(0)(PickList.fromReplies([]));
+    const strategy = shrinkOptionsUntil(0);
+    const guesses = strategy.guesses(PickList.fromReplies([]));
     assertEquals(Array.from(guesses), []);
   });
   it("removes an option at the end of the playout", () => {
     const bit = new PickRequest(0, 1);
     const roll = new PickRequest(1, 6);
     const picks = PickList.zip([bit, roll], [1, 6]);
-    const guesses = shrinkOptionsUntil(2)(picks);
+    const strategy = shrinkOptionsUntil(2);
+    const guesses = strategy.guesses(picks);
     assertEquals(Array.from(guesses), [[]]);
   });
   it("removes an option with something after it", () => {
     const bit = new PickRequest(0, 1);
     const roll = new PickRequest(1, 6);
     const picks = PickList.zip([bit, roll, roll], [1, 6, 3]);
-    const guesses = shrinkOptionsUntil(2)(picks);
+    const strategy = shrinkOptionsUntil(2);
+    const guesses = strategy.guesses(picks);
     assertEquals(Array.from(guesses), [[3]]);
   });
   it("removes two options", () => {
     const bit = new PickRequest(0, 1);
     const roll = new PickRequest(1, 6);
     const picks = PickList.zip([bit, roll, bit, roll, roll], [1, 6, 1, 3, 5]);
-    const guesses = shrinkOptionsUntil(4)(picks);
+    const strategy = shrinkOptionsUntil(4);
+    const guesses = strategy.guesses(picks);
     assertEquals(Array.from(guesses), [[1, 6, 5], [5]]);
   });
 });

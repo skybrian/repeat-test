@@ -9,8 +9,14 @@ import { randomPicker } from "../src/random.ts";
 const str = dom.string({ length: 10000 });
 const gen = generate(str, onePlayout(randomPicker(123)));
 assert(gen !== undefined);
+
+const original = gen.val;
+function checkEq(s: string): boolean {
+  return s === original;
+}
+
 console.log("profiling shrink...");
 console.profile();
-const result = shrink(str, (s) => s === gen.val, gen);
+const result = shrink(str, checkEq, gen);
 console.profileEnd();
 assertEquals(result.val, gen.val);

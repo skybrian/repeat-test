@@ -8,7 +8,10 @@ import type { Arbitrary } from "./arbitrary_class.ts";
  *
  * Each guess assumes that the previous guess worked.
  */
-type Strategy = (picks: PickList) => Iterable<number[]>;
+interface Strategy {
+  label: string;
+  guesses(picks: PickList): Iterable<number[]>;
+}
 
 /**
  * Given a generated value, returns a possibly smaller one that satisfies a
@@ -40,7 +43,7 @@ export function shrink<T>(
 function* strategiesToTry<T>(
   start: Generated<T>,
 ): Iterable<Strategy> {
-  yield shrinkLength;
+  yield { label: "shrinkLength", guesses: shrinkLength };
   const len = start.replies.length;
   yield* shrinkPicks(len);
   yield* shrinkOptions(len);
@@ -54,7 +57,7 @@ function runStrategy<T>(
 ): Generated<T> | undefined {
   let worked: Generated<T> | undefined = undefined;
   const picks = PickList.zip(start.reqs, start.replies);
-  for (const guess of strategy(picks)) {
+  for (const guess of strategy.guesses(picks)) {
     const shrunk = generate(arb, playback(guess));
     if (!shrunk || !interesting(shrunk.val)) {
       return worked;
@@ -114,7 +117,7 @@ function* shrinkPicks(pickCount: number): Iterable<Strategy> {
 export function shrinkPicksFrom(
   start: number,
 ): Strategy {
-  function* shrink(
+  function* shrinkPicks(
     picks: PickList,
   ): Iterable<number[]> {
     picks = picks.trimmed();
@@ -139,7 +142,7 @@ export function shrinkPicksFrom(
       yield replies.slice();
     }
   }
-  return shrink;
+  return { label: "shrinkPicks", guesses: shrinkPicks };
 }
 
 function* shrinkOptions(pickCount: number): Iterable<Strategy> {
@@ -170,5 +173,5 @@ export function shrinkOptionsUntil(limit: number): Strategy {
       }
     }
   }
-  return shrinkOptions;
+  return { label: "shrinkOptions", guesses: shrinkOptions };
 }
