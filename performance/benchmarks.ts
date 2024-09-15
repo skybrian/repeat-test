@@ -6,6 +6,8 @@ import { pickRandomSeed, randomPicker } from "../src/random.ts";
 import { onePlayout } from "../src/backtracking.ts";
 import { take } from "../src/multipass_search.ts";
 import { PartialTracker } from "../src/searches.ts";
+import { assert } from "@std/assert/assert";
+import { shrink } from "../src/shrink.ts";
 
 const str = arb.string({ length: 100 });
 const rand = randomPicker(pickRandomSeed());
@@ -36,4 +38,14 @@ Deno.bench("generate 10k strings", () => {
   for (let i = 0; i < 10000; i++) {
     generate(str, search);
   }
+});
+
+Deno.bench("shrink a 1k string", (b) => {
+  const str = dom.string({ length: 1000 });
+  const gen = generate(str, onePlayout(randomPicker(123)));
+  assert(gen !== undefined);
+  b.start();
+  shrink(str, (s) => s === gen.val, gen);
+  b.end();
+  assert(gen.val === gen.val);
 });
