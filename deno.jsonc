@@ -13,6 +13,7 @@
   "publish": {
     "include": [
       "./README.md", "./LICENSE", "./CHANGELOG.md",
+      "./docs",
       "./examples/*.ts",
       "./src/*.ts", "./src/entrypoints/*.ts", "./src/arbitraries/*.ts", "./src/domains/*.ts"
     ]
