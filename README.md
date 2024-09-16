@@ -29,65 +29,6 @@ repeatTest(examples, (word) => {
 The first argument to `repeatTest` provides a way of generating examples. The
 second argument is a test function to run repeatedly that takes an example as input. A repetition ("rep" for short) passes if the test function completes normally.
 
-Since the test passes, it won't print anything.
+## Documentation
 
-## Generating test data with Arbitraries
-
-So far, we haven't used `repeatTest` to do anything that you need a library for. But like with other property-testing frameworks, we can generate test data using an *Arbitrary*:
-
-```ts
-import { assertEquals } from "@std/assert";
-import { arb, repeatTest } from "@skybrian/repeat-test";
-
-// Some buggy functions to test:
-
-function badEncode(input: string[]): string {
-  if (input.length === 0) return "";
-  return input.join(",") + ",";
-}
-
-function badDecode(input: string): string[] {
-  if (input === "") return [];
-  return input.split(",").slice(0, -1);
-}
-
-// A round-trip test:
-
-const input = arb.array(arb.string());
-repeatTest(input, (original, console) => {
-  const encoded = badEncode(original);
-  console.log("encoded as", `'${encoded}'`);
-  const copy = badDecode(encoded);
-  assertEquals(copy, original);
-});
-```
-
-The test fails pretty quickly:
-
-```
-% deno run split.ts
-
-Test failed. Shrinking...
-encoded as ',,'
-attempt 4 FAILED, using: [ "," ]
-rerun using {only: "1778525158:4"}
-error: Uncaught (in promise) AssertionError: Values are not equal.
-
-
-    [Diff] Actual / Expected
-
-
-    [
--     "",
--     "",
-+     ",",
-    ]
-
-  throw new AssertionError(message);
-        ^
-    at assertEquals (https://jsr.io/@std/assert/1.0.2/equals.ts:47:9)
-    at Object.test (file:///Users/skybrian/Projects/deno/repeat-test/examples/split.ts:24:3)
-    [redacted]
-```
-
-TODO: write more docs!
+See the [docs directory ](./docs/) for a longer introduction.

@@ -1,3 +1,12 @@
+## 0.4.0
+
+* API: add console.debugger() and console.sometimes().
+* API: removed Arbitrary.default() method. (Now internal.)
+* Changed the random distributions for array and string arbitraries so they sometimes generate the maximum allowed length.
+* Arbitrary.filter() rejects filters that are too strict.
+* Improved performance of arb.uniqueArray() and arb.table().
+* Wrote [docs](./docs) about getting started and using Arbitraries.
+
 ## 0.3.0
 
 * API: all array-like arbitraries and domains now take a length option
