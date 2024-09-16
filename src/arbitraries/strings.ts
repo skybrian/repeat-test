@@ -127,7 +127,9 @@ const basicPlaneChar = basicPlaneCodePoint.map((code) => {
  * The strings may contain unpaired surrogates. (See {@link wellFormedString} if
  * you don't want that.)
  *
- * Min and max are measured in code units, the same as `String.length`.
+ * By default, any string with a length of up to a 1000 might be generated,
+ * measured in the same way as `String.length`. This can be overridden using the
+ * {@link ArrayOpts.length} option.
  */
 export function string(
   opts?: ArrayOpts,

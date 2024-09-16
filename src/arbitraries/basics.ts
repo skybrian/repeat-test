@@ -105,7 +105,10 @@ export function oneOf<T>(...cases: PickSet<T>[]): Arbitrary<T> {
 }
 
 /**
- * Defines an Arbitrary that generates an array of the given item.
+ * Defines an Arbitrary that generates arrays of the given item.
+ *
+ * By default, generates arrays with a length of up to 1000. This can
+ * be overriden with the {@link ArrayOpts.length} option.
  */
 export function array<T>(
   item: PickSet<T>,
