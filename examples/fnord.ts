@@ -1,8 +1,14 @@
 import { assert } from "@std/assert";
 import { arb, repeatTest } from "@skybrian/repeat-test";
 
-repeatTest(arb.string(), (s) => {
-  assert(!s.includes("fnord"));
+const example = arb.record({
+  prefix: arb.string(),
+  suffix: arb.string(),
+});
+
+repeatTest(example, ({ prefix, suffix }) => {
+  const s = prefix + "fnord" + suffix;
+  assert(s.includes("fnord"));
 });
 
 // Expected output: nothing! (tests pass)
