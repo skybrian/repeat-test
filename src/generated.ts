@@ -165,12 +165,14 @@ export function makePickFunction<T>(
 /**
  * A generated value and the picks that were used to generate it.
  */
-export type Generated<T> = {
-  ok: true;
-  reqs: PickRequest[];
-  replies: number[];
-  val: T;
-};
+export class Generated<T> {
+  readonly ok = true;
+  constructor(
+    readonly reqs: PickRequest[],
+    readonly replies: number[],
+    readonly val: T,
+  ) {}
+}
 
 /**
  * Generates a value by trying each playout one at a time, given a source of
@@ -190,7 +192,7 @@ export function generate<T>(
       const reqs = playouts.getRequests();
       const replies = playouts.getReplies();
       if (playouts.endPlayout()) {
-        return { ok: true, reqs, replies, val };
+        return new Generated(reqs, replies, val);
       }
     } catch (e) {
       if (!(e instanceof Pruned)) {
