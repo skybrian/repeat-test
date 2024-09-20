@@ -142,6 +142,9 @@ describe("unicodeChar", () => {
       );
     });
   });
+  it("chooses length 1 or 2 with equal probability", () => {
+    assertSometimes(arb.unicodeChar(), (str) => str.length === 1, 450, 550);
+  });
   it("has a label", () => {
     assertEquals(arb.unicodeChar().label, "unicodeChar");
   });

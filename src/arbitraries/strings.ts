@@ -7,8 +7,14 @@ import {
 import * as arb from "./basics.ts";
 import { type ArrayOpts, parseArrayOpts } from "../options.ts";
 import { pickToAscii } from "../ascii.ts";
-import { surrogateGap, surrogateMin, unicodeMax } from "../unicode.ts";
+import {
+  supplementalPlaneStart,
+  surrogateGap,
+  surrogateMin,
+  unicodeMax,
+} from "../unicode.ts";
 import { arrayLengthBiases } from "../math.ts";
+import { assert } from "@std/assert/assert";
 
 const asciiTableArb = Arbitrary.of(...pickToAscii).with({ label: "asciiChar" });
 
@@ -88,8 +94,27 @@ export const char16: () => Arbitrary<string> = Arbitrary.from(
   },
 ).with({ label: "char16" }).asFunction();
 
-const codePoint = arb.int(0, unicodeMax - surrogateGap).map(
-  (code) => (code >= surrogateMin) ? code + surrogateGap : code,
+const basicPlaneCount = supplementalPlaneStart - surrogateGap;
+
+const codePointReq = new PickRequest(0, unicodeMax - surrogateGap, {
+  bias: (next: RandomSource) => {
+    const r = next();
+    const plane = r & 0x1f;
+    const rest = r >> 5;
+    if (plane === 0 || plane > 16) {
+      return Math.abs(rest) % basicPlaneCount;
+    } else {
+      const offset = rest & 0xffff;
+      return offset + plane * 0x10000 - surrogateGap;
+    }
+  },
+});
+
+const codePoint = Arbitrary.from(codePointReq).map(
+  (code) => {
+    assert(code >= 0 && code <= unicodeMax - surrogateGap);
+    return (code >= surrogateMin) ? code + surrogateGap : code;
+  },
 );
 
 /**
