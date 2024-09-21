@@ -8,6 +8,8 @@ import { invalidIntRange } from "./lib/ranges.ts";
 import {
   alwaysPick,
   biasedBitRequest,
+  EditPicker,
+  type IntEditor,
   PickRequest,
   PlaybackPicker,
 } from "../src/picks.ts";
@@ -259,5 +261,59 @@ describe("PlaybackPicker", () => {
       Error,
       "2: expected a non-negative integer, got: -3",
     );
+  });
+});
+
+const noChange: IntEditor = {
+  replace(_, before) {
+    return before;
+  },
+};
+
+const addOne: IntEditor = {
+  replace(_, before) {
+    return before + 1;
+  },
+};
+
+describe("EditPicker", () => {
+  it("throws if a previous pick isn't an integer", () => {
+    assertThrows(
+      () => new EditPicker([0, 0.1], noChange),
+      Error,
+      "1: expected a safe integer, got: 0.1",
+    );
+  });
+  it("throws if a previous pick is negative", () => {
+    assertThrows(
+      () => new EditPicker([0, 2, -3], noChange),
+      Error,
+      "2: expected a non-negative integer, got: -3",
+    );
+  });
+  it("returns the same picks if the editor doesn't change them", () => {
+    const picker = new EditPicker([0, 1], noChange);
+    assertEquals(picker.pick(new PickRequest(0, 3)), 0);
+    assertEquals(picker.pick(new PickRequest(0, 3)), 1);
+    assertEquals(picker.edits, 0);
+  });
+  it("returns minimum picks if there are no previous picks", () => {
+    const picker = new EditPicker([], noChange);
+    assertEquals(picker.pick(new PickRequest(1, 3)), 1);
+    assertEquals(picker.pick(new PickRequest(2, 4)), 2);
+    assertEquals(picker.edits, 0);
+  });
+  it("returns the new pick if the editor changes it", () => {
+    const picker = new EditPicker([0, 1], addOne);
+    assertEquals(picker.pick(new PickRequest(0, 3)), 1);
+    assertEquals(picker.pick(new PickRequest(0, 3)), 2);
+    assertEquals(picker.edits, 2);
+  });
+  it("returns the minumum pick if the editor changes it to be out of range", () => {
+    const picker = new EditPicker([0, 1, 2], addOne);
+    assertEquals(picker.pick(new PickRequest(0, 0)), 0);
+    assertEquals(picker.pick(new PickRequest(0, 1)), 0);
+    assertEquals(picker.pick(new PickRequest(0, 3)), 3);
+    assertEquals(picker.edits, 2);
   });
 });
