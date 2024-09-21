@@ -10,6 +10,7 @@ import {
   biasedBitRequest,
   EditPicker,
   type IntEditor,
+  noChange,
   PickRequest,
   PlaybackPicker,
 } from "../src/picks.ts";
@@ -263,12 +264,6 @@ describe("PlaybackPicker", () => {
     );
   });
 });
-
-const noChange: IntEditor = {
-  replace(_, before) {
-    return before;
-  },
-};
 
 const addOne: IntEditor = {
   replace(_, before) {

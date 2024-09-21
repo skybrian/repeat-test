@@ -1,6 +1,5 @@
-import { assert } from "@std/assert/assert";
-import type { EditFunction, Generated, Playout } from "./generated.ts";
-import { type PickRequest, PlaybackPicker } from "./picks.ts";
+import type { Generated, Playout } from "./generated.ts";
+import type { IntEditor, PickRequest } from "./picks.ts";
 
 /**
  * Provides increasingly smaller guesses for how to shrink a value.
@@ -9,7 +8,7 @@ import { type PickRequest, PlaybackPicker } from "./picks.ts";
  */
 interface Strategy {
   label: string;
-  edits(gen: Playout): Iterable<EditFunction>;
+  edits(gen: Playout): Iterable<IntEditor>;
 }
 
 /**
@@ -73,19 +72,16 @@ function trimZeroes({ reqs, replies }: Playout): Playout {
   };
 }
 
-function trimEnd(len: number): EditFunction {
-  return (replies: number[]) => {
-    let reqs = 0;
-    return {
-      pick(req: PickRequest): number {
-        if (reqs >= len || reqs >= replies.length) {
-          return req.min;
-        }
-        const pick = replies[reqs++];
-        assert(pick >= req.min && pick <= req.max);
-        return pick;
-      },
-    };
+function trimEnd(len: number): IntEditor {
+  let reqs = 0;
+  return {
+    replace(_: PickRequest, before: number): number | undefined {
+      if (reqs >= len) {
+        return undefined;
+      }
+      reqs++;
+      return before;
+    },
   };
 }
 
@@ -95,7 +91,7 @@ function trimEnd(len: number): EditFunction {
  * First tries removing the last pick. If that works, tries doubling the number
  * of picks to remove. Finally, tries removing the entire playout.
  */
-export function* shrinkLength(playout: Playout): Iterable<EditFunction> {
+export function* shrinkLength(playout: Playout): Iterable<IntEditor> {
   const { reqs, replies } = trimZeroes(playout);
   const len = replies.length;
   if (len === 0) {
@@ -120,7 +116,7 @@ export function* shrinkLength(playout: Playout): Iterable<EditFunction> {
     delta *= 2;
     guess = Math.min(len - delta, guess - 1);
   }
-  yield () => new PlaybackPicker([]);
+  yield trimEnd(0);
 }
 
 /**
@@ -138,20 +134,16 @@ function* shrinkPicks(pickCount: number): Iterable<Strategy> {
 function replaceAt(
   start: number,
   replacement: number[],
-): EditFunction {
-  return (replies: number[]) => {
-    let reqs = 0;
-    return {
-      pick(req: PickRequest): number {
-        let pick = req.min;
-        if (reqs >= start && reqs < start + replacement.length) {
-          pick = replacement[reqs++ - start];
-        } else if (reqs < replies.length) {
-          pick = replies[reqs++];
-        }
-        return (pick >= req.min && pick <= req.max) ? pick : req.min;
-      },
-    };
+): IntEditor {
+  let reqs = 0;
+  return {
+    replace(_: PickRequest, before: number): number | undefined {
+      if (reqs < start || reqs >= start + replacement.length) {
+        reqs++;
+        return before;
+      }
+      return replacement[reqs++ - start];
+    },
   };
 }
 
@@ -171,7 +163,7 @@ export function shrinkPicksFrom(
 ): Strategy {
   function* shrinkPicks(
     playout: Playout,
-  ): Iterable<EditFunction> {
+  ): Iterable<IntEditor> {
     const { reqs, replies } = trimZeroes(playout);
     const replacement: number[] = [];
     for (let i = start; i < reqs.length; i++) {
@@ -202,24 +194,17 @@ function* shrinkOptions(pickCount: number): Iterable<Strategy> {
   }
 }
 
-function deleteRange(start: number, end: number): EditFunction {
-  const deletes = end - start;
-  return (replies: number[]) => {
-    let reqs = 0;
-    return {
-      pick(req: PickRequest): number {
-        if (reqs < start) {
-          const pick = replies[reqs++];
-          assert(pick >= req.min && pick <= req.max);
-          return pick;
-        } else if (reqs < replies.length - deletes) {
-          const pick = replies[reqs++ + deletes];
-          return (pick >= req.min && pick <= req.max) ? pick : req.min;
-        } else {
-          return req.min;
-        }
-      },
-    };
+function deleteRange(start: number, end: number): IntEditor {
+  let reqs = 0;
+  return {
+    replace(_: PickRequest, before: number): number | undefined {
+      if (reqs < start || reqs >= end) {
+        reqs++;
+        return before;
+      }
+      reqs++;
+      return undefined;
+    },
   };
 }
 
@@ -233,7 +218,7 @@ function deleteRange(start: number, end: number): EditFunction {
 export function shrinkOptionsUntil(limit: number): Strategy {
   function* shrinkOptions(
     playout: Playout,
-  ): Iterable<EditFunction> {
+  ): Iterable<IntEditor> {
     const { reqs, replies } = trimZeroes(playout);
     const len = replies.length;
 

@@ -8,14 +8,14 @@ import * as dom from "@/doms.ts";
 
 import { intRange, minMaxVal } from "./lib/ranges.ts";
 
-import { PickRequest } from "../src/picks.ts";
+import { EditPicker, type IntEditor, PickRequest } from "../src/picks.ts";
 import {
   shrink,
   shrinkLength,
   shrinkOptionsUntil,
   shrinkPicksFrom,
 } from "../src/shrink.ts";
-import type { EditFunction, Playout } from "../src/generated.ts";
+import type { Playout } from "../src/generated.ts";
 
 function assertShrinks<T>(
   dom: Domain<T>,
@@ -136,10 +136,11 @@ function fromReplies(replies: number[]) {
 function mutate(
   reqs: PickRequest[],
   seed: number[],
-  edit: EditFunction,
+  edit: IntEditor,
 ): number[] {
-  const picker = edit(seed);
-  const picks = reqs.map((req) => picker.pick(req));
+  const picker = new EditPicker(seed, edit);
+  const picks = reqs.map((r) => picker.pick(r));
+
   // remove trailing default picks
   while (picks.length > 0 && picks.at(-1) === reqs[picks.length - 1].min) {
     picks.pop();
@@ -215,7 +216,7 @@ describe("shrinkLength", () => {
   });
 });
 
-function mapEdits(playout: Playout, edits: Iterable<EditFunction>): number[][] {
+function mapEdits(playout: Playout, edits: Iterable<IntEditor>): number[][] {
   return Array.from(edits).map((edit) =>
     mutate(playout.reqs, playout.replies, edit)
   );

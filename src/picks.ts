@@ -251,6 +251,13 @@ export interface IntEditor {
   replace(req: PickRequest, before: number): number | undefined;
 }
 
+/** An editor that doesn't change the stream. */
+export const noChange: IntEditor = {
+  replace(_, before) {
+    return before;
+  },
+};
+
 /**
  * A picker that replays an array of integers with edits.
  */

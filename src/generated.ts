@@ -1,4 +1,4 @@
-import { type IntPicker, PickRequest } from "./picks.ts";
+import { EditPicker, type IntEditor, PickRequest } from "./picks.ts";
 import { onePlayout, type PlayoutSource, Pruned } from "./backtracking.ts";
 
 /**
@@ -167,8 +167,6 @@ export interface Playout {
   readonly replies: number[];
 }
 
-export type EditFunction = (replies: number[]) => IntPicker;
-
 /**
  * A generated value and the picks that were used to generate it.
  */
@@ -181,9 +179,8 @@ export class Generated<T> implements Playout {
     readonly val: T,
   ) {}
 
-  mutate(edit: EditFunction): Generated<T> | undefined {
-    const guess = edit(this.replies);
-    return generate(this.set, onePlayout(guess));
+  mutate(editor: IntEditor): Generated<T> | undefined {
+    return generate(this.set, onePlayout(new EditPicker(this.replies, editor)));
   }
 }
 
