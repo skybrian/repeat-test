@@ -237,6 +237,14 @@ describe("shrinkPicksFrom", () => {
     );
     assertEquals(guesses, [[1, 2], []]);
   });
+  it("recovers if the new picks go out of range", () => {
+    const lo = new PickRequest(1, 2);
+    const hi = new PickRequest(3, 4);
+    const seed = playout([lo, hi], [2, 4]);
+    const edits = Array.from(strategy.edits(seed));
+    const picks = mutate([lo, lo], [2, 4], edits[0]);
+    assertEquals(picks, []);
+  });
 });
 
 describe("shrinkOptionsUntil", () => {

@@ -1,5 +1,6 @@
+import { assert } from "@std/assert/assert";
 import type { EditFunction, Generated, Playout } from "./generated.ts";
-import { PlaybackPicker } from "./picks.ts";
+import { type PickRequest, PlaybackPicker } from "./picks.ts";
 
 /**
  * Provides increasingly smaller guesses for how to shrink a value.
@@ -73,7 +74,19 @@ function trimZeroes({ reqs, replies }: Playout): Playout {
 }
 
 function trimEnd(len: number): EditFunction {
-  return (replies: number[]) => new PlaybackPicker(replies.slice(0, len));
+  return (replies: number[]) => {
+    let reqs = 0;
+    return {
+      pick(req: PickRequest): number {
+        if (reqs >= len || reqs >= replies.length) {
+          return req.min;
+        }
+        const pick = replies[reqs++];
+        assert(pick >= req.min && pick <= req.max);
+        return pick;
+      },
+    };
+  };
 }
 
 /**
@@ -127,9 +140,18 @@ function replaceAt(
   replacement: number[],
 ): EditFunction {
   return (replies: number[]) => {
-    const out = replies.slice();
-    out.splice(start, replacement.length, ...replacement);
-    return new PlaybackPicker(out);
+    let reqs = 0;
+    return {
+      pick(req: PickRequest): number {
+        let pick = req.min;
+        if (reqs >= start && reqs < start + replacement.length) {
+          pick = replacement[reqs++ - start];
+        } else if (reqs < replies.length) {
+          pick = replies[reqs++];
+        }
+        return (pick >= req.min && pick <= req.max) ? pick : req.min;
+      },
+    };
   };
 }
 
@@ -181,10 +203,23 @@ function* shrinkOptions(pickCount: number): Iterable<Strategy> {
 }
 
 function deleteRange(start: number, end: number): EditFunction {
+  const deletes = end - start;
   return (replies: number[]) => {
-    const out = replies.slice();
-    out.splice(start, end - start);
-    return new PlaybackPicker(out);
+    let reqs = 0;
+    return {
+      pick(req: PickRequest): number {
+        if (reqs < start) {
+          const pick = replies[reqs++];
+          assert(pick >= req.min && pick <= req.max);
+          return pick;
+        } else if (reqs < replies.length - deletes) {
+          const pick = replies[reqs++ + deletes];
+          return (pick >= req.min && pick <= req.max) ? pick : req.min;
+        } else {
+          return req.min;
+        }
+      },
+    };
   };
 }
 
