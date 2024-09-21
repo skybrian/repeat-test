@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 
-import { PickList, type PickRequest } from "./picks.ts";
+import type { PickRequest } from "./picks.ts";
 import { generate } from "./generated.ts";
 import type {
   Generated,
@@ -85,8 +85,7 @@ export class Jar<T> {
     const canon = this.dom.regenerate(val);
     assert(canon.ok, "regenerate should always succeed");
 
-    const picks = PickList.zip(canon.reqs, canon.replies);
-    return this.remaining.prune(picks);
+    return this.remaining.prune(canon);
   };
 
   #refreshExample(): void {

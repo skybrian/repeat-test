@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import { PickRequest } from "./picks.ts";
-import type { PickList, RandomSource } from "./picks.ts";
+import type { RandomSource } from "./picks.ts";
 
 /** Indicates that the subtree rooted at a branch has been fully explored. */
 export const PRUNED = Symbol("pruned");
@@ -144,6 +144,11 @@ class Node {
   }
 }
 
+interface Playout {
+  readonly reqs: PickRequest[];
+  readonly replies: number[];
+}
+
 /**
  * A set of possible pick sequences.
  */
@@ -173,9 +178,9 @@ export class PickTree {
    *
    * Throws an error if a PickRequest's range doesn't match a previous playout.
    */
-  prune(picks: PickList): boolean {
+  prune(playout: Playout): boolean {
     const walk = this.walk();
-    if (!walk.pushAll(picks)) {
+    if (!walk.pushAll(playout)) {
       return false; // already pruned
     }
     return walk.prune();
@@ -316,9 +321,9 @@ export class Walk {
    *
    * Throws an Error if a request's range doesn't match a previous playout.
    */
-  pushAll(path: PickList): boolean {
-    const reqs = path.reqs();
-    const replies = path.replies();
+  pushAll(playout: Playout): boolean {
+    const reqs = playout.reqs;
+    const replies = playout.replies;
     for (let i = 0; i < reqs.length; i++) {
       if (!this.push(reqs[i], replies[i])) {
         return false;

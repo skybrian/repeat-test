@@ -6,7 +6,7 @@ import type {
 } from "@/arbitrary.ts";
 import { Domain, Jar } from "@/domain.ts";
 import * as arb from "./basics.ts";
-import { PickList, PickRequest } from "../picks.ts";
+import { PickRequest } from "../picks.ts";
 
 import { type ArrayOpts, parseArrayOpts, type TableOpts } from "../options.ts";
 import { generateAll } from "../multipass_search.ts";
@@ -76,8 +76,7 @@ function countDistinct(dom: Domain<unknown>, max: number): number {
   for (const gen of generateAll(dom)) {
     const regen = dom.regenerate(gen.val);
     assert(regen.ok);
-    const picks = PickList.zip(regen.reqs, regen.replies);
-    if (remaining.prune(picks)) {
+    if (remaining.prune(regen)) {
       count++;
       if (count >= max) {
         return max;

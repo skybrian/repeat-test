@@ -4,7 +4,6 @@ import * as arb from "@/arbs.ts";
 
 import type * as dom from "./basics.ts";
 import { PickTree } from "../pick_tree.ts";
-import { PickList } from "../picks.ts";
 import { checkArray, checkRecordKeys, parseArrayOpts } from "../options.ts";
 
 /**
@@ -35,15 +34,14 @@ export function uniqueArray<T>(
       const gen = item.generate(replies);
       assert(gen.ok, "can't regenerate an accepted value");
 
-      const picks = PickList.zip(gen.reqs, gen.replies);
-      if (!seen.prune(picks)) {
+      if (!seen.prune(gen)) {
         sendErr("duplicate item", { at: i });
         return undefined;
       }
       if (i >= min) {
         out.push(1);
       }
-      out.push(...picks.replies());
+      out.push(...gen.replies);
       i++;
     }
     if (i < max) {
@@ -97,16 +95,15 @@ export function table<R extends Record<string, unknown>>(
         // Regenerate because we need both requests and replies.
         const gen = shape[key].generate(replies);
         assert(gen.ok, "can't regenerate an accepted value");
-        const picks = PickList.zip(gen.reqs, gen.replies);
 
         const seen = trees[key];
         if (seen) {
-          if (!seen.prune(picks)) {
+          if (!seen.prune(gen)) {
             sendErr("duplicate field value", { at: `${i}.${key}` });
             return undefined;
           }
         }
-        out.push(...picks.replies());
+        out.push(...gen.replies);
       }
       i++;
     }
