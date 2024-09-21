@@ -1,5 +1,5 @@
-import { PickRequest } from "./picks.ts";
-import { playback, type PlayoutSource, Pruned } from "./backtracking.ts";
+import { type IntPicker, PickRequest } from "./picks.ts";
+import { onePlayout, type PlayoutSource, Pruned } from "./backtracking.ts";
 
 /**
  * A function that generates a value, given some picks.
@@ -167,7 +167,7 @@ export interface Playout {
   readonly replies: number[];
 }
 
-export type EditFunction = (replies: number[]) => number[];
+export type EditFunction = (replies: number[]) => IntPicker;
 
 /**
  * A generated value and the picks that were used to generate it.
@@ -183,7 +183,7 @@ export class Generated<T> implements Playout {
 
   mutate(edit: EditFunction): Generated<T> | undefined {
     const guess = edit(this.replies);
-    return generate(this.set, playback(guess));
+    return generate(this.set, onePlayout(guess));
   }
 }
 

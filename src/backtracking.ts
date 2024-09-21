@@ -1,10 +1,5 @@
 import { assert } from "@std/assert";
-import {
-  alwaysPickMin,
-  type IntPicker,
-  type PickRequest,
-  PlaybackPicker,
-} from "./picks.ts";
+import { alwaysPickMin, type IntPicker, type PickRequest } from "./picks.ts";
 
 /**
  * Indicates that a playout didn't result in generating a value.
@@ -190,9 +185,4 @@ export function onePlayout(picker: IntPicker): PlayoutSource {
 /** A source of a single playout that always picks the minimum */
 export function minPlayout(): PlayoutSource {
   return new SinglePlayoutSource(alwaysPickMin);
-}
-
-/** A source of a single playout that plays back the given picks. */
-export function playback(picks: number[]): PlayoutSource {
-  return new SinglePlayoutSource(new PlaybackPicker(picks));
 }

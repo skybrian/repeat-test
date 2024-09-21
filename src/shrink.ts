@@ -1,4 +1,5 @@
 import type { EditFunction, Generated, Playout } from "./generated.ts";
+import { PlaybackPicker } from "./picks.ts";
 
 /**
  * Provides increasingly smaller guesses for how to shrink a value.
@@ -72,7 +73,7 @@ function trimZeroes({ reqs, replies }: Playout): Playout {
 }
 
 function trimEnd(len: number): EditFunction {
-  return (replies: number[]) => replies.slice(0, len);
+  return (replies: number[]) => new PlaybackPicker(replies.slice(0, len));
 }
 
 /**
@@ -82,19 +83,31 @@ function trimEnd(len: number): EditFunction {
  * of picks to remove. Finally, tries removing the entire playout.
  */
 export function* shrinkLength(playout: Playout): Iterable<EditFunction> {
-  playout = trimZeroes(playout);
-  const len = playout.replies.length;
+  const { reqs, replies } = trimZeroes(playout);
+  const len = replies.length;
   if (len === 0) {
     return;
   }
+
   let delta = 1;
   let guess = len - delta;
+
+  function endIsMin() {
+    return guess > 0 && replies[guess - 1] === reqs[guess - 1].min;
+  }
+
   while (guess > 0) {
+    while (endIsMin()) {
+      guess--;
+    }
+    if (guess === 0) {
+      break;
+    }
     yield trimEnd(guess);
     delta *= 2;
-    guess = len - delta;
+    guess = Math.min(len - delta, guess - 1);
   }
-  yield () => [];
+  yield () => new PlaybackPicker([]);
 }
 
 /**
@@ -116,7 +129,7 @@ function replaceAt(
   return (replies: number[]) => {
     const out = replies.slice();
     out.splice(start, replacement.length, ...replacement);
-    return out;
+    return new PlaybackPicker(out);
   };
 }
 
@@ -171,7 +184,7 @@ function deleteRange(start: number, end: number): EditFunction {
   return (replies: number[]) => {
     const out = replies.slice();
     out.splice(start, end - start);
-    return out;
+    return new PlaybackPicker(out);
   };
 }
 

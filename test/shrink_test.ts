@@ -133,6 +133,20 @@ function fromReplies(replies: number[]) {
   return playout(reqs, replies);
 }
 
+function mutate(
+  reqs: PickRequest[],
+  seed: number[],
+  edit: EditFunction,
+): number[] {
+  const picker = edit(seed);
+  const picks = reqs.map((req) => picker.pick(req));
+  // remove trailing default picks
+  while (picks.length > 0 && picks.at(-1) === reqs[picks.length - 1].min) {
+    picks.pop();
+  }
+  return picks;
+}
+
 describe("shrinkLength", () => {
   it("doesn't guess for an empty playout", () => {
     const edits = shrinkLength(fromReplies([]));
@@ -177,15 +191,14 @@ describe("shrinkLength", () => {
       }
       assert(edits.length > 0);
 
-      // The last edit should return the empty playout.
-      const last = edits[edits.length - 1];
-      assertEquals(last(replies), []);
+      const last = mutate(reqs, replies, edits[edits.length - 1]);
+      assertEquals(last, [], "last edit should be empty");
 
       let prevSize = Number.POSITIVE_INFINITY;
       for (const edit of edits) {
         // Check that it's a prefix of the original.
         console.log("replies.length", replies.length);
-        const guess = edit(replies);
+        const guess = mutate(reqs, replies, edit);
         console.log("guess", guess);
         assert(guess.length < reqs.length);
         assertEquals(guess, replies.slice(0, guess.length));
@@ -202,8 +215,10 @@ describe("shrinkLength", () => {
   });
 });
 
-function mapEdits(playout: Playout, edits: Iterable<EditFunction>) {
-  return Array.from(edits).map((edit) => edit(playout.replies));
+function mapEdits(playout: Playout, edits: Iterable<EditFunction>): number[][] {
+  return Array.from(edits).map((edit) =>
+    mutate(playout.reqs, playout.replies, edit)
+  );
 }
 
 describe("shrinkPicksFrom", () => {
@@ -220,7 +235,7 @@ describe("shrinkPicksFrom", () => {
       { reqs: picks.reqs, replies: picks.replies },
       edits,
     );
-    assertEquals(guesses, [[1, 2], [1, 1]]);
+    assertEquals(guesses, [[1, 2], []]);
   });
 });
 
@@ -241,17 +256,20 @@ describe("shrinkOptionsUntil", () => {
   it("removes an option with something after it", () => {
     const bit = new PickRequest(0, 1);
     const roll = new PickRequest(1, 6);
-    const picks = playout([bit, roll, roll], [1, 6, 3]);
+    const picks = playout([bit, roll, bit, roll], [1, 6, 1, 5]);
     const strategy = shrinkOptionsUntil(2);
     const edits = strategy.edits(picks);
-    assertEquals(mapEdits(picks, edits), [[3]]);
+    assertEquals(mapEdits(picks, edits), [[1, 5]]);
   });
   it("removes two options", () => {
     const bit = new PickRequest(0, 1);
     const roll = new PickRequest(1, 6);
-    const picks = playout([bit, roll, bit, roll, roll], [1, 6, 1, 3, 5]);
+    const picks = playout(
+      [bit, roll, bit, roll, bit, roll],
+      [1, 6, 1, 3, 1, 5],
+    );
     const strategy = shrinkOptionsUntil(4);
     const edits = strategy.edits(picks);
-    assertEquals(mapEdits(picks, edits), [[1, 6, 5], [5]]);
+    assertEquals(mapEdits(picks, edits), [[1, 6, 1, 5], [1, 5]]);
   });
 });
