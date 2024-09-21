@@ -184,7 +184,7 @@ export function runRep<T>(
     return success();
   }
   system.log("\nTest failed. Shrinking...");
-  const shrunk = shrink(rep.arb, interesting, rep.arg);
+  const shrunk = shrink(rep.arg, interesting);
 
   // Rerun the test using the shrunk value and the original console.
   const innerConsole = new FailingTestConsole(system);

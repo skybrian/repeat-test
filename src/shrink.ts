@@ -1,6 +1,4 @@
-import { playback } from "./backtracking.ts";
-import { generate, type Generated, type Playout } from "./generated.ts";
-import type { Arbitrary } from "./arbitrary_class.ts";
+import type { EditFunction, Generated, Playout } from "./generated.ts";
 
 /**
  * Provides increasingly smaller guesses for how to shrink a value.
@@ -9,60 +7,57 @@ import type { Arbitrary } from "./arbitrary_class.ts";
  */
 interface Strategy {
   label: string;
-  guesses(gen: Playout): Iterable<number[]>;
+  edits(gen: Playout): Iterable<EditFunction>;
 }
 
 /**
- * Given a generated value, returns a possibly smaller one that satisfies a
- * predicate.
+ * Given a generated value, returns a smaller one that satisfies a predicate.
  *
  * If no smaller value is found, returns the original value.
  */
 export function shrink<T>(
-  arb: Arbitrary<T>,
+  seed: Generated<T>,
   interesting: (arg: T) => boolean,
-  start: Generated<T>,
 ): Generated<T> {
   while (true) {
     // Try each strategy in order, until one works.
     let worked: Generated<T> | undefined = undefined;
-    for (const strategy of strategiesToTry(start)) {
-      worked = runStrategy(arb, interesting, start, strategy);
+    for (const strategy of strategiesToTry(seed)) {
+      worked = runStrategy(interesting, seed, strategy);
       if (worked) {
         break; // Restarting
       }
     }
     if (!worked) {
-      return start; // No strategies work anymore
+      return seed; // No strategies work anymore
     }
-    start = worked; // Try to shrink again with the smaller value
+    seed = worked; // Try to shrink again with the smaller value
   }
 }
 
 function* strategiesToTry<T>(
   start: Generated<T>,
 ): Iterable<Strategy> {
-  yield { label: "shrinkLength", guesses: shrinkLength };
+  yield { label: "shrinkLength", edits: shrinkLength };
   const len = start.replies.length;
   yield* shrinkPicks(len);
   yield* shrinkOptions(len);
 }
 
 function runStrategy<T>(
-  arb: Arbitrary<T>,
   interesting: (arg: T) => boolean,
-  start: Generated<T>,
+  seed: Generated<T>,
   strategy: Strategy,
 ): Generated<T> | undefined {
-  let worked: Generated<T> | undefined = undefined;
-  for (const guess of strategy.guesses(start)) {
-    const shrunk = generate(arb, playback(guess));
+  let best: Generated<T> | undefined = undefined;
+  for (const edit of strategy.edits(seed)) {
+    const shrunk = seed.mutate(edit);
     if (!shrunk || !interesting(shrunk.val)) {
-      return worked;
+      return best;
     }
-    worked = shrunk;
+    best = shrunk;
   }
-  return worked;
+  return best;
 }
 
 function trimZeroes({ reqs, replies }: Playout): Playout {
@@ -76,13 +71,17 @@ function trimZeroes({ reqs, replies }: Playout): Playout {
   };
 }
 
+function trimEnd(len: number): EditFunction {
+  return (replies: number[]) => replies.slice(0, len);
+}
+
 /**
  * A strategy that tries removing suffixes from a playout.
  *
  * First tries removing the last pick. If that works, tries doubling the number
  * of picks to remove. Finally, tries removing the entire playout.
  */
-export function* shrinkLength(playout: Playout): Iterable<number[]> {
+export function* shrinkLength(playout: Playout): Iterable<EditFunction> {
   playout = trimZeroes(playout);
   const len = playout.replies.length;
   if (len === 0) {
@@ -91,11 +90,11 @@ export function* shrinkLength(playout: Playout): Iterable<number[]> {
   let delta = 1;
   let guess = len - delta;
   while (guess > 0) {
-    yield playout.replies.slice(0, guess);
+    yield trimEnd(guess);
     delta *= 2;
     guess = len - delta;
   }
-  yield [];
+  yield () => [];
 }
 
 /**
@@ -108,6 +107,17 @@ function* shrinkPicks(pickCount: number): Iterable<Strategy> {
   for (let i = 0; i < pickCount; i++) {
     yield shrinkPicksFrom(i);
   }
+}
+
+function replaceAt(
+  start: number,
+  replacement: number[],
+): EditFunction {
+  return (replies: number[]) => {
+    const out = replies.slice();
+    out.splice(start, replacement.length, ...replacement);
+    return out;
+  };
 }
 
 /**
@@ -126,33 +136,43 @@ export function shrinkPicksFrom(
 ): Strategy {
   function* shrinkPicks(
     playout: Playout,
-  ): Iterable<number[]> {
+  ): Iterable<EditFunction> {
     const { reqs, replies } = trimZeroes(playout);
+    const replacement: number[] = [];
     for (let i = start; i < reqs.length; i++) {
       const min = reqs[i].min;
       const reply = replies[i];
       if (reply === min) {
+        replacement[i - start] = min;
         continue;
       }
       let delta = 1;
       let guess = reply - delta;
       while (guess > min) {
-        replies[i] = guess;
-        yield replies.slice();
+        replacement[i - start] = guess;
+        yield replaceAt(start, replacement.slice());
         delta *= 2;
         guess = reply - delta;
       }
-      replies[i] = min;
-      yield replies.slice();
+      replacement[i - start] = min;
+      yield replaceAt(start, replacement.slice());
     }
   }
-  return { label: "shrinkPicks", guesses: shrinkPicks };
+  return { label: "shrinkPicks", edits: shrinkPicks };
 }
 
 function* shrinkOptions(pickCount: number): Iterable<Strategy> {
   for (let i = pickCount; i >= 0; i--) {
     yield shrinkOptionsUntil(i);
   }
+}
+
+function deleteRange(start: number, end: number): EditFunction {
+  return (replies: number[]) => {
+    const out = replies.slice();
+    out.splice(start, end - start);
+    return out;
+  };
 }
 
 /**
@@ -165,7 +185,7 @@ function* shrinkOptions(pickCount: number): Iterable<Strategy> {
 export function shrinkOptionsUntil(limit: number): Strategy {
   function* shrinkOptions(
     playout: Playout,
-  ): Iterable<number[]> {
+  ): Iterable<EditFunction> {
     const { reqs, replies } = trimZeroes(playout);
     const len = replies.length;
 
@@ -177,15 +197,14 @@ export function shrinkOptionsUntil(limit: number): Strategy {
       return expected === replies[i];
     }
 
-    let end = limit > len ? len : limit;
+    limit = Math.min(limit, len);
+    let end = limit;
     for (let start = end - 2; start >= 0; start -= 1) {
       if (isBit(start, 1)) {
-        reqs.splice(start, end - start);
-        replies.splice(start, end - start);
-        yield replies.slice();
+        yield deleteRange(start, limit);
         end = start;
       }
     }
   }
-  return { label: "shrinkOptions", guesses: shrinkOptions };
+  return { label: "shrinkOptions", edits: shrinkOptions };
 }

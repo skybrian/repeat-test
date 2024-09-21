@@ -1,5 +1,5 @@
 import { PickRequest } from "./picks.ts";
-import { type PlayoutSource, Pruned } from "./backtracking.ts";
+import { playback, type PlayoutSource, Pruned } from "./backtracking.ts";
 
 /**
  * A function that generates a value, given some picks.
@@ -167,16 +167,24 @@ export interface Playout {
   readonly replies: number[];
 }
 
+export type EditFunction = (replies: number[]) => number[];
+
 /**
  * A generated value and the picks that were used to generate it.
  */
 export class Generated<T> implements Playout {
   readonly ok = true;
   constructor(
+    private readonly set: PickSet<T>,
     readonly reqs: PickRequest[],
     readonly replies: number[],
     readonly val: T,
   ) {}
+
+  mutate(edit: EditFunction): Generated<T> | undefined {
+    const guess = edit(this.replies);
+    return generate(this.set, playback(guess));
+  }
 }
 
 /**
@@ -197,7 +205,7 @@ export function generate<T>(
       const reqs = playouts.getRequests();
       const replies = playouts.getReplies();
       if (playouts.endPlayout()) {
-        return new Generated(reqs, replies, val);
+        return new Generated(set, reqs, replies, val);
       }
     } catch (e) {
       if (!(e instanceof Pruned)) {

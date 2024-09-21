@@ -17,6 +17,6 @@ function checkEq(s: string): boolean {
 
 console.log("profiling shrink...");
 console.profile();
-const result = shrink(str, checkEq, gen);
+const result = shrink(gen, checkEq);
 console.profileEnd();
 assertEquals(result.val, gen.val);

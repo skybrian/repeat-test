@@ -86,7 +86,7 @@ const fails: PickSet<unknown> = {
 describe("generate", () => {
   it("generates a single value for a constant", () => {
     const gen = generate(hello, minPlayout());
-    assertEquals(gen, new Generated([], [], "hi"));
+    assertEquals(gen, new Generated(hello, [], [], "hi"));
   });
 
   it("passes through an error thrown by the PickSet", () => {

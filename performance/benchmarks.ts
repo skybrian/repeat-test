@@ -45,7 +45,7 @@ Deno.bench("shrink a 1k string", (b) => {
   const gen = generate(str, onePlayout(randomPicker(123)));
   assert(gen !== undefined);
   b.start();
-  shrink(str, (s) => s === gen.val, gen);
+  shrink(gen, (s) => s === gen.val);
   b.end();
   assert(gen.val === gen.val);
 });
