@@ -1,6 +1,7 @@
 import { assert } from "@std/assert";
 import { PickRequest } from "./picks.ts";
 import type { RandomSource } from "./picks.ts";
+import type { Playout } from "./generated.ts";
 
 /** Indicates that the subtree rooted at a branch has been fully explored. */
 export const PRUNED = Symbol("pruned");
@@ -142,11 +143,6 @@ class Node {
       this.prune(this.#min);
     }
   }
-}
-
-interface Playout {
-  readonly reqs: PickRequest[];
-  readonly replies: number[];
 }
 
 /**

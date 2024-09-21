@@ -162,10 +162,15 @@ export function makePickFunction<T>(
   return dispatch;
 }
 
+export interface Playout {
+  readonly reqs: PickRequest[];
+  readonly replies: number[];
+}
+
 /**
  * A generated value and the picks that were used to generate it.
  */
-export class Generated<T> {
+export class Generated<T> implements Playout {
   readonly ok = true;
   constructor(
     readonly reqs: PickRequest[],

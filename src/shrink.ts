@@ -1,6 +1,5 @@
-import { PickList } from "./picks.ts";
 import { playback } from "./backtracking.ts";
-import { generate, type Generated } from "./generated.ts";
+import { generate, type Generated, type Playout } from "./generated.ts";
 import type { Arbitrary } from "./arbitrary_class.ts";
 
 /**
@@ -10,7 +9,7 @@ import type { Arbitrary } from "./arbitrary_class.ts";
  */
 interface Strategy {
   label: string;
-  guesses(picks: PickList): Iterable<number[]>;
+  guesses(gen: Playout): Iterable<number[]>;
 }
 
 /**
@@ -56,8 +55,7 @@ function runStrategy<T>(
   strategy: Strategy,
 ): Generated<T> | undefined {
   let worked: Generated<T> | undefined = undefined;
-  const picks = PickList.zip(start.reqs, start.replies);
-  for (const guess of strategy.guesses(picks)) {
+  for (const guess of strategy.guesses(start)) {
     const shrunk = generate(arb, playback(guess));
     if (!shrunk || !interesting(shrunk.val)) {
       return worked;
@@ -67,24 +65,33 @@ function runStrategy<T>(
   return worked;
 }
 
+function trimZeroes({ reqs, replies }: Playout): Playout {
+  let last = replies.length - 1;
+  while (last >= 0 && replies[last] === reqs[last].min) {
+    last--;
+  }
+  return {
+    reqs: reqs.slice(0, last + 1),
+    replies: replies.slice(0, last + 1),
+  };
+}
+
 /**
  * A strategy that tries removing suffixes from a playout.
  *
  * First tries removing the last pick. If that works, tries doubling the number
  * of picks to remove. Finally, tries removing the entire playout.
  */
-export function* shrinkLength(
-  picks: PickList,
-): Iterable<number[]> {
-  const replies = picks.trimmed().replies();
-  const len = replies.length;
+export function* shrinkLength(playout: Playout): Iterable<number[]> {
+  playout = trimZeroes(playout);
+  const len = playout.replies.length;
   if (len === 0) {
     return;
   }
   let delta = 1;
   let guess = len - delta;
   while (guess > 0) {
-    yield replies.slice(0, guess);
+    yield playout.replies.slice(0, guess);
     delta *= 2;
     guess = len - delta;
   }
@@ -118,13 +125,10 @@ export function shrinkPicksFrom(
   start: number,
 ): Strategy {
   function* shrinkPicks(
-    picks: PickList,
+    playout: Playout,
   ): Iterable<number[]> {
-    picks = picks.trimmed();
-    const len = picks.length;
-    const reqs = picks.reqs();
-    const replies = picks.replies();
-    for (let i = start; i < len; i++) {
+    const { reqs, replies } = trimZeroes(playout);
+    for (let i = start; i < reqs.length; i++) {
       const min = reqs[i].min;
       const reply = replies[i];
       if (reply === min) {
@@ -160,15 +164,25 @@ function* shrinkOptions(pickCount: number): Iterable<Strategy> {
  */
 export function shrinkOptionsUntil(limit: number): Strategy {
   function* shrinkOptions(
-    picks: PickList,
+    playout: Playout,
   ): Iterable<number[]> {
-    picks = picks.trimmed();
+    const { reqs, replies } = trimZeroes(playout);
+    const len = replies.length;
 
-    let end = limit > picks.length ? picks.length : limit;
+    function isBit(i: number, expected?: number): boolean {
+      const req = reqs[i];
+      if (req.min !== 0 || req.max !== 1) {
+        return false;
+      }
+      return expected === replies[i];
+    }
+
+    let end = limit > len ? len : limit;
     for (let start = end - 2; start >= 0; start -= 1) {
-      if (picks.isBit(start, 1)) {
-        picks.splice(start, end - start);
-        yield picks.replies();
+      if (isBit(start, 1)) {
+        reqs.splice(start, end - start);
+        replies.splice(start, end - start);
+        yield replies.slice();
         end = start;
       }
     }

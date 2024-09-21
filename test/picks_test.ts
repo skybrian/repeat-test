@@ -1,11 +1,5 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
-import {
-  assert,
-  assertEquals,
-  assertFalse,
-  assertThrows,
-  fail,
-} from "@std/assert";
+import { assert, assertEquals, assertThrows, fail } from "@std/assert";
 
 import { repeatTest } from "@/runner.ts";
 import * as arb from "@/arbs.ts";
@@ -14,7 +8,6 @@ import { invalidIntRange } from "./lib/ranges.ts";
 import {
   alwaysPick,
   biasedBitRequest,
-  PickList,
   PickRequest,
   PlaybackPicker,
 } from "../src/picks.ts";
@@ -249,36 +242,6 @@ describe("alwaysPick", () => {
       Error,
       "can't satisfy request (0, 1) with 3",
     );
-  });
-});
-
-describe("PickList", () => {
-  describe("zip", () => {
-    it("throws when given lists with different lengths", () => {
-      const reqs = [new PickRequest(0, 1)];
-      const vals = [0, 0];
-      assertThrows(() => PickList.zip(reqs, vals), Error);
-    });
-  });
-  describe("isBit", () => {
-    it("returns false if a pick isn't a bit", () => {
-      const roll = new PickRequest(1, 6);
-      const picks = PickList.zip([roll], [6]);
-      assertFalse(picks.isBit(0));
-    });
-    it("returns true if a pick is a bit", () => {
-      const bit = new PickRequest(0, 1);
-      const picks = PickList.zip([bit], [0]);
-      assert(picks.isBit(0));
-    });
-    it("returns true if a pick is a bit with the given value", () => {
-      const bit = new PickRequest(0, 1);
-      const picks = PickList.zip([bit, bit], [0, 1]);
-      assert(picks.isBit(0, 0));
-      assertFalse(picks.isBit(0, 1));
-      assertFalse(picks.isBit(1, 0));
-      assert(picks.isBit(1, 1));
-    });
   });
 });
 
