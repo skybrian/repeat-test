@@ -1,10 +1,11 @@
-import { assert, AssertionError } from "@std/assert";
+import { assert, assertEquals, AssertionError } from "@std/assert";
 
 import { type Failure, failure, type Success, success } from "./results.ts";
 import { generate, type Generated } from "./generated.ts";
 import type { PickSet } from "./generated.ts";
 import { PartialTracker } from "./searches.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
+import { generateDefault } from "./multipass_search.ts";
 
 import { pickRandomSeed, randomPickers } from "./random.ts";
 import {
@@ -102,35 +103,43 @@ export function* generateReps<T>(
       arb = arbs[pick];
     }
 
-    return {
-      ok: true,
-      key,
-      arb,
-      arg,
-      test,
-    };
+    return { ok: true, key, arb, arg, test };
   }
 
   // First generate the default for each Arbitrary.
   let index = 0;
   while (index < arbs.length) {
-    let firstPick = true;
+    const gen = generateDefault(arbs[index]);
 
+    // Need to generate the default again to get the right picks for allArbs.
+    let offset = 0;
+    let firstTime = true;
     search.pickSource = {
       pick: (req): number => {
-        if (firstPick) {
-          firstPick = false;
-          if (req.min + index <= req.max) {
-            return req.min + index;
-          }
+        if (firstTime && arbs.length > 1) {
+          // The first pick chooses the arbitrary when there is more than one.
+          assert(req.min === 0 && req.max === arbs.length - 1);
+          firstTime = false;
+          return index;
         }
-        return req.min;
+        firstTime = false;
+
+        assert(offset >= 0 && offset < gen.replies.length);
+        const result = gen.replies[offset++];
+        assert(result >= req.min && result <= req.max);
+        return result;
       },
     };
 
     const arg = generate(allArbs, search);
     assert(arg, "unexpected end of search");
-    const rep = makeRep({ seed: 0, index }, arg);
+    assertEquals(
+      arg.val,
+      gen.val,
+      "default value didn't generate the same value",
+    );
+
+    const rep = makeRep({ seed: 0, index: index }, arg);
     assert(rep.arb === arbs[index], `arbs don't match at index ${index}`);
     yield rep;
     index++;
@@ -147,14 +156,14 @@ export function* generateReps<T>(
   const pickers = randomPickers(seed);
 
   while (!search.done) {
-    const key: RepKey = { seed, index };
+    const key: RepKey = { seed, index: index };
     search.pickSource = pickers.next().value;
     try {
       const arg = generate(allArbs, search);
       if (arg === undefined) {
         return; // No more test args to generate.
       }
-      yield makeRep({ seed, index }, arg);
+      yield makeRep({ seed, index: index }, arg);
     } catch (e) {
       yield { ok: false, key, arg: undefined, caught: e };
       if (search.state === "picking") {
@@ -184,7 +193,7 @@ export function runRep<T>(
     return success();
   }
   system.log("\nTest failed. Shrinking...");
-  const shrunk = shrink(rep.arg, interesting);
+  const shrunk = shrink(rep.arg, interesting) ?? rep.arg;
 
   // Rerun the test using the shrunk value and the original console.
   const innerConsole = new FailingTestConsole(system);

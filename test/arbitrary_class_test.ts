@@ -118,6 +118,17 @@ describe("Arbitrary", () => {
       assertEquals(Arbitrary.record({}).label, "empty record");
       assertEquals(Arbitrary.record({ a: Arbitrary.of(1) }).label, "record");
     });
+    describe("for a pair", () => {
+      const pair = Arbitrary.record({ a: arb.int32(), b: arb.string() });
+      it("sometimes has non-default values", () => {
+        repeatTest(pair, ({ a, b }, console) => {
+          console.sometimes(
+            "a and b are both non-default values",
+            a !== 0 && b !== "",
+          );
+        });
+      });
+    });
   });
 
   describe("filter", () => {
@@ -216,6 +227,16 @@ describe("Arbitrary", () => {
       });
       const filtered = original.filter(() => true);
       assertValues(filtered, [1, 3]);
+    });
+    describe("for a filtered pair", () => {
+      const pair = Arbitrary.record({ a: arb.int32(), b: arb.string() });
+      const filtered = pair.filter((r) => r.a !== 0 && r.b !== "");
+      it("always has non-default values", () => {
+        repeatTest(filtered, ({ a, b }) => {
+          assert(a !== 0, `want: not 0, got ${a}`);
+          assert(b !== "", `want: not empty, got ${b}`);
+        });
+      });
     });
   });
 
