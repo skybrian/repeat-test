@@ -19,6 +19,7 @@ export type {
   PickFunction,
   PickFunctionOpts,
   PickSet,
+  Playout,
 } from "../generated.ts";
 
 export { Generated } from "../generated.ts";

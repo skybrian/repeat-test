@@ -6,16 +6,17 @@ import * as arb from "@/arbs.ts";
 import type { Domain } from "@/domain.ts";
 import * as dom from "@/doms.ts";
 
-import { intRange, minMaxVal } from "./lib/ranges.ts";
+import { minMaxVal } from "./lib/ranges.ts";
 
-import { EditPicker, type IntEditor, PickRequest } from "../src/picks.ts";
+import { type IntEditor, PickRequest } from "../src/picks.ts";
 import {
   shrink,
   shrinkLength,
   shrinkOptionsUntil,
   shrinkPicksFrom,
 } from "../src/shrink.ts";
-import type { Playout } from "../src/generated.ts";
+import type { PickSet, Playout } from "../src/generated.ts";
+import { Generated } from "@/arbitrary.ts";
 
 function assertShrinks<T>(
   dom: Domain<T>,
@@ -128,7 +129,7 @@ function playout(reqs: PickRequest[], replies: number[]): Playout {
   return { reqs, replies };
 }
 
-function fromReplies(replies: number[]) {
+function fromReplies(replies: number[]): Playout {
   const reqs = replies.map((r) => new PickRequest(r, r));
   return playout(reqs, replies);
 }
@@ -138,14 +139,28 @@ function mutate(
   seed: number[],
   edit: IntEditor,
 ): number[] {
-  const picker = new EditPicker(seed, edit);
-  const picks = reqs.map((r) => picker.pick(r));
+  const fakeSet: PickSet<string> = {
+    label: "(fake)",
+    generateFrom: (pick) => {
+      for (const req of reqs) {
+        pick(req);
+      }
+      return "ignored";
+    },
+  };
 
-  // remove trailing default picks
-  while (picks.length > 0 && picks.at(-1) === reqs[picks.length - 1].min) {
-    picks.pop();
-  }
-  return picks;
+  const gen = new Generated(fakeSet, reqs, seed, "ignored");
+  const result = gen.mutate(edit);
+  assert(result !== undefined, "expected a result from mutate");
+
+  return result.trimmedPlayout().replies;
+}
+
+function failedEdits(
+  { reqs, replies }: Playout,
+  edits: Iterable<IntEditor>,
+): number[][] {
+  return Array.from(edits).map((edit) => mutate(reqs, replies, edit));
 }
 
 describe("shrinkLength", () => {
@@ -153,60 +168,35 @@ describe("shrinkLength", () => {
     const edits = shrinkLength(fromReplies([]));
     assertEquals(Array.from(edits), []);
   });
-  it("doesn't guess if all requests have a single choice", () => {
-    const example = arb.array(arb.int(0, 1000));
-    repeatTest(example, (picks) => {
-      const edits = shrinkLength(fromReplies(picks));
-      assertEquals(Array.from(edits), []);
-    });
-  });
-  it("doesn't guess if all playouts are at the minimum", () => {
-    const example = arb.array(intRange({ minMin: 0 }));
-    repeatTest(example, (ranges) => {
-      const reqs = ranges.map((r) => new PickRequest(r.min, r.max));
-      const picks = ranges.map((r) => r.min);
-      const guesses = shrinkLength(playout(reqs, picks));
-      assertEquals(Array.from(guesses), []);
-    });
-  });
   it("tries shrinking trailing picks", () => {
     const ranges = arb.array(minMaxVal({ minMin: 0 }));
 
     repeatTest(ranges, (ranges, console) => {
-      let reqs = ranges.map((r) => new PickRequest(r.min, r.max));
+      const reqs = ranges.map((r) => new PickRequest(r.min, r.max));
       const replies = ranges.map((r) => r.val);
-      while (
-        replies.length > 0 &&
-        replies[replies.length - 1] === reqs[replies.length - 1].min
-      ) {
-        replies.pop();
-      }
-      reqs = reqs.slice(0, replies.length);
-
-      const edits = Array.from(shrinkLength(playout(reqs, replies)));
+      const guesses = failedEdits(
+        { reqs, replies },
+        shrinkLength({ reqs, replies }),
+      );
 
       if (reqs.length === 0) {
         // Nothing to do if there are no picks.
-        assertEquals(edits, []);
+        assertEquals(guesses, []);
         return;
       }
-      assert(edits.length > 0);
 
-      const last = mutate(reqs, replies, edits[edits.length - 1]);
-      assertEquals(last, [], "last edit should be empty");
+      assert(guesses.length > 0);
+      assertEquals(guesses.at(-1), [], "last edit should be empty");
 
       let prevSize = Number.POSITIVE_INFINITY;
-      for (const edit of edits) {
+      for (const guess of guesses) {
         // Check that it's a prefix of the original.
-        console.log("replies.length", replies.length);
-        const guess = mutate(reqs, replies, edit);
         console.log("guess", guess);
-        assert(guess.length < reqs.length);
         assertEquals(guess, replies.slice(0, guess.length));
 
         // Check that it's getting smaller.
         assert(
-          guess.length < prevSize,
+          guess.length <= prevSize,
           `didn't shrink from ${prevSize} to ${guess.length}`,
         );
 
@@ -215,12 +205,6 @@ describe("shrinkLength", () => {
     });
   });
 });
-
-function mapEdits(playout: Playout, edits: Iterable<IntEditor>): number[][] {
-  return Array.from(edits).map((edit) =>
-    mutate(playout.reqs, playout.replies, edit)
-  );
-}
 
 describe("shrinkPicksFrom", () => {
   const strategy = shrinkPicksFrom(0);
@@ -232,7 +216,7 @@ describe("shrinkPicksFrom", () => {
     const roll = new PickRequest(1, 2);
     const picks = playout([roll, roll], [2, 2]);
     const edits = strategy.edits(picks);
-    const guesses = mapEdits(
+    const guesses = failedEdits(
       { reqs: picks.reqs, replies: picks.replies },
       edits,
     );
@@ -260,7 +244,7 @@ describe("shrinkOptionsUntil", () => {
     const picks = playout([bit, roll], [1, 6]);
     const strategy = shrinkOptionsUntil(2);
     const edits = strategy.edits(picks);
-    assertEquals(mapEdits(picks, edits), [[]]);
+    assertEquals(failedEdits(picks, edits), [[]]);
   });
   it("removes an option with something after it", () => {
     const bit = new PickRequest(0, 1);
@@ -268,7 +252,7 @@ describe("shrinkOptionsUntil", () => {
     const picks = playout([bit, roll, bit, roll], [1, 6, 1, 5]);
     const strategy = shrinkOptionsUntil(2);
     const edits = strategy.edits(picks);
-    assertEquals(mapEdits(picks, edits), [[1, 5]]);
+    assertEquals(failedEdits(picks, edits), [[1, 5]]);
   });
   it("removes two options", () => {
     const bit = new PickRequest(0, 1);
@@ -279,6 +263,6 @@ describe("shrinkOptionsUntil", () => {
     );
     const strategy = shrinkOptionsUntil(4);
     const edits = strategy.edits(picks);
-    assertEquals(mapEdits(picks, edits), [[1, 6, 1, 5], [1, 5]]);
+    assertEquals(failedEdits(picks, edits), [[1, 6, 1, 5], [1, 5]]);
   });
 });

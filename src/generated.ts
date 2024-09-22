@@ -163,10 +163,11 @@ export function makePickFunction<T>(
   return dispatch;
 }
 
-export interface Playout {
+/** A list of pick requests with its replies. */
+export type Playout = {
   readonly reqs: PickRequest[];
   readonly replies: number[];
-}
+};
 
 /**
  * A generated value and the picks that were used to generate it.
@@ -184,6 +185,21 @@ export class Generated<T> implements Success<T> {
     readonly replies: number[],
     readonly val: T,
   ) {}
+
+  /**
+   * Returns the requests and replies with default picks removed from the end.
+   */
+  trimmedPlayout(): Playout {
+    const { reqs, replies } = this;
+    let last = replies.length - 1;
+    while (last >= 0 && replies[last] === reqs[last].min) {
+      last--;
+    }
+    return {
+      reqs: reqs.slice(0, last + 1),
+      replies: replies.slice(0, last + 1),
+    };
+  }
 
   /**
    * Regenerates the value after editing its picks.

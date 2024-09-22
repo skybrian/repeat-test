@@ -51,7 +51,7 @@ function runStrategy<T>(
   strategy: Strategy,
 ): Generated<T> | undefined {
   let best: Generated<T> | undefined = undefined;
-  for (const edit of strategy.edits(seed)) {
+  for (const edit of strategy.edits(seed.trimmedPlayout())) {
     const shrunk = seed.mutate(edit);
     if (!shrunk || !interesting(shrunk.val)) {
       return best;
@@ -59,17 +59,6 @@ function runStrategy<T>(
     best = shrunk;
   }
   return best;
-}
-
-function trimZeroes({ reqs, replies }: Playout): Playout {
-  let last = replies.length - 1;
-  while (last >= 0 && replies[last] === reqs[last].min) {
-    last--;
-  }
-  return {
-    reqs: reqs.slice(0, last + 1),
-    replies: replies.slice(0, last + 1),
-  };
 }
 
 function trimEnd(len: number): IntEditor {
@@ -91,8 +80,7 @@ function trimEnd(len: number): IntEditor {
  * First tries removing the last pick. If that works, tries doubling the number
  * of picks to remove. Finally, tries removing the entire playout.
  */
-export function* shrinkLength(playout: Playout): Iterable<IntEditor> {
-  const { reqs, replies } = trimZeroes(playout);
+export function* shrinkLength({ reqs, replies }: Playout): Iterable<IntEditor> {
   const len = replies.length;
   if (len === 0) {
     return;
@@ -162,9 +150,8 @@ export function shrinkPicksFrom(
   start: number,
 ): Strategy {
   function* shrinkPicks(
-    playout: Playout,
+    { reqs, replies }: Playout,
   ): Iterable<IntEditor> {
-    const { reqs, replies } = trimZeroes(playout);
     const replacement: number[] = [];
     for (let i = start; i < reqs.length; i++) {
       const min = reqs[i].min;
@@ -217,9 +204,8 @@ function deleteRange(start: number, end: number): IntEditor {
  */
 export function shrinkOptionsUntil(limit: number): Strategy {
   function* shrinkOptions(
-    playout: Playout,
+    { reqs, replies }: Playout,
   ): Iterable<IntEditor> {
-    const { reqs, replies } = trimZeroes(playout);
     const len = replies.length;
 
     function isBit(i: number, expected?: number): boolean {
