@@ -4,16 +4,24 @@
  * @module arbitrary
  */
 
-export type { PickRequestOpts, RandomPicker, RandomSource } from "../picks.ts";
+export type { Failure, Success } from "../results.ts";
 
 export type {
-  Generated,
+  IntEditor,
+  PickRequestOpts,
+  RandomPicker,
+  RandomSource,
+} from "../picks.ts";
+
+export type {
   IntPickerMiddleware,
   PickCallback,
   PickFunction,
   PickFunctionOpts,
   PickSet,
 } from "../generated.ts";
+
+export { Generated } from "../generated.ts";
 
 export type { RecordShape } from "../options.ts";
 

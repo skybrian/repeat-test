@@ -1,16 +1,14 @@
-/** A tagged, successful result. */
+/** A result that's tagged as a success. */
 export type Success<T> = {
   ok: true;
   val: T;
 };
 
-/** A tagged, failed result. */
-export interface Failure {
-  /** Tag indicating that this is a failure. */
+/** A result that's tagged as a failure and has an error message. */
+export type Failure = {
   ok: false;
-  /** An error message. */
   message: string;
-}
+};
 
 export function success(): Success<undefined>;
 export function success<T>(val: T): Success<T>;

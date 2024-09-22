@@ -1,5 +1,6 @@
 import { EditPicker, type IntEditor, PickRequest } from "./picks.ts";
 import { onePlayout, type PlayoutSource, Pruned } from "./backtracking.ts";
+import type { Success } from "./results.ts";
 
 /**
  * A function that generates a value, given some picks.
@@ -170,8 +171,13 @@ export interface Playout {
 /**
  * A generated value and the picks that were used to generate it.
  */
-export class Generated<T> implements Playout {
+export class Generated<T> implements Success<T> {
+  /** Satisfies the Success interface. */
   readonly ok = true;
+
+  /**
+   * Creates a Generated value with the given contents.
+   */
   constructor(
     private readonly set: PickSet<T>,
     readonly reqs: PickRequest[],
@@ -179,6 +185,10 @@ export class Generated<T> implements Playout {
     readonly val: T,
   ) {}
 
+  /**
+   * Regenerates the value after editing its picks.
+   * @returns the new value, or undefined if no change is available.
+   */
   mutate(editor: IntEditor): Generated<T> | undefined {
     const picker = new EditPicker(this.replies, editor);
     const gen = generate(this.set, onePlayout(picker));
