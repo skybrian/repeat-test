@@ -72,7 +72,7 @@ export function shrink<T>(
 function* shrinkersToTry<T>(
   start: Generated<T>,
 ): Iterable<Shrinker> {
-  yield toShinker(shrinkLength);
+  yield shrinkTail;
   const len = start.replies.length;
   yield* shrinkPicks(len);
   yield* shrinkOptions(len);
@@ -92,12 +92,23 @@ function trimEnd(len: number): IntEditor {
 }
 
 /**
+ * Removes unnecessary picks from the end of a playout.
+ */
+export function shrinkTail<T>(
+  seed: Generated<T>,
+  test: (val: T) => boolean,
+): Generated<T> | undefined {
+  const edits = lengthEdits(seed.trimmedPlayout());
+  return mutate(seed, edits, test);
+}
+
+/**
  * Generates edits that remove suffixes from a playout.
  *
  * First tries removing the last pick. If that works, tries doubling the number
  * of picks to remove. Finally, tries removing the entire playout.
  */
-export function* shrinkLength({ reqs, replies }: Playout): Iterable<IntEditor> {
+function* lengthEdits({ reqs, replies }: Playout): Iterable<IntEditor> {
   const len = replies.length;
   if (len === 0) {
     return;

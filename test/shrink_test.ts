@@ -8,14 +8,14 @@ import * as dom from "@/doms.ts";
 
 import { minMaxVal } from "./lib/ranges.ts";
 
-import { type IntEditor, PickRequest } from "../src/picks.ts";
+import { PickRequest } from "../src/picks.ts";
 import {
   shrink,
-  shrinkLength,
   shrinkOptionsUntil,
   shrinkPicksFrom,
+  shrinkTail,
 } from "../src/shrink.ts";
-import type { PickSet, Playout } from "../src/generated.ts";
+import type { PickSet } from "../src/generated.ts";
 import { Generated } from "@/arbitrary.ts";
 
 function assertShrinks<T>(
@@ -140,69 +140,29 @@ function seedFrom(reqs: PickRequest[], replies: number[]): Generated<string> {
 
 const emptySeed = seedFrom([], []);
 
-function mutate(
-  reqs: PickRequest[],
-  seed: number[],
-  edit: IntEditor,
-): number[] {
-  const gen = seedFrom(reqs, seed);
-  const result = gen.mutate(edit);
-  assert(result !== undefined, "expected a result from mutate");
+const acceptAll = () => true;
 
-  return result.trimmedPlayout().replies;
-}
-
-function failedEdits(
-  { reqs, replies }: Playout,
-  edits: Iterable<IntEditor>,
-): number[][] {
-  return Array.from(edits).map((edit) => mutate(reqs, replies, edit));
-}
-
-describe("shrinkLength", () => {
-  it("doesn't guess for an empty playout", () => {
-    const edits = shrinkLength(emptySeed);
-    assertEquals(Array.from(edits), []);
+describe("shrinkTail", () => {
+  it("can't shrink an empty seed", () => {
+    assertEquals(undefined, shrinkTail(emptySeed, acceptAll));
   });
-  it("tries shrinking trailing picks", () => {
-    const ranges = arb.array(minMaxVal({ minMin: 0 }));
 
-    repeatTest(ranges, (ranges, console) => {
-      const reqs = ranges.map((r) => new PickRequest(r.min, r.max));
-      const replies = ranges.map((r) => r.val);
-      const guesses = failedEdits(
-        { reqs, replies },
-        shrinkLength({ reqs, replies }),
-      );
+  const nonEmptySeeds = arb.array(minMaxVal({ minMin: 0 })).filter((recs) =>
+    recs.some((r) => r.val !== r.min)
+  );
 
-      if (reqs.length === 0) {
-        // Nothing to do if there are no picks.
-        assertEquals(guesses, []);
-        return;
-      }
+  it("shrinks random picks to nothing", () => {
+    repeatTest(nonEmptySeeds, (recs) => {
+      const reqs = recs.map((r) => new PickRequest(r.min, r.max));
+      const replies = recs.map((r) => r.val);
+      const seed = seedFrom(reqs, replies);
 
-      assert(guesses.length > 0);
-      assertEquals(guesses.at(-1), [], "last edit should be empty");
-
-      let prevSize = Number.POSITIVE_INFINITY;
-      for (const guess of guesses) {
-        // Check that it's a prefix of the original.
-        console.log("guess", guess);
-        assertEquals(guess, replies.slice(0, guess.length));
-
-        // Check that it's getting smaller.
-        assert(
-          guess.length <= prevSize,
-          `didn't shrink from ${prevSize} to ${guess.length}`,
-        );
-
-        prevSize = guess.length;
-      }
+      const gen = shrinkTail(seed, acceptAll);
+      assert(gen !== undefined, "expected a result from shrinkTail");
+      assertEquals(gen.trimmedPlayout().replies, []);
     });
   });
 });
-
-const acceptAll = () => true;
 
 describe("shrinkPicksFrom", () => {
   const shrinker = shrinkPicksFrom(0);

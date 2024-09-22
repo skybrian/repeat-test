@@ -187,17 +187,25 @@ export class Generated<T> implements Success<T> {
   ) {}
 
   /**
-   * Returns the requests and replies with default picks removed from the end.
+   * Returns the lenght of the playout with default picks removed from the end.
    */
-  trimmedPlayout(): Playout {
+  get trimmedLength(): number {
     const { reqs, replies } = this;
     let last = replies.length - 1;
     while (last >= 0 && replies[last] === reqs[last].min) {
       last--;
     }
+    return last + 1;
+  }
+
+  /**
+   * Returns the requests and replies with default picks removed from the end.
+   */
+  trimmedPlayout(): Playout {
+    const len = this.trimmedLength;
     return {
-      reqs: reqs.slice(0, last + 1),
-      replies: replies.slice(0, last + 1),
+      reqs: this.reqs.slice(0, len),
+      replies: this.replies.slice(0, len),
     };
   }
 
