@@ -271,6 +271,12 @@ const addOne: IntEditor = {
   },
 };
 
+const deleteAll: IntEditor = {
+  replace(_req, _before) {
+    return undefined;
+  },
+};
+
 describe("EditPicker", () => {
   it("throws if a previous pick isn't an integer", () => {
     assertThrows(
@@ -310,5 +316,12 @@ describe("EditPicker", () => {
     assertEquals(picker.pick(new PickRequest(0, 1)), 0);
     assertEquals(picker.pick(new PickRequest(0, 3)), 3);
     assertEquals(picker.edits, 2);
+    assertEquals(picker.deletes, 0);
+  });
+  it("returns minimum picks if the editor deletes everything", () => {
+    const picker = new EditPicker([0, 1, 2], deleteAll);
+    assertEquals(picker.pick(new PickRequest(0, 3)), 0);
+    assertEquals(picker.edits, 0);
+    assertEquals(picker.deletes, 3);
   });
 });

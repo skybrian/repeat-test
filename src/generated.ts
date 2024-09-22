@@ -180,7 +180,12 @@ export class Generated<T> implements Playout {
   ) {}
 
   mutate(editor: IntEditor): Generated<T> | undefined {
-    return generate(this.set, onePlayout(new EditPicker(this.replies, editor)));
+    const picker = new EditPicker(this.replies, editor);
+    const gen = generate(this.set, onePlayout(picker));
+    if (picker.edits === 0 && picker.deletes === 0) {
+      return undefined; // no change
+    }
+    return gen;
   }
 }
 

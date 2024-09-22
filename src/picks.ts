@@ -304,4 +304,8 @@ export class EditPicker implements IntPicker {
   get edits(): number {
     return this.#edits;
   }
+
+  get deletes(): number {
+    return this.#deletes;
+  }
 }
