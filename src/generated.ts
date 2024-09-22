@@ -205,8 +205,8 @@ export class Generated<T> implements Success<T> {
    * Regenerates the value after editing its picks.
    * @returns the new value, or undefined if no change is available.
    */
-  mutate(editor: IntEditor): Generated<T> | undefined {
-    const picker = new EditPicker(this.replies, editor);
+  mutate(edit: IntEditor): Generated<T> | undefined {
+    const picker = new EditPicker(this.replies, edit);
     const gen = generate(this.set, onePlayout(picker));
     if (picker.edits === 0 && picker.deletes === 0) {
       return undefined; // no change

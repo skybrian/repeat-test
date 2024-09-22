@@ -125,20 +125,7 @@ describe("shrink", () => {
   });
 });
 
-function playout(reqs: PickRequest[], replies: number[]): Playout {
-  return { reqs, replies };
-}
-
-function fromReplies(replies: number[]): Playout {
-  const reqs = replies.map((r) => new PickRequest(r, r));
-  return playout(reqs, replies);
-}
-
-function mutate(
-  reqs: PickRequest[],
-  seed: number[],
-  edit: IntEditor,
-): number[] {
+function seedFrom(reqs: PickRequest[], replies: number[]): Generated<string> {
   const fakeSet: PickSet<string> = {
     label: "(fake)",
     generateFrom: (pick) => {
@@ -148,8 +135,17 @@ function mutate(
       return "ignored";
     },
   };
+  return new Generated(fakeSet, reqs, replies, "ignored");
+}
 
-  const gen = new Generated(fakeSet, reqs, seed, "ignored");
+const emptySeed = seedFrom([], []);
+
+function mutate(
+  reqs: PickRequest[],
+  seed: number[],
+  edit: IntEditor,
+): number[] {
+  const gen = seedFrom(reqs, seed);
   const result = gen.mutate(edit);
   assert(result !== undefined, "expected a result from mutate");
 
@@ -165,7 +161,7 @@ function failedEdits(
 
 describe("shrinkLength", () => {
   it("doesn't guess for an empty playout", () => {
-    const edits = shrinkLength(fromReplies([]));
+    const edits = shrinkLength(emptySeed);
     assertEquals(Array.from(edits), []);
   });
   it("tries shrinking trailing picks", () => {
@@ -206,63 +202,58 @@ describe("shrinkLength", () => {
   });
 });
 
+const acceptAll = () => true;
+
 describe("shrinkPicksFrom", () => {
-  const strategy = shrinkPicksFrom(0);
-  it("can't shrink an empty playout", () => {
-    const guesses = strategy.edits(fromReplies([]));
-    assertEquals(Array.from(guesses), []);
+  const shrinker = shrinkPicksFrom(0);
+
+  it("can't shrink an empty seed", () => {
+    assertEquals(undefined, shrinker(emptySeed, acceptAll));
   });
-  it("replaces each pick with the minimum", () => {
-    const roll = new PickRequest(1, 2);
-    const picks = playout([roll, roll], [2, 2]);
-    const edits = strategy.edits(picks);
-    const guesses = failedEdits(
-      { reqs: picks.reqs, replies: picks.replies },
-      edits,
-    );
-    assertEquals(guesses, [[1, 2], []]);
-  });
-  it("recovers if the new picks go out of range", () => {
+
+  it("shrinks to default picks", () => {
     const lo = new PickRequest(1, 2);
     const hi = new PickRequest(3, 4);
-    const seed = playout([lo, hi], [2, 4]);
-    const edits = Array.from(strategy.edits(seed));
-    const picks = mutate([lo, lo], [2, 4], edits[0]);
-    assertEquals(picks, []);
+    const seed = seedFrom([lo, hi], [2, 4]);
+    const gen = shrinker(seed, acceptAll);
+    assertEquals(gen?.replies, [1, 3]);
   });
 });
 
 describe("shrinkOptionsUntil", () => {
-  it("can't shrink an empty playout", () => {
-    const strategy = shrinkOptionsUntil(0);
-    const edits = strategy.edits(fromReplies([]));
-    assertEquals(Array.from(edits), []);
+  const bit = new PickRequest(0, 1);
+  const roll = new PickRequest(1, 6);
+
+  it("can't shrink an empty seed", () => {
+    const shrinker = shrinkOptionsUntil(0);
+    assertEquals(undefined, shrinker(emptySeed, acceptAll));
   });
-  it("removes an option at the end of the playout", () => {
-    const bit = new PickRequest(0, 1);
-    const roll = new PickRequest(1, 6);
-    const picks = playout([bit, roll], [1, 6]);
-    const strategy = shrinkOptionsUntil(2);
-    const edits = strategy.edits(picks);
-    assertEquals(failedEdits(picks, edits), [[]]);
+
+  it("removes an option by itself", () => {
+    const seed = seedFrom([bit, roll], [1, 6]);
+
+    const shrinker = shrinkOptionsUntil(2);
+    const gen = shrinker(seed, acceptAll);
+    assertEquals(gen?.replies, [0, 1]); // all defaults
   });
+
   it("removes an option with something after it", () => {
-    const bit = new PickRequest(0, 1);
-    const roll = new PickRequest(1, 6);
-    const picks = playout([bit, roll, bit, roll], [1, 6, 1, 5]);
-    const strategy = shrinkOptionsUntil(2);
-    const edits = strategy.edits(picks);
-    assertEquals(failedEdits(picks, edits), [[1, 5]]);
+    const seed = seedFrom([bit, roll, bit, roll], [1, 6, 1, 5]);
+
+    const shrinker = shrinkOptionsUntil(2);
+    const gen = shrinker(seed, acceptAll);
+
+    assertEquals(gen?.replies, [1, 5, 0, 1]); // last two are defaults
   });
+
   it("removes two options", () => {
-    const bit = new PickRequest(0, 1);
-    const roll = new PickRequest(1, 6);
-    const picks = playout(
+    const seed = seedFrom(
       [bit, roll, bit, roll, bit, roll],
       [1, 6, 1, 3, 1, 5],
     );
-    const strategy = shrinkOptionsUntil(4);
-    const edits = strategy.edits(picks);
-    assertEquals(failedEdits(picks, edits), [[1, 6, 1, 5], [1, 5]]);
+    const shrinker = shrinkOptionsUntil(4);
+    const gen = shrinker(seed, acceptAll);
+
+    assertEquals(gen?.replies, [1, 5, 0, 1, 0, 1]); // last two are defaults
   });
 });

@@ -2,13 +2,46 @@ import type { Generated, Playout } from "./generated.ts";
 import type { IntEditor, PickRequest } from "./picks.ts";
 
 /**
- * Provides increasingly smaller guesses for how to shrink a value.
- *
- * Each guess assumes that the previous guess worked.
+ * A function that shrinks a generated value if possible.
+ * It returns undefined if no smaller value is available.
  */
-interface Strategy {
-  label: string;
-  edits(gen: Playout): Iterable<IntEditor>;
+type Shrinker = <T>(
+  seed: Generated<T>,
+  test: (val: T) => boolean,
+) => Generated<T> | undefined;
+
+/** Makes a shrinker from a function that chooses edits to try. */
+function toShinker<T>(
+  makeEdits: (playout: Playout) => Iterable<IntEditor>,
+): Shrinker {
+  return <T>(
+    seed: Generated<T>,
+    test: (val: T) => boolean,
+  ): Generated<T> | undefined => {
+    const edits = makeEdits(seed.trimmedPlayout());
+    return mutate(seed, edits, test);
+  };
+}
+
+/**
+ * Applies each mutation until the test fails.
+ * @returns the new value, or undefined if no change is available.
+ */
+function mutate<T>(
+  seed: Generated<T>,
+  edits: Iterable<IntEditor>,
+  test: (val: T) => boolean,
+): Generated<T> | undefined {
+  let best: Generated<T> | undefined = undefined;
+  for (const edit of edits) {
+    const next = seed.mutate(edit);
+    if (next === undefined || !test(next.val)) {
+      return best;
+    }
+    best = next;
+    seed = next;
+  }
+  return best;
 }
 
 /**
@@ -18,13 +51,13 @@ interface Strategy {
  */
 export function shrink<T>(
   seed: Generated<T>,
-  interesting: (arg: T) => boolean,
+  test: (arg: T) => boolean,
 ): Generated<T> {
   while (true) {
-    // Try each strategy in order, until one works.
+    // Try each shrinker in order, until one works.
     let worked: Generated<T> | undefined = undefined;
-    for (const strategy of strategiesToTry(seed)) {
-      worked = runStrategy(interesting, seed, strategy);
+    for (const shrinker of shrinkersToTry(seed)) {
+      worked = shrinker(seed, test);
       if (worked) {
         break; // Restarting
       }
@@ -36,29 +69,13 @@ export function shrink<T>(
   }
 }
 
-function* strategiesToTry<T>(
+function* shrinkersToTry<T>(
   start: Generated<T>,
-): Iterable<Strategy> {
-  yield { label: "shrinkLength", edits: shrinkLength };
+): Iterable<Shrinker> {
+  yield toShinker(shrinkLength);
   const len = start.replies.length;
   yield* shrinkPicks(len);
   yield* shrinkOptions(len);
-}
-
-function runStrategy<T>(
-  interesting: (arg: T) => boolean,
-  seed: Generated<T>,
-  strategy: Strategy,
-): Generated<T> | undefined {
-  let best: Generated<T> | undefined = undefined;
-  for (const edit of strategy.edits(seed.trimmedPlayout())) {
-    const shrunk = seed.mutate(edit);
-    if (!shrunk || !interesting(shrunk.val)) {
-      return best;
-    }
-    best = shrunk;
-  }
-  return best;
 }
 
 function trimEnd(len: number): IntEditor {
@@ -75,7 +92,7 @@ function trimEnd(len: number): IntEditor {
 }
 
 /**
- * A strategy that tries removing suffixes from a playout.
+ * Generates edits that remove suffixes from a playout.
  *
  * First tries removing the last pick. If that works, tries doubling the number
  * of picks to remove. Finally, tries removing the entire playout.
@@ -108,12 +125,12 @@ export function* shrinkLength({ reqs, replies }: Playout): Iterable<IntEditor> {
 }
 
 /**
- * Returns a family of strategies that try to shrink each pick in the playout.
+ * Returns shrinkers that try to shrink each pick in the playout.
  *
- * Returns the strategies to try. Each strategy assumes that the previous one
+ * Returns the strategies to try. Each shrinker assumes that the previous one
  * failed.
  */
-function* shrinkPicks(pickCount: number): Iterable<Strategy> {
+function* shrinkPicks(pickCount: number): Iterable<Shrinker> {
   for (let i = 0; i < pickCount; i++) {
     yield shrinkPicksFrom(i);
   }
@@ -136,9 +153,9 @@ function replaceAt(
 }
 
 /**
- * A family of strategies that shrink individual picks.
+ * Returns shrinkers that shrink individual picks.
  *
- * Each strategy starts by shrinking the pick at the given index by one. If that
+ * Each shrinker starts by shrinking the pick at the given index by one. If that
  * works, it tries repeatedly doubling the amount removed. Finally, tries
  * setting the entire pick to the minimum.
  *
@@ -148,7 +165,7 @@ function replaceAt(
  */
 export function shrinkPicksFrom(
   start: number,
-): Strategy {
+): Shrinker {
   function* shrinkPicks(
     { reqs, replies }: Playout,
   ): Iterable<IntEditor> {
@@ -172,10 +189,10 @@ export function shrinkPicksFrom(
       yield replaceAt(start, replacement.slice());
     }
   }
-  return { label: "shrinkPicks", edits: shrinkPicks };
+  return toShinker(shrinkPicks);
 }
 
-function* shrinkOptions(pickCount: number): Iterable<Strategy> {
+function* shrinkOptions(pickCount: number): Iterable<Shrinker> {
   for (let i = pickCount; i >= 0; i--) {
     yield shrinkOptionsUntil(i);
   }
@@ -196,13 +213,13 @@ function deleteRange(start: number, end: number): IntEditor {
 }
 
 /**
- * A family of strategies that shrink options.
+ * Returns shrinkers that shrink options.
  *
  * An option is two or more picks, starting with a bit that's set to 1.
  *
  * @param limit the index beyond which the playout should be preserved.
  */
-export function shrinkOptionsUntil(limit: number): Strategy {
+export function shrinkOptionsUntil(limit: number): Shrinker {
   function* shrinkOptions(
     { reqs, replies }: Playout,
   ): Iterable<IntEditor> {
@@ -220,10 +237,10 @@ export function shrinkOptionsUntil(limit: number): Strategy {
     let end = limit;
     for (let start = end - 2; start >= 0; start -= 1) {
       if (isBit(start, 1)) {
-        yield deleteRange(start, limit);
+        yield deleteRange(start, end);
         end = start;
       }
     }
   }
-  return { label: "shrinkOptions", edits: shrinkOptions };
+  return toShinker(shrinkOptions);
 }
