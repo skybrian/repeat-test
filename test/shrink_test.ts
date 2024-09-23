@@ -11,9 +11,9 @@ import { minMaxVal } from "./lib/ranges.ts";
 import { PickRequest } from "../src/picks.ts";
 import {
   shrink,
+  shrinkAllOptions,
   shrinkAllPicks,
   shrinkOnePick,
-  shrinkOptionsUntil,
   shrinkTail,
 } from "../src/shrink.ts";
 import type { PickSet } from "../src/generated.ts";
@@ -237,40 +237,37 @@ describe("shrinkAllPicks", () => {
   });
 });
 
-describe("shrinkOptionsUntil", () => {
+describe("shrinkAllOptions", () => {
   const bit = new PickRequest(0, 1);
   const roll = new PickRequest(1, 6);
 
   it("can't shrink an empty seed", () => {
-    const shrinker = shrinkOptionsUntil(0);
-    assertEquals(undefined, shrinker(emptySeed, acceptAll));
+    assertEquals(undefined, shrinkAllOptions(emptySeed, acceptAll));
   });
 
   it("removes an option by itself", () => {
     const seed = seedFrom([bit, roll], [1, 6]);
 
-    const shrinker = shrinkOptionsUntil(2);
-    const gen = shrinker(seed, acceptAll);
-    assertEquals(gen?.replies, [0, 1]); // all defaults
-  });
-
-  it("removes an option with something after it", () => {
-    const seed = seedFrom([bit, roll, bit, roll], [1, 6, 1, 5]);
-
-    const shrinker = shrinkOptionsUntil(2);
-    const gen = shrinker(seed, acceptAll);
-
-    assertEquals(gen?.replies, [1, 5, 0, 1]); // last two are defaults
+    const gen = shrinkAllOptions(seed, acceptAll);
+    assert(gen !== undefined);
+    assertEquals(gen.trimmedPlayout().replies, []);
   });
 
   it("removes two options", () => {
     const seed = seedFrom(
-      [bit, roll, bit, roll, bit, roll],
-      [1, 6, 1, 3, 1, 5],
+      [roll, bit, roll, bit, roll, bit, roll],
+      [6, 1, 6, 1, 3, 1, 5],
     );
-    const shrinker = shrinkOptionsUntil(4);
-    const gen = shrinker(seed, acceptAll);
+    const gen = shrinkAllOptions(seed, acceptAll);
+    assert(gen !== undefined);
+    assertEquals(gen.trimmedPlayout().replies, [6]);
+  });
 
-    assertEquals(gen?.replies, [1, 5, 0, 1, 0, 1]); // last two are defaults
+  it("removes unused leading characters", () => {
+    const seed = dom.string().regenerate("abc");
+    assert(seed.ok);
+    const gen = shrinkAllOptions(seed, (s) => s.includes("c"));
+    assert(gen !== undefined);
+    assertEquals(gen.val, "c");
   });
 });

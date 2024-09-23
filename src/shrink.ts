@@ -11,40 +11,6 @@ type Shrinker = <T>(
   test: (val: T) => boolean,
 ) => Generated<T> | undefined;
 
-/** Makes a shrinker from a function that chooses edits to try. */
-function toShinker<T>(
-  makeEdits: (playout: Playout) => Iterable<IntEditor>,
-): Shrinker {
-  return <T>(
-    seed: Generated<T>,
-    test: (val: T) => boolean,
-  ): Generated<T> | undefined => {
-    const edits = makeEdits(seed.trimmedPlayout());
-    return mutate(seed, edits, test);
-  };
-}
-
-/**
- * Applies each mutation until the test fails.
- * @returns the new value, or undefined if no change is available.
- */
-function mutate<T>(
-  seed: Generated<T>,
-  edits: Iterable<IntEditor>,
-  test: (val: T) => boolean,
-): Generated<T> | undefined {
-  let best: Generated<T> | undefined = undefined;
-  for (const edit of edits) {
-    const next = seed.mutate(edit);
-    if (next === undefined || !test(next.val)) {
-      return best;
-    }
-    best = next;
-    seed = next;
-  }
-  return best;
-}
-
 /**
  * Given a generated value, returns a smaller one that satisfies a predicate.
  *
@@ -58,7 +24,7 @@ export function shrink<T>(
   while (true) {
     // Try each shrinker in order, until one works.
     let worked: Generated<T> | undefined = undefined;
-    for (const shrinker of shrinkersToTry(seed)) {
+    for (const shrinker of [shrinkAllPicks, shrinkAllOptions]) {
       worked = shrinker(seed, test);
       if (worked) {
         break; // Restarting
@@ -71,14 +37,9 @@ export function shrink<T>(
   }
 }
 
-function* shrinkersToTry<T>(
-  start: Generated<T>,
-): Iterable<Shrinker> {
-  const len = start.replies.length;
-  yield shrinkAllPicks;
-  yield* shrinkOptions(len);
-}
-
+/**
+ * Edits a playout by removing picks from the end (forcing them to be the minimum).
+ */
 function trimEnd(len: number): IntEditor {
   let reqs = 0;
   return {
@@ -209,12 +170,6 @@ export function shrinkAllPicks<T>(
   return changed ? seed : undefined;
 }
 
-function* shrinkOptions(pickCount: number): Iterable<Shrinker> {
-  for (let i = pickCount; i >= 0; i--) {
-    yield shrinkOptionsUntil(i);
-  }
-}
-
 function deleteRange(start: number, end: number): IntEditor {
   let reqs = 0;
   return {
@@ -229,35 +184,37 @@ function deleteRange(start: number, end: number): IntEditor {
   };
 }
 
-/**
- * Returns shrinkers that shrink options.
- *
- * An option is two or more picks, starting with a bit that's set to 1.
- *
- * @param limit the index beyond which the playout should be preserved.
- */
-export function shrinkOptionsUntil(limit: number): Shrinker {
-  function* shrinkOptions(
-    { reqs, replies }: Playout,
-  ): Iterable<IntEditor> {
-    const len = replies.length;
+function isOption({ reqs, replies }: Playout, i: number): boolean {
+  const req = reqs[i];
+  return req.min === 0 && req.max === 1 && replies[i] === 1;
+}
 
-    function isBit(i: number, expected?: number): boolean {
-      const req = reqs[i];
-      if (req.min !== 0 || req.max !== 1) {
-        return false;
-      }
-      return expected === replies[i];
-    }
+export function shrinkAllOptions<T>(
+  seed: Generated<T>,
+  test: (val: T) => boolean,
+): Generated<T> | undefined {
+  const len = seed.trimmedPlayoutLength;
 
-    limit = Math.min(limit, len);
-    let end = limit;
-    for (let start = end - 2; start >= 0; start -= 1) {
-      if (isBit(start, 1)) {
-        yield deleteRange(start, end);
-        end = start;
-      }
-    }
+  if (len < 2) {
+    return undefined; // No options to remove
   }
-  return toShinker(shrinkOptions);
+
+  let changed = false;
+  let end = len;
+  for (let i = len - 2; i >= 0; i--) {
+    if (!isOption(seed, i)) {
+      continue;
+    }
+    const next = seed.mutate(deleteRange(i, end));
+    if (next === undefined || !test(next.val)) {
+      end = i;
+      continue;
+    }
+
+    seed = next;
+    end = i;
+    changed = true;
+  }
+
+  return changed ? seed : undefined;
 }
