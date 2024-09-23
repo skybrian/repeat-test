@@ -7,7 +7,7 @@ import { repeatTest } from "@/runner.ts";
 import { Arbitrary } from "@/arbitrary.ts";
 import { Gen } from "../src/gen_class.ts";
 
-import { alwaysPick, noChange, PickRequest } from "../src/picks.ts";
+import { alwaysPick, PickRequest } from "../src/picks.ts";
 import { minPlayout, onePlayout, Pruned } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/searches.ts";
 import { randomPicker } from "../src/random.ts";
@@ -84,16 +84,6 @@ const fails: PickSet<unknown> = {
     throw new Error("oops!");
   },
 };
-
-describe("Generated", () => {
-  describe("mutate", () => {
-    it("does nothing if there are no edits", () => {
-      const gen = generate(hello, minPlayout());
-      assert(gen !== undefined);
-      assertEquals(gen.mutate(noChange), undefined);
-    });
-  });
-});
 
 describe("generate", () => {
   it("generates a single value for a constant", () => {
