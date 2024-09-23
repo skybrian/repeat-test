@@ -1,7 +1,8 @@
 import type { PlayoutSource } from "./backtracking.ts";
 
-import { PickRequest } from "./picks.ts";
-import { Pruned } from "./backtracking.ts";
+import { assert } from "@std/assert";
+import { PickRequest, PlaybackPicker } from "./picks.ts";
+import { onePlayout, Pruned } from "./backtracking.ts";
 import { Gen } from "./gen_class.ts";
 
 /**
@@ -192,4 +193,19 @@ export function generate<T>(
     }
   }
   return undefined;
+}
+
+/**
+ * Generates a value from known good picks.
+ */
+export function mustGenerate<T>(
+  set: PickSet<T>,
+  replies: number[],
+): T {
+  const playouts = onePlayout(new PlaybackPicker(replies));
+  assert(playouts.startAt(0), "no more playouts");
+  const pick = makePickFunction(playouts);
+  const val = set.generateFrom(pick);
+  assert(playouts.endPlayout(), "picks not accepted");
+  return val;
 }

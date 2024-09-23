@@ -1,13 +1,13 @@
 /** A result that's tagged as a success. */
 export type Success<T> = {
-  ok: true;
-  val: T;
+  readonly ok: true;
+  readonly val: T;
 };
 
 /** A result that's tagged as a failure and has an error message. */
 export type Failure = {
-  ok: false;
-  message: string;
+  readonly ok: false;
+  readonly message: string;
 };
 
 export function success(): Success<undefined>;

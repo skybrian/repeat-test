@@ -1,7 +1,10 @@
 import type { Success } from "./results.ts";
+import type { IntEditor, PickRequest } from "./picks.ts";
+import type { PickSet } from "./generated.ts";
+
+import { EditPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
-import { generate, type PickSet } from "./generated.ts";
-import { EditPicker, type IntEditor, type PickRequest } from "./picks.ts";
+import { generate, mustGenerate } from "./generated.ts";
 
 /** A list of pick requests with its replies. */
 export type Playout = {
@@ -9,12 +12,14 @@ export type Playout = {
   readonly replies: number[];
 };
 
+const needGenerate = Symbol("needGenerate");
+
 /**
  * A generated value and the picks that were used to generate it.
  */
 export class Gen<T> implements Success<T> {
-  /** Satisfies the Success interface. */
-  readonly ok = true;
+  readonly #set: PickSet<T>;
+  #val: T | typeof needGenerate;
 
   /**
    * Creates a generated value with the given contents.
@@ -23,11 +28,36 @@ export class Gen<T> implements Success<T> {
    * the {@link generate} method or a {@link Domain}.
    */
   constructor(
-    private readonly set: PickSet<T>,
+    set: PickSet<T>,
     readonly reqs: PickRequest[],
     readonly replies: number[],
-    readonly val: T,
-  ) {}
+    val: T,
+  ) {
+    this.#set = set;
+    this.#val = val;
+  }
+
+  /** Satisfies the Success interface. */
+  get ok(): true {
+    return true;
+  }
+
+  /**
+   * Returns the value that was generated.
+   *
+   * If not a frozen value, accessing this property will generate a new clone
+   * each time after the first access.
+   */
+  get val(): T {
+    if (this.#val === needGenerate) {
+      return mustGenerate(this.#set, this.replies);
+    }
+    const val = this.#val;
+    if (!Object.isFrozen(val)) {
+      this.#val = needGenerate;
+    }
+    return val;
+  }
 
   /**
    * Returns the lenght of the playout with default picks removed from the end.
@@ -58,7 +88,7 @@ export class Gen<T> implements Success<T> {
    */
   mutate(edit: IntEditor): Gen<T> | undefined {
     const picker = new EditPicker(this.replies, edit);
-    const gen = generate(this.set, onePlayout(picker));
+    const gen = generate(this.#set, onePlayout(picker));
     if (picker.edits === 0 && picker.deletes === 0) {
       return undefined; // no change
     }
