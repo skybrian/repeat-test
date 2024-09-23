@@ -1,7 +1,8 @@
+import type { RandomSource } from "./picks.ts";
+import type { Playout } from "./gen_class.ts";
+
 import { assert } from "@std/assert";
 import { PickRequest } from "./picks.ts";
-import type { RandomSource } from "./picks.ts";
-import type { Playout } from "./generated.ts";
 
 /** Indicates that the subtree rooted at a branch has been fully explored. */
 export const PRUNED = Symbol("pruned");

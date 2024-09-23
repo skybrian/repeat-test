@@ -1,10 +1,11 @@
-import { assert } from "@std/assert";
+import type { PickSet } from "./generated.ts";
+import type { Gen } from "./gen_class.ts";
 
+import { assert } from "@std/assert";
 import { PickRequest } from "./picks.ts";
 import { PlayoutSource, Pruned } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
 import { generate, makePickFunction } from "./generated.ts";
-import type { Generated, PickSet } from "./generated.ts";
 
 /**
  * Generates possible playouts with shorter playouts before longer ones.
@@ -99,7 +100,7 @@ export class MultipassSearch extends PlayoutSource {
  * Usually it's a zero or minimum value. Shrinking will return this value when
  * possible.
  */
-export function generateDefault<T>(set: PickSet<T>): Generated<T> {
+export function generateDefault<T>(set: PickSet<T>): Gen<T> {
   const search = new MultipassSearch();
   const gen = generate(set, search);
   assert(gen !== undefined, `${set.label} has no default`);
@@ -115,7 +116,7 @@ export function generateDefault<T>(set: PickSet<T>): Generated<T> {
  */
 export function* generateAll<T>(
   set: PickSet<T>,
-): IterableIterator<Generated<T>> {
+): IterableIterator<Gen<T>> {
   const search = new MultipassSearch();
   let gen = generate(set, search);
   while (gen) {
@@ -134,7 +135,7 @@ export function find<T>(
   set: PickSet<T>,
   predicate: (val: T) => boolean,
   opts?: { limit: number },
-): Generated<T> | undefined {
+): Gen<T> | undefined {
   const limit = opts?.limit ?? 1000;
 
   let count = 0;
@@ -151,7 +152,7 @@ export function find<T>(
   return undefined;
 }
 
-export function takeGenerated<T>(set: PickSet<T>, n: number): Generated<T>[] {
+export function takeGenerated<T>(set: PickSet<T>, n: number): Gen<T>[] {
   const result = [];
   for (const gen of generateAll(set)) {
     result.push(gen);

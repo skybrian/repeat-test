@@ -19,12 +19,11 @@ export type {
   PickFunction,
   PickFunctionOpts,
   PickSet,
-  Playout,
 } from "../generated.ts";
 
-export { Generated } from "../generated.ts";
-
+export type { Playout } from "../gen_class.ts";
 export type { RecordShape } from "../options.ts";
 
 export { biasedBitRequest, PickRequest } from "../picks.ts";
+export { Gen } from "../gen_class.ts";
 export { Arbitrary } from "../arbitrary_class.ts";

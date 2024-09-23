@@ -1,6 +1,8 @@
-import { EditPicker, type IntEditor, PickRequest } from "./picks.ts";
-import { onePlayout, type PlayoutSource, Pruned } from "./backtracking.ts";
-import type { Success } from "./results.ts";
+import type { PlayoutSource } from "./backtracking.ts";
+
+import { PickRequest } from "./picks.ts";
+import { Pruned } from "./backtracking.ts";
+import { Gen } from "./gen_class.ts";
 
 /**
  * A function that generates a value, given some picks.
@@ -163,66 +165,6 @@ export function makePickFunction<T>(
   return dispatch;
 }
 
-/** A list of pick requests with its replies. */
-export type Playout = {
-  readonly reqs: PickRequest[];
-  readonly replies: number[];
-};
-
-/**
- * A generated value and the picks that were used to generate it.
- */
-export class Generated<T> implements Success<T> {
-  /** Satisfies the Success interface. */
-  readonly ok = true;
-
-  /**
-   * Creates a Generated value with the given contents.
-   */
-  constructor(
-    private readonly set: PickSet<T>,
-    readonly reqs: PickRequest[],
-    readonly replies: number[],
-    readonly val: T,
-  ) {}
-
-  /**
-   * Returns the lenght of the playout with default picks removed from the end.
-   */
-  get trimmedPlayoutLength(): number {
-    const { reqs, replies } = this;
-    let last = replies.length - 1;
-    while (last >= 0 && replies[last] === reqs[last].min) {
-      last--;
-    }
-    return last + 1;
-  }
-
-  /**
-   * Returns the requests and replies with default picks removed from the end.
-   */
-  trimmedPlayout(): Playout {
-    const len = this.trimmedPlayoutLength;
-    return {
-      reqs: this.reqs.slice(0, len),
-      replies: this.replies.slice(0, len),
-    };
-  }
-
-  /**
-   * Regenerates the value after editing its picks.
-   * @returns the new value, or undefined if no change is available.
-   */
-  mutate(edit: IntEditor): Generated<T> | undefined {
-    const picker = new EditPicker(this.replies, edit);
-    const gen = generate(this.set, onePlayout(picker));
-    if (picker.edits === 0 && picker.deletes === 0) {
-      return undefined; // no change
-    }
-    return gen;
-  }
-}
-
 /**
  * Generates a value by trying each playout one at a time, given a source of
  * playouts.
@@ -233,7 +175,7 @@ export function generate<T>(
   set: PickSet<T>,
   playouts: PlayoutSource,
   opts?: GenerateOpts,
-): Generated<T> | undefined {
+): Gen<T> | undefined {
   while (playouts.startAt(0)) {
     try {
       const pick = makePickFunction(playouts, opts);
@@ -241,7 +183,7 @@ export function generate<T>(
       const reqs = playouts.getRequests();
       const replies = playouts.getReplies();
       if (playouts.endPlayout()) {
-        return new Generated(set, reqs, replies, val);
+        return new Gen(set, reqs, replies, val);
       }
     } catch (e) {
       if (!(e instanceof Pruned)) {

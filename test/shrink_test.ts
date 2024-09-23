@@ -17,7 +17,7 @@ import {
   shrinkTail,
 } from "../src/shrink.ts";
 import type { PickSet } from "../src/generated.ts";
-import { Generated } from "@/arbitrary.ts";
+import { Gen } from "@/arbitrary.ts";
 
 function assertShrinks<T>(
   dom: Domain<T>,
@@ -126,7 +126,7 @@ describe("shrink", () => {
   });
 });
 
-function seedFrom(reqs: PickRequest[], replies: number[]): Generated<string> {
+function seedFrom(reqs: PickRequest[], replies: number[]): Gen<string> {
   const fakeSet: PickSet<string> = {
     label: "(fake)",
     generateFrom: (pick) => {
@@ -136,7 +136,7 @@ function seedFrom(reqs: PickRequest[], replies: number[]): Generated<string> {
       return "ignored";
     },
   };
-  return new Generated(fakeSet, reqs, replies, "ignored");
+  return new Gen(fakeSet, reqs, replies, "ignored");
 }
 
 const emptySeed = seedFrom([], []);

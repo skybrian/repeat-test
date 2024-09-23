@@ -1,19 +1,16 @@
-import { assert, assertEquals, AssertionError } from "@std/assert";
-
-import { type Failure, failure, type Success, success } from "./results.ts";
-import { generate, type Generated } from "./generated.ts";
+import type { Failure, Success } from "./results.ts";
+import type { Gen } from "./gen_class.ts";
 import type { PickSet } from "./generated.ts";
+import type { Coverage, SystemConsole, TestConsole } from "./console.ts";
+
+import { assert, assertEquals, AssertionError } from "@std/assert";
+import { failure, success } from "./results.ts";
+import { generate } from "./generated.ts";
 import { PartialTracker } from "./searches.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
 import { generateDefault } from "./multipass_search.ts";
-
 import { pickRandomSeed, randomPickers } from "./random.ts";
-import {
-  CountingTestConsole,
-  FailingTestConsole,
-  type TestConsole,
-} from "./console.ts";
-import type { Coverage, SystemConsole } from "./console.ts";
+import { CountingTestConsole, FailingTestConsole } from "./console.ts";
 import { shrink } from "./shrink.ts";
 
 /**
@@ -53,7 +50,7 @@ export type Rep<T> = {
   ok: true;
   key: RepKey;
   arb: Arbitrary<T>;
-  arg: Generated<T>;
+  arg: Gen<T>;
   test: TestFunction<T>;
 };
 
@@ -92,7 +89,7 @@ export function* generateReps<T>(
 
   const allArbs = Arbitrary.oneOf(...arbs).with({ label: "examples" });
 
-  function makeRep(key: RepKey, arg: Generated<T>): Rep<T> {
+  function makeRep(key: RepKey, arg: Gen<T>): Rep<T> {
     let arb = arbs[0];
     if (arbs.length > 1) {
       // When there is more than one arb to choose from, the first pick chose

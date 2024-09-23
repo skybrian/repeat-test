@@ -1,15 +1,16 @@
-import { assert } from "@std/assert/assert";
-import type { Generated, Playout } from "./generated.ts";
+import type { Gen, Playout } from "./gen_class.ts";
 import type { IntEditor, PickRequest } from "./picks.ts";
+
+import { assert } from "@std/assert/assert";
 
 /**
  * A function that shrinks a generated value if possible.
  * It returns undefined if no smaller value is available.
  */
 type Shrinker = <T>(
-  seed: Generated<T>,
+  seed: Gen<T>,
   test: (val: T) => boolean,
-) => Generated<T> | undefined;
+) => Gen<T> | undefined;
 
 /**
  * Given a generated value, returns a smaller one that satisfies a predicate.
@@ -17,9 +18,9 @@ type Shrinker = <T>(
  * If no smaller value is found, returns the original value.
  */
 export function shrink<T>(
-  seed: Generated<T>,
+  seed: Gen<T>,
   test: (arg: T) => boolean,
-): Generated<T> {
+): Gen<T> {
   seed = shrinkTail(seed, test) ?? seed;
   seed = shrinkAllOptions(seed, test) ?? seed;
   seed = shrinkAllPicks(seed, test) ?? seed;
@@ -47,9 +48,9 @@ function trimEnd(len: number): IntEditor {
  * Postcondition: the last pick in the playout is necessary.
  */
 export function shrinkTail<T>(
-  seed: Generated<T>,
+  seed: Gen<T>,
   test: (val: T) => boolean,
-): Generated<T> | undefined {
+): Gen<T> | undefined {
   const len = seed.trimmedPlayoutLength;
   if (len === 0) {
     return undefined; // Nothing to remove
@@ -103,9 +104,9 @@ function replaceAt(
  */
 export function shrinkOnePick(index: number): Shrinker {
   return <T>(
-    seed: Generated<T>,
+    seed: Gen<T>,
     test: (val: T) => boolean,
-  ): Generated<T> | undefined => {
+  ): Gen<T> | undefined => {
     if (seed.trimmedPlayoutLength <= index) {
       return undefined; // No change; nothing to shrink
     }
@@ -142,9 +143,9 @@ export function shrinkOnePick(index: number): Shrinker {
 }
 
 export function shrinkAllPicks<T>(
-  seed: Generated<T>,
+  seed: Gen<T>,
   test: (val: T) => boolean,
-): Generated<T> | undefined {
+): Gen<T> | undefined {
   const len = seed.trimmedPlayoutLength;
 
   let changed = false;
@@ -179,9 +180,9 @@ function isOption({ reqs, replies }: Playout, i: number): boolean {
 }
 
 export function shrinkAllOptions<T>(
-  seed: Generated<T>,
+  seed: Gen<T>,
   test: (val: T) => boolean,
-): Generated<T> | undefined {
+): Gen<T> | undefined {
   const len = seed.trimmedPlayoutLength;
 
   if (len < 2) {

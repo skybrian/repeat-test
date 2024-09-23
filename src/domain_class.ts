@@ -1,4 +1,4 @@
-import { Arbitrary, type Generated } from "@/arbitrary.ts";
+import { Arbitrary, type Gen } from "@/arbitrary.ts";
 
 import { assertEquals } from "@std/assert";
 
@@ -114,7 +114,7 @@ export class Domain<T> extends Arbitrary<T> {
   /**
    * Validates a value, returning a copy and the picks used to generate it.
    */
-  regenerate(val: unknown): Generated<T> | Failure {
+  regenerate(val: unknown): Gen<T> | Failure {
     const picks = this.pickify(val);
     if (!picks.ok) {
       return picks;
@@ -125,7 +125,7 @@ export class Domain<T> extends Arbitrary<T> {
   /**
    * Given some picks, attempts to generate the corresponding value.
    */
-  generate(picks: number[]): Generated<T> | Failure {
+  generate(picks: number[]): Gen<T> | Failure {
     const picker = new PlaybackPicker(picks);
     const gen = generate(this, onePlayout(picker));
     if (picker.error) {

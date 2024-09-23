@@ -1,16 +1,18 @@
+import type { PickSet } from "../src/generated.ts";
+
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 
 import { repeatTest } from "@/runner.ts";
 import { Arbitrary } from "@/arbitrary.ts";
+import { Gen } from "../src/gen_class.ts";
 
 import { alwaysPick, noChange, PickRequest } from "../src/picks.ts";
 import { minPlayout, onePlayout, Pruned } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/searches.ts";
 import { randomPicker } from "../src/random.ts";
 
-import { generate, Generated, makePickFunction } from "../src/generated.ts";
-import type { PickSet } from "../src/generated.ts";
+import { generate, makePickFunction } from "../src/generated.ts";
 import { arb } from "@/mod.ts";
 
 const bit = new PickRequest(0, 1);
@@ -96,7 +98,7 @@ describe("Generated", () => {
 describe("generate", () => {
   it("generates a single value for a constant", () => {
     const gen = generate(hello, minPlayout());
-    assertEquals(gen, new Generated(hello, [], [], "hi"));
+    assertEquals(gen, new Gen(hello, [], [], "hi"));
   });
 
   it("passes through an error thrown by the PickSet", () => {
