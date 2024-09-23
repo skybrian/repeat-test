@@ -121,6 +121,7 @@ export class PickRequest {
       throw new Error(`invalid range: ${min}..${max}`);
     }
     this.random = opts?.bias ?? uniformPicker(min, max);
+    Object.freeze(this);
   }
 
   /** Returns true if the given number satisfies this request. */
@@ -169,6 +170,7 @@ export interface IntPicker {
 export const alwaysPickMin: IntPicker = {
   pick: (req) => req.min,
 };
+Object.freeze(alwaysPickMin);
 
 /**
  * Returns a single-state picker that always picks the same number.
@@ -186,6 +188,7 @@ export function alwaysPick(n: number) {
       return n;
     },
   };
+  Object.freeze(picker);
   return picker;
 }
 

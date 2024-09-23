@@ -33,10 +33,10 @@ export function intRange(opts?: IntRangeOptions): Arbitrary<Range> {
 
   const examples: Range[] = [];
   if (minMin <= 0) {
-    examples.push({ min: 0, max: minSize - 1 });
+    examples.push(Object.freeze({ min: 0, max: minSize - 1 }));
   }
   if (minMin <= -1) {
-    examples.push({ min: -1, max: minSize - 2 });
+    examples.push(Object.freeze({ min: -1, max: minSize - 2 }));
   }
 
   return oneOf<Range>(
@@ -92,7 +92,7 @@ export function invalidIntRange(opts?: { minMin: number }): Arbitrary<Range> {
   }
 
   return oneOf<Range>(
-    Arbitrary.of({ min: 1, max: 0 }),
+    Arbitrary.of(Object.freeze({ min: 1, max: 0 })),
     record({ min: validMin, max: nonInteger() }),
     record({ min: invalidMin, max: int32() }),
   );

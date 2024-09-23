@@ -259,16 +259,25 @@ export class Arbitrary<T> implements PickSet<T> {
   }
 
   /**
-   * Creates an Arbitrary that returns one of the given items. The first one
-   * will be the default.
+   * Creates an Arbitrary that returns one of the given arguments.
    *
-   * The items are returned as-is, without being cloned. If they are mutable,
-   * this might result in unexpected side effects.
+   * There must be at least one argument. The first argument will be the default
+   * value.
+   *
+   * Rather than being generated each time, the items returned as-is. To guard
+   * against errors, Arbitrary.of() requires each argument to be frozen.
+   * (Primitive values are allowed.)
    *
    * Consider using {@link from} to generate a new instance of mutable objects
    * each time.
    */
   static of<T>(...examples: T[]): Arbitrary<T> {
+    for (const example of examples) {
+      if (!Object.isFrozen(example)) {
+        throw new Error("Arbitrary.of() requires frozen objects");
+      }
+    }
+
     if (examples.length === 0) {
       throw new Error("Arbitrary.of() requires at least one argument");
     } else if (examples.length === 1) {

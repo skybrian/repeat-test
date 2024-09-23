@@ -78,6 +78,13 @@ describe("Arbitrary", () => {
         "Arbitrary.of() requires at least one argument",
       );
     });
+    it("throws if passes a non-frozen object", () => {
+      assertThrows(
+        () => Arbitrary.of({}),
+        Error,
+        "Arbitrary.of() requires frozen objects",
+      );
+    });
     it("returns a constant Arbitrary if called with one argument", () => {
       const arb = Arbitrary.of("hi");
       assertGenerated(arb, [{ val: "hi", picks: [] }]);
