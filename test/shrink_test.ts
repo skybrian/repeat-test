@@ -11,8 +11,9 @@ import { minMaxVal } from "./lib/ranges.ts";
 import { PickRequest } from "../src/picks.ts";
 import {
   shrink,
+  shrinkAllPicks,
+  shrinkOnePick,
   shrinkOptionsUntil,
-  shrinkPicksFrom,
   shrinkTail,
 } from "../src/shrink.ts";
 import type { PickSet } from "../src/generated.ts";
@@ -147,9 +148,9 @@ describe("shrinkTail", () => {
     assertEquals(undefined, shrinkTail(emptySeed, acceptAll));
   });
 
-  const nonEmptySeeds = arb.array(minMaxVal({ minMin: 0 })).filter((recs) =>
-    recs.some((r) => r.val !== r.min)
-  );
+  const nonEmptySeeds = arb.array(minMaxVal({ minMin: 0 }), {
+    length: { max: 100 },
+  }).filter((recs) => recs.some((r) => r.val !== r.min));
 
   it("shrinks random picks to nothing", () => {
     repeatTest(nonEmptySeeds, (recs) => {
@@ -165,7 +166,7 @@ describe("shrinkTail", () => {
 
   it("shrinks a string to a smaller length", () => {
     const example = arb.from((pick) => {
-      const s = pick(arb.string({ length: { min: 1 } }));
+      const s = pick(arb.string({ length: { min: 1, max: 100 } }));
       const len = pick(arb.int(0, s.length - 1));
       return { s, len };
     });
@@ -179,18 +180,59 @@ describe("shrinkTail", () => {
   });
 });
 
-describe("shrinkPicksFrom", () => {
-  const shrinker = shrinkPicksFrom(0);
-
+describe("shrinkOnePick", () => {
   it("can't shrink an empty seed", () => {
-    assertEquals(undefined, shrinker(emptySeed, acceptAll));
+    assertEquals(undefined, shrinkOnePick(0)(emptySeed, acceptAll));
+  });
+
+  const roll = new PickRequest(1, 6);
+  it("can't shrink a pick already at the minimum", () => {
+    const seed = seedFrom([roll], [1]);
+    assertEquals(undefined, shrinkOnePick(0)(seed, acceptAll));
+  });
+
+  it("shrinks a pick to the minimum", () => {
+    const rolls = arb.array(arb.int(1, 6), { length: { max: 3 } });
+    const example = arb.record({
+      prefix: rolls,
+      value: arb.int(2, 6),
+      suffix: rolls,
+    });
+    repeatTest(example, ({ prefix, value, suffix }) => {
+      const replies = [...prefix, value, ...suffix];
+      const reqs = new Array(replies.length).fill(roll);
+      const seed = seedFrom(reqs, replies);
+      const gen = shrinkOnePick(prefix.length)(seed, acceptAll);
+      assertEquals(gen?.replies, [...prefix, 1, ...suffix]);
+    });
+  });
+
+  it("shrinks a pick to a given value", () => {
+    const example = arb.from((pick) => {
+      const want = pick(arb.int(1, 9));
+      const start = pick(arb.int(want + 1, 10));
+      return { start, want };
+    });
+    repeatTest(example, ({ start, want }) => {
+      const seed = dom.int(1, 10).regenerate(start);
+      assert(seed.ok);
+      const accept = (v: number) => v >= want;
+      const gen = shrinkOnePick(0)(seed, accept);
+      assertEquals(gen?.replies, [want]);
+    });
+  });
+});
+
+describe("shrinkAllPicks", () => {
+  it("can't shrink an empty seed", () => {
+    assertEquals(undefined, shrinkAllPicks(emptySeed, acceptAll));
   });
 
   it("shrinks to default picks", () => {
     const lo = new PickRequest(1, 2);
     const hi = new PickRequest(3, 4);
     const seed = seedFrom([lo, hi], [2, 4]);
-    const gen = shrinker(seed, acceptAll);
+    const gen = shrinkAllPicks(seed, acceptAll);
     assertEquals(gen?.replies, [1, 3]);
   });
 });

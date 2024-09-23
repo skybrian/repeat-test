@@ -75,7 +75,7 @@ function* shrinkersToTry<T>(
   start: Generated<T>,
 ): Iterable<Shrinker> {
   const len = start.replies.length;
-  yield* shrinkPicks(len);
+  yield shrinkAllPicks;
   yield* shrinkOptions(len);
 }
 
@@ -94,6 +94,7 @@ function trimEnd(len: number): IntEditor {
 
 /**
  * Removes unnecessary picks from the end of a playout.
+ * Postcondition: the last pick in the playout is necessary.
  */
 export function shrinkTail<T>(
   seed: Generated<T>,
@@ -110,7 +111,8 @@ export function shrinkTail<T>(
     return undefined;
   }
 
-  // Binary search to find the shortest length that works.
+  // Binary search to trim a range of unneeded picks at the end of the playout.
+  // It might, by luck, jump to an earlier length that works.
   let tooLow = -1;
   let hi = seed.trimmedPlayoutLength;
   while (tooLow + 2 <= hi) {
@@ -126,18 +128,6 @@ export function shrinkTail<T>(
     hi = seed.trimmedPlayoutLength;
   }
   return seed;
-}
-
-/**
- * Returns shrinkers that try to shrink each pick in the playout.
- *
- * Returns the strategies to try. Each shrinker assumes that the previous one
- * failed.
- */
-function* shrinkPicks(pickCount: number): Iterable<Shrinker> {
-  for (let i = 0; i < pickCount; i++) {
-    yield shrinkPicksFrom(i);
-  }
 }
 
 function replaceAt(
@@ -158,39 +148,65 @@ function replaceAt(
 }
 
 /**
- * Returns shrinkers that shrink individual picks.
- *
- * Each shrinker starts by shrinking the pick at the given index by one. If that
- * works, it tries repeatedly doubling the amount removed. Finally, tries
- * setting the entire pick to the minimum.
- *
- * If that works, tries again with the next pick, for the rest of the playout.
- *
- * @param start The index of the first pick to shrink.
+ * Shrinks the pick at the given offset.
+ * Postcondition: decrementing the pick by one would fail the test.
  */
-export function shrinkPicksFrom(
-  start: number,
-): Shrinker {
-  function* shrinkPicks(
-    { reqs, replies }: Playout,
-  ): Iterable<IntEditor> {
-    for (let i = start; i < reqs.length; i++) {
-      const min = reqs[i].min;
-      const before = replies[i];
-      if (before === min) {
+export function shrinkOnePick(index: number): Shrinker {
+  return <T>(
+    seed: Generated<T>,
+    test: (val: T) => boolean,
+  ): Generated<T> | undefined => {
+    if (seed.trimmedPlayoutLength <= index) {
+      return undefined; // No change; nothing to shrink
+    }
+
+    const min = seed.reqs[index].min;
+    if (seed.replies[index] === min) {
+      return undefined; // No change; already at the minimum
+    }
+
+    // See if the test fails if we substract one.
+    const next = seed.mutate(replaceAt(index, seed.replies[index] - 1));
+    if (next === undefined || !test(next.val)) {
+      return undefined; // No change; the postcondition already holds
+    }
+    seed = next;
+
+    // Binary search to find the smallest pick that succeeds.
+    let tooLow = min - 1;
+    let hi = seed.replies[index];
+    while (tooLow + 2 <= hi) {
+      const mid = (tooLow + 1 + hi) >>> 1;
+      assert(mid > tooLow && mid < hi);
+      const next = seed.mutate(replaceAt(index, mid));
+      if (next === undefined || !test(next.val)) {
+        // failed; retry with a higher pick
+        tooLow = mid;
         continue;
       }
-      let delta = 1;
-      let guess = before - delta;
-      while (guess > min) {
-        yield replaceAt(i, guess);
-        delta *= 2;
-        guess = before - delta;
-      }
-      yield replaceAt(i, min);
+      seed = next;
+      hi = seed.replies[index];
+    }
+    return seed;
+  };
+}
+
+export function shrinkAllPicks<T>(
+  seed: Generated<T>,
+  test: (val: T) => boolean,
+): Generated<T> | undefined {
+  const len = seed.trimmedPlayoutLength;
+
+  let changed = false;
+  for (let i = len - 1; i >= 0; i--) {
+    const next = shrinkOnePick(i)(seed, test);
+    if (next !== undefined && test(next.val)) {
+      changed = true;
+      seed = next;
     }
   }
-  return toShinker(shrinkPicks);
+
+  return changed ? seed : undefined;
 }
 
 function* shrinkOptions(pickCount: number): Iterable<Shrinker> {
