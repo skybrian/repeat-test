@@ -1,3 +1,4 @@
+import { assert } from "@std/assert/assert";
 import type { Generated, Playout } from "./generated.ts";
 import type { IntEditor, PickRequest } from "./picks.ts";
 
@@ -53,6 +54,7 @@ export function shrink<T>(
   seed: Generated<T>,
   test: (arg: T) => boolean,
 ): Generated<T> {
+  seed = shrinkTail(seed, test) ?? seed;
   while (true) {
     // Try each shrinker in order, until one works.
     let worked: Generated<T> | undefined = undefined;
@@ -72,7 +74,6 @@ export function shrink<T>(
 function* shrinkersToTry<T>(
   start: Generated<T>,
 ): Iterable<Shrinker> {
-  yield shrinkTail;
   const len = start.replies.length;
   yield* shrinkPicks(len);
   yield* shrinkOptions(len);
@@ -98,41 +99,33 @@ export function shrinkTail<T>(
   seed: Generated<T>,
   test: (val: T) => boolean,
 ): Generated<T> | undefined {
-  const edits = lengthEdits(seed.trimmedPlayout());
-  return mutate(seed, edits, test);
-}
-
-/**
- * Generates edits that remove suffixes from a playout.
- *
- * First tries removing the last pick. If that works, tries doubling the number
- * of picks to remove. Finally, tries removing the entire playout.
- */
-function* lengthEdits({ reqs, replies }: Playout): Iterable<IntEditor> {
-  const len = replies.length;
+  const len = seed.trimmedPlayoutLength;
   if (len === 0) {
-    return;
+    return undefined; // Nothing to remove
   }
 
-  let delta = 1;
-  let guess = len - delta;
-
-  function endIsMin() {
-    return guess > 0 && replies[guess - 1] === reqs[guess - 1].min;
+  // Try to remove the last pick to fail fast.
+  const next = seed.mutate(trimEnd(len - 1));
+  if (next === undefined || !test(next.val)) {
+    return undefined;
   }
 
-  while (guess > 0) {
-    while (endIsMin()) {
-      guess--;
+  // Binary search to find the shortest length that works.
+  let tooLow = -1;
+  let hi = seed.trimmedPlayoutLength;
+  while (tooLow + 2 <= hi) {
+    const mid = (tooLow + 1 + hi) >>> 1;
+    assert(mid > tooLow && mid < hi);
+    const next = seed.mutate(trimEnd(mid));
+    if (next === undefined || !test(next.val)) {
+      // failed; retry with a higher length
+      tooLow = mid;
+      continue;
     }
-    if (guess === 0) {
-      break;
-    }
-    yield trimEnd(guess);
-    delta *= 2;
-    guess = Math.min(len - delta, guess - 1);
+    seed = next;
+    hi = seed.trimmedPlayoutLength;
   }
-  yield trimEnd(0);
+  return seed;
 }
 
 /**

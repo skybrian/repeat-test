@@ -162,6 +162,21 @@ describe("shrinkTail", () => {
       assertEquals(gen.trimmedPlayout().replies, []);
     });
   });
+
+  it("shrinks a string to a smaller length", () => {
+    const example = arb.from((pick) => {
+      const s = pick(arb.string({ length: { min: 1 } }));
+      const len = pick(arb.int(0, s.length - 1));
+      return { s, len };
+    });
+    repeatTest(example, ({ s, len }) => {
+      const seed = dom.string().regenerate(s);
+      assert(seed.ok);
+      const gen = shrinkTail(seed, (s) => s.length >= len);
+      assert(gen !== undefined, "expected a result from shrinkTail");
+      assertEquals(gen.val.length, len);
+    });
+  });
 });
 
 describe("shrinkPicksFrom", () => {

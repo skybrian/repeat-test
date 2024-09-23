@@ -189,7 +189,7 @@ export class Generated<T> implements Success<T> {
   /**
    * Returns the lenght of the playout with default picks removed from the end.
    */
-  get trimmedLength(): number {
+  get trimmedPlayoutLength(): number {
     const { reqs, replies } = this;
     let last = replies.length - 1;
     while (last >= 0 && replies[last] === reqs[last].min) {
@@ -202,7 +202,7 @@ export class Generated<T> implements Success<T> {
    * Returns the requests and replies with default picks removed from the end.
    */
   trimmedPlayout(): Playout {
-    const len = this.trimmedLength;
+    const len = this.trimmedPlayoutLength;
     return {
       reqs: this.reqs.slice(0, len),
       replies: this.replies.slice(0, len),
