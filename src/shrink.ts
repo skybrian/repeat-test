@@ -21,20 +21,9 @@ export function shrink<T>(
   test: (arg: T) => boolean,
 ): Generated<T> {
   seed = shrinkTail(seed, test) ?? seed;
-  while (true) {
-    // Try each shrinker in order, until one works.
-    let worked: Generated<T> | undefined = undefined;
-    for (const shrinker of [shrinkAllPicks, shrinkAllOptions]) {
-      worked = shrinker(seed, test);
-      if (worked) {
-        break; // Restarting
-      }
-    }
-    if (!worked) {
-      return seed; // No strategies work anymore
-    }
-    seed = worked; // Try to shrink again with the smaller value
-  }
+  seed = shrinkAllOptions(seed, test) ?? seed;
+  seed = shrinkAllPicks(seed, test) ?? seed;
+  return seed;
 }
 
 /**
@@ -159,7 +148,7 @@ export function shrinkAllPicks<T>(
   const len = seed.trimmedPlayoutLength;
 
   let changed = false;
-  for (let i = len - 1; i >= 0; i--) {
+  for (let i = 0; i < len; i++) {
     const next = shrinkOnePick(i)(seed, test);
     if (next !== undefined && test(next.val)) {
       changed = true;
