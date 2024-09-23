@@ -141,17 +141,18 @@ function* shrinkPicks(pickCount: number): Iterable<Shrinker> {
 }
 
 function replaceAt(
-  start: number,
-  replacement: number[],
+  index: number,
+  replacement: number,
 ): IntEditor {
   let reqs = 0;
   return {
     replace(_: PickRequest, before: number): number | undefined {
-      if (reqs < start || reqs >= start + replacement.length) {
+      if (reqs === index) {
         reqs++;
-        return before;
+        return replacement;
       }
-      return replacement[reqs++ - start];
+      reqs++;
+      return before;
     },
   };
 }
@@ -173,24 +174,20 @@ export function shrinkPicksFrom(
   function* shrinkPicks(
     { reqs, replies }: Playout,
   ): Iterable<IntEditor> {
-    const replacement: number[] = [];
     for (let i = start; i < reqs.length; i++) {
       const min = reqs[i].min;
-      const reply = replies[i];
-      if (reply === min) {
-        replacement[i - start] = min;
+      const before = replies[i];
+      if (before === min) {
         continue;
       }
       let delta = 1;
-      let guess = reply - delta;
+      let guess = before - delta;
       while (guess > min) {
-        replacement[i - start] = guess;
-        yield replaceAt(start, replacement.slice());
+        yield replaceAt(i, guess);
         delta *= 2;
-        guess = reply - delta;
+        guess = before - delta;
       }
-      replacement[i - start] = min;
-      yield replaceAt(start, replacement.slice());
+      yield replaceAt(i, min);
     }
   }
   return toShinker(shrinkPicks);
