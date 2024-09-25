@@ -1,15 +1,18 @@
 import type { Failure, Success } from "./results.ts";
-import type { Gen } from "./gen_class.ts";
+import type { IntPicker } from "./picks.ts";
 import type { PickSet } from "./generated.ts";
+import type { Gen } from "./gen_class.ts";
 import type { Coverage, SystemConsole, TestConsole } from "./console.ts";
 
 import { assert, assertEquals, AssertionError } from "@std/assert";
+
 import { failure, success } from "./results.ts";
+import { PickRequest, PlaybackPicker } from "./picks.ts";
 import { generate } from "./generated.ts";
 import { PartialTracker } from "./searches.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
 import { generateDefault } from "./multipass_search.ts";
-import { pickRandomSeed, randomPickers } from "./random.ts";
+import { pickRandomSeed, randomPicker, randomPickers } from "./random.ts";
 import { CountingTestConsole, FailingTestConsole } from "./console.ts";
 import { shrink } from "./shrink.ts";
 
@@ -23,26 +26,49 @@ export type TestFunction<T> = (arg: T, console: TestConsole) => void;
 
 /** Identifies a repetition to run. */
 export type RepKey = {
+  /** An offset into the Examples array, or 0 if there's a single Arbitrary. */
+  id: number;
   seed: number;
+  /** 0 for this example's default value, 1+ for random examples. */
   index: number;
 };
 
-export function parseRepKey(key: string): Success<RepKey> | Failure {
+function splitKey(key: string): Success<RepKey> | Failure {
   const fields = key.split(":");
-  if (fields.length !== 2) return failure("invalid format");
-  const [seed, index] = fields.map((x) => parseInt(x));
+  if (fields.length === 1) {
+    return success({ id: parseInt(fields[0]), seed: 0, index: 0 });
+  } else if (fields.length === 3) {
+    return success({
+      id: parseInt(fields[0]),
+      seed: parseInt(fields[1]),
+      index: parseInt(fields[2]),
+    });
+  }
+  return failure("invalid format: ${key}");
+}
 
+export function parseRepKey(key: string): Success<RepKey> | Failure {
+  const out = splitKey(key);
+  if (!out.ok) return out;
+
+  const { id, seed, index } = out.val;
+  if (!Number.isSafeInteger(id) || id < 0) {
+    return failure("invalid id");
+  }
   if (!Number.isSafeInteger(seed) || (seed | 0) !== seed) {
     return failure("invalid seed");
   }
   if (!Number.isSafeInteger(index) || index < 0) {
     return failure("invalid index");
   }
-  return success({ seed, index });
+  return success({ id, seed, index });
 }
 
 export function serializeRepKey(key: RepKey): string {
-  return `${key.seed}:${key.index}`;
+  if (key.seed === 0 && key.index === 0) {
+    return `${key.id}`;
+  }
+  return `${key.id}:${key.seed}:${key.index}`;
 }
 
 /** A generated test, ready to run. */
@@ -61,6 +87,52 @@ export type RepFailure<T> = {
   caught: unknown;
 };
 
+export class RepSource<T> {
+  readonly search = new PartialTracker();
+  readonly pickers: Iterator<IntPicker>;
+  randomReps = 0;
+
+  constructor(
+    readonly id: number,
+    readonly arb: Arbitrary<T>,
+    readonly test: TestFunction<T>,
+    readonly seed: number,
+  ) {
+    this.pickers = randomPickers(seed);
+  }
+
+  generateDefault(): Rep<T> | RepFailure<T> {
+    const def = generateDefault(this.arb);
+
+    // Generate a second time to prune from the search space.
+    this.search.pickSource = new PlaybackPicker(def.replies);
+    const arg = generate(this.arb, this.search);
+    assert(arg !== undefined);
+    assertEquals(def.replies, arg.replies);
+
+    const key = { id: this.id, seed: 0, index: 0 };
+    return { ok: true, key, arb: this.arb, arg, test: this.test };
+  }
+
+  generateRandom(): Rep<T> | RepFailure<T> | undefined {
+    this.search.pickSource = this.pickers.next().value;
+    this.randomReps++;
+    const key = { id: this.id, seed: this.seed, index: this.randomReps };
+    try {
+      const arg = generate(this.arb, this.search);
+      if (arg === undefined) {
+        return undefined;
+      }
+      return { ok: true, key, arb: this.arb, arg, test: this.test };
+    } catch (e) {
+      if (this.search.state === "picking") {
+        this.search.endPlayout();
+      }
+      return { ok: false, key, arg: undefined, caught: e };
+    }
+  }
+}
+
 /**
  * Generates a stream of Reps, first deterministically, then randomly.
  *
@@ -78,96 +150,25 @@ export type RepFailure<T> = {
  * The stream might stop early if no more reps can be generated.
  */
 export function* generateReps<T>(
-  arbs: Arbitrary<T>[],
-  test: TestFunction<T>,
-  opts: {
-    seed: number;
-  },
-): Generator<Rep<T> | RepFailure<unknown>> {
-  // All Reps are generated using the same tracker to avoid duplicates.
-  const search = new PartialTracker();
-
-  const allArbs = Arbitrary.oneOf(...arbs).with({ label: "examples" });
-
-  function makeRep(key: RepKey, arg: Gen<T>): Rep<T> {
-    let arb = arbs[0];
-    if (arbs.length > 1) {
-      // When there is more than one arb to choose from, the first pick chose
-      // which child arbitrary to use. Adjust the picks to match the child.
-      arg.reqs.shift();
-      const pick = arg.replies.shift();
-      assert(pick !== undefined, "expected at least one pick");
-      arb = arbs[pick];
-    }
-
-    return { ok: true, key, arb, arg, test };
+  sources: RepSource<T>[],
+  seed: number,
+): Generator<Rep<T> | RepFailure<T>> {
+  // Generate the default for each Arbitrary.
+  for (const source of sources) {
+    yield source.generateDefault();
   }
 
-  // First generate the default for each Arbitrary.
-  let index = 0;
-  while (index < arbs.length) {
-    const gen = generateDefault(arbs[index]);
-
-    // Need to generate the default again to get the right picks for allArbs.
-    let offset = 0;
-    let firstTime = true;
-    search.pickSource = {
-      pick: (req): number => {
-        if (firstTime && arbs.length > 1) {
-          // The first pick chooses the arbitrary when there is more than one.
-          assert(req.min === 0 && req.max === arbs.length - 1);
-          firstTime = false;
-          return index;
-        }
-        firstTime = false;
-
-        assert(offset >= 0 && offset < gen.replies.length);
-        const result = gen.replies[offset++];
-        assert(result >= req.min && result <= req.max);
-        return result;
-      },
-    };
-
-    const arg = generate(allArbs, search);
-    assert(arg, "unexpected end of search");
-    assertEquals(
-      arg.val,
-      gen.val,
-      "default value didn't generate the same value",
-    );
-
-    const rep = makeRep({ seed: 0, index: index }, arg);
-    assert(rep.arb === arbs[index], `arbs don't match at index ${index}`);
-    yield rep;
-    index++;
-  }
-
-  const seed = opts.seed;
-
-  // Generate each rep with an independent random number generator. If some of
-  // the Reps take more random numbers due to a code change, it's less likely to
-  // affect later Reps.
-  //
-  // (It's not guaranteed, though, because it will change what's recorded in the
-  // PartialTracker.)
-  const pickers = randomPickers(seed);
-
-  while (!search.done) {
-    const key: RepKey = { seed, index: index };
-    search.pickSource = pickers.next().value;
-    try {
-      const arg = generate(allArbs, search);
-      if (arg === undefined) {
-        return; // No more test args to generate.
-      }
-      yield makeRep({ seed, index: index }, arg);
-    } catch (e) {
-      yield { ok: false, key, arg: undefined, caught: e };
-      if (search.state === "picking") {
-        search.endPlayout();
-      }
+  // Generate the rest of the reps randomly.
+  const picker = randomPicker(seed);
+  while (sources.length > 0) {
+    const choice = picker.pick(new PickRequest(0, sources.length - 1));
+    const src = sources[choice];
+    const rep = src.generateRandom();
+    if (rep === undefined) {
+      sources.splice(choice, 1);
+    } else {
+      yield rep;
     }
-    index++;
   }
 }
 
@@ -260,7 +261,7 @@ export function reportFailure(
   console: SystemConsole,
 ): never {
   const key = serializeRepKey(failure.key);
-  console.error(`attempt ${failure.key.index + 1} FAILED, using:`, failure.arg);
+  console.error(`attempt FAILED, using:`, failure.arg);
   console.log(`rerun using {only: "${key}"}`);
   throw failure.caught;
 }
@@ -282,14 +283,8 @@ export type RepeatOpts = {
   console?: SystemConsole;
 };
 
-function getStartKey(opts?: RepeatOpts): RepKey {
-  if (!opts?.only) {
-    return {
-      seed: pickRandomSeed(),
-      index: 0,
-    };
-  }
-  const parsed = parseRepKey(opts.only);
+function parseOnlyOption(input: string): RepKey {
+  const parsed = parseRepKey(input);
   if (!parsed.ok) throw Error(`can't parse 'only' option: ${parsed.message}`);
   return parsed.val;
 }
@@ -322,7 +317,7 @@ export function repeatTest<T>(
   test: TestFunction<T>,
   opts?: RepeatOpts,
 ): void {
-  const key = getStartKey(opts);
+  const only = opts?.only ? parseOnlyOption(opts.only) : undefined;
   const randomReps = opts?.reps;
   if (randomReps !== undefined) {
     if (!Number.isInteger(randomReps)) {
@@ -347,11 +342,22 @@ export function repeatTest<T>(
     ? input.map(convertExample)
     : [Arbitrary.from(input)];
 
-  const reps = generateReps(arbs, test, { seed: key.seed });
+  const seed = only?.seed ?? pickRandomSeed();
+
+  let sources = arbs.map((arb, id) => {
+    return new RepSource(id, arb, test, seed);
+  });
+
+  if (only) {
+    sources = sources.filter((source) => source.id === only.id);
+  }
+  const reps = generateReps(sources, seed);
+
+  const startIndex = only?.index ?? 0;
 
   // Skip to the iteration that we want to run.
   let skipCount = 0;
-  for (let i = 0; i < key.index; i++) {
+  for (let i = 0; i < startIndex; i++) {
     if (reps.next().done) {
       break;
     }

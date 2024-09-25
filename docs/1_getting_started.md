@@ -44,8 +44,8 @@ When I run it again, the output looks like this:
 % deno ./examples/hello.ts
 
 Test failed. Shrinking...
-attempt 2 FAILED, using: world!
-rerun using {only: "0:1"}
+attempt FAILED, using: world!
+rerun using {only: "1"}
 error: Uncaught (in promise) AssertionError: Values are not equal.
 
 
@@ -59,13 +59,15 @@ error: Uncaught (in promise) AssertionError: Values are not equal.
         ^
     at assertEquals (https://jsr.io/@std/assert/1.0.2/equals.ts:47:9)
     at Object.test (file:///Users/skybrian/Projects/deno/repeat-test/examples/hello.ts:7:3)
-    at runRep (file:///Users/skybrian/Projects/deno/repeat-test/src/runner.ts:173:9)
-    at runReps (file:///Users/skybrian/Projects/deno/repeat-test/src/runner.ts:201:17)
-    at repeatTest (file:///Users/skybrian/Projects/deno/repeat-test/src/runner.ts:306:15)
-    at file:///Users/skybrian/Projects/deno/repeat-test/examples/hello.ts:6:1
+    at runRep (file:///Users/skybrian/Projects/deno/repeat-test/src/runner.ts:182:9)
+    at runReps (file:///Users/skybrian/Projects/deno/repeat-test/src/runner.ts:211:17)
+    at repeatTest (file:///Users/skybrian/Projects/deno/repeat-test/src/runner.ts:353:15)
+    at file:///Users/skybrian/Projects/deno/repeat-test/examples/hello.ts:6:1                                                            
 ```
 
-From the message we can see that it failed the second time, and it prints the example that failed. Sometimes that's all the information we need. However, let's say we wanted to debug it.
+From the message we can see that it failed the second time, since it prints the
+example that failed. Sometimes that's all the information we need. However,
+let's say we wanted to debug it.
 
 ## Printing to the console
 
@@ -81,7 +83,8 @@ repeatTest(examples, (word, console) => { // added another argument
 });
 ```
 
-The second, optional argument to the test function is a `TestConsole` object that does nothing, except when a test fails.
+The second, optional argument to the test function is a `TestConsole` object
+that does nothing, except when a test fails.
 
 Running it looks like this:
 
@@ -94,7 +97,8 @@ attempt 2 FAILED, using: world!
 [rest is the same]
 ```
 
-The console output appears on the second line. (It's not that useful in this case, but you can see that it worked.)
+The console output appears on the second line. (It's not that useful in this
+case, but you can see that it worked.)
 
 Notice that the test failed first, *then* its output was printed? This is
 because a failed repetition gets run *again* with the TestConsole turned on. (A
@@ -120,28 +124,36 @@ repeatTest(examples, (word, console) => {
 ```
 
 The `console.debugger()` method does nothing normally. It will execute a
-`debugger` statement only in a test that's about to fail, allowing you to step through the failing test.
+`debugger` statement only in a test that's about to fail, allowing you to step
+through the failing test.
 
 ## Skipping to a failing test
 
-In the output of the failed test run, `repeatTest` printed a message that looks like this:
+In the output of the failed test run, `repeatTest` printed a message that looks
+like this:
 
 ```
-rerun using {only: "0:1"}
+rerun using {only: "1"}
 ```
 
-This rather terse message is a hint that provides a way to skip over passing examples and get to the example that failed. Here is how to use it:
+This rather terse message is a hint that provides a way to skip over passing
+examples and get to the example that failed. Here is how to use it:
 
 ```ts
 repeatTest(examples, (word, console) => {
   console.log("word:", word, "length:", word.length);
   assertEquals(word.length, 5);
-}, {only: "0:1"}); // added the 'only' option
+}, {only: "1"}); // added the 'only' option
 ```
 
-The third argument to `repeatTest` contains additional options that control which examples `repeatTest` runs. The `only` option causes it to skip ahead to one of the examples in the array. In this case, it's unnecessary (the output looks almost the same), but it might be handy when a test takes a long time to run.
+The third argument to `repeatTest` contains additional options that control
+which examples `repeatTest` runs. The `only` option causes it to skip ahead to
+one of the examples in the array. In this case, it's unnecessary (the output
+looks almost the same), but it might be handy when a test takes a long time to
+run.
 
-Let's say we fix the code and accidentally leave the 'only' option turned on. It will still fail, as a reminder to remove it:
+Let's say we fix the code and accidentally leave the 'only' option turned on. It
+will still fail, as a reminder to remove it:
 
 ```
 error: Uncaught (in promise) Error: only option is set
@@ -153,9 +165,12 @@ error: Uncaught (in promise) Error: only option is set
 
 ## Using a test framework
 
-The `repeatTest` function doesn't care which test framework you use, and as we've seen, you don't need a test framework at all to write and run a test.
+The `repeatTest` function doesn't care which test framework you use, and as
+we've seen, you don't need a test framework at all to write and run a test.
 
-But when you write many tests, it's often better to use a test framework. Here is how I do it using Deno's [bdd framework](https://docs.deno.com/runtime/fundamentals/testing/):
+But when you write many tests, it's often better to use a test framework. Here
+is how I do it using Deno's [bdd
+framework](https://docs.deno.com/runtime/fundamentals/testing/):
 
 ```ts
 import { assertEquals } from "@std/assert";
@@ -185,6 +200,8 @@ String.length ... ok (0ms)
 ok | 1 passed (1 step) | 0 failed (1ms)
 ```
 
-Since repeatTest doesn't print anything itself for passing tests, the above output comes from the bdd framework.
+Since repeatTest doesn't print anything itself for passing tests, the above
+output comes from the bdd framework.
 
-That should be enough about the `repeatTest` function to get started. To learn about generating examples, see [Part 2](./2_generating_examples.md).
+That should be enough about the `repeatTest` function to get started. To learn
+about generating examples, see [Part 2](./2_generating_examples.md).

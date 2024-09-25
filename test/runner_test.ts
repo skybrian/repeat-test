@@ -26,6 +26,7 @@ import {
   repeatTest,
   type RepFailure,
   reportFailure,
+  RepSource,
   runRep,
   runReps,
   serializeRepKey,
@@ -38,12 +39,21 @@ const strangeNumber = Arbitrary.of(
   Number.NaN,
 );
 
-const anyKey = arb.record({ seed: arb.int32(), index: arb.int(0, 100) });
+const anyKey = arb.record({
+  id: arb.int(0, 100),
+  seed: arb.int32(),
+  index: arb.int(0, 100),
+});
 const badKey = arb.oneOf(
-  arb.record({ seed: arb.int32(), index: arb.int(-100, -1) }),
-  arb.record({ seed: strangeNumber, index: arb.int(0, 100) }),
-  arb.record({ seed: arb.int32(), index: strangeNumber }),
-  arb.of(Object.freeze({ seed: Number.MAX_SAFE_INTEGER, index: 0 })),
+  arb.record({
+    id: arb.int(-100, -1),
+    seed: arb.int32(),
+    index: arb.int(0, 100),
+  }),
+  arb.record({ id: arb.of(0), seed: arb.int32(), index: arb.int(-100, -1) }),
+  arb.record({ id: arb.of(0), seed: strangeNumber, index: arb.int(0, 100) }),
+  arb.record({ id: arb.of(0), seed: arb.int32(), index: strangeNumber }),
+  arb.of(Object.freeze({ id: 0, seed: Number.MAX_SAFE_INTEGER, index: 0 })),
 );
 
 describe("parseRepKey", () => {
@@ -60,20 +70,19 @@ describe("parseRepKey", () => {
     });
   });
   it("returns a failure if the serialized key isn't in the right format", () => {
-    const badString = arb.oneOf(
-      arb.string().filter((x) => x.split(":").length !== 2),
-      arb.record({ k: anyKey, junk: arb.string() }).map(({ k, junk }) =>
-        `${serializeRepKey(k)}:${junk}`
-      ),
-    );
+    const field = arb.string().filter((s) => !s.includes(":"));
+    const badString = arb.record({ k: anyKey, junk: field }).map((
+      { k, junk },
+    ) => `${serializeRepKey(k)}:${junk}`);
 
-    repeatTest(badString, (s) => {
-      assertEquals(parseRepKey(s).ok, false);
+    repeatTest(["invalid", badString], (s) => {
+      assertFalse(parseRepKey(s).ok, "expected a failure");
     });
   });
 });
 
 type RepFields<T> = {
+  id: number;
   seed: number;
   index: number;
   arg: T;
@@ -88,6 +97,7 @@ function assertRep<T>(
     fail(`expected a success, got a failure: ${actualRep}`);
   }
   const actual: RepFields<T> = {
+    id: actualRep.key.id,
     seed: actualRep.key.seed,
     index: actualRep.key.index,
     arg: actualRep.arg.val,
@@ -109,7 +119,7 @@ function assertRepFailure<T>(
   if (actualRep.ok) {
     fail(`expected a failure, got a success: ${actualRep}`);
   }
-  const expectedKey = { seed: expected.seed, index: expected.index };
+  const expectedKey = { id: 0, seed: expected.seed, index: expected.index };
   assertEquals(actualRep.key, expectedKey);
 
   const caught = actualRep.caught;
@@ -124,6 +134,21 @@ function assertRepFailure<T>(
   );
 }
 
+describe("RepSource", () => {
+  it("doesn't generate any random reps for a constant", () => {
+    const src = new RepSource(0, arb.of(123), () => {}, 456);
+
+    const def = src.generateDefault();
+    assert(def.ok);
+    assertEquals(def.arg.reqs, []);
+    assertEquals(def.arg.replies, []);
+    assertEquals(def.arg.val, 123);
+
+    const random = src.generateRandom();
+    assertEquals(random, undefined);
+  });
+});
+
 describe("generateReps", () => {
   it("generates reps with the right keys", () => {
     repeatTest(arb.int32(), (seed) => {
@@ -134,7 +159,8 @@ describe("generateReps", () => {
 
       const test = () => {};
 
-      const reps = generateReps([ten], test, { seed });
+      const source = new RepSource(0, ten, test, seed);
+      const reps = generateReps([source], seed);
 
       const picks = new Set<number>();
       for (const rep of reps) {
@@ -143,7 +169,7 @@ describe("generateReps", () => {
           fail(`failed to generate rep: ${rep.caught}`);
         }
         const index = picks.size;
-        const expectedKey = { seed: index === 0 ? 0 : seed, index };
+        const expectedKey = { id: 0, seed: index === 0 ? 0 : seed, index };
         assertEquals(rep.key, expectedKey);
         assertEquals(rep.test, test);
         assertFalse(picks.has(rep.arg.val));
@@ -158,11 +184,20 @@ describe("generateReps", () => {
     const arbs = examples.map((ex) => arb.of(ex));
     const test = () => {};
     const seed = 123;
-    const reps = generateReps(arbs, test, { seed });
+    const sources = arbs.map((arb, index) => {
+      return new RepSource(index, arb, test, seed);
+    });
+    const reps = generateReps(sources, seed);
     let index = 0;
     for (const rep of reps) {
       assert(rep.ok);
-      assertRep(rep, { seed: 0, index, arg: examples[index], test });
+      assertRep(rep, {
+        id: index,
+        seed: 0,
+        index: 0,
+        arg: examples[index],
+        test,
+      });
       index++;
     }
     assertEquals(index, 3);
@@ -182,12 +217,13 @@ describe("generateReps", () => {
     const test = () => {};
 
     repeatTest(arb.int32(), (seed) => {
-      const reps = generateReps([rerollTwos], test, { seed });
+      const source = new RepSource(0, rerollTwos, test, seed);
+      const reps = generateReps([source], seed);
 
       for (let i = 0; i < 4; i++) {
         const rep = reps.next().value;
         assert(rep.ok);
-        assertEquals(rep.key, { seed: i === 0 ? 0 : seed, index: i });
+        assertEquals(rep.key, { id: 0, seed: i === 0 ? 0 : seed, index: i });
         assertEquals(rep.arg.val, "good");
         assertEquals(rep.test, test);
       }
@@ -206,11 +242,12 @@ describe("generateReps", () => {
     const test = () => {};
 
     const seed = 123;
-    const reps = generateReps([example], test, { seed });
+    const source = new RepSource(0, example, test, seed);
+    const reps = generateReps([source], seed);
 
     const first = reps.next();
     assertFalse(first.done);
-    assertRep(first.value, { seed: 0, index: 0, arg: 1, test });
+    assertRep(first.value, { id: 0, seed: 0, index: 0, arg: 1, test });
 
     const second = reps.next();
     assertFalse(second.done);
@@ -222,7 +259,7 @@ describe("generateReps", () => {
 
     const third = reps.next();
     assertFalse(third.done);
-    assertRep(third.value, { seed, index: 2, arg: 3, test });
+    assertRep(third.value, { id: 0, seed, index: 2, arg: 3, test });
 
     assert(reps.next().done, "expected reps to be done");
   });
@@ -236,11 +273,12 @@ describe("generateReps", () => {
     const test = () => {};
 
     const seed = 123;
-    const reps = generateReps([example], test, { seed });
+    const source = new RepSource(0, example, test, seed);
+    const reps = generateReps([source], seed);
 
     const first = reps.next();
     assertFalse(first.done);
-    assertRep(first.value, { seed: 0, index: 0, arg: 1, test });
+    assertRep(first.value, { id: 0, seed: 0, index: 0, arg: 1, test });
 
     const second = reps.next();
     assertFalse(second.done);
@@ -258,7 +296,7 @@ function makeDefaultRep<T>(input: Arbitrary<T>, test: TestFunction<T>): Rep<T> {
 
   const rep: Rep<T> = {
     ok: true,
-    key: { seed: 1, index: 1 },
+    key: { id: 0, seed: 1, index: 1 },
     arb: input,
     arg: gen,
     test,
@@ -274,7 +312,7 @@ function makeRep<T>(input: Domain<T>, arg: T, test: TestFunction<T>): Rep<T> {
 
   const rep: Rep<T> = {
     ok: true,
-    key: { seed: 1, index: 1 },
+    key: { id: 0, seed: 1, index: 1 },
     arb: input,
     arg: gen,
     test,
@@ -416,7 +454,7 @@ describe("runReps", () => {
   it("passes through a RepFailure from the reps parameter", () => {
     const failure: RepFailure<number> = {
       ok: false,
-      key: { seed: 1, index: 1 },
+      key: { id: 0, seed: 1, index: 1 },
       arg: undefined,
       caught: new Error("oops"),
     };
@@ -428,7 +466,7 @@ describe("runReps", () => {
     const example = arb.int(1, 10);
     const rep: Rep<number> = {
       ok: true,
-      key: { seed: 1, index: 1 },
+      key: { id: 0, seed: 1, index: 1 },
       arb: example,
       arg: generateDefault(example),
       test: () => {
@@ -449,7 +487,7 @@ describe("reportFailure", () => {
     const caught = new Error("oops");
     const failure: RepFailure<unknown> = {
       ok: false,
-      key: { seed: 1, index: 1 },
+      key: { id: 0, seed: 1, index: 1 },
       arg: 123,
       caught,
     };
@@ -627,7 +665,7 @@ describe("repeatTest", () => {
       assertThrows(
         () => repeatTest(arb.int32(), () => {}, { only: "invalid" }),
         Error,
-        "can't parse 'only' option: invalid format",
+        "can't parse 'only' option: invalid id",
       );
     });
     it("runs one rep and fails", () => {
@@ -639,7 +677,7 @@ describe("repeatTest", () => {
         () =>
           repeatTest(arb.int32(), increment, {
             reps: 100,
-            only: "123:456",
+            only: "0:123:456",
           }),
         Error,
         "only option is set",
@@ -653,7 +691,7 @@ describe("repeatTest", () => {
       };
       repeatTest(arb.int(6, 10), (skipIndex) => {
         assertThrows(
-          () => repeatTest(example, test, { only: `0:${skipIndex}` }),
+          () => repeatTest(example, test, { only: `0:0:${skipIndex}` }),
           Error,
           "skipped all 6 reps",
         );
@@ -664,7 +702,7 @@ describe("repeatTest", () => {
         () =>
           repeatTest(["a", "b", "c", "d"], (i) => {
             assertEquals(i, "c");
-          }, { only: "0:2" }),
+          }, { only: "2:0:0" }),
         Error,
         "only option is set",
       );
@@ -679,7 +717,7 @@ describe("repeatTest", () => {
           repeatTest(example, (i) => {
             // assert(i != 42);
             assertEquals(i, 42);
-          }, { only: "-756845603:239" }),
+          }, { only: "0:17851956:484" }),
         Error,
         "only option is set",
       );
