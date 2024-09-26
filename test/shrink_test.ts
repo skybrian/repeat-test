@@ -1,9 +1,11 @@
+import type { TestConsole } from "@/runner.ts";
+import type { Domain } from "@/domain.ts";
+import type { PickSet } from "../src/generated.ts";
+
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, fail } from "@std/assert";
-
 import { repeatTest } from "@/runner.ts";
 import * as arb from "@/arbs.ts";
-import type { Domain } from "@/domain.ts";
 import * as dom from "@/doms.ts";
 
 import { minMaxVal } from "./lib/ranges.ts";
@@ -16,21 +18,21 @@ import {
   shrinkOnePick,
   shrinkTail,
 } from "../src/shrink.ts";
-import type { PickSet } from "../src/generated.ts";
 import { Gen } from "@/arbitrary.ts";
 
 function assertShrinks<T>(
   dom: Domain<T>,
   interesting: (arg: T) => boolean,
-  start: T,
+  seed: T,
   result: T,
+  console?: TestConsole,
 ) {
-  const gen = dom.regenerate(start);
+  const gen = dom.regenerate(seed);
   if (!gen.ok) {
     fail(`couldn't regenerate the starting value: ${gen.message}`);
   }
 
-  const smaller = shrink(gen, interesting);
+  const smaller = shrink(gen, interesting, console);
   assert(smaller, "didn't find the expected smaller value");
   assertEquals(smaller.val, result);
 }
@@ -42,6 +44,27 @@ function assertNoChange<T>(
 ) {
   assertShrinks(dom, interesting, start, start);
 }
+
+function seedFrom(reqs: PickRequest[], replies: number[]): Gen<number[]> {
+  const fakeSet: PickSet<number[]> = {
+    label: "(picks)",
+    generateFrom: (pick) => {
+      const out: number[] = [];
+      for (const req of reqs) {
+        out.push(pick(req));
+      }
+      return out;
+    },
+  };
+  return new Gen(fakeSet, reqs, replies, replies);
+}
+
+const emptySeed = seedFrom([], []);
+
+const acceptAll = () => true;
+
+const bit = new PickRequest(0, 1);
+const roll = new PickRequest(1, 6);
 
 describe("shrink", () => {
   describe("for an int", () => {
@@ -97,7 +120,97 @@ describe("shrink", () => {
     it("removes unused leading characters", () => {
       assertShrinks(dom.string(), (s) => s.endsWith("z"), "xyz", "z");
     });
+
+    describe("for a sequence of options", () => {
+      const bits = arb.array(arb.int(0, 1), { length: { min: 1, max: 100 } });
+
+      it("removes any sequence of options", () => {
+        repeatTest(bits, (bits) => {
+          const seed = seedFrom(bits.map(() => bit), bits);
+          const gen = shrink(seed, acceptAll);
+          assert(gen !== undefined);
+          assertEquals(gen.trimmedPlayout().replies, []);
+        });
+      });
+
+      it("removes everything except one option", () => {
+        const input = arb.from((pick) => {
+          const prefix = pick(bits);
+          const suffix = pick(bits);
+          return { prefix, suffix };
+        });
+        repeatTest(input, ({ prefix, suffix }) => {
+          const val = prefix.concat([1]).concat(suffix);
+          const seed = seedFrom(val.map((_) => bit), val);
+          const gen = shrink(seed, (arr) => arr.at(prefix.length) === 1);
+          assert(gen !== undefined);
+          const expected = Array(prefix.length).fill(0).concat(1);
+          assertEquals(gen.trimmedPlayout().replies, expected);
+        });
+      });
+    });
   });
+
+  function includesSubarray<T>(array: T[], subarray: T[]): boolean {
+    return array.some((_, i) =>
+      subarray.every((val, j) => val === array[i + j])
+    );
+  }
+
+  describe("for an array of ints", () => {
+    it("removes leading and trailing unused elements", () => {
+      const hay = arb.array(arb.int(1, 5), { length: { max: 10 } });
+      const example = arb.from((pick) => {
+        const prefix = pick(hay);
+        const suffix = pick(hay);
+        const needleSize = pick(arb.int(1, 3));
+        const needle = Array(needleSize).fill(6);
+        return { prefix, needle, suffix };
+      });
+      repeatTest(example, ({ prefix, needle, suffix }) => {
+        const input = prefix.concat(needle).concat(suffix);
+        assertShrinks(
+          dom.array(dom.int(1, 6)),
+          (a) => includesSubarray(a, needle),
+          input,
+          needle,
+        );
+      }, { reps: 100 });
+    });
+  });
+
+  describe("for an array of strings", () => {
+    it("removes all strings in an array", () => {
+      const input = arb.array(arb.string(), { length: { min: 1, max: 5 } });
+      repeatTest(input, (arr, console) => {
+        assertShrinks(dom.array(dom.string()), acceptAll, arr, [], console);
+      });
+    });
+
+    it("removes leading and trailing unused elements", () => {
+      const hayString = arb.string({ length: { max: 2 } });
+      const hay = arb.array(hayString, { length: { max: 10 } });
+      const example = arb.from((pick) => {
+        const prefix = pick(hay);
+        const suffix = pick(hay);
+        const needleSize = pick(arb.int(1, 3));
+        const needle = Array(needleSize).fill("<->");
+        return { prefix, needle, suffix };
+      });
+      repeatTest(example, ({ prefix, needle, suffix }, console) => {
+        const input = prefix.concat(needle).concat(suffix);
+        assert(!includesSubarray(prefix, needle));
+        assertShrinks(
+          dom.array(dom.string()),
+          (a) => includesSubarray(a, needle),
+          input,
+          needle,
+          console,
+        );
+      }, { reps: 100 });
+    });
+  });
+
   describe("for a record", () => {
     it("can't shrink an empty record", () => {
       assertNoChange(dom.record({}), () => true, {});
@@ -125,23 +238,6 @@ describe("shrink", () => {
     });
   });
 });
-
-function seedFrom(reqs: PickRequest[], replies: number[]): Gen<string> {
-  const fakeSet: PickSet<string> = {
-    label: "(fake)",
-    generateFrom: (pick) => {
-      for (const req of reqs) {
-        pick(req);
-      }
-      return "ignored";
-    },
-  };
-  return new Gen(fakeSet, reqs, replies, "ignored");
-}
-
-const emptySeed = seedFrom([], []);
-
-const acceptAll = () => true;
 
 describe("shrinkTail", () => {
   it("can't shrink an empty seed", () => {
@@ -238,14 +334,11 @@ describe("shrinkAllPicks", () => {
 });
 
 describe("shrinkAllOptions", () => {
-  const bit = new PickRequest(0, 1);
-  const roll = new PickRequest(1, 6);
-
   it("can't shrink an empty seed", () => {
     assertEquals(undefined, shrinkAllOptions(emptySeed, acceptAll));
   });
 
-  it("removes an option by itself", () => {
+  it("removes an option by with a value", () => {
     const seed = seedFrom([bit, roll], [1, 6]);
 
     const gen = shrinkAllOptions(seed, acceptAll);
@@ -269,5 +362,29 @@ describe("shrinkAllOptions", () => {
     const gen = shrinkAllOptions(seed, (s) => s.includes("c"));
     assert(gen !== undefined);
     assertEquals(gen.val, "c");
+  });
+
+  it("removes trailing strings in an array", () => {
+    const seed = dom.array(dom.string()).regenerate(["a", "b", "c"]);
+    assert(seed.ok);
+    const gen = shrinkAllOptions(seed, (s) => s.includes("a"));
+    assert(gen !== undefined, "didn't shrink");
+    assertEquals(gen.val, ["a"]);
+  });
+
+  it("removes leading strings in an array", () => {
+    const seed = dom.array(dom.string()).regenerate(["a", "b", "c"]);
+    assert(seed.ok);
+    const gen = shrinkAllOptions(seed, (s) => s.includes("c"));
+    assert(gen !== undefined, "didn't shrink");
+    assertEquals(gen.val, ["c"]);
+  });
+
+  it("shrinks strings in an array", () => {
+    const seed = dom.array(dom.string()).regenerate(["a", "b", "c"]);
+    assert(seed.ok);
+    const gen = shrinkAllOptions(seed, (s) => s.length === 3);
+    assert(gen !== undefined, "didn't shrink");
+    assertEquals(gen.val, ["", "", ""]);
   });
 });

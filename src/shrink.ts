@@ -1,5 +1,6 @@
 import type { Gen, Playout } from "./gen_class.ts";
 import type { IntEditor, PickRequest } from "./picks.ts";
+import type { SystemConsole } from "./console.ts";
 
 import { assert } from "@std/assert/assert";
 
@@ -20,9 +21,10 @@ type Shrinker = <T>(
 export function shrink<T>(
   seed: Gen<T>,
   test: (arg: T) => boolean,
+  console?: SystemConsole,
 ): Gen<T> {
   seed = shrinkTail(seed, test) ?? seed;
-  seed = shrinkAllOptions(seed, test) ?? seed;
+  seed = shrinkAllOptions(seed, test, console) ?? seed;
   seed = shrinkAllPicks(seed, test) ?? seed;
   return seed;
 }
@@ -174,31 +176,69 @@ function deleteRange(start: number, end: number): IntEditor {
   };
 }
 
-function isOption({ reqs, replies }: Playout, i: number): boolean {
+function getOption({ reqs, replies }: Playout, i: number): number | undefined {
+  if (i >= reqs.length) {
+    return undefined;
+  }
   const req = reqs[i];
-  return req.min === 0 && req.max === 1 && replies[i] === 1;
+  if (req.min !== 0 || req.max !== 1) {
+    return undefined;
+  }
+  return replies[i];
 }
 
 export function shrinkAllOptions<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
+  console?: SystemConsole,
 ): Gen<T> | undefined {
+  if (console) {
+    console.log("shrinkAllOptions:", seed.val);
+    for (let i = 0; i < seed.reqs.length; i++) {
+      const req = seed.reqs[i];
+      const reply = seed.replies[i];
+      console.log(` ${i}: ${req.min}..${req.max} =>`, reply);
+    }
+  }
   const len = seed.trimmedPlayoutLength;
 
-  if (len < 2) {
+  if (len < 1) {
     return undefined; // No options to remove
   }
 
   let changed = false;
   let end = len;
-  for (let i = len - 2; i >= 0; i--) {
-    if (!isOption(seed, i)) {
+  for (let i = len - 1; i >= 0; i--) {
+    const val = getOption(seed, i);
+    if (val === undefined) {
       continue;
+    } else if (val === 0) {
+      // Try deleting it by itself.
+      end = i + 1;
     }
-    const next = seed.mutate(deleteRange(i, end));
+    let next = seed.mutate(deleteRange(i, end));
     if (next === undefined || !test(next.val)) {
-      end = i;
-      continue;
+      if (console) {
+        console.log("needed", i, end, seed.replies.slice(i, end));
+      }
+
+      const containsEmptyOption = (end === i + 1) &&
+        getOption(seed, end) === 0 &&
+        getOption(seed, end + 1) !== undefined;
+
+      if (!containsEmptyOption) {
+        end = i;
+        continue;
+      }
+
+      // Try extending the range to include an option that wasn't taken
+      next = seed.mutate(deleteRange(i, end + 1));
+      if (next === undefined || !test(next.val)) {
+        continue;
+      }
+    }
+    if (console) {
+      console.log("removed:", i, end, seed.replies.slice(i, end));
     }
 
     seed = next;
