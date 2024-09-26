@@ -118,14 +118,15 @@ Here is a better way:
 
 ```ts
 repeatTest(examples, (word, console) => {
-  console.debugger(); // Only stop sometimes
+  if (console.on) {
+    debugger; // Only stop when the test will fail.
+  }
   assertEquals(word.length, 5);
 });
 ```
 
-The `console.debugger()` method does nothing normally. It will execute a
-`debugger` statement only in a test that's about to fail, allowing you to step
-through the failing test.
+The `console.on` property returns `true` only when the test is called with an
+example that's known to fail.
 
 ## Skipping to a failing test
 

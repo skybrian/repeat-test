@@ -1,5 +1,3 @@
-import { stopInDebugger } from "./coverage_exclusions.ts";
-
 /**
  * The global console methods that are used in a {@link TestConsole}.
  *
@@ -54,11 +52,6 @@ export interface TestConsole extends SystemConsole {
    * Returns the value passed in.
    */
   sometimes(key: string, val: boolean): boolean;
-
-  /**
-   * If the test is expected to fail, executes a debugger statement.
-   */
-  debugger(): void;
 }
 
 /**
@@ -94,8 +87,6 @@ export class CountingTestConsole implements TestConsole {
     }
     return val;
   }
-
-  debugger() {}
 }
 
 /**
@@ -125,6 +116,4 @@ export class FailingTestConsole extends CountingTestConsole {
     this.log(`sometimes(${key}) =>`, val);
     return val;
   }
-
-  override readonly debugger = stopInDebugger;
 }

@@ -25,7 +25,9 @@ repeatTest(input, (original, console) => {
 
   const copy = badDecode(encoded);
 
-  console.debugger();
+  if (console.on) {
+    debugger; // Stops here only when the test will fail.
+  }
   assertEquals(copy, original);
 });
 

@@ -377,7 +377,7 @@ describe("runRep", () => {
 
   it("suppresses console output when the test passes", () => {
     const rep = makeDefaultRep(arb.int(1, 10), (_x, console) => {
-      console.debugger();
+      assertFalse(console.on);
       console.log("hello");
     });
     assertEquals(runRep(rep, con, coverage), success());
@@ -400,7 +400,11 @@ describe("runRep", () => {
   });
 
   it("writes output to the console when the test throws", () => {
+    let onCount = 0;
     const rep = makeDefaultRep(arb.int(1, 10), (_x, console) => {
+      if (console.on) {
+        onCount++;
+      }
       console.log("hello");
       throw new Error("test failed");
     });
@@ -410,6 +414,8 @@ describe("runRep", () => {
     con.loggedTestFailed();
     con.logged("hello");
     con.checkEmpty();
+
+    assertEquals(onCount, 1);
   });
 
   it("returns a failure if the test writes an error", () => {
