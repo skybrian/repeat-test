@@ -1,4 +1,4 @@
-import type { Gen, Playout } from "./gen_class.ts";
+import type { Gen } from "./gen_class.ts";
 import type { IntEditor, PickRequest } from "./picks.ts";
 
 import { assert } from "@std/assert/assert";
@@ -111,21 +111,20 @@ export function shrinkOnePick(index: number): Shrinker {
       return undefined; // No change; nothing to shrink
     }
 
-    const { reqs, replies } = seed.playout;
-    const min = reqs[index].min;
-    if (replies[index] === min) {
+    const { req, reply } = seed.playout.getPick(index);
+    if (reply === req.min) {
       return undefined; // No change; already at the minimum
     }
 
     // See if the test fails if we substract one.
-    const next = seed.mutate(replaceAt(index, replies[index] - 1));
+    const next = seed.mutate(replaceAt(index, reply - 1));
     if (next === undefined || !test(next.val)) {
       return undefined; // No change; the postcondition already holds
     }
     seed = next;
 
     // Binary search to find the smallest pick that succeeds.
-    let tooLow = min - 1;
+    let tooLow = req.min - 1;
     let hi = seed.playout.replies[index];
     while (tooLow + 2 <= hi) {
       const mid = (tooLow + 1 + hi) >>> 1;
@@ -175,17 +174,6 @@ function deleteRange(start: number, end: number): IntEditor {
   };
 }
 
-function getOption({ reqs, replies }: Playout, i: number): number | undefined {
-  if (i >= reqs.length) {
-    return undefined;
-  }
-  const req = reqs[i];
-  if (req.min !== 0 || req.max !== 1) {
-    return undefined;
-  }
-  return replies[i];
-}
-
 export function shrinkAllOptions<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
@@ -199,7 +187,7 @@ export function shrinkAllOptions<T>(
   let changed = false;
   let end = len;
   for (let i = len - 1; i >= 0; i--) {
-    const val = getOption(seed.playout, i);
+    const val = seed.playout.getOption(i);
     if (val === undefined) {
       continue;
     } else if (val === 0) {
@@ -209,8 +197,8 @@ export function shrinkAllOptions<T>(
     let next = seed.mutate(deleteRange(i, end));
     if (next === undefined || !test(next.val)) {
       const containsEmptyOption = (end === i + 1) &&
-        getOption(seed.playout, end) === 0 &&
-        getOption(seed.playout, end + 1) !== undefined;
+        seed.playout.getOption(end) === 0 &&
+        seed.playout.getOption(end + 1) !== undefined;
 
       if (!containsEmptyOption) {
         end = i;

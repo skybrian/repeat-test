@@ -220,10 +220,12 @@ describe("takeGenerated", () => {
   it("generates a valid PickRequest for an array of examples", () => {
     const examples = Arbitrary.of(1, 2, 3);
     const gens = takeGenerated(examples, 4);
-    const reqs = gens[0].playout.reqs;
-    assertEquals(reqs.length, 1);
-    assertEquals(reqs[0].min, 0);
-    assertEquals(reqs[0].max, 2);
+    assertEquals(gens.length, 3);
+    const playout = gens[0].playout;
+    assertEquals(playout.length, 1);
+    const req = playout.getPick(0).req;
+    assertEquals(req.min, 0);
+    assertEquals(req.max, 2);
   });
 
   it("generates a single value for a filtered constant", () => {

@@ -19,13 +19,37 @@ export interface PlayoutSink {
 
 /** A list of pick requests with its replies. */
 export class Playout {
-  constructor(readonly reqs: PickRequest[], readonly replies: number[]) {}
+  readonly #reqs: PickRequest[];
+
+  constructor(reqs: PickRequest[], readonly replies: number[]) {
+    this.#reqs = reqs;
+  }
+
+  getPick(index: number): { req: PickRequest; reply: number } {
+    return { req: this.#reqs[index], reply: this.replies[index] };
+  }
+
+  getOption(index: number): number | undefined {
+    if (index >= this.#reqs.length) {
+      return undefined;
+    }
+    const req = this.#reqs[index];
+    if (req.min !== 0 || req.max !== 1) {
+      return undefined;
+    }
+    return this.replies[index];
+  }
+
+  get length(): number {
+    return this.#reqs.length;
+  }
 
   /**
    * Returns the length of the playout with default picks removed from the end.
    */
   get trimmedLength(): number {
-    const { reqs, replies } = this;
+    const reqs = this.#reqs;
+    const replies = this.replies;
     let last = replies.length - 1;
     while (last >= 0 && replies[last] === reqs[last].min) {
       last--;
@@ -39,14 +63,14 @@ export class Playout {
   trimmed(): Playout {
     const len = this.trimmedLength;
     return new Playout(
-      this.reqs.slice(0, len),
+      this.#reqs.slice(0, len),
       this.replies.slice(0, len),
     );
   }
 
   pushTo(sink: PlayoutSink): boolean {
-    for (let i = 0; i < this.reqs.length; i++) {
-      const req = this.reqs[i];
+    for (let i = 0; i < this.#reqs.length; i++) {
+      const req = this.#reqs[i];
       const reply = this.replies[i];
       if (!sink.push(req, reply)) {
         return false;
@@ -59,7 +83,8 @@ export class Playout {
    * Writes the playout to a console.
    */
   logTo(console: SystemConsole): void {
-    const { reqs, replies } = this;
+    const reqs = this.#reqs;
+    const replies = this.replies;
     for (let i = 0; i < reqs.length; i++) {
       const req = reqs[i];
       const reply = replies[i];
