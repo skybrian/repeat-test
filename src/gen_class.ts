@@ -19,6 +19,7 @@ const needGenerate = Symbol("needGenerate");
  */
 export class Gen<T> implements Success<T> {
   readonly #set: PickSet<T>;
+  #reqs: PickRequest[];
   #val: T | typeof needGenerate;
 
   /**
@@ -29,12 +30,13 @@ export class Gen<T> implements Success<T> {
    */
   constructor(
     set: PickSet<T>,
-    readonly reqs: PickRequest[],
+    reqs: PickRequest[],
     readonly replies: number[],
     val: T,
   ) {
     this.#set = set;
     this.#val = val;
+    this.#reqs = reqs;
   }
 
   /** Satisfies the Success interface. */
@@ -59,11 +61,18 @@ export class Gen<T> implements Success<T> {
     return val;
   }
 
+  get playout(): Playout {
+    return {
+      reqs: this.#reqs,
+      replies: this.replies,
+    };
+  }
+
   /**
    * Returns the lenght of the playout with default picks removed from the end.
    */
   get trimmedPlayoutLength(): number {
-    const { reqs, replies } = this;
+    const { reqs, replies } = this.playout;
     let last = replies.length - 1;
     while (last >= 0 && replies[last] === reqs[last].min) {
       last--;
@@ -77,7 +86,7 @@ export class Gen<T> implements Success<T> {
   trimmedPlayout(): Playout {
     const len = this.trimmedPlayoutLength;
     return {
-      reqs: this.reqs.slice(0, len),
+      reqs: this.#reqs.slice(0, len),
       replies: this.replies.slice(0, len),
     };
   }

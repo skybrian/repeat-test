@@ -113,13 +113,14 @@ export function shrinkOnePick(index: number): Shrinker {
       return undefined; // No change; nothing to shrink
     }
 
-    const min = seed.reqs[index].min;
-    if (seed.replies[index] === min) {
+    const { reqs, replies } = seed.playout;
+    const min = reqs[index].min;
+    if (replies[index] === min) {
       return undefined; // No change; already at the minimum
     }
 
     // See if the test fails if we substract one.
-    const next = seed.mutate(replaceAt(index, seed.replies[index] - 1));
+    const next = seed.mutate(replaceAt(index, replies[index] - 1));
     if (next === undefined || !test(next.val)) {
       return undefined; // No change; the postcondition already holds
     }
@@ -194,9 +195,10 @@ export function shrinkAllOptions<T>(
 ): Gen<T> | undefined {
   if (console) {
     console.log("shrinkAllOptions:", seed.val);
-    for (let i = 0; i < seed.reqs.length; i++) {
-      const req = seed.reqs[i];
-      const reply = seed.replies[i];
+    const { reqs, replies } = seed.playout;
+    for (let i = 0; i < reqs.length; i++) {
+      const req = reqs[i];
+      const reply = replies[i];
       console.log(` ${i}: ${req.min}..${req.max} =>`, reply);
     }
   }
@@ -209,7 +211,7 @@ export function shrinkAllOptions<T>(
   let changed = false;
   let end = len;
   for (let i = len - 1; i >= 0; i--) {
-    const val = getOption(seed, i);
+    const val = getOption(seed.playout, i);
     if (val === undefined) {
       continue;
     } else if (val === 0) {
@@ -223,8 +225,8 @@ export function shrinkAllOptions<T>(
       }
 
       const containsEmptyOption = (end === i + 1) &&
-        getOption(seed, end) === 0 &&
-        getOption(seed, end + 1) !== undefined;
+        getOption(seed.playout, end) === 0 &&
+        getOption(seed.playout, end + 1) !== undefined;
 
       if (!containsEmptyOption) {
         end = i;

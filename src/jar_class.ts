@@ -85,7 +85,7 @@ export class Jar<T> {
     const canon = this.dom.regenerate(val);
     assert(canon.ok, "regenerate should always succeed");
 
-    return this.remaining.prune(canon);
+    return this.remaining.prune(canon.playout);
   };
 
   #refreshExample(): void {
