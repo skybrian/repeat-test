@@ -128,7 +128,7 @@ export function shrinkOnePick(index: number): Shrinker {
 
     // Binary search to find the smallest pick that succeeds.
     let tooLow = min - 1;
-    let hi = seed.replies[index];
+    let hi = seed.playout.replies[index];
     while (tooLow + 2 <= hi) {
       const mid = (tooLow + 1 + hi) >>> 1;
       assert(mid > tooLow && mid < hi);
@@ -139,7 +139,7 @@ export function shrinkOnePick(index: number): Shrinker {
         continue;
       }
       seed = next;
-      hi = seed.replies[index];
+      hi = seed.playout.replies[index];
     }
     return seed;
   };
@@ -221,7 +221,7 @@ export function shrinkAllOptions<T>(
     let next = seed.mutate(deleteRange(i, end));
     if (next === undefined || !test(next.val)) {
       if (console) {
-        console.log("needed", i, end, seed.replies.slice(i, end));
+        console.log("needed", i, end, seed.playout.replies.slice(i, end));
       }
 
       const containsEmptyOption = (end === i + 1) &&
@@ -240,7 +240,7 @@ export function shrinkAllOptions<T>(
       }
     }
     if (console) {
-      console.log("removed:", i, end, seed.replies.slice(i, end));
+      console.log("removed:", i, end, seed.playout.replies.slice(i, end));
     }
 
     seed = next;

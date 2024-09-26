@@ -299,7 +299,7 @@ describe("shrinkOnePick", () => {
       const reqs = new Array(replies.length).fill(roll);
       const seed = seedFrom(reqs, replies);
       const gen = shrinkOnePick(prefix.length)(seed, acceptAll);
-      assertEquals(gen?.replies, [...prefix, 1, ...suffix]);
+      assertEquals(gen?.playout.replies, [...prefix, 1, ...suffix]);
     });
   });
 
@@ -314,7 +314,7 @@ describe("shrinkOnePick", () => {
       assert(seed.ok);
       const accept = (v: number) => v >= want;
       const gen = shrinkOnePick(0)(seed, accept);
-      assertEquals(gen?.replies, [want]);
+      assertEquals(gen?.playout.replies, [want]);
     });
   });
 });
@@ -329,7 +329,7 @@ describe("shrinkAllPicks", () => {
     const hi = new PickRequest(3, 4);
     const seed = seedFrom([lo, hi], [2, 4]);
     const gen = shrinkAllPicks(seed, acceptAll);
-    assertEquals(gen?.replies, [1, 3]);
+    assertEquals(gen?.playout.replies, [1, 3]);
   });
 });
 

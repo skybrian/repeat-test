@@ -90,7 +90,7 @@ export class Jar<T> {
 
   #refreshExample(): void {
     while (this.example !== undefined) {
-      if (this.remaining.available(this.example.replies)) {
+      if (this.remaining.available(this.example.playout.replies)) {
         return; // still valid
       }
       this.example = this.#nextExample();

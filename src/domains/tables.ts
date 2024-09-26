@@ -41,7 +41,7 @@ export function uniqueArray<T>(
       if (i >= min) {
         out.push(1);
       }
-      out.push(...gen.replies);
+      out.push(...replies);
       i++;
     }
     if (i < max) {
@@ -103,7 +103,7 @@ export function table<R extends Record<string, unknown>>(
             return undefined;
           }
         }
-        out.push(...gen.replies);
+        out.push(...replies);
       }
       i++;
     }

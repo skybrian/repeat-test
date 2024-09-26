@@ -19,7 +19,8 @@ const needGenerate = Symbol("needGenerate");
  */
 export class Gen<T> implements Success<T> {
   readonly #set: PickSet<T>;
-  #reqs: PickRequest[];
+  readonly #reqs: PickRequest[];
+  readonly #replies: number[];
   #val: T | typeof needGenerate;
 
   /**
@@ -31,12 +32,13 @@ export class Gen<T> implements Success<T> {
   constructor(
     set: PickSet<T>,
     reqs: PickRequest[],
-    readonly replies: number[],
+    replies: number[],
     val: T,
   ) {
     this.#set = set;
     this.#val = val;
     this.#reqs = reqs;
+    this.#replies = replies;
   }
 
   /** Satisfies the Success interface. */
@@ -52,7 +54,7 @@ export class Gen<T> implements Success<T> {
    */
   get val(): T {
     if (this.#val === needGenerate) {
-      return mustGenerate(this.#set, this.replies);
+      return mustGenerate(this.#set, this.#replies);
     }
     const val = this.#val;
     if (!Object.isFrozen(val)) {
@@ -64,7 +66,7 @@ export class Gen<T> implements Success<T> {
   get playout(): Playout {
     return {
       reqs: this.#reqs,
-      replies: this.replies,
+      replies: this.#replies,
     };
   }
 
@@ -87,7 +89,7 @@ export class Gen<T> implements Success<T> {
     const len = this.trimmedPlayoutLength;
     return {
       reqs: this.#reqs.slice(0, len),
-      replies: this.replies.slice(0, len),
+      replies: this.#replies.slice(0, len),
     };
   }
 
@@ -96,7 +98,7 @@ export class Gen<T> implements Success<T> {
    * @returns the new value, or undefined if no change is available.
    */
   mutate(edit: IntEditor): Gen<T> | undefined {
-    const picker = new EditPicker(this.replies, edit);
+    const picker = new EditPicker(this.#replies, edit);
     const gen = generate(this.#set, onePlayout(picker));
     if (picker.edits === 0 && picker.deletes === 0) {
       return undefined; // no change
