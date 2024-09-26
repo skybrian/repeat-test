@@ -1,4 +1,3 @@
-import type { TestConsole } from "@/runner.ts";
 import type { Domain } from "@/domain.ts";
 import type { PickSet } from "../src/generated.ts";
 
@@ -25,14 +24,13 @@ function assertShrinks<T>(
   interesting: (arg: T) => boolean,
   seed: T,
   result: T,
-  console?: TestConsole,
 ) {
   const gen = dom.regenerate(seed);
   if (!gen.ok) {
     fail(`couldn't regenerate the starting value: ${gen.message}`);
   }
 
-  const smaller = shrink(gen, interesting, console);
+  const smaller = shrink(gen, interesting);
   assert(smaller, "didn't find the expected smaller value");
   assertEquals(smaller.val, result);
 }
@@ -182,8 +180,8 @@ describe("shrink", () => {
   describe("for an array of strings", () => {
     it("removes all strings in an array", () => {
       const input = arb.array(arb.string(), { length: { min: 1, max: 5 } });
-      repeatTest(input, (arr, console) => {
-        assertShrinks(dom.array(dom.string()), acceptAll, arr, [], console);
+      repeatTest(input, (arr) => {
+        assertShrinks(dom.array(dom.string()), acceptAll, arr, []);
       });
     });
 
@@ -197,7 +195,7 @@ describe("shrink", () => {
         const needle = Array(needleSize).fill("<->");
         return { prefix, needle, suffix };
       });
-      repeatTest(example, ({ prefix, needle, suffix }, console) => {
+      repeatTest(example, ({ prefix, needle, suffix }) => {
         const input = prefix.concat(needle).concat(suffix);
         assert(!includesSubarray(prefix, needle));
         assertShrinks(
@@ -205,7 +203,6 @@ describe("shrink", () => {
           (a) => includesSubarray(a, needle),
           input,
           needle,
-          console,
         );
       }, { reps: 100 });
     });

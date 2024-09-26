@@ -2,10 +2,12 @@ import type { PickSet } from "../src/generated.ts";
 
 import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/equals";
-import { describe, it } from "@std/testing/bdd";
+import { beforeEach, describe, it } from "@std/testing/bdd";
 import { minPlayout } from "../src/backtracking.ts";
 import { generate } from "../src/generated.ts";
 import { noChange } from "../src/picks.ts";
+import { RecordingConsole } from "../src/console.ts";
+import { arb } from "@/mod.ts";
 
 const frozen: PickSet<readonly string[]> = {
   label: "frozen",
@@ -41,6 +43,25 @@ describe("Gen", () => {
       const gen = generate(frozen, minPlayout());
       assert(gen !== undefined);
       assertEquals(gen.mutate(noChange), undefined);
+    });
+  });
+
+  describe("logTo", () => {
+    let con = new RecordingConsole();
+
+    beforeEach(() => {
+      con = new RecordingConsole();
+    });
+
+    it("logs to a console", () => {
+      const input = arb.from((pick) => {
+        return pick(arb.int(1, 10));
+      });
+      const gen = generate(input, minPlayout());
+      assert(gen !== undefined);
+      gen.playout.logTo(con);
+      con.logged(["0: 1..10 =>", 1]);
+      con.checkEmpty();
     });
   });
 });

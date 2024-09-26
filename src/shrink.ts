@@ -1,6 +1,5 @@
 import type { Gen, Playout } from "./gen_class.ts";
 import type { IntEditor, PickRequest } from "./picks.ts";
-import type { SystemConsole } from "./console.ts";
 
 import { assert } from "@std/assert/assert";
 
@@ -21,10 +20,9 @@ type Shrinker = <T>(
 export function shrink<T>(
   seed: Gen<T>,
   test: (arg: T) => boolean,
-  console?: SystemConsole,
 ): Gen<T> {
   seed = shrinkTail(seed, test) ?? seed;
-  seed = shrinkAllOptions(seed, test, console) ?? seed;
+  seed = shrinkAllOptions(seed, test) ?? seed;
   seed = shrinkAllPicks(seed, test) ?? seed;
   return seed;
 }
@@ -191,17 +189,7 @@ function getOption({ reqs, replies }: Playout, i: number): number | undefined {
 export function shrinkAllOptions<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
-  console?: SystemConsole,
 ): Gen<T> | undefined {
-  if (console) {
-    console.log("shrinkAllOptions:", seed.val);
-    const { reqs, replies } = seed.playout;
-    for (let i = 0; i < reqs.length; i++) {
-      const req = reqs[i];
-      const reply = replies[i];
-      console.log(` ${i}: ${req.min}..${req.max} =>`, reply);
-    }
-  }
   const len = seed.playout.trimmedLength;
 
   if (len < 1) {
@@ -220,10 +208,6 @@ export function shrinkAllOptions<T>(
     }
     let next = seed.mutate(deleteRange(i, end));
     if (next === undefined || !test(next.val)) {
-      if (console) {
-        console.log("needed", i, end, seed.playout.replies.slice(i, end));
-      }
-
       const containsEmptyOption = (end === i + 1) &&
         getOption(seed.playout, end) === 0 &&
         getOption(seed.playout, end + 1) !== undefined;
@@ -238,9 +222,6 @@ export function shrinkAllOptions<T>(
       if (next === undefined || !test(next.val)) {
         continue;
       }
-    }
-    if (console) {
-      console.log("removed:", i, end, seed.playout.replies.slice(i, end));
     }
 
     seed = next;

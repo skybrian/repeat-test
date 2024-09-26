@@ -1,6 +1,7 @@
 import type { Success } from "./results.ts";
 import type { IntEditor, PickRequest } from "./picks.ts";
 import type { PickSet } from "./generated.ts";
+import type { SystemConsole } from "./console.ts";
 
 import { EditPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
@@ -52,6 +53,18 @@ export class Playout {
       }
     }
     return true;
+  }
+
+  /**
+   * Writes the playout to a console.
+   */
+  logTo(console: SystemConsole): void {
+    const { reqs, replies } = this;
+    for (let i = 0; i < reqs.length; i++) {
+      const req = reqs[i];
+      const reply = replies[i];
+      console.log(`${i}: ${req.min}..${req.max} =>`, reply);
+    }
   }
 }
 

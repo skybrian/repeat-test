@@ -1,3 +1,6 @@
+import type { Coverage, TestConsole } from "../src/console.ts";
+import type { Domain } from "../src/domain_class.ts";
+
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import {
   assert,
@@ -11,13 +14,11 @@ import {
 import { minPlayout, Pruned } from "../src/backtracking.ts";
 import { generate } from "../src/generated.ts";
 import { Arbitrary } from "../src/arbitrary_class.ts";
-import type { Domain } from "../src/domain_class.ts";
 import * as arb from "@/arbs.ts";
 import * as dom from "@/doms.ts";
 import { success } from "../src/results.ts";
 import { generateDefault } from "../src/multipass_search.ts";
-
-import type { Coverage, SystemConsole, TestConsole } from "../src/console.ts";
+import { RecordingConsole } from "../src/console.ts";
 
 import {
   generateReps,
@@ -319,45 +320,6 @@ function makeRep<T>(input: Domain<T>, arg: T, test: TestFunction<T>): Rep<T> {
     test,
   };
   return rep;
-}
-
-export type LogMessage = {
-  args: unknown[];
-  type: "log" | "error";
-};
-
-/**
- * Represents the system console and records all console output.
- */
-export class RecordingConsole implements SystemConsole {
-  messages: LogMessage[] = [];
-
-  on = undefined;
-
-  log(...args: unknown[]) {
-    this.messages.push({ args, type: "log" });
-  }
-  error(...args: unknown[]) {
-    this.messages.push({ args, type: "error" });
-  }
-
-  logged(message: string | unknown[], opts?: { type?: "log" | "error" }) {
-    const expected = Array.isArray(message) ? message : [message];
-    const expectedType = opts?.type ?? "log";
-    assert(this.messages.length > 0, "no messages logged");
-    assertEquals(this.messages.shift(), {
-      args: expected,
-      type: expectedType,
-    });
-  }
-
-  loggedTestFailed() {
-    this.logged("\nTest failed. Shrinking...");
-  }
-
-  checkEmpty() {
-    assertEquals(this.messages, []);
-  }
 }
 
 describe("runRep", () => {
