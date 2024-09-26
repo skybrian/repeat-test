@@ -129,7 +129,7 @@ describe("shrink", () => {
           const seed = seedFrom(bits.map(() => bit), bits);
           const gen = shrink(seed, acceptAll);
           assert(gen !== undefined);
-          assertEquals(gen.trimmedPlayout().replies, []);
+          assertEquals(gen.playout.trimmed().replies, []);
         });
       });
 
@@ -145,7 +145,7 @@ describe("shrink", () => {
           const gen = shrink(seed, (arr) => arr.at(prefix.length) === 1);
           assert(gen !== undefined);
           const expected = Array(prefix.length).fill(0).concat(1);
-          assertEquals(gen.trimmedPlayout().replies, expected);
+          assertEquals(gen.playout.trimmed().replies, expected);
         });
       });
     });
@@ -256,7 +256,7 @@ describe("shrinkTail", () => {
 
       const gen = shrinkTail(seed, acceptAll);
       assert(gen !== undefined, "expected a result from shrinkTail");
-      assertEquals(gen.trimmedPlayout().replies, []);
+      assertEquals(gen.playout.trimmed().replies, []);
     });
   });
 
@@ -343,7 +343,7 @@ describe("shrinkAllOptions", () => {
 
     const gen = shrinkAllOptions(seed, acceptAll);
     assert(gen !== undefined);
-    assertEquals(gen.trimmedPlayout().replies, []);
+    assertEquals(gen.playout.trimmed().replies, []);
   });
 
   it("removes two options", () => {
@@ -353,7 +353,7 @@ describe("shrinkAllOptions", () => {
     );
     const gen = shrinkAllOptions(seed, acceptAll);
     assert(gen !== undefined);
-    assertEquals(gen.trimmedPlayout().replies, [6]);
+    assertEquals(gen.playout.trimmed().replies, [6]);
   });
 
   it("removes unused leading characters", () => {

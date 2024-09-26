@@ -177,7 +177,7 @@ export class PickTree {
    */
   prune(playout: Playout): boolean {
     const walk = this.walk();
-    if (!walk.pushAll(playout)) {
+    if (!playout.pushTo(walk)) {
       return false; // already pruned
     }
     return walk.prune();
@@ -311,22 +311,6 @@ export class Walk {
     } else {
       return branch.branchesLeft;
     }
-  }
-
-  /**
-   * Attempts to extend the path to a new branch, creating nodes if needed.
-   *
-   * Throws an Error if a request's range doesn't match a previous playout.
-   */
-  pushAll(playout: Playout): boolean {
-    const reqs = playout.reqs;
-    const replies = playout.replies;
-    for (let i = 0; i < reqs.length; i++) {
-      if (!this.push(reqs[i], replies[i])) {
-        return false;
-      }
-    }
-    return true;
   }
 
   /**

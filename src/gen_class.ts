@@ -6,11 +6,54 @@ import { EditPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
 import { generate, mustGenerate } from "./generated.ts";
 
+/** Something that accepts a stream of pick requests and replies. */
+export interface PlayoutSink {
+  /**
+   * Accests a pick request and reply.
+   *
+   * If the sink doesn't want more picks, it can return false or throw an Error.
+   */
+  push(req: PickRequest, pick: number): boolean;
+}
+
 /** A list of pick requests with its replies. */
-export type Playout = {
-  readonly reqs: PickRequest[];
-  readonly replies: number[];
-};
+export class Playout {
+  constructor(readonly reqs: PickRequest[], readonly replies: number[]) {}
+
+  /**
+   * Returns the length of the playout with default picks removed from the end.
+   */
+  get trimmedLength(): number {
+    const { reqs, replies } = this;
+    let last = replies.length - 1;
+    while (last >= 0 && replies[last] === reqs[last].min) {
+      last--;
+    }
+    return last + 1;
+  }
+
+  /**
+   * Returns the requests and replies with default picks removed from the end.
+   */
+  trimmed(): Playout {
+    const len = this.trimmedLength;
+    return new Playout(
+      this.reqs.slice(0, len),
+      this.replies.slice(0, len),
+    );
+  }
+
+  pushTo(sink: PlayoutSink): boolean {
+    for (let i = 0; i < this.reqs.length; i++) {
+      const req = this.reqs[i];
+      const reply = this.replies[i];
+      if (!sink.push(req, reply)) {
+        return false;
+      }
+    }
+    return true;
+  }
+}
 
 const needGenerate = Symbol("needGenerate");
 
@@ -64,33 +107,7 @@ export class Gen<T> implements Success<T> {
   }
 
   get playout(): Playout {
-    return {
-      reqs: this.#reqs,
-      replies: this.#replies,
-    };
-  }
-
-  /**
-   * Returns the lenght of the playout with default picks removed from the end.
-   */
-  get trimmedPlayoutLength(): number {
-    const { reqs, replies } = this.playout;
-    let last = replies.length - 1;
-    while (last >= 0 && replies[last] === reqs[last].min) {
-      last--;
-    }
-    return last + 1;
-  }
-
-  /**
-   * Returns the requests and replies with default picks removed from the end.
-   */
-  trimmedPlayout(): Playout {
-    const len = this.trimmedPlayoutLength;
-    return {
-      reqs: this.#reqs.slice(0, len),
-      replies: this.#replies.slice(0, len),
-    };
+    return new Playout(this.#reqs, this.#replies);
   }
 
   /**

@@ -7,9 +7,10 @@ import * as arb from "../src/arbitraries/basics.ts";
 
 import { PickRequest } from "../src/picks.ts";
 import { PickTree } from "../src/pick_tree.ts";
+import { Playout } from "../src/gen_class.ts";
 
 function playout(reqs: PickRequest[], replies: number[]) {
-  return { reqs, replies };
+  return new Playout(reqs, replies);
 }
 
 describe("PickTree", () => {
