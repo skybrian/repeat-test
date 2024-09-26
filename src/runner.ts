@@ -13,7 +13,11 @@ import { PartialTracker } from "./searches.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
 import { generateDefault } from "./multipass_search.ts";
 import { pickRandomSeed, randomPicker, randomPickers } from "./random.ts";
-import { CountingTestConsole, FailingTestConsole } from "./console.ts";
+import {
+  CountingTestConsole,
+  FailingTestConsole,
+  systemConsole,
+} from "./console.ts";
 import { shrink } from "./shrink.ts";
 
 /**
@@ -367,7 +371,7 @@ export function repeatTest<T>(
 
   const count = opts?.only ? 1 : arbs.length + (opts?.reps ?? 1000);
 
-  const outerConsole = opts?.console ?? console;
+  const outerConsole = opts?.console ?? systemConsole;
   const ran = runReps(reps, count, outerConsole);
   if (!ran.ok) {
     reportFailure(ran, outerConsole);

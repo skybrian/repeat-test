@@ -326,8 +326,13 @@ export type LogMessage = {
   type: "log" | "error";
 };
 
+/**
+ * Represents the system console and records all console output.
+ */
 export class RecordingConsole implements SystemConsole {
   messages: LogMessage[] = [];
+
+  on = undefined;
 
   log(...args: unknown[]) {
     this.messages.push({ args, type: "log" });
@@ -335,69 +340,83 @@ export class RecordingConsole implements SystemConsole {
   error(...args: unknown[]) {
     this.messages.push({ args, type: "error" });
   }
-}
 
-class NullConsole implements SystemConsole {
-  log() {}
-  error() {}
+  logged(message: string | unknown[], opts?: { type?: "log" | "error" }) {
+    const expected = Array.isArray(message) ? message : [message];
+    const expectedType = opts?.type ?? "log";
+    assert(this.messages.length > 0, "no messages logged");
+    assertEquals(this.messages.shift(), {
+      args: expected,
+      type: expectedType,
+    });
+  }
+
+  loggedTestFailed() {
+    this.logged("\nTest failed. Shrinking...");
+  }
+
+  checkEmpty() {
+    assertEquals(this.messages, []);
+  }
 }
 
 describe("runRep", () => {
+  let con = new RecordingConsole();
   let coverage: Coverage = {};
 
   beforeEach(() => {
+    con = new RecordingConsole();
     coverage = {};
   });
 
   it("returns success if the test passes", () => {
     const rep = makeDefaultRep(arb.int(1, 10), () => {});
-    assertEquals(runRep(rep, new NullConsole(), coverage), success());
+    assertEquals(runRep(rep, con, coverage), success());
+    con.checkEmpty();
   });
 
   it("suppresses console output when the test passes", () => {
-    const console = new RecordingConsole();
     const rep = makeDefaultRep(arb.int(1, 10), (_x, console) => {
       console.debugger();
       console.log("hello");
     });
-    assertEquals(runRep(rep, console, coverage), success());
-    assertEquals(console.messages.length, 0);
+    assertEquals(runRep(rep, con, coverage), success());
+    con.checkEmpty();
   });
 
   it("returns a failure if the test throws", () => {
     const rep = makeDefaultRep(arb.int(1, 10), () => {
       throw new Error("test failed");
     });
-    const result = runRep(rep, new NullConsole(), coverage);
+    const result = runRep(rep, con, coverage);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     assertEquals(result.arg, rep.arg.val);
     if (!(result.caught instanceof Error)) {
       fail("expected caught to be an Error");
     }
-    assertEquals(result.caught.message, "test failed");
+    con.loggedTestFailed();
+    con.checkEmpty();
   });
 
   it("writes output to the console when the test throws", () => {
-    const console = new RecordingConsole();
     const rep = makeDefaultRep(arb.int(1, 10), (_x, console) => {
       console.log("hello");
       throw new Error("test failed");
     });
-    const result = runRep(rep, console, coverage);
+    const result = runRep(rep, con, coverage);
     if (result.ok) fail("expected a failure");
-    assertEquals(console.messages, [
-      { args: ["\nTest failed. Shrinking..."], type: "log" },
-      { args: ["hello"], type: "log" },
-    ]);
+
+    con.loggedTestFailed();
+    con.logged("hello");
+    con.checkEmpty();
   });
 
   it("returns a failure if the test writes an error", () => {
-    const console = new RecordingConsole();
     const rep = makeDefaultRep(arb.int(1, 10), (_, console) => {
       console.error("oops!");
     });
-    const result = runRep(rep, console, coverage);
+    const result = runRep(rep, con, coverage);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     assertEquals(result.arg, rep.arg.val);
@@ -405,10 +424,10 @@ describe("runRep", () => {
       fail("expected caught to be an Error");
     }
     assertEquals(result.caught.message, "test called console.error()");
-    assertEquals(console.messages, [
-      { args: ["\nTest failed. Shrinking..."], type: "log" },
-      { args: ["oops!"], type: "error" },
-    ]);
+
+    con.loggedTestFailed();
+    con.logged("oops!", { type: "error" });
+    con.checkEmpty();
   });
 
   it("shrinks the input to a test that fails", () => {
@@ -419,7 +438,7 @@ describe("runRep", () => {
       }
     };
     const rep = makeRep(input, 100, test);
-    const result = runRep(rep, new NullConsole(), coverage);
+    const result = runRep(rep, con, coverage);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     if (!(result.caught instanceof Error)) {
@@ -427,6 +446,8 @@ describe("runRep", () => {
     }
     assertEquals(result.caught.message, "test failed");
     assertEquals(result.arg, 10);
+    con.loggedTestFailed();
+    con.checkEmpty();
   });
 
   it("reports a failure for a flaky test", () => {
@@ -437,21 +458,25 @@ describe("runRep", () => {
         throw new Error("test failed");
       }
     });
-    const console = new RecordingConsole();
-    const result = runRep(rep, console, coverage);
+    const result = runRep(rep, con, coverage);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     if (!(result.caught instanceof Error)) {
       fail("expected caught to be an Error");
     }
     assertEquals(result.caught.message, "flaky test passed after shrinking");
-    assertEquals(console.messages, [
-      { args: ["\nTest failed. Shrinking..."], type: "log" },
-    ]);
+    con.loggedTestFailed();
+    con.checkEmpty();
   });
 });
 
 describe("runReps", () => {
+  let con = new RecordingConsole();
+
+  beforeEach(() => {
+    con = new RecordingConsole();
+  });
+
   it("passes through a RepFailure from the reps parameter", () => {
     const failure: RepFailure<number> = {
       ok: false,
@@ -459,8 +484,9 @@ describe("runReps", () => {
       arg: undefined,
       caught: new Error("oops"),
     };
-    const result = runReps([failure], 1, new NullConsole());
+    const result = runReps([failure], 1, con);
     assertEquals(result, failure);
+    con.checkEmpty();
   });
 
   it("returns a RepFailure from running the test", () => {
@@ -474,16 +500,24 @@ describe("runReps", () => {
         throw new Error("oops");
       },
     };
-    const result = runReps([rep], 1, new NullConsole());
+    const result = runReps([rep], 1, con);
     assertRepFailure(result, {
       seed: 1,
       index: 1,
       messageIncludes: "oops",
     });
+    con.loggedTestFailed();
+    con.checkEmpty();
   });
 });
 
 describe("reportFailure", () => {
+  let con = new RecordingConsole();
+
+  beforeEach(() => {
+    con = new RecordingConsole();
+  });
+
   it("throws the caught error", () => {
     const caught = new Error("oops");
     const failure: RepFailure<unknown> = {
@@ -494,15 +528,24 @@ describe("reportFailure", () => {
     };
     assertThrows(
       () => {
-        reportFailure(failure, new NullConsole());
+        reportFailure(failure, con);
       },
       Error,
       "oops",
     );
+    con.logged(["attempt FAILED, using:", 123], { type: "error" });
+    con.logged('rerun using {only: "0:1:1"}');
+    con.checkEmpty();
   });
 });
 
 describe("repeatTest", () => {
+  let con = new RecordingConsole();
+
+  beforeEach(() => {
+    con = new RecordingConsole();
+  });
+
   it("runs a test function once for each of a list of inputs", () => {
     const inputs: number[] = [];
     const test = (val: number) => {
@@ -510,6 +553,7 @@ describe("repeatTest", () => {
     };
     repeatTest([1, 2, 3], test);
     assertEquals(inputs, [1, 2, 3]);
+    con.checkEmpty();
   });
 
   it("runs a test function on a list of examples and Arbitraries", () => {
@@ -520,9 +564,10 @@ describe("repeatTest", () => {
     repeatTest([1, 2, 3, arb.int32()], test);
     assertEquals(inputs.length, 1004, "unexpected number of test runs");
     assertEquals(inputs.slice(0, 4), [1, 2, 3, 0]);
+    con.checkEmpty();
   });
 
-  it("stops running when a deterministic rep fails", () => {
+  it("stops running when a test fails with a constant", () => {
     const inputs: number[] = [];
     const test = (val: number) => {
       inputs.push(val);
@@ -532,13 +577,14 @@ describe("repeatTest", () => {
     };
     assertThrows(
       () => {
-        repeatTest([1, 2, 3], test, { console: new NullConsole() });
+        repeatTest([1, 2, 3], test, { console: con });
       },
       Error,
       "oops",
     );
     // The failed test will be run a second time with logging enabled.
     assertEquals(inputs, [1, 2, 2]);
+    con.loggedTestFailed();
   });
 
   it("shrinks the test input when a random test fails", () => {
@@ -551,7 +597,7 @@ describe("repeatTest", () => {
     };
     assertThrows(
       () => {
-        repeatTest(arb.int32(), test, { console: new NullConsole() });
+        repeatTest(arb.int32(), test, { console: con });
       },
       Error,
       "test failed with 10",
@@ -560,6 +606,7 @@ describe("repeatTest", () => {
     assert(args.length > 1);
     assertEquals(args[0], 0);
     assertEquals(args[args.length - 1], 10);
+    con.loggedTestFailed();
   });
 
   describe("with console.sometimes()", () => {
@@ -568,48 +615,46 @@ describe("repeatTest", () => {
     };
 
     it("passes when sometimes true", () => {
-      repeatTest(arb.int(0, 1), sometimesZero, { console: new NullConsole() });
+      repeatTest(arb.int(0, 1), sometimesZero, { console: con });
+      con.checkEmpty();
     });
 
     it("fails when never true", () => {
       assertThrows(
         () => {
-          repeatTest(arb.int(1, 2), sometimesZero, {
-            console: new NullConsole(),
-          });
+          repeatTest(arb.int(1, 2), sometimesZero, { console: con });
         },
         AssertionError,
         "sometimes(zero) was never true",
       );
+      con.logged("sometimes(zero): true: 0, false: 2");
+      con.checkEmpty();
     });
 
     it("fails when never false", () => {
       assertThrows(
         () => {
-          repeatTest(arb.of(0), sometimesZero, {
-            console: new NullConsole(),
-          });
+          repeatTest(arb.of(0), sometimesZero, { console: con });
         },
         AssertionError,
         "sometimes(zero) was never false",
       );
+      con.logged("sometimes(zero): true: 1, false: 0");
+      con.checkEmpty();
     });
 
     it("logs when the test fails for some other reason", () => {
-      const console = new RecordingConsole();
       assertThrows(
         () =>
           repeatTest(arb.of(123), (val, console) => {
             console.sometimes("zero", val === 0);
             fail("oops");
-          }, { console }),
+          }, { console: con }),
         Error,
         "oops",
       );
-      assertEquals(console.messages[1], {
-        args: ["sometimes(zero) =>", false],
-        type: "log",
-      });
+      con.loggedTestFailed();
+      con.logged(["sometimes(zero) =>", false], { type: "log" });
     });
   });
 
@@ -620,6 +665,7 @@ describe("repeatTest", () => {
     };
     repeatTest([1, 2, 3], collect);
     assertEquals(inputs, [1, 2, 3]);
+    con.checkEmpty();
   });
   it("throws an exception if reps isn't an integer", () => {
     assertThrows(
@@ -629,6 +675,7 @@ describe("repeatTest", () => {
       Error,
       "reps option must be an integer; got 0.5",
     );
+    con.checkEmpty();
   });
   it("throws an exception if reps is -1", () => {
     assertThrows(
@@ -638,6 +685,7 @@ describe("repeatTest", () => {
       Error,
       "reps option must be non-negative; got -1",
     );
+    con.checkEmpty();
   });
   it("stops running the test function after the limit given by `randomReps`", () => {
     for (let randomReps = 0; randomReps < 100; randomReps++) {
@@ -645,8 +693,10 @@ describe("repeatTest", () => {
       const increment = () => {
         actual++;
       };
-      repeatTest(arb.int32(), increment, { reps: randomReps });
+      con = new RecordingConsole();
+      repeatTest(arb.int32(), increment, { reps: randomReps, console: con });
       assertEquals(actual, 1 + randomReps);
+      con.checkEmpty();
     }
   });
   it("uses a constant only once when given an unbalanced choice of examples", () => {
@@ -657,8 +707,9 @@ describe("repeatTest", () => {
     const counts = new Map<number, number>();
     repeatTest(unbalanced, (i) => {
       counts.set(i, (counts.get(i) || 0) + 1);
-    });
+    }, { console: con });
     assertEquals(counts.get(123.4), 1);
+    con.checkEmpty();
   });
 
   describe("when the 'only' option is set", () => {

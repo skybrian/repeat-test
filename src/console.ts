@@ -8,6 +8,11 @@ import { stopInDebugger } from "./coverage_exclusions.ts";
  */
 export interface SystemConsole {
   /**
+   * Returns true if this is a TestConsole that's turned on.
+   */
+  get on(): boolean | undefined;
+
+  /**
    * Writes a message to the console at "log" log level.
    */
   log(...data: unknown[]): void;
@@ -17,6 +22,8 @@ export interface SystemConsole {
    */
   error(...data: unknown[]): void;
 }
+
+export const systemConsole: SystemConsole = console as unknown as SystemConsole;
 
 /**
  * Provides methods to property tests that are useful for debugging.
@@ -68,6 +75,10 @@ export class CountingTestConsole implements TestConsole {
     return this.#errorCount;
   }
 
+  get on(): boolean {
+    return false;
+  }
+
   log(..._data: unknown[]): void {}
 
   error(..._data: unknown[]): void {
@@ -94,6 +105,10 @@ export class CountingTestConsole implements TestConsole {
 export class FailingTestConsole extends CountingTestConsole {
   constructor(private system: SystemConsole) {
     super();
+  }
+
+  override get on(): true {
+    return true;
   }
 
   override log(...args: unknown[]) {
