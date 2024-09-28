@@ -19,7 +19,7 @@ type ConstructorOpts<T> = {
   dryRun?: boolean;
 };
 
-function checkRandomGenerate(set: PickSet<unknown>, tries: number) {
+function checkRandomGenerate(set: PickSet<unknown>) {
   const search = new PartialTracker();
   search.pickSource = randomPicker(123);
   const stream = new PlayoutSource(search);
@@ -27,9 +27,7 @@ function checkRandomGenerate(set: PickSet<unknown>, tries: number) {
   if (gen !== undefined) {
     return;
   }
-  throw new Error(
-    `${set.label} didn't generate any values in ${tries} tries`,
-  );
+  throw new Error(`${set.label} couldn't generate a random value.`);
 }
 
 /**
@@ -72,7 +70,7 @@ export class Arbitrary<T> implements PickSet<T> {
       this.#examples = opts?.examples;
       this.#maxSize = opts?.maxSize;
       if (opts?.dryRun !== false) {
-        checkRandomGenerate(this, 10);
+        checkRandomGenerate(this);
         generateDefault(this);
       }
     }

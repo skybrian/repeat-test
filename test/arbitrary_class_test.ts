@@ -53,7 +53,7 @@ describe("Arbitrary", () => {
         assertThrows(
           () => Arbitrary.from(callback),
           Error,
-          "(unlabeled) didn't generate any values in 10 tries",
+          "(unlabeled) couldn't generate a random value",
         );
       });
       it("throws an Error if given a callback that calls pick incorrectly", () => {
