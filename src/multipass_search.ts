@@ -60,15 +60,17 @@ export class MultipassTracker implements Tracker {
 
     const pick = this.#pass.pushUnpruned(req.min, replaced);
     assert(this.#shared.push(req, pick));
+
+    if (this.#shared.pruned) {
+      // Skipped to a pruned pick.
+      return undefined;
+    }
+
     return pick;
   }
 
   getReplies(): number[] {
     return this.#pass.getReplies();
-  }
-
-  acceptPlayout(): boolean {
-    return !this.#shared.pruned;
   }
 
   nextPlayout(): number | undefined {

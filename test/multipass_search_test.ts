@@ -70,8 +70,7 @@ function walkFunction(
       }
       result += pick;
     }
-    const accepted = tracker.acceptPlayout();
-    return accepted ? result : undefined;
+    return result;
   }
   return walk;
 }

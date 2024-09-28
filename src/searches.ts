@@ -45,10 +45,6 @@ export class PartialTracker implements Tracker {
     return pick;
   }
 
-  acceptPlayout(): boolean {
-    return true;
-  }
-
   nextPlayout(): number | undefined {
     this.walk.prune();
     return this.walk.pruned ? undefined : this.walk.depth;

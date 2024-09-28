@@ -35,11 +35,6 @@ export interface Tracker {
   maybePick(req: PickRequest): number | undefined;
 
   /**
-   * Returns true if the current playout is not filtered out.
-   */
-  acceptPlayout(): boolean;
-
-  /**
    * Returns the current pick sequence.
    */
   getReplies(): number[];
@@ -127,9 +122,8 @@ export class PlayoutSource {
    */
   endPlayout(): boolean {
     assert(this.#state === "picking", "endPlayout called in the wrong state");
-    const accepted = this.tracker.acceptPlayout();
     this.next();
-    return accepted;
+    return true;
   }
 
   /**
@@ -197,10 +191,6 @@ class SinglePlayoutTracker implements Tracker {
 
   nextPlayout() {
     return undefined;
-  }
-
-  acceptPlayout(): boolean {
-    return true;
   }
 }
 
