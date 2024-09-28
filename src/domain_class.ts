@@ -6,7 +6,7 @@ import { type Failure, failure, type Success, success } from "./results.ts";
 import { PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
 import { generate } from "./generated.ts";
-import { generateDefault } from "./multipass_search.ts";
+import { generateDefault } from "./ordered.ts";
 
 import type { SendErr } from "./options.ts";
 

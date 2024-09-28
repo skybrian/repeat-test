@@ -10,7 +10,7 @@ import {
 import type { RecordShape } from "./options.ts";
 import { PartialTracker } from "./searches.ts";
 import { randomPicker } from "./random.ts";
-import { generateDefault } from "./multipass_search.ts";
+import { generateDefault } from "./ordered.ts";
 import { PlayoutSource } from "./backtracking.ts";
 
 type ConstructorOpts<T> = {

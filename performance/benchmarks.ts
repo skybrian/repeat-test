@@ -3,8 +3,8 @@ import * as dom from "@/doms.ts";
 
 import { generate } from "../src/generated.ts";
 import { pickRandomSeed, randomPicker } from "../src/random.ts";
-import { onePlayout } from "../src/backtracking.ts";
-import { take } from "../src/multipass_search.ts";
+import { onePlayout, PlayoutSource } from "../src/backtracking.ts";
+import { take } from "../src/ordered.ts";
 import { PartialTracker } from "../src/searches.ts";
 import { assert } from "@std/assert/assert";
 import { shrink } from "../src/shrink.ts";
@@ -36,7 +36,7 @@ Deno.bench("generate 10k strings", () => {
   const search = new PartialTracker();
   search.pickSource = randomPicker(123);
   for (let i = 0; i < 10000; i++) {
-    generate(str, search);
+    generate(str, new PlayoutSource(search));
   }
 });
 

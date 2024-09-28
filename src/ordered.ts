@@ -9,11 +9,12 @@ import { PickTree } from "./pick_tree.ts";
 import { generate, makePickFunction } from "./generated.ts";
 
 /**
- * Generates possible playouts with shorter playouts before longer ones.
+ * Generates possible playouts in the order used for choosing defaults.
  *
- * (Here, "shorter" means the playout with trailing minimum picks removed.)
+ * It uses iterative deepening to gradually increase the width and depth of the
+ * search.
  */
-export class MultipassTracker implements Tracker {
+export class OrderedTracker implements Tracker {
   /** Keeps track of which playouts have been pruned, including previous passes. */
   #shared = new PickTree().walk();
 
@@ -94,10 +95,12 @@ export class MultipassTracker implements Tracker {
 }
 
 /**
- * Creates a PlayoutSource suitable for generating a default value.
+ * A stream of playouts in a deterministic order.
+ *
+ * (This order determines how default values are generated.)
  */
-export function defaultPlayouts(): PlayoutSource {
-  return new PlayoutSource(new MultipassTracker());
+export function orderedPlayouts(): PlayoutSource {
+  return new PlayoutSource(new OrderedTracker());
 }
 
 /**
@@ -108,7 +111,7 @@ export function defaultPlayouts(): PlayoutSource {
  * possible.
  */
 export function generateDefault<T>(set: PickSet<T>): Gen<T> {
-  const gen = generate(set, defaultPlayouts());
+  const gen = generate(set, orderedPlayouts());
   assert(gen !== undefined, `${set.label} has no default`);
   return gen;
 }
@@ -123,7 +126,7 @@ export function generateDefault<T>(set: PickSet<T>): Gen<T> {
 export function* generateAll<T>(
   set: PickSet<T>,
 ): IterableIterator<Gen<T>> {
-  const candidates = defaultPlayouts();
+  const candidates = orderedPlayouts();
   let gen = generate(set, candidates);
   while (gen) {
     yield gen;
@@ -177,7 +180,7 @@ export function takeGenerated<T>(set: PickSet<T>, n: number): Gen<T>[] {
  */
 export function take<T>(set: PickSet<T>, n: number): T[] {
   const result = [];
-  const playouts = defaultPlayouts();
+  const playouts = orderedPlayouts();
   while (playouts.startAt(0) && result.length < n) {
     try {
       const pick = makePickFunction(playouts);

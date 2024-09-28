@@ -1,5 +1,5 @@
 import { arb } from "@/mod.ts";
-import { take } from "../src/multipass_search.ts";
+import { take } from "../src/ordered.ts";
 
 take(arb.char16(), 10000);
 console.time("generate all char16");

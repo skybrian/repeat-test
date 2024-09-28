@@ -11,7 +11,7 @@ import type { Domain } from "./domain_class.ts";
 import { assert } from "@std/assert";
 import { generate } from "./generated.ts";
 import { PickTree } from "./pick_tree.ts";
-import { defaultPlayouts } from "./multipass_search.ts";
+import { orderedPlayouts } from "./ordered.ts";
 
 /**
  * Picks from the possible values in a Domain, without replacement.
@@ -41,7 +41,7 @@ export class Jar<T> {
    * (Conceptually; the values will be generated when needed.)
    */
   constructor(readonly dom: Domain<T>) {
-    this.moreExamples = defaultPlayouts();
+    this.moreExamples = orderedPlayouts();
     this.example = this.#nextExample();
   }
 

@@ -10,7 +10,7 @@ import {
   assertFirstValues,
   assertValues,
 } from "../lib/asserts.ts";
-import { generateDefault, takeAll } from "../../src/multipass_search.ts";
+import { generateDefault, takeAll } from "../../src/ordered.ts";
 import { intRange } from "../lib/ranges.ts";
 
 describe("uniqueArray", () => {

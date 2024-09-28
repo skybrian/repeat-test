@@ -17,7 +17,7 @@ import { Arbitrary } from "../src/arbitrary_class.ts";
 import * as arb from "@/arbs.ts";
 import * as dom from "@/doms.ts";
 import { success } from "../src/results.ts";
-import { generateDefault } from "../src/multipass_search.ts";
+import { generateDefault } from "../src/ordered.ts";
 import { RecordingConsole } from "../src/console.ts";
 
 import {

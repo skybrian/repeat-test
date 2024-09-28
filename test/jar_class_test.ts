@@ -11,7 +11,7 @@ import { makePickFunction } from "../src/generated.ts";
 import { PartialTracker } from "../src/searches.ts";
 import { randomPicker } from "../src/random.ts";
 import { alwaysPickMin } from "../src/picks.ts";
-import { defaultPlayouts } from "../src/multipass_search.ts";
+import { orderedPlayouts } from "../src/ordered.ts";
 
 describe("Jar", () => {
   let tracker = new PartialTracker();
@@ -66,7 +66,7 @@ describe("Jar", () => {
 
     describe("with an overlapping oneOf", () => {
       it("picks values using defaults", () => {
-        checkPicksFromOverlap(defaultPlayouts());
+        checkPicksFromOverlap(orderedPlayouts());
       });
       it("picks values randomly", () => {
         repeatTest(arb.int32(), (seed) => {

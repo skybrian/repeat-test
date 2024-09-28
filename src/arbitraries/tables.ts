@@ -9,7 +9,7 @@ import * as arb from "./basics.ts";
 import { PickRequest } from "../picks.ts";
 
 import { type ArrayOpts, parseArrayOpts, type TableOpts } from "../options.ts";
-import { generateAll } from "../multipass_search.ts";
+import { generateAll } from "../ordered.ts";
 import { PickTree } from "../pick_tree.ts";
 import { assert } from "@std/assert/assert";
 import { arrayLengthBiases } from "../math.ts";

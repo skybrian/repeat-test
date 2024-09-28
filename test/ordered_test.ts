@@ -10,14 +10,14 @@ import { Pruned } from "../src/backtracking.ts";
 
 import { assertGenerated, assertValues } from "./lib/asserts.ts";
 import {
-  defaultPlayouts,
   find,
   generateAll,
-  MultipassTracker,
+  orderedPlayouts,
+  OrderedTracker,
   take,
   takeAll,
   takeGenerated,
-} from "../src/multipass_search.ts";
+} from "../src/ordered.ts";
 import { arb } from "@/mod.ts";
 
 class Playouts {
@@ -81,7 +81,7 @@ function runSearch(
 ): Record<string, string[]> {
   const playouts = new Playouts();
 
-  const tracker = new MultipassTracker(maxPasses);
+  const tracker = new OrderedTracker(maxPasses);
   do {
     try {
       const playout = walk(tracker);
@@ -97,19 +97,7 @@ function runSearch(
   return playouts.toRecord();
 }
 
-describe("MultipassTracker", () => {
-  let search = defaultPlayouts();
-
-  beforeEach(() => {
-    search = defaultPlayouts();
-  });
-
-  it("generates one playout when there aren't any branches", () => {
-    assert(search.startAt(0));
-    assert(search.endPlayout());
-    assert(search.done);
-  });
-
+describe("OrderedTracker", () => {
   it("visits each root branch once", () => {
     assertEquals(runSearch(walkFunction(2, 1)), {
       0: ["0"],
@@ -213,9 +201,14 @@ describe("MultipassTracker", () => {
   });
 });
 
-describe("defaultPlayouts", () => {
+describe("orderedPlayouts", () => {
+  let stream = orderedPlayouts();
+
+  beforeEach(() => {
+    stream = orderedPlayouts();
+  });
+
   it("generates one playout when there aren't any branches", () => {
-    const stream = defaultPlayouts();
     assert(stream.startAt(0));
     assert(stream.endPlayout());
     assert(stream.done);

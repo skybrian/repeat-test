@@ -13,7 +13,7 @@ import * as arb from "@/arbs.ts";
 import { generate } from "../../src/generated.ts";
 import { onePlayout } from "../../src/backtracking.ts";
 import { randomPicker } from "../../src/random.ts";
-import { generateDefault } from "../../src/multipass_search.ts";
+import { generateDefault } from "../../src/ordered.ts";
 
 describe("boolean", () => {
   it("is sometimes true", () => {

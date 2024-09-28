@@ -299,3 +299,22 @@ uniqueArray of 100 ints          339.2 µs         2,948 (321.4 µs … 509.0 µ
 generate 10k strings              86.5 ms          11.6 ( 85.0 ms …  89.7 ms)  86.7 ms  89.7 ms  89.7 ms
 shrink a 1k string                56.6 ms          17.7 ( 56.1 ms …  58.8 ms)  56.6 ms  58.8 ms  58.8 ms
 ```
+
+### After refactoring to ordered playouts (regression for uniqueArray)
+
+```
+    CPU | Apple M2
+Runtime | Deno 1.46.3 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+
+benchmark                 time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+------------------------- ----------------------------- --------------------- --------------------------
+generate a string                  5.3 µs       189,000 (  4.6 µs … 149.7 µs)   5.1 µs   7.1 µs   9.2 µs
+take 10k char16                    4.8 ms         209.6 (  4.7 ms …   5.1 ms)   4.8 ms   5.1 ms   5.1 ms
+uniqueArray of 5 ints             41.5 µs        24,120 ( 38.5 µs … 572.2 µs)  40.1 µs  71.1 µs 118.9 µs
+uniqueArray of 6 ints             43.4 µs        23,060 ( 41.6 µs … 332.8 µs)  42.7 µs  56.8 µs 123.0 µs
+uniqueArray of 100 ints          377.1 µs         2,652 (342.5 µs …   8.5 ms) 363.9 µs 567.0 µs 910.2 µs
+generate 10k strings              80.9 ms          12.4 ( 80.6 ms …  83.2 ms)  80.8 ms  83.2 ms  83.2 ms
+shrink a 1k string                54.1 ms          18.5 ( 53.8 ms …  54.5 ms)  54.1 ms  54.5 ms  54.5 ms
+```

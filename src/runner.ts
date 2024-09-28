@@ -11,7 +11,7 @@ import { PickRequest, PlaybackPicker } from "./picks.ts";
 import { generate } from "./generated.ts";
 import { PartialTracker } from "./searches.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
-import { generateDefault } from "./multipass_search.ts";
+import { generateDefault } from "./ordered.ts";
 import { pickRandomSeed, randomPicker, randomPickers } from "./random.ts";
 import {
   CountingTestConsole,
