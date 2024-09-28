@@ -14,7 +14,7 @@ import {
   PlayoutSource,
   Pruned,
 } from "../src/backtracking.ts";
-import { PartialTracker } from "../src/searches.ts";
+import { PartialTracker } from "../src/partial_tracker.ts";
 import { randomPicker, randomPlayouts } from "../src/random.ts";
 
 import { generate, makePickFunction } from "../src/generated.ts";

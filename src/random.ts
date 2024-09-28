@@ -3,7 +3,7 @@ import type { IntPicker, PickRequest } from "./picks.ts";
 import { assert } from "@std/assert";
 import prand from "pure-rand";
 import { PlayoutSource } from "./backtracking.ts";
-import { PartialTracker } from "./searches.ts";
+import { PartialTracker } from "./partial_tracker.ts";
 
 export function pickRandomSeed(): number {
   return Date.now() ^ (Math.random() * 0x100000000);

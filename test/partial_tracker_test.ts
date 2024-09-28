@@ -12,7 +12,7 @@ import * as arb from "@/arbs.ts";
 
 import { alwaysPick, alwaysPickMin, PickRequest } from "../src/picks.ts";
 import { randomPicker } from "../src/random.ts";
-import { PartialTracker } from "../src/searches.ts";
+import { PartialTracker } from "../src/partial_tracker.ts";
 import { generate } from "../src/generated.ts";
 import { PlayoutSource } from "../src/backtracking.ts";
 
