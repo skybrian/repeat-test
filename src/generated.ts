@@ -167,8 +167,7 @@ export function makePickFunction<T>(
 }
 
 /**
- * Generates a value by trying each playout one at a time, given a source of
- * playouts.
+ * Generates a value in a new playout.
  *
  * Returns undefined if it ran out of playouts without generating anything.
  */
@@ -183,6 +182,33 @@ export function generate<T>(
       const val = set.generateFrom(pick);
       const reqs = playouts.getRequests();
       const replies = playouts.getReplies();
+      return new Gen(set, reqs, replies, val);
+    } catch (e) {
+      if (!(e instanceof Pruned)) {
+        throw e;
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Generates a value a the current depth, continuing the current playout if possible.
+ *
+ * Returns undefined if there are no more playouts available at the current depth.
+ */
+export function generateValue<T>(
+  set: PickSet<T>,
+  playouts: PlayoutSource,
+  opts?: GenerateOpts,
+): Gen<T> | undefined {
+  const depth = playouts.depth;
+  while (playouts.startValue(depth)) {
+    try {
+      const pick = makePickFunction(playouts, opts);
+      const val = set.generateFrom(pick);
+      const reqs = playouts.getRequests(depth);
+      const replies = playouts.getReplies(depth);
       return new Gen(set, reqs, replies, val);
     } catch (e) {
       if (!(e instanceof Pruned)) {

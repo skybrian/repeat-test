@@ -14,16 +14,16 @@ import {
   PlayoutSource,
   Pruned,
 } from "../src/backtracking.ts";
-import { PartialTracker } from "../src/partial_tracker.ts";
+import { depthFirstPlayouts, PartialTracker } from "../src/partial_tracker.ts";
 import { randomPicker, randomPlayouts } from "../src/random.ts";
 
-import { generate, makePickFunction } from "../src/generated.ts";
+import { generate, generateValue, makePickFunction } from "../src/generated.ts";
 import { arb } from "@/mod.ts";
-
-const bit = new PickRequest(0, 1);
-const hi = Arbitrary.of("hi", "there");
+import { PlaybackPicker } from "../src/picks.ts";
 
 describe("makePickFunction", () => {
+  const hi = Arbitrary.of("hi", "there");
+  const bit = new PickRequest(0, 1);
   let pick = makePickFunction(minPlayout());
 
   beforeEach(() => {
@@ -78,11 +78,6 @@ describe("makePickFunction", () => {
   });
 });
 
-const hello: PickSet<string> = {
-  label: "hello",
-  generateFrom: () => "hi",
-};
-
 const fails: PickSet<unknown> = {
   label: "fails",
   generateFrom: () => {
@@ -91,6 +86,11 @@ const fails: PickSet<unknown> = {
 };
 
 describe("generate", () => {
+  const hello: PickSet<string> = {
+    label: "hello",
+    generateFrom: () => "hi",
+  };
+
   it("generates a single value for a constant", () => {
     const gen = generate(hello, minPlayout());
     assertEquals(gen, new Gen(hello, [], [], "hi"));
@@ -118,5 +118,73 @@ describe("generate", () => {
       assert(gen !== undefined);
       assertEquals(gen.val, limit);
     }, { reps: 100 });
+  });
+});
+
+describe("generateValue", () => {
+  const bitReq = new PickRequest(0, 1);
+
+  const bit: PickSet<number> = {
+    label: "bit",
+    generateFrom: (pick) => pick(bitReq),
+  };
+
+  it("can generate two bits in different playouts", () => {
+    const playouts = depthFirstPlayouts();
+
+    const gen1 = generateValue(bit, playouts);
+    assertEquals(gen1, new Gen(bit, [bitReq], [0], 0));
+    assertEquals(playouts.depth, 1);
+
+    playouts.endPlayout();
+    assertEquals(playouts.state, "playoutDone");
+    assertEquals(0, playouts.depth);
+
+    const gen2 = generateValue(bit, playouts);
+    assertEquals(gen2, new Gen(bit, [bitReq], [1], 1));
+  });
+
+  it("can generate two bits in the same playout", () => {
+    const playouts = onePlayout(new PlaybackPicker([0, 1]));
+
+    const gen1 = generateValue(bit, playouts);
+    assertEquals(gen1, new Gen(bit, [bitReq], [0], 0));
+    assertEquals(playouts.depth, 1);
+
+    const gen2 = generateValue(bit, playouts);
+    assertEquals(playouts.depth, 2);
+    assertEquals(gen2, new Gen(bit, [bitReq], [1], 1));
+  });
+
+  const filteredOne: PickSet<number> = {
+    label: "filteredOne",
+    generateFrom: (pick) => {
+      const n = pick(bitReq);
+      if (n !== 1) {
+        throw new Pruned("try again");
+      }
+      return n;
+    },
+  };
+
+  it("can generate two bits in restarted playouts", () => {
+    const playouts = depthFirstPlayouts();
+
+    const gen1 = generateValue(filteredOne, playouts);
+    assertEquals(gen1, new Gen(filteredOne, [bitReq], [1], 1));
+    assertEquals(playouts.depth, 1);
+
+    const gen2 = generateValue(filteredOne, playouts);
+    assertEquals(playouts.depth, 2);
+    assertEquals(gen2, new Gen(filteredOne, [bitReq], [1], 1));
+  });
+
+  it("passes through an error thrown by the PickSet", () => {
+    assertThrows(() => generateValue(fails, minPlayout()), Error, "oops");
+  });
+
+  it("returns undefined if there are no matching playouts", () => {
+    const playouts = onePlayout(new PlaybackPicker([0]));
+    assertEquals(generateValue(filteredOne, playouts), undefined);
   });
 });

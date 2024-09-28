@@ -28,8 +28,8 @@ export class PartialTracker implements Tracker {
     this.pickSource = picker;
   }
 
-  getReplies(): number[] {
-    return this.walk.getReplies();
+  getReplies(start?: number): number[] {
+    return this.walk.getReplies(start);
   }
 
   startPlayout(depth: number): void {
@@ -58,6 +58,6 @@ export class PartialTracker implements Tracker {
 /**
  * Playouts in depth-first order, starting with all minimum picks.
  */
-export function minPlayouts(): PlayoutSource {
+export function depthFirstPlayouts(): PlayoutSource {
   return new PlayoutSource(new PartialTracker(alwaysPickMin));
 }

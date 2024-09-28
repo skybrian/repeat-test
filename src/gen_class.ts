@@ -103,6 +103,7 @@ export class Gen<T> implements Success<T> {
   readonly #reqs: PickRequest[];
   readonly #replies: number[];
   #val: T | typeof needGenerate;
+  readonly playout: Playout;
 
   /**
    * Creates a generated value with the given contents.
@@ -120,6 +121,7 @@ export class Gen<T> implements Success<T> {
     this.#val = val;
     this.#reqs = reqs;
     this.#replies = replies;
+    this.playout = new Playout(this.#reqs, this.#replies);
   }
 
   /** Satisfies the Success interface. */
@@ -142,10 +144,6 @@ export class Gen<T> implements Success<T> {
       this.#val = needGenerate;
     }
     return val;
-  }
-
-  get playout(): Playout {
-    return new Playout(this.#reqs, this.#replies);
   }
 
   /**

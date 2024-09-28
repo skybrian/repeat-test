@@ -37,7 +37,7 @@ export interface Tracker {
   /**
    * Returns the current pick sequence.
    */
-  getReplies(): number[];
+  getReplies(start?: number): number[];
 
   /**
    * Finishes the current pick sequence and moves to the next one.
@@ -92,6 +92,26 @@ export class PlayoutSource {
   }
 
   /**
+   * Starts a new value at the given depth.
+   *
+   * The depth must be between 0 and the current depth.
+   *
+   * If currently picking and the depth matches the current depth, does nothing
+   * (continuing the current playout).
+   *
+   * If the depth is lower than the current depth, starts a new playout at that
+   * depth (backtracks).
+   *
+   * Returns false if there are no more playouts at the given depth.
+   */
+  startValue(depth: number): boolean {
+    if (this.#state === "picking" && depth === this.#depth) {
+      return true; // continue the current playout
+    }
+    return this.startAt(depth);
+  }
+
+  /**
    * Picks an integer within the range of the given request.
    *
    * If successful, the pick is recorded and the depth is incremented.
@@ -138,17 +158,19 @@ export class PlayoutSource {
    *
    * Available only between {@link startAt} and {@link endPlayout}.
    */
-  getRequests(): PickRequest[] {
+  getRequests(start?: number): PickRequest[] {
+    start = start ?? 0;
     if (this.state !== "picking") {
       throw new Error(
         `getPicks called in the wrong state. Wanted "picking"; got "${this.state}"`,
       );
     }
-    return this.#reqs.slice(0, this.#depth); // trailing reqs are garbage
+    return this.#reqs.slice(start, this.#depth); // trailing reqs are garbage
   }
 
-  getReplies() {
-    return this.tracker.getReplies();
+  getReplies(start?: number) {
+    start = start ?? 0;
+    return this.tracker.getReplies(start);
   }
 
   private nextPlayout() {
@@ -172,8 +194,8 @@ class SinglePlayoutTracker implements Tracker {
 
   constructor(private picker: IntPicker) {}
 
-  getReplies(start?: number, end?: number): number[] {
-    return this.replies.slice(start, end);
+  getReplies(start?: number): number[] {
+    return this.replies.slice(start);
   }
 
   startPlayout(depth: number): void {

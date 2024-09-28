@@ -70,8 +70,8 @@ export class OrderedTracker implements Tracker {
     return pick;
   }
 
-  getReplies(): number[] {
-    return this.#pass.getReplies();
+  getReplies(start?: number): number[] {
+    return this.#pass.getReplies(start);
   }
 
   nextPlayout(): number | undefined {

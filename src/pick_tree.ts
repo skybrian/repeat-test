@@ -250,8 +250,9 @@ export class Walk {
   }
 
   /** Returns the picks leading to the current branch. */
-  getReplies(): number[] {
-    return this.pickPath.slice(1, this.len);
+  getReplies(start?: number): number[] {
+    start = start ?? 0;
+    return this.pickPath.slice(1 + start, this.len);
   }
 
   /** Returns the pick that led to the current branch */

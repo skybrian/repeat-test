@@ -5,9 +5,11 @@ import { assertEquals } from "@std/assert/equals";
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { minPlayout } from "../src/backtracking.ts";
 import { generate } from "../src/generated.ts";
-import { noChange } from "../src/picks.ts";
+import { noChange, PickRequest } from "../src/picks.ts";
 import { RecordingConsole } from "../src/console.ts";
-import { arb } from "@/mod.ts";
+import * as arb from "../src/entrypoints/arbs.ts";
+import { Gen, Playout } from "../src/gen_class.ts";
+import { equal } from "@std/assert/equal";
 
 const frozen: PickSet<readonly string[]> = {
   label: "frozen",
@@ -63,5 +65,26 @@ describe("Gen", () => {
       con.logged(["0: 1..10 =>", 1]);
       con.checkEmpty();
     });
+  });
+
+  const bit = new PickRequest(0, 1);
+  const hi: PickSet<string> = {
+    label: "hi",
+    generateFrom: () => "hi",
+  };
+
+  it("compares differently with different replies", () => {
+    const a = new Gen(hi, [bit], [0], "hi");
+    const b = new Gen(hi, [bit], [1], "hi");
+    assert(!equal(a, b));
+  });
+});
+
+describe("Playout", () => {
+  const bit = new PickRequest(0, 1);
+  it("compares differently with different replies", () => {
+    const a = new Playout([bit], [0]);
+    const b = new Playout([bit], [1]);
+    assert(!equal(a, b));
   });
 });

@@ -11,15 +11,15 @@ import * as dom from "@/doms.ts";
 import { onePlayout, Pruned } from "../src/backtracking.ts";
 import { makePickFunction } from "../src/generated.ts";
 import { alwaysPickMin } from "../src/picks.ts";
-import { minPlayouts } from "../src/partial_tracker.ts";
+import { depthFirstPlayouts } from "../src/partial_tracker.ts";
 import { orderedPlayouts } from "../src/ordered.ts";
 import { randomPlayouts } from "../src/random.ts";
 
 describe("Jar", () => {
-  let pick = makePickFunction(minPlayouts());
+  let pick = makePickFunction(depthFirstPlayouts());
 
   beforeEach(() => {
-    const stream = minPlayouts();
+    const stream = depthFirstPlayouts();
     pick = makePickFunction(stream);
     assert(stream.startAt(0));
   });
