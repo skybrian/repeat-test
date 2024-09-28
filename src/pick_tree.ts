@@ -105,6 +105,23 @@ class Node {
     }
   }
 
+  firstUnprunedInRange(
+    min: number,
+    max: number,
+  ): number | undefined {
+    assert(this.branchesLeft > 0, "no branches left");
+    let pick = min;
+    if (pick < this.#min) pick = this.#min;
+    if (max > this.#max) max = this.#max;
+    while (pick <= max) {
+      if (this[pick] !== PRUNED) {
+        return pick;
+      }
+      pick++;
+    }
+    return undefined;
+  }
+
   /**
    * Sets the branch at the given pick to pruned.
    *
@@ -248,14 +265,18 @@ export class Walk {
   }
 
   /**
-   * If current branch is a Node, returns its minimum unpruned pick.
+   * Finds the minimum pick that's both unpruned and in the given range.
+   *
+   * Returns undefined if there are no unpruned picks in the range.
    */
-  lowestUnpruned(): number | undefined {
+  firstUnprunedInRange(min: number, max: number): number | undefined {
     const branch = this.parent.getBranch(this.lastReply);
-    if (branch instanceof Node) {
-      return branch.findUnpruned(0);
+    if (branch === undefined) {
+      return min; // no filtering
+    } else if (branch === PRUNED) {
+      return undefined; // all filtered out
     }
-    return undefined;
+    return branch.firstUnprunedInRange(min, max);
   }
 
   /**

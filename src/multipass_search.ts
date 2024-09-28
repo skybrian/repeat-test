@@ -51,16 +51,15 @@ export class MultipassTracker implements Tracker {
       this.#filteredThisPass = true;
     }
 
-    const lowest = this.#shared.lowestUnpruned();
-    if (lowest !== undefined) {
-      // No need to revisit branches already pruned in a previous pass.
-      this.#pass.pruneBranchTo(lowest);
-    }
-
-    const pick = this.#pass.pushUnpruned(req.min, replaced);
-    if (!this.#shared.push(req, pick)) {
+    const lowest = this.#shared.firstUnprunedInRange(req.min, req.max);
+    if (lowest === undefined) {
       return undefined; // pruned in previous pass
     }
+    // No need to revisit branches already pruned in a previous pass.
+    this.#pass.pruneBranchTo(lowest);
+
+    const pick = this.#pass.pushUnpruned(req.min, replaced);
+    assert(this.#shared.push(req, pick));
     return pick;
   }
 

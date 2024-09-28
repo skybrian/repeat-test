@@ -69,6 +69,7 @@ export class Jar<T> {
         next: (req: PickRequest) => number,
       ): number {
         const innerReq = walk.narrow(req);
+        assert(innerReq !== undefined);
         const n = next(innerReq);
         assert(walk.push(req, n));
         return n;

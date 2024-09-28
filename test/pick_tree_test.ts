@@ -147,4 +147,25 @@ describe("Walk", () => {
       assertEquals(walk.getReplies().length, 0);
     });
   });
+
+  describe("firstUnprunedInRange", () => {
+    it("returns the minimum value for an unexplored tree", () => {
+      assertEquals(walk.firstUnprunedInRange(0, 1), 0);
+    });
+    it("returns the minmum value from the tree", () => {
+      tree.walk().push(new PickRequest(1, 2), 0);
+      assertEquals(tree.walk().firstUnprunedInRange(0, 1), 1);
+    });
+    it("returns undefined if all overlapping values were pruned", () => {
+      const bit = new PickRequest(0, 1);
+      tree.walk().push(bit, 1);
+      assert(tree.prune(playout([bit], [1])));
+      assertEquals(tree.walk().firstUnprunedInRange(1, 2), undefined);
+    });
+    it("returns undefined if there is no overlap", () => {
+      const bit = new PickRequest(0, 1);
+      tree.walk().push(bit, 1);
+      assertEquals(tree.walk().firstUnprunedInRange(2, 3), undefined);
+    });
+  });
 });
