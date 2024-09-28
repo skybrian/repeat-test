@@ -11,7 +11,7 @@ import { repeatTest } from "@/runner.ts";
 import * as arb from "@/arbs.ts";
 
 import { alwaysPick, alwaysPickMin, PickRequest } from "../src/picks.ts";
-import { randomPicker } from "../src/random.ts";
+import { randomPicker, randomPlayouts } from "../src/random.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
 import { generate } from "../src/generated.ts";
 import { PlayoutSource } from "../src/backtracking.ts";
@@ -42,7 +42,7 @@ describe("PartialTracker", () => {
       assertEquals(stream.depth, 1);
       assertEquals(stream.getRequests(), [bit]);
       assertEquals(stream.getReplies(), [0]);
-      assert(stream.endPlayout());
+      stream.endPlayout();
       assert(pick !== undefined);
       assertFalse(tracker.tree.available([pick]));
     });
@@ -52,7 +52,7 @@ describe("PartialTracker", () => {
       const uint32 = new PickRequest(0, 2 ** 32 - 1);
       const pick = stream.nextPick(uint32);
       assertEquals(pick, 0);
-      assert(stream.endPlayout());
+      stream.endPlayout();
       assert(pick !== undefined);
       assertFalse(tracker.tree.available([pick]), "not pruned");
     });
@@ -66,7 +66,7 @@ describe("PartialTracker", () => {
 
     describe("when using a random underlying picker", () => {
       beforeEach(() => {
-        tracker.pickSource = randomPicker(123);
+        stream = randomPlayouts(123);
       });
 
       it("doesn't revisit a constant in an unbalanced tree", () => {
@@ -95,13 +95,13 @@ describe("PartialTracker", () => {
     });
   });
 
-  describe("finishPlayout", () => {
+  describe("endPlayout", () => {
     it("disallows calling getRequests() afterwards", () => {
       assert(stream.startAt(0));
       assertEquals(stream.nextPick(bit), 0);
       assertEquals(stream.nextPick(new PickRequest(0, 0)), 0);
       assertEquals(stream.getReplies(), [0, 0]);
-      assert(stream.endPlayout());
+      stream.endPlayout();
       assertThrows(() => stream.getRequests(), Error);
     });
   });
@@ -197,7 +197,7 @@ describe("PartialTracker", () => {
           assert(pick !== undefined);
           picks.push(pick);
         }
-        assert(stream.endPlayout());
+        stream.endPlayout();
         assertFalse(tracker.tree.available(picks));
         const key = JSON.stringify(picks);
         if (seen.has(key)) {

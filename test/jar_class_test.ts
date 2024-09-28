@@ -40,9 +40,7 @@ describe("Jar", () => {
           assertFalse(seen.has(val));
           seen.add(val);
         }
-        if (stream.endPlayout()) {
-          break;
-        }
+        break;
       } catch (e) {
         if (!(e instanceof Pruned)) {
           throw e;

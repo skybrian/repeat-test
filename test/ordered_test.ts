@@ -210,7 +210,7 @@ describe("orderedPlayouts", () => {
 
   it("generates one playout when there aren't any branches", () => {
     assert(stream.startAt(0));
-    assert(stream.endPlayout());
+    stream.endPlayout();
     assert(stream.done);
   });
 });

@@ -183,9 +183,7 @@ export function generate<T>(
       const val = set.generateFrom(pick);
       const reqs = playouts.getRequests();
       const replies = playouts.getReplies();
-      if (playouts.endPlayout()) {
-        return new Gen(set, reqs, replies, val);
-      }
+      return new Gen(set, reqs, replies, val);
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;
@@ -205,7 +203,5 @@ export function mustGenerate<T>(
   const playouts = onePlayout(new PlaybackPicker(replies));
   assert(playouts.startAt(0), "no more playouts");
   const pick = makePickFunction(playouts);
-  const val = set.generateFrom(pick);
-  assert(playouts.endPlayout(), "picks not accepted");
-  return val;
+  return set.generateFrom(pick);
 }

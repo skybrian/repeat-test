@@ -80,7 +80,7 @@ export class PlayoutSource {
   startAt(depth: number): boolean {
     // console.log("startAt", depth);
     if (this.#state === "picking") {
-      this.next();
+      this.nextPlayout();
     }
     if (this.#state === "searchDone" || depth > this.depth) {
       return false;
@@ -103,7 +103,7 @@ export class PlayoutSource {
 
     const result = this.tracker.maybePick(req);
     if (result === undefined) {
-      this.next();
+      this.nextPlayout();
       return undefined;
     }
 
@@ -120,10 +120,9 @@ export class PlayoutSource {
    *
    * It's an error to call {@link nextPick} after finishing the playout.
    */
-  endPlayout(): boolean {
+  endPlayout(): void {
     assert(this.#state === "picking", "endPlayout called in the wrong state");
-    this.next();
-    return true;
+    this.nextPlayout();
   }
 
   /**
@@ -152,7 +151,7 @@ export class PlayoutSource {
     return this.tracker.getReplies();
   }
 
-  private next() {
+  private nextPlayout() {
     const newDepth = this.tracker.nextPlayout();
     if (newDepth === undefined) {
       this.#state = "searchDone";
