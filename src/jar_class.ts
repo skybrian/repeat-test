@@ -70,7 +70,7 @@ export class Jar<T> {
       ): number {
         const innerReq = walk.narrow(req);
         const n = next(innerReq);
-        walk.push(req, n);
+        assert(walk.push(req, n));
         return n;
       }
       return narrowToRemaining;

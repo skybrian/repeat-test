@@ -316,6 +316,9 @@ export class Walk {
   /**
    * Attempts to follow a branch, creating a node if needed.
    *
+   * Returns false if the *parent* was already pruned. (The node doesn't exist.)
+   * The current pick isn't checked.
+   *
    * Throws an Error if a request's range doesn't match a previous playout.
    */
   push(req: PickRequest, pick: number): boolean {
