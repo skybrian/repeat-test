@@ -180,11 +180,22 @@ describe("generateValue", () => {
   });
 
   it("passes through an error thrown by the PickSet", () => {
-    assertThrows(() => generateValue(fails, minPlayout()), Error, "oops");
+    assertThrows(
+      () => generateValue(fails, depthFirstPlayouts()),
+      Error,
+      "oops",
+    );
   });
 
+  const rejectAll: PickSet<unknown> = {
+    label: "rejectAll",
+    generateFrom: () => {
+      throw new Pruned("nope");
+    },
+  };
+
   it("returns undefined if there are no matching playouts", () => {
-    const playouts = onePlayout(new PlaybackPicker([0]));
-    assertEquals(generateValue(filteredOne, playouts), undefined);
+    const playouts = depthFirstPlayouts();
+    assertEquals(generateValue(rejectAll, playouts), undefined);
   });
 });

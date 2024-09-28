@@ -176,20 +176,10 @@ export function generate<T>(
   playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): Gen<T> | undefined {
-  while (playouts.startAt(0)) {
-    try {
-      const pick = makePickFunction(playouts, opts);
-      const val = set.generateFrom(pick);
-      const reqs = playouts.getRequests();
-      const replies = playouts.getReplies();
-      return new Gen(set, reqs, replies, val);
-    } catch (e) {
-      if (!(e instanceof Pruned)) {
-        throw e;
-      }
-    }
+  if (!playouts.startAt(0)) {
+    return undefined;
   }
-  return undefined;
+  return generateValue(set, playouts, opts);
 }
 
 /**
@@ -213,6 +203,9 @@ export function generateValue<T>(
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;
+      }
+      if (playouts.state === "picking") {
+        playouts.endPlayout(); // pruned, move to next playout
       }
     }
   }
