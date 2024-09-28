@@ -8,7 +8,12 @@ import { Arbitrary } from "@/arbitrary.ts";
 import { Gen } from "../src/gen_class.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
-import { minPlayout, onePlayout, Pruned } from "../src/backtracking.ts";
+import {
+  minPlayout,
+  onePlayout,
+  PlayoutSource,
+  Pruned,
+} from "../src/backtracking.ts";
 import { PartialTracker } from "../src/searches.ts";
 import { randomPicker } from "../src/random.ts";
 
@@ -22,7 +27,8 @@ describe("makePickFunction", () => {
   let pick = makePickFunction(minPlayout());
 
   beforeEach(() => {
-    const search = new PartialTracker();
+    const tracker = new PartialTracker();
+    const search = new PlayoutSource(tracker);
     search.startAt(0);
     pick = makePickFunction(search);
   });
@@ -64,10 +70,11 @@ describe("makePickFunction", () => {
       return n;
     });
 
-    const search = new PartialTracker();
-    search.pickSource = alwaysPick(3);
-    search.startAt(0);
-    pick = makePickFunction(search);
+    const tracker = new PartialTracker();
+    tracker.pickSource = alwaysPick(3);
+    const stream = new PlayoutSource(tracker);
+    stream.startAt(0);
+    pick = makePickFunction(stream);
 
     assertEquals(pick(arb), 4);
   });

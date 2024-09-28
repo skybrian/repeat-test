@@ -1,3 +1,4 @@
+import type { Tracker } from "./backtracking.ts";
 import type { PickSet } from "./generated.ts";
 import type { Gen } from "./gen_class.ts";
 
@@ -12,7 +13,7 @@ import { generate, makePickFunction } from "./generated.ts";
  *
  * (Here, "shorter" means the playout with trailing minimum picks removed.)
  */
-export class MultipassSearch extends PlayoutSource {
+export class MultipassTracker implements Tracker {
   /** Keeps track of which playouts have been pruned, including previous passes. */
   #shared = new PickTree().walk();
 
@@ -22,30 +23,28 @@ export class MultipassSearch extends PlayoutSource {
   #currentPass = 0;
   #filteredThisPass = false;
 
-  constructor(readonly maxPasses?: number) {
-    super();
-  }
+  constructor(readonly maxPasses?: number) {}
 
   get currentPass() {
     return this.#currentPass;
   }
 
-  protected startPlayout(depth: number): void {
+  startPlayout(depth: number): void {
     this.#shared.trim(depth);
     this.#pass.trim(depth);
   }
 
-  protected maybePick(req: PickRequest): number | undefined {
+  maybePick(req: PickRequest): number | undefined {
     let replaced = req;
 
-    let maxSize = this.#currentPass - this.depth + 1;
+    let maxSize = this.#currentPass - this.#pass.depth + 1;
     if (this.#currentPass > 10) {
       // Widen more rapidly to handle scanning over a very wide PickRequest like
       // char16 without an excessive number of passes. (Which pass to start at
       // doesn't seem to effect performance that much.)
       maxSize *= this.#currentPass - 10;
     }
-    if (maxSize < 1 || this.depth >= this.#currentPass) maxSize = 1;
+    if (maxSize < 1 || this.#pass.depth >= this.#currentPass) maxSize = 1;
 
     if (maxSize < req.size) {
       replaced = new PickRequest(req.min, req.min + maxSize - 1);
@@ -69,11 +68,11 @@ export class MultipassSearch extends PlayoutSource {
     return this.#pass.getReplies();
   }
 
-  override acceptPlayout(): boolean {
+  acceptPlayout(): boolean {
     return !this.#shared.pruned;
   }
 
-  protected nextPlayout(): number | undefined {
+  nextPlayout(): number | undefined {
     this.#shared.prune();
     this.#pass.prune();
     if (!this.#pass.pruned) {
@@ -94,6 +93,13 @@ export class MultipassSearch extends PlayoutSource {
 }
 
 /**
+ * Creates a PlayoutSource suitable for generating a default value.
+ */
+export function defaultPlayouts(): PlayoutSource {
+  return new PlayoutSource(new MultipassTracker());
+}
+
+/**
  * Generates a default value for a PickSet, along with the picks used to
  * generate it.
  *
@@ -101,8 +107,7 @@ export class MultipassSearch extends PlayoutSource {
  * possible.
  */
 export function generateDefault<T>(set: PickSet<T>): Gen<T> {
-  const search = new MultipassSearch();
-  const gen = generate(set, search);
+  const gen = generate(set, defaultPlayouts());
   assert(gen !== undefined, `${set.label} has no default`);
   return gen;
 }
@@ -117,11 +122,11 @@ export function generateDefault<T>(set: PickSet<T>): Gen<T> {
 export function* generateAll<T>(
   set: PickSet<T>,
 ): IterableIterator<Gen<T>> {
-  const search = new MultipassSearch();
-  let gen = generate(set, search);
+  const candidates = defaultPlayouts();
+  let gen = generate(set, candidates);
   while (gen) {
     yield gen;
-    gen = generate(set, search);
+    gen = generate(set, candidates);
   }
 }
 
@@ -171,7 +176,7 @@ export function takeGenerated<T>(set: PickSet<T>, n: number): Gen<T>[] {
  */
 export function take<T>(set: PickSet<T>, n: number): T[] {
   const result = [];
-  const playouts = new MultipassSearch();
+  const playouts = defaultPlayouts();
   while (playouts.startAt(0) && result.length < n) {
     try {
       const pick = makePickFunction(playouts);

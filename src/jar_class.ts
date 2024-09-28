@@ -1,4 +1,5 @@
 import type { PickRequest } from "./picks.ts";
+import type { PlayoutSource } from "./backtracking.ts";
 import type {
   IntPickerMiddleware,
   PickFunction,
@@ -10,7 +11,7 @@ import type { Domain } from "./domain_class.ts";
 import { assert } from "@std/assert";
 import { generate } from "./generated.ts";
 import { PickTree } from "./pick_tree.ts";
-import { MultipassSearch } from "./multipass_search.ts";
+import { defaultPlayouts } from "./multipass_search.ts";
 
 /**
  * Picks from the possible values in a Domain, without replacement.
@@ -32,7 +33,7 @@ export class Jar<T> {
    * A source of additional examples to test. It won't run out until the jar is
    * empty.
    */
-  private readonly moreExamples: MultipassSearch;
+  private readonly moreExamples: PlayoutSource;
 
   /**
    * Creates a mutable set of all the values in a domain.
@@ -40,7 +41,7 @@ export class Jar<T> {
    * (Conceptually; the values will be generated when needed.)
    */
   constructor(readonly dom: Domain<T>) {
-    this.moreExamples = new MultipassSearch();
+    this.moreExamples = defaultPlayouts();
     this.example = this.#nextExample();
   }
 

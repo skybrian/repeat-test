@@ -1,5 +1,7 @@
-import { alwaysPickMin, type IntPicker, type PickRequest } from "./picks.ts";
-import { PlayoutSource } from "./backtracking.ts";
+import type { IntPicker, PickRequest } from "./picks.ts";
+import type { Tracker } from "./backtracking.ts";
+
+import { alwaysPickMin } from "./picks.ts";
 import { PickTree } from "./pick_tree.ts";
 
 /**
@@ -14,30 +16,24 @@ import { PickTree } from "./pick_tree.ts";
  * The default search is depth-first, but it can also be configured to pick
  * randomly using {@link pickSource}.
  */
-export class PartialTracker extends PlayoutSource {
+export class PartialTracker implements Tracker {
   readonly tree: PickTree = new PickTree();
-  private readonly walk = this.tree.walk();
 
+  private readonly walk = this.tree.walk();
   private odds: number[] = [];
 
-  /**
-   * Used when deciding which branch to take in the search tree.
-   *
-   * Note that sometimes the picked branch has been pruned, in which case a
-   * different pick will be used.
-   */
   pickSource: IntPicker = alwaysPickMin;
 
   getReplies(): number[] {
     return this.walk.getReplies();
   }
 
-  protected startPlayout(depth: number): void {
+  startPlayout(depth: number): void {
     this.walk.trim(depth);
     this.odds.length = depth;
   }
 
-  protected maybePick(req: PickRequest): number {
+  maybePick(req: PickRequest): number {
     const depth = this.odds.length;
     const newOdds = depth > 0 ? this.odds[depth - 1] * (1 / req.size) : 1;
     this.odds.push(newOdds);
@@ -49,7 +45,11 @@ export class PartialTracker extends PlayoutSource {
     return pick;
   }
 
-  protected nextPlayout(): number | undefined {
+  acceptPlayout(): boolean {
+    return true;
+  }
+
+  nextPlayout(): number | undefined {
     this.walk.prune();
     return this.walk.pruned ? undefined : this.walk.depth;
   }

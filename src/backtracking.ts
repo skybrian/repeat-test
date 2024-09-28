@@ -18,13 +18,49 @@ export class Pruned extends Error {
 }
 
 /**
+ * Generates pick sequences, avoiding duplicates.
+ */
+export interface Tracker {
+  /**
+   * Starts a playout at the given depth.
+   *
+   * If depth > 0, it should be less than or equal to the value returned by the
+   * last call to {@link nextPlayout}.
+   */
+  startPlayout(depth: number): void;
+
+  /**
+   * Returns the next pick, or undefined if it's pruned by the tracker.
+   */
+  maybePick(req: PickRequest): number | undefined;
+
+  /**
+   * Returns true if the current playout is not filtered out.
+   */
+  acceptPlayout(): boolean;
+
+  /**
+   * Returns the current pick sequence.
+   */
+  getReplies(): number[];
+
+  /**
+   * Finishes the current pick sequence and moves to the next one.
+   * Returns the new depth or undefined if there are no more playouts.
+   */
+  nextPlayout(): number | undefined;
+}
+
+/**
  * A picker that can back up to a previous point in a playout and try a
  * different path.
  */
-export abstract class PlayoutSource {
+export class PlayoutSource {
   #state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
   #depth = 0;
   readonly #reqs: PickRequest[] = [];
+
+  constructor(private readonly tracker: Tracker) {}
 
   get state(): "ready" | "picking" | "playoutDone" | "searchDone" {
     return this.#state;
@@ -54,7 +90,7 @@ export abstract class PlayoutSource {
     if (this.#state === "searchDone" || depth > this.depth) {
       return false;
     }
-    this.startPlayout(depth);
+    this.tracker.startPlayout(depth);
     this.#depth = depth;
     this.#state = "picking";
     return true;
@@ -70,7 +106,7 @@ export abstract class PlayoutSource {
   nextPick(req: PickRequest): number | undefined {
     assert(this.state === "picking", "nextPick called in the wrong state");
 
-    const result = this.maybePick(req);
+    const result = this.tracker.maybePick(req);
     if (result === undefined) {
       this.next();
       return undefined;
@@ -91,7 +127,7 @@ export abstract class PlayoutSource {
    */
   endPlayout(): boolean {
     assert(this.#state === "picking", "endPlayout called in the wrong state");
-    const accepted = this.acceptPlayout();
+    const accepted = this.tracker.acceptPlayout();
     this.next();
     return accepted;
   }
@@ -118,25 +154,12 @@ export abstract class PlayoutSource {
     return this.#reqs.slice(0, this.#depth); // trailing reqs are garbage
   }
 
-  abstract getReplies(): number[];
-
-  protected abstract startPlayout(depth: number): void;
-
-  protected abstract maybePick(req: PickRequest): number | undefined;
-
-  /** Returns true if the current playout is not filtered out. */
-  protected acceptPlayout(): boolean {
-    return true;
+  getReplies() {
+    return this.tracker.getReplies();
   }
 
-  /**
-   * Removes the current playout. Returns the new depth or undefined if there
-   * are no more playouts.
-   */
-  protected abstract nextPlayout(): number | undefined;
-
   private next() {
-    const newDepth = this.nextPlayout();
+    const newDepth = this.tracker.nextPlayout();
     if (newDepth === undefined) {
       this.#state = "searchDone";
       this.#depth = 0;
@@ -148,30 +171,36 @@ export abstract class PlayoutSource {
 }
 
 /**
- * A source that only generates one playout.
+ * A tracker that only generates one playout.
  */
-class SinglePlayoutSource extends PlayoutSource {
+class SinglePlayoutTracker implements Tracker {
+  private started = false;
   private replies: number[] = [];
 
-  constructor(private picker: IntPicker) {
-    super();
-  }
+  constructor(private picker: IntPicker) {}
 
   getReplies(start?: number, end?: number): number[] {
     return this.replies.slice(start, end);
   }
 
-  protected startPlayout(_depth: number): void {
+  startPlayout(depth: number): void {
+    assert(depth === 0, "SinglePlayoutTracker only supports depth 0");
+    assert(!this.started, "startPlayout called twice");
+    this.started = true;
   }
 
-  protected maybePick(req: PickRequest): number {
+  maybePick(req: PickRequest): number {
     const pick = this.picker.pick(req);
     this.replies.push(pick);
     return pick;
   }
 
-  protected nextPlayout() {
+  nextPlayout() {
     return undefined;
+  }
+
+  acceptPlayout(): boolean {
+    return true;
   }
 }
 
@@ -179,10 +208,10 @@ class SinglePlayoutSource extends PlayoutSource {
  * A source that only generates one playout.
  */
 export function onePlayout(picker: IntPicker): PlayoutSource {
-  return new SinglePlayoutSource(picker);
+  return new PlayoutSource(new SinglePlayoutTracker(picker));
 }
 
 /** A source of a single playout that always picks the minimum */
 export function minPlayout(): PlayoutSource {
-  return new SinglePlayoutSource(alwaysPickMin);
+  return new PlayoutSource(new SinglePlayoutTracker(alwaysPickMin));
 }

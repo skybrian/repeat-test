@@ -1,16 +1,19 @@
+import type { Tracker } from "../src/backtracking.ts";
+
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows, fail } from "@std/assert";
 
 import { Arbitrary } from "@/arbitrary.ts";
 
 import { PickRequest } from "../src/picks.ts";
-import { type PlayoutSource, Pruned } from "../src/backtracking.ts";
+import { Pruned } from "../src/backtracking.ts";
 
 import { assertGenerated, assertValues } from "./lib/asserts.ts";
 import {
+  defaultPlayouts,
   find,
   generateAll,
-  MultipassSearch,
+  MultipassTracker,
   take,
   takeAll,
   takeGenerated,
@@ -42,7 +45,7 @@ class Playouts {
   }
 }
 
-type WalkFunction = (playouts: PlayoutSource) => string | undefined;
+type WalkFunction = (playouts: Tracker) => string | undefined;
 
 function walkFunction(
   width: number,
@@ -51,14 +54,14 @@ function walkFunction(
 ): WalkFunction {
   const branch = new PickRequest(0, width - 1);
 
-  function walk(playouts: PlayoutSource): string | undefined {
-    assert(playouts.startAt(0));
+  function walk(tracker: Tracker): string | undefined {
+    tracker.startPlayout(0);
     let result = "";
     for (let i = 0; i < depth; i++) {
       if (solutions.includes(result)) {
-        return playouts.endPlayout() ? result : undefined;
+        break;
       }
-      const pick = playouts.nextPick(branch);
+      const pick = tracker.maybePick(branch);
       if (pick === undefined) {
         return undefined;
       }
@@ -67,7 +70,8 @@ function walkFunction(
       }
       result += pick;
     }
-    return playouts.endPlayout() ? result : undefined;
+    const accepted = tracker.acceptPlayout();
+    return accepted ? result : undefined;
   }
   return walk;
 }
@@ -78,28 +82,27 @@ function runSearch(
 ): Record<string, string[]> {
   const playouts = new Playouts();
 
-  const search = new MultipassSearch(maxPasses);
-  while (!search.done) {
-    const currentPass = search.currentPass;
+  const tracker = new MultipassTracker(maxPasses);
+  do {
     try {
-      const playout = walk(search);
+      const playout = walk(tracker);
       if (playout !== undefined) {
-        playouts.add(playout, currentPass);
+        playouts.add(playout, tracker.currentPass);
       }
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;
       }
     }
-  }
+  } while (tracker.nextPlayout() !== undefined);
   return playouts.toRecord();
 }
 
-describe("MultipassSearch", () => {
-  let search = new MultipassSearch();
+describe("MultipassTracker", () => {
+  let search = defaultPlayouts();
 
   beforeEach(() => {
-    search = new MultipassSearch();
+    search = defaultPlayouts();
   });
 
   it("generates one playout when there aren't any branches", () => {
@@ -208,6 +211,15 @@ describe("MultipassSearch", () => {
       3: ["3"],
       4: ["4"],
     });
+  });
+});
+
+describe("defaultPlayouts", () => {
+  it("generates one playout when there aren't any branches", () => {
+    const stream = defaultPlayouts();
+    assert(stream.startAt(0));
+    assert(stream.endPlayout());
+    assert(stream.done);
   });
 });
 

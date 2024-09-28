@@ -19,6 +19,7 @@ import {
   systemConsole,
 } from "./console.ts";
 import { shrink } from "./shrink.ts";
+import { PlayoutSource } from "./backtracking.ts";
 
 /**
  * A function that runs a test, using generated input.
@@ -92,7 +93,8 @@ export type RepFailure<T> = {
 };
 
 export class RepSource<T> {
-  readonly search = new PartialTracker();
+  readonly tracker = new PartialTracker();
+  readonly stream = new PlayoutSource(this.tracker);
   readonly pickers: Iterator<IntPicker>;
   randomReps = 0;
 
@@ -110,8 +112,8 @@ export class RepSource<T> {
     const replies = def.playout.replies;
 
     // Generate a second time to prune from the search space.
-    this.search.pickSource = new PlaybackPicker(replies);
-    const arg = generate(this.arb, this.search);
+    this.tracker.pickSource = new PlaybackPicker(replies);
+    const arg = generate(this.arb, this.stream);
     assert(arg !== undefined);
     assertEquals(replies, arg.playout.replies);
 
@@ -120,18 +122,18 @@ export class RepSource<T> {
   }
 
   generateRandom(): Rep<T> | RepFailure<T> | undefined {
-    this.search.pickSource = this.pickers.next().value;
+    this.tracker.pickSource = this.pickers.next().value;
     this.randomReps++;
     const key = { id: this.id, seed: this.seed, index: this.randomReps };
     try {
-      const arg = generate(this.arb, this.search);
+      const arg = generate(this.arb, this.stream);
       if (arg === undefined) {
         return undefined;
       }
       return { ok: true, key, arb: this.arb, arg, test: this.test };
     } catch (e) {
-      if (this.search.state === "picking") {
-        this.search.endPlayout();
+      if (this.stream.state === "picking") {
+        this.stream.endPlayout();
       }
       return { ok: false, key, arg: undefined, caught: e };
     }

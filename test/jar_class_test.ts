@@ -6,20 +6,21 @@ import { Jar } from "@/domain.ts";
 import * as arb from "@/arbs.ts";
 import * as dom from "@/doms.ts";
 
-import { onePlayout, Pruned } from "../src/backtracking.ts";
+import { onePlayout, PlayoutSource, Pruned } from "../src/backtracking.ts";
 import { makePickFunction } from "../src/generated.ts";
 import { PartialTracker } from "../src/searches.ts";
 import { randomPicker } from "../src/random.ts";
 import { alwaysPickMin } from "../src/picks.ts";
 
 describe("Jar", () => {
-  let search = new PartialTracker();
-  let pick = makePickFunction(search);
+  let tracker = new PartialTracker();
+  let pick = makePickFunction(new PlayoutSource(tracker));
 
   beforeEach(() => {
-    search = new PartialTracker();
-    pick = makePickFunction(search);
-    assert(search.startAt(0));
+    tracker = new PartialTracker();
+    const stream = new PlayoutSource(tracker);
+    pick = makePickFunction(stream);
+    assert(stream.startAt(0));
   });
 
   describe("take", () => {
@@ -35,10 +36,11 @@ describe("Jar", () => {
     it("picks values from an overlapping oneOf", () => {
       const overlap = dom.oneOf(dom.of(1, 2), dom.of(2, 3));
       repeatTest(arb.int32(), (seed) => {
-        search = new PartialTracker();
-        search.pickSource = randomPicker(seed);
-        pick = makePickFunction(search);
-        assert(search.startAt(0));
+        const tracker = new PartialTracker();
+        tracker.pickSource = randomPicker(seed);
+        const stream = new PlayoutSource(tracker);
+        pick = makePickFunction(stream);
+        assert(stream.startAt(0));
 
         const jar = new Jar(overlap);
         const seen = new Set<number>();

@@ -11,6 +11,7 @@ import type { RecordShape } from "./options.ts";
 import { PartialTracker } from "./searches.ts";
 import { randomPicker } from "./random.ts";
 import { generateDefault } from "./multipass_search.ts";
+import { PlayoutSource } from "./backtracking.ts";
 
 type ConstructorOpts<T> = {
   examples?: T[];
@@ -21,7 +22,8 @@ type ConstructorOpts<T> = {
 function checkRandomGenerate(set: PickSet<unknown>, tries: number) {
   const search = new PartialTracker();
   search.pickSource = randomPicker(123);
-  const gen = generate(set, search, { limit: 1000 });
+  const stream = new PlayoutSource(search);
+  const gen = generate(set, stream, { limit: 1000 });
   if (gen !== undefined) {
     return;
   }
@@ -130,13 +132,14 @@ export class Arbitrary<T> implements PickSet<T> {
     // https://claude.site/artifacts/624afebe-b86f-4e33-9e30-5414dc7c810b
 
     let threshold = 2;
-    const search = new PartialTracker();
-    search.pickSource = randomPicker(123);
+    const tracker = new PartialTracker();
+    tracker.pickSource = randomPicker(123);
+    const stream = new PlayoutSource(tracker);
     let accepted = 0;
     let total = 0;
     const maxTries = 50;
     while (total < maxTries) {
-      const gen = generate(this, search, { limit: 1000 });
+      const gen = generate(this, stream, { limit: 1000 });
       if (gen === undefined) {
         break; // visited all values
       }
