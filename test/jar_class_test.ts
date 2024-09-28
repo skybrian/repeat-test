@@ -1,3 +1,5 @@
+import type { PlayoutSource } from "../src/backtracking.ts";
+
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
@@ -6,20 +8,18 @@ import { Jar } from "@/domain.ts";
 import * as arb from "@/arbs.ts";
 import * as dom from "@/doms.ts";
 
-import { onePlayout, PlayoutSource, Pruned } from "../src/backtracking.ts";
+import { onePlayout, Pruned } from "../src/backtracking.ts";
 import { makePickFunction } from "../src/generated.ts";
-import { PartialTracker } from "../src/searches.ts";
-import { randomPicker } from "../src/random.ts";
 import { alwaysPickMin } from "../src/picks.ts";
+import { minPlayouts } from "../src/searches.ts";
 import { orderedPlayouts } from "../src/ordered.ts";
+import { randomPlayouts } from "../src/random.ts";
 
 describe("Jar", () => {
-  let tracker = new PartialTracker();
-  let pick = makePickFunction(new PlayoutSource(tracker));
+  let pick = makePickFunction(minPlayouts());
 
   beforeEach(() => {
-    tracker = new PartialTracker();
-    const stream = new PlayoutSource(tracker);
+    const stream = minPlayouts();
     pick = makePickFunction(stream);
     assert(stream.startAt(0));
   });
@@ -70,9 +70,7 @@ describe("Jar", () => {
       });
       it("picks values randomly", () => {
         repeatTest(arb.int32(), (seed) => {
-          const tracker = new PartialTracker();
-          tracker.pickSource = randomPicker(seed);
-          checkPicksFromOverlap(new PlayoutSource(tracker));
+          checkPicksFromOverlap(randomPlayouts(seed));
         });
       });
     });

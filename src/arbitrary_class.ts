@@ -1,17 +1,12 @@
-import { assert } from "@std/assert";
-import { PickRequest } from "./picks.ts";
-
-import {
-  generate,
-  type PickCallback,
-  type PickFunction,
-  type PickSet,
-} from "./generated.ts";
 import type { RecordShape } from "./options.ts";
-import { PartialTracker } from "./searches.ts";
-import { randomPicker } from "./random.ts";
+import type { PickCallback, PickFunction, PickSet } from "./generated.ts";
+
+import { assert } from "@std/assert";
+
+import { PickRequest } from "./picks.ts";
+import { generate } from "./generated.ts";
 import { generateDefault } from "./ordered.ts";
-import { PlayoutSource } from "./backtracking.ts";
+import { randomPlayouts } from "./random.ts";
 
 type ConstructorOpts<T> = {
   examples?: T[];
@@ -20,9 +15,7 @@ type ConstructorOpts<T> = {
 };
 
 function checkRandomGenerate(set: PickSet<unknown>) {
-  const search = new PartialTracker();
-  search.pickSource = randomPicker(123);
-  const stream = new PlayoutSource(search);
+  const stream = randomPlayouts(123);
   const gen = generate(set, stream, { limit: 1000 });
   if (gen !== undefined) {
     return;
@@ -130,9 +123,7 @@ export class Arbitrary<T> implements PickSet<T> {
     // https://claude.site/artifacts/624afebe-b86f-4e33-9e30-5414dc7c810b
 
     let threshold = 2;
-    const tracker = new PartialTracker();
-    tracker.pickSource = randomPicker(123);
-    const stream = new PlayoutSource(tracker);
+    const stream = randomPlayouts(123);
     let accepted = 0;
     let total = 0;
     const maxTries = 50;

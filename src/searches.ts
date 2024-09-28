@@ -3,18 +3,18 @@ import type { Tracker } from "./backtracking.ts";
 
 import { alwaysPickMin } from "./picks.ts";
 import { PickTree } from "./pick_tree.ts";
+import { PlayoutSource } from "./backtracking.ts";
 
 /**
- * Picks playouts, sometimes remembering them to avoid duplicates.
+ * Picks playouts based on an IntPicker (usually random).
+ *
+ * Sometimes tracks picks from previous playouts to avoid duplicate playouts.
  *
  * For a small search trees, it records every pick. Eventually every playout
  * will be pruned and no more playouts will be generated. The search will end.
  *
  * For very wide search trees, sometimes playouts won't be recorded to save
  * memory. This happens when the probability of revisiting them is too low.
- *
- * The default search is depth-first, but it can also be configured to pick
- * randomly using {@link pickSource}.
  */
 export class PartialTracker implements Tracker {
   readonly tree: PickTree = new PickTree();
@@ -22,7 +22,11 @@ export class PartialTracker implements Tracker {
   private readonly walk = this.tree.walk();
   private odds: number[] = [];
 
-  pickSource: IntPicker = alwaysPickMin;
+  pickSource: IntPicker;
+
+  constructor(picker: IntPicker) {
+    this.pickSource = picker;
+  }
 
   getReplies(): number[] {
     return this.walk.getReplies();
@@ -49,4 +53,11 @@ export class PartialTracker implements Tracker {
     this.walk.prune();
     return this.walk.pruned ? undefined : this.walk.depth;
   }
+}
+
+/**
+ * Playouts in depth-first order, starting with all minimum picks.
+ */
+export function minPlayouts(): PlayoutSource {
+  return new PlayoutSource(new PartialTracker(alwaysPickMin));
 }

@@ -7,7 +7,7 @@ import type { Coverage, SystemConsole, TestConsole } from "./console.ts";
 import { assert, assertEquals, AssertionError } from "@std/assert";
 
 import { failure, success } from "./results.ts";
-import { PickRequest, PlaybackPicker } from "./picks.ts";
+import { alwaysPickMin, PickRequest, PlaybackPicker } from "./picks.ts";
 import { generate } from "./generated.ts";
 import { PartialTracker } from "./searches.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
@@ -93,7 +93,7 @@ export type RepFailure<T> = {
 };
 
 export class RepSource<T> {
-  readonly tracker = new PartialTracker();
+  readonly tracker = new PartialTracker(alwaysPickMin);
   readonly stream = new PlayoutSource(this.tracker);
   readonly pickers: Iterator<IntPicker>;
   randomReps = 0;

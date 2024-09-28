@@ -15,7 +15,7 @@ import {
   Pruned,
 } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/searches.ts";
-import { randomPicker } from "../src/random.ts";
+import { randomPicker, randomPlayouts } from "../src/random.ts";
 
 import { generate, makePickFunction } from "../src/generated.ts";
 import { arb } from "@/mod.ts";
@@ -27,10 +27,9 @@ describe("makePickFunction", () => {
   let pick = makePickFunction(minPlayout());
 
   beforeEach(() => {
-    const tracker = new PartialTracker();
-    const search = new PlayoutSource(tracker);
-    search.startAt(0);
-    pick = makePickFunction(search);
+    const playouts = randomPlayouts(123);
+    playouts.startAt(0);
+    pick = makePickFunction(playouts);
   });
 
   it("accepts a PickRequest", () => {
@@ -70,11 +69,10 @@ describe("makePickFunction", () => {
       return n;
     });
 
-    const tracker = new PartialTracker();
-    tracker.pickSource = alwaysPick(3);
-    const stream = new PlayoutSource(tracker);
-    stream.startAt(0);
-    pick = makePickFunction(stream);
+    const tracker = new PartialTracker(alwaysPick(3));
+    const playouts = new PlayoutSource(tracker);
+    playouts.startAt(0);
+    pick = makePickFunction(playouts);
 
     assertEquals(pick(arb), 4);
   });

@@ -19,11 +19,11 @@ import { PlayoutSource } from "../src/backtracking.ts";
 const bit = new PickRequest(0, 1);
 
 describe("PartialTracker", () => {
-  let tracker = new PartialTracker();
+  let tracker = new PartialTracker(alwaysPickMin);
   let stream = new PlayoutSource(tracker);
 
   beforeEach(() => {
-    tracker = new PartialTracker();
+    tracker = new PartialTracker(alwaysPickMin);
     stream = new PlayoutSource(tracker);
   });
 
@@ -186,7 +186,7 @@ describe("PartialTracker", () => {
     const digit = new PickRequest(0, 9);
 
     repeatTest(underlyingPickers, (underlying) => {
-      const tracker = new PartialTracker();
+      const tracker = new PartialTracker(underlying);
       const stream = new PlayoutSource(tracker);
       const seen = new Set<string>();
       for (let i = 0; i < 1000; i++) {
