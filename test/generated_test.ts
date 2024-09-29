@@ -1,11 +1,11 @@
 import type { PickSet } from "../src/generated.ts";
+import type { Gen } from "../src/gen_class.ts";
 
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 
 import { repeatTest } from "@/runner.ts";
 import { Arbitrary } from "@/arbitrary.ts";
-import { Gen } from "../src/gen_class.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
 import {
@@ -90,6 +90,33 @@ const fails: PickSet<unknown> = {
   },
 };
 
+type GenProps<T> = {
+  val: T;
+  deps?: GenProps<unknown>;
+  label: string;
+  reqs: PickRequest[];
+  replies: number[];
+};
+
+function props<T>(
+  gen: Gen<T> | undefined,
+): GenProps<T> | undefined {
+  if (gen === undefined) {
+    return undefined;
+  }
+  const picks = gen.allPicks;
+  const out: GenProps<T> = {
+    val: gen.val,
+    label: gen.label,
+    reqs: picks.reqs,
+    replies: picks.replies,
+  };
+  if (gen.deps !== undefined) {
+    out.deps = props(gen.deps);
+  }
+  return out;
+}
+
 describe("generate", () => {
   const hello: PickSet<string> = {
     label: "hello",
@@ -98,7 +125,12 @@ describe("generate", () => {
 
   it("generates a single value for a constant", () => {
     const gen = generate(hello, minPlayout());
-    assertEquals(gen, new Gen(hello, [], [], undefined, "hi"));
+    assertEquals(props(gen), {
+      val: "hi",
+      label: "hello",
+      reqs: [],
+      replies: [],
+    });
   });
 
   it("passes through an error thrown by the PickSet", () => {
@@ -138,7 +170,12 @@ describe("generateValue", () => {
     const playouts = depthFirstPlayouts();
 
     const gen1 = generateValue(bit, playouts);
-    assertEquals(gen1, new Gen(bit, [bitReq], [0], undefined, 0));
+    assertEquals(props(gen1), {
+      val: 0,
+      label: "bit",
+      reqs: [bitReq],
+      replies: [0],
+    });
     assertEquals(playouts.depth, 1);
 
     playouts.endPlayout();
@@ -146,19 +183,34 @@ describe("generateValue", () => {
     assertEquals(0, playouts.depth);
 
     const gen2 = generateValue(bit, playouts);
-    assertEquals(gen2, new Gen(bit, [bitReq], [1], undefined, 1));
+    assertEquals(props(gen2), {
+      val: 1,
+      label: "bit",
+      reqs: [bitReq],
+      replies: [1],
+    });
   });
 
   it("can generate two bits in the same playout", () => {
     const playouts = onePlayout(new PlaybackPicker([0, 1]));
 
     const gen1 = generateValue(bit, playouts);
-    assertEquals(gen1, new Gen(bit, [bitReq], [0], undefined, 0));
+    assertEquals(props(gen1), {
+      val: 0,
+      label: "bit",
+      reqs: [bitReq],
+      replies: [0],
+    });
     assertEquals(playouts.depth, 1);
 
     const gen2 = generateValue(bit, playouts);
     assertEquals(playouts.depth, 2);
-    assertEquals(gen2, new Gen(bit, [bitReq], [1], undefined, 1));
+    assertEquals(props(gen2), {
+      val: 1,
+      label: "bit",
+      reqs: [bitReq],
+      replies: [1],
+    });
   });
 
   const filteredOne: PickSet<number> = {
@@ -176,12 +228,22 @@ describe("generateValue", () => {
     const playouts = depthFirstPlayouts();
 
     const gen1 = generateValue(filteredOne, playouts);
-    assertEquals(gen1, new Gen(filteredOne, [bitReq], [1], undefined, 1));
+    assertEquals(props(gen1), {
+      val: 1,
+      label: "filteredOne",
+      reqs: [bitReq],
+      replies: [1],
+    });
     assertEquals(playouts.depth, 1);
 
     const gen2 = generateValue(filteredOne, playouts);
     assertEquals(playouts.depth, 2);
-    assertEquals(gen2, new Gen(filteredOne, [bitReq], [1], undefined, 1));
+    assertEquals(props(gen2), {
+      val: 1,
+      label: "filteredOne",
+      reqs: [bitReq],
+      replies: [1],
+    });
   });
 
   it("passes through an error thrown by the PickSet", () => {
@@ -224,10 +286,17 @@ describe("generateValueWithDeps", () => {
 
   it("saves the first pick as the deps", () => {
     const gen = generateValueWithDeps(hasDep, depthFirstPlayouts());
-    const expectedDeps = new Gen(depsReq, [bit], [0], undefined, 0);
-    assertEquals(
-      gen,
-      new Gen(hasDep, [bit], [0], expectedDeps, "0, 0"),
-    );
+    assertEquals(props(gen), {
+      val: "0, 0",
+      label: "hasDep",
+      reqs: [bit, bit],
+      replies: [0, 0],
+      deps: {
+        val: 0,
+        label: "deps",
+        reqs: [bit],
+        replies: [0],
+      },
+    });
   });
 });

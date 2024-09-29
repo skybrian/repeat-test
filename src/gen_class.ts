@@ -45,6 +45,10 @@ export class Gen<T> implements Success<T> {
     return true;
   }
 
+  get label(): string {
+    return this.#set.label;
+  }
+
   private get allReqs(): PickRequest[] {
     if (this.playouts.length === 1) {
       return this.playouts[0].reqs;

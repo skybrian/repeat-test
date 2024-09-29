@@ -94,9 +94,14 @@ export function makePickFunction<T>(
   return innerPickFunction(playouts, opts);
 }
 
+type DepsCallback = <T>(
+  set: PickSet<T>,
+  val: T,
+) => void;
+
 function makePickFunctionWithDeps<T>(
   playouts: PlayoutSource,
-  gotDeps: (deps: unknown) => void,
+  gotDeps: DepsCallback,
   opts?: GenerateOpts,
 ): PickFunction {
   const dispatch = innerPickFunction(playouts, opts);
@@ -106,10 +111,10 @@ function makePickFunctionWithDeps<T>(
     req: PickRequest | PickSet<T>,
     opts?: PickFunctionOpts<T>,
   ): number | T => {
-    if (firstPick && !(req instanceof PickRequest)) {
+    if (firstPick && !(req instanceof PickRequest) && opts === undefined) {
       firstPick = false;
-      const val = dispatch(req, opts);
-      gotDeps(val);
+      const val = dispatch(req) as T;
+      gotDeps(req, val);
       return val;
     }
     return dispatch(req, opts);
@@ -252,7 +257,10 @@ export function generateValueWithDeps<T>(
 
   let deps: Gen<unknown> | undefined = undefined;
 
-  function gotDeps(val: unknown) {
+  function gotDeps<D>(
+    set: PickSet<D>,
+    val: D,
+  ) {
     const reqs = playouts.getRequests(startDepth);
     const replies = playouts.getReplies(startDepth);
     deps = new Gen(set, reqs, replies, undefined, val);
