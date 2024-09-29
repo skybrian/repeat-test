@@ -17,7 +17,12 @@ import {
 import { depthFirstPlayouts, PartialTracker } from "../src/partial_tracker.ts";
 import { randomPicker, randomPlayouts } from "../src/random.ts";
 
-import { generate, generateValue, makePickFunction } from "../src/generated.ts";
+import {
+  generate,
+  generateValue,
+  generateValueWithDeps,
+  makePickFunction,
+} from "../src/generated.ts";
 import { arb } from "@/mod.ts";
 import { PlaybackPicker } from "../src/picks.ts";
 
@@ -93,7 +98,7 @@ describe("generate", () => {
 
   it("generates a single value for a constant", () => {
     const gen = generate(hello, minPlayout());
-    assertEquals(gen, new Gen(hello, [], [], "hi"));
+    assertEquals(gen, new Gen(hello, [], [], undefined, "hi"));
   });
 
   it("passes through an error thrown by the PickSet", () => {
@@ -133,7 +138,7 @@ describe("generateValue", () => {
     const playouts = depthFirstPlayouts();
 
     const gen1 = generateValue(bit, playouts);
-    assertEquals(gen1, new Gen(bit, [bitReq], [0], 0));
+    assertEquals(gen1, new Gen(bit, [bitReq], [0], undefined, 0));
     assertEquals(playouts.depth, 1);
 
     playouts.endPlayout();
@@ -141,19 +146,19 @@ describe("generateValue", () => {
     assertEquals(0, playouts.depth);
 
     const gen2 = generateValue(bit, playouts);
-    assertEquals(gen2, new Gen(bit, [bitReq], [1], 1));
+    assertEquals(gen2, new Gen(bit, [bitReq], [1], undefined, 1));
   });
 
   it("can generate two bits in the same playout", () => {
     const playouts = onePlayout(new PlaybackPicker([0, 1]));
 
     const gen1 = generateValue(bit, playouts);
-    assertEquals(gen1, new Gen(bit, [bitReq], [0], 0));
+    assertEquals(gen1, new Gen(bit, [bitReq], [0], undefined, 0));
     assertEquals(playouts.depth, 1);
 
     const gen2 = generateValue(bit, playouts);
     assertEquals(playouts.depth, 2);
-    assertEquals(gen2, new Gen(bit, [bitReq], [1], 1));
+    assertEquals(gen2, new Gen(bit, [bitReq], [1], undefined, 1));
   });
 
   const filteredOne: PickSet<number> = {
@@ -171,12 +176,12 @@ describe("generateValue", () => {
     const playouts = depthFirstPlayouts();
 
     const gen1 = generateValue(filteredOne, playouts);
-    assertEquals(gen1, new Gen(filteredOne, [bitReq], [1], 1));
+    assertEquals(gen1, new Gen(filteredOne, [bitReq], [1], undefined, 1));
     assertEquals(playouts.depth, 1);
 
     const gen2 = generateValue(filteredOne, playouts);
     assertEquals(playouts.depth, 2);
-    assertEquals(gen2, new Gen(filteredOne, [bitReq], [1], 1));
+    assertEquals(gen2, new Gen(filteredOne, [bitReq], [1], undefined, 1));
   });
 
   it("passes through an error thrown by the PickSet", () => {
@@ -197,5 +202,32 @@ describe("generateValue", () => {
   it("returns undefined if there are no matching playouts", () => {
     const playouts = depthFirstPlayouts();
     assertEquals(generateValue(rejectAll, playouts), undefined);
+  });
+});
+
+describe("generateValueWithDeps", () => {
+  const bit = new PickRequest(0, 1);
+
+  const depsReq: PickSet<number> = {
+    label: "deps",
+    generateFrom: (pick) => pick(bit),
+  };
+
+  const hasDep: PickSet<string> = {
+    label: "hasDep",
+    generateFrom: (pick) => {
+      const deps = pick(depsReq);
+      const bit2 = pick(bit);
+      return `${deps}, ${bit2}`;
+    },
+  };
+
+  it("saves the first pick as the deps", () => {
+    const gen = generateValueWithDeps(hasDep, depthFirstPlayouts());
+    const expectedDeps = new Gen(depsReq, [bit], [0], undefined, 0);
+    assertEquals(
+      gen,
+      new Gen(hasDep, [bit], [0], expectedDeps, "0, 0"),
+    );
   });
 });

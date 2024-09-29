@@ -115,6 +115,7 @@ export class Gen<T> implements Success<T> {
     set: PickSet<T>,
     reqs: PickRequest[],
     replies: number[],
+    readonly deps: Gen<unknown> | undefined,
     val: T,
   ) {
     this.#set = set;

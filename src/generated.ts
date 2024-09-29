@@ -91,6 +91,37 @@ export function makePickFunction<T>(
   playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): PickFunction {
+  return innerPickFunction(playouts, opts);
+}
+
+function makePickFunctionWithDeps<T>(
+  playouts: PlayoutSource,
+  gotDeps: (deps: unknown) => void,
+  opts?: GenerateOpts,
+): PickFunction {
+  const dispatch = innerPickFunction(playouts, opts);
+
+  let firstPick = true;
+  const dispatchWithDeps = <T>(
+    req: PickRequest | PickSet<T>,
+    opts?: PickFunctionOpts<T>,
+  ): number | T => {
+    if (firstPick && !(req instanceof PickRequest)) {
+      firstPick = false;
+      const val = dispatch(req, opts);
+      gotDeps(val);
+      return val;
+    }
+    return dispatch(req, opts);
+  };
+
+  return dispatchWithDeps;
+}
+
+function innerPickFunction<T>(
+  playouts: PlayoutSource,
+  opts?: GenerateOpts,
+) {
   const limit = opts?.limit;
   const dispatch = <T>(
     req: PickRequest | PickSet<T>,
@@ -199,7 +230,42 @@ export function generateValue<T>(
       const val = set.generateFrom(pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
-      return new Gen(set, reqs, replies, val);
+      return new Gen(set, reqs, replies, undefined, val);
+    } catch (e) {
+      if (!(e instanceof Pruned)) {
+        throw e;
+      }
+      if (playouts.state === "picking") {
+        playouts.endPlayout(); // pruned, move to next playout
+      }
+    }
+  }
+  return undefined;
+}
+
+export function generateValueWithDeps<T>(
+  set: PickSet<T>,
+  playouts: PlayoutSource,
+  opts?: GenerateOpts,
+): Gen<T> | undefined {
+  let startDepth = playouts.depth;
+
+  let deps: Gen<unknown> | undefined = undefined;
+
+  function gotDeps(val: unknown) {
+    const reqs = playouts.getRequests(startDepth);
+    const replies = playouts.getReplies(startDepth);
+    deps = new Gen(set, reqs, replies, undefined, val);
+    startDepth = playouts.depth;
+  }
+
+  while (playouts.startValue(startDepth)) {
+    try {
+      const pick = makePickFunctionWithDeps(playouts, gotDeps, opts);
+      const val = set.generateFrom(pick);
+      const reqs = playouts.getRequests(startDepth);
+      const replies = playouts.getReplies(startDepth);
+      return new Gen(set, reqs, replies, deps, val);
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;

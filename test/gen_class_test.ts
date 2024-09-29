@@ -74,8 +74,8 @@ describe("Gen", () => {
   };
 
   it("compares differently with different replies", () => {
-    const a = new Gen(hi, [bit], [0], "hi");
-    const b = new Gen(hi, [bit], [1], "hi");
+    const a = new Gen(hi, [bit], [0], undefined, "hi");
+    const b = new Gen(hi, [bit], [1], undefined, "hi");
     assert(!equal(a, b));
   });
 });
