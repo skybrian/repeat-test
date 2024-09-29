@@ -22,6 +22,7 @@ import {
   PickRequest,
   PlaybackPicker,
 } from "../src/picks.ts";
+import { RecordingConsole } from "../src/console.ts";
 
 describe("PickRequest.random", () => {
   let calls = 0;
@@ -278,6 +279,16 @@ describe("PickList", () => {
       const a = new PickList([bit], [0]);
       const b = new PickList([bit], [1]);
       assert(!equal(a, b));
+    });
+  });
+
+  describe("logTo", () => {
+    it("logs to a console", () => {
+      const con = new RecordingConsole();
+      const picks = new PickList([new PickRequest(1, 10)], [1]);
+      picks.logTo(con);
+      con.logged(["0: 1..10 =>", 1]);
+      con.checkEmpty();
     });
   });
 });
