@@ -61,7 +61,7 @@ describe("Gen", () => {
       });
       const gen = generate(input, minPlayout());
       assert(gen !== undefined);
-      gen.playout.logTo(con);
+      gen.allPicks.logTo(con);
       con.logged(["0: 1..10 =>", 1]);
       con.checkEmpty();
     });

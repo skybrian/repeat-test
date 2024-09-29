@@ -45,22 +45,22 @@ export class Gen<T> implements Success<T> {
     return true;
   }
 
-  private get reqs(): PickRequest[] {
+  private get allReqs(): PickRequest[] {
     if (this.playouts.length === 1) {
       return this.playouts[0].reqs;
     }
     return this.playouts.map((p) => p.reqs).flat();
   }
 
-  private get replies(): number[] {
+  get allReplies(): number[] {
     if (this.playouts.length === 1) {
       return this.playouts[0].replies;
     }
     return this.playouts.map((p) => p.replies).flat();
   }
 
-  get playout(): PickList {
-    return new PickList(this.reqs, this.replies);
+  get allPicks(): PickList {
+    return new PickList(this.allReqs, this.allReplies);
   }
 
   /**
@@ -71,7 +71,7 @@ export class Gen<T> implements Success<T> {
    */
   get val(): T {
     if (this.#val === needGenerate) {
-      return mustGenerate(this.#set, this.replies);
+      return mustGenerate(this.#set, this.allReplies);
     }
     const val = this.#val;
     if (!Object.isFrozen(val)) {
@@ -85,7 +85,7 @@ export class Gen<T> implements Success<T> {
    * @returns the new value, or undefined if no change is available.
    */
   mutate(edit: IntEditor): Gen<T> | undefined {
-    const picker = new EditPicker(this.replies, edit);
+    const picker = new EditPicker(this.allReplies, edit);
     const gen = generate(this.#set, onePlayout(picker));
     if (picker.edits === 0 && picker.deletes === 0) {
       return undefined; // no change

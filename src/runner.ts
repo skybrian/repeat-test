@@ -109,13 +109,13 @@ export class RepSource<T> {
 
   generateDefault(): Rep<T> | RepFailure<T> {
     const def = generateDefault(this.arb);
-    const replies = def.playout.replies;
+    const replies = def.allReplies;
 
     // Generate a second time to prune from the search space.
     this.tracker.pickSource = new PlaybackPicker(replies);
     const arg = generate(this.arb, this.stream);
     assert(arg !== undefined);
-    assertEquals(replies, arg.playout.replies);
+    assertEquals(replies, arg.allReplies);
 
     const key = { id: this.id, seed: 0, index: 0 };
     return { ok: true, key, arb: this.arb, arg, test: this.test };

@@ -51,7 +51,7 @@ export function shrinkTail<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
-  const len = seed.playout.trimmedLength;
+  const len = seed.allPicks.trimmedLength;
   if (len === 0) {
     return undefined; // Nothing to remove
   }
@@ -65,7 +65,7 @@ export function shrinkTail<T>(
   // Binary search to trim a range of unneeded picks at the end of the playout.
   // It might, by luck, jump to an earlier length that works.
   let tooLow = -1;
-  let hi = seed.playout.trimmedLength;
+  let hi = seed.allPicks.trimmedLength;
   while (tooLow + 2 <= hi) {
     const mid = (tooLow + 1 + hi) >>> 1;
     assert(mid > tooLow && mid < hi);
@@ -76,7 +76,7 @@ export function shrinkTail<T>(
       continue;
     }
     seed = next;
-    hi = seed.playout.trimmedLength;
+    hi = seed.allPicks.trimmedLength;
   }
   return seed;
 }
@@ -107,11 +107,12 @@ export function shrinkOnePick(index: number): Shrinker {
     seed: Gen<T>,
     test: (val: T) => boolean,
   ): Gen<T> | undefined => {
-    if (seed.playout.trimmedLength <= index) {
+    const picks = seed.allPicks;
+    if (picks.trimmedLength <= index) {
       return undefined; // No change; nothing to shrink
     }
 
-    const { req, reply } = seed.playout.getPick(index);
+    const { req, reply } = picks.getPick(index);
     if (reply === req.min) {
       return undefined; // No change; already at the minimum
     }
@@ -122,10 +123,11 @@ export function shrinkOnePick(index: number): Shrinker {
       return undefined; // No change; the postcondition already holds
     }
     seed = next;
+    let replies = seed.allReplies;
 
     // Binary search to find the smallest pick that succeeds.
     let tooLow = req.min - 1;
-    let hi = seed.playout.replies[index];
+    let hi = replies[index];
     while (tooLow + 2 <= hi) {
       const mid = (tooLow + 1 + hi) >>> 1;
       assert(mid > tooLow && mid < hi);
@@ -136,7 +138,8 @@ export function shrinkOnePick(index: number): Shrinker {
         continue;
       }
       seed = next;
-      hi = seed.playout.replies[index];
+      replies = seed.allReplies;
+      hi = replies[index];
     }
     return seed;
   };
@@ -146,7 +149,7 @@ export function shrinkAllPicks<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
-  const len = seed.playout.trimmedLength;
+  const len = seed.allPicks.trimmedLength;
 
   let changed = false;
   for (let i = 0; i < len; i++) {
@@ -178,7 +181,8 @@ export function shrinkAllOptions<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
-  const len = seed.playout.trimmedLength;
+  let picks = seed.allPicks;
+  const len = picks.trimmedLength;
 
   if (len < 1) {
     return undefined; // No options to remove
@@ -187,7 +191,7 @@ export function shrinkAllOptions<T>(
   let changed = false;
   let end = len;
   for (let i = len - 1; i >= 0; i--) {
-    const val = seed.playout.getOption(i);
+    const val = picks.getOption(i);
     if (val === undefined) {
       continue;
     } else if (val === 0) {
@@ -197,8 +201,8 @@ export function shrinkAllOptions<T>(
     let next = seed.mutate(deleteRange(i, end));
     if (next === undefined || !test(next.val)) {
       const containsEmptyOption = (end === i + 1) &&
-        seed.playout.getOption(end) === 0 &&
-        seed.playout.getOption(end + 1) !== undefined;
+        picks.getOption(end) === 0 &&
+        picks.getOption(end + 1) !== undefined;
 
       if (!containsEmptyOption) {
         end = i;
@@ -213,6 +217,7 @@ export function shrinkAllOptions<T>(
     }
 
     seed = next;
+    picks = seed.allPicks;
     end = i;
     changed = true;
   }

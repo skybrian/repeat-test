@@ -141,7 +141,7 @@ describe("RepSource", () => {
 
     const def = src.generateDefault();
     assert(def.ok);
-    assertEquals(def.arg.playout.length, 0);
+    assertEquals(def.arg.allReplies.length, 0);
     assertEquals(def.arg.val, 123);
 
     const random = src.generateRandom();
