@@ -19,21 +19,17 @@ export interface PlayoutSink {
 
 /** A list of pick requests with its replies. */
 export class Playout {
-  readonly #reqs: PickRequest[];
-
-  constructor(reqs: PickRequest[], readonly replies: number[]) {
-    this.#reqs = reqs;
-  }
+  constructor(readonly reqs: PickRequest[], readonly replies: number[]) {}
 
   getPick(index: number): { req: PickRequest; reply: number } {
-    return { req: this.#reqs[index], reply: this.replies[index] };
+    return { req: this.reqs[index], reply: this.replies[index] };
   }
 
   getOption(index: number): number | undefined {
-    if (index >= this.#reqs.length) {
+    if (index >= this.reqs.length) {
       return undefined;
     }
-    const req = this.#reqs[index];
+    const req = this.reqs[index];
     if (req.min !== 0 || req.max !== 1) {
       return undefined;
     }
@@ -41,14 +37,14 @@ export class Playout {
   }
 
   get length(): number {
-    return this.#reqs.length;
+    return this.reqs.length;
   }
 
   /**
    * Returns the length of the playout with default picks removed from the end.
    */
   get trimmedLength(): number {
-    const reqs = this.#reqs;
+    const reqs = this.reqs;
     const replies = this.replies;
     let last = replies.length - 1;
     while (last >= 0 && replies[last] === reqs[last].min) {
@@ -63,14 +59,14 @@ export class Playout {
   trimmed(): Playout {
     const len = this.trimmedLength;
     return new Playout(
-      this.#reqs.slice(0, len),
+      this.reqs.slice(0, len),
       this.replies.slice(0, len),
     );
   }
 
   pushTo(sink: PlayoutSink): boolean {
-    for (let i = 0; i < this.#reqs.length; i++) {
-      const req = this.#reqs[i];
+    for (let i = 0; i < this.reqs.length; i++) {
+      const req = this.reqs[i];
       const reply = this.replies[i];
       if (!sink.push(req, reply)) {
         return false;
@@ -83,7 +79,7 @@ export class Playout {
    * Writes the playout to a console.
    */
   logTo(console: SystemConsole): void {
-    const reqs = this.#reqs;
+    const reqs = this.reqs;
     const replies = this.replies;
     for (let i = 0; i < reqs.length; i++) {
       const req = reqs[i];
@@ -100,10 +96,8 @@ const needGenerate = Symbol("needGenerate");
  */
 export class Gen<T> implements Success<T> {
   readonly #set: PickSet<T>;
-  readonly #reqs: PickRequest[];
-  readonly #replies: number[];
   #val: T | typeof needGenerate;
-  readonly playout: Playout;
+  readonly playouts: Playout[];
 
   /**
    * Creates a generated value with the given contents.
@@ -118,16 +112,38 @@ export class Gen<T> implements Success<T> {
     readonly deps: Gen<unknown> | undefined,
     val: T,
   ) {
+    const playouts = [];
+    if (deps) {
+      playouts.push(...deps.playouts);
+    }
+    playouts.push(new Playout(reqs, replies));
+
     this.#set = set;
     this.#val = val;
-    this.#reqs = reqs;
-    this.#replies = replies;
-    this.playout = new Playout(this.#reqs, this.#replies);
+    this.playouts = playouts;
   }
 
   /** Satisfies the Success interface. */
   get ok(): true {
     return true;
+  }
+
+  private get reqs(): PickRequest[] {
+    if (this.playouts.length === 1) {
+      return this.playouts[0].reqs;
+    }
+    return this.playouts.map((p) => p.reqs).flat();
+  }
+
+  private get replies(): number[] {
+    if (this.playouts.length === 1) {
+      return this.playouts[0].replies;
+    }
+    return this.playouts.map((p) => p.replies).flat();
+  }
+
+  get playout(): Playout {
+    return new Playout(this.reqs, this.replies);
   }
 
   /**
@@ -138,7 +154,7 @@ export class Gen<T> implements Success<T> {
    */
   get val(): T {
     if (this.#val === needGenerate) {
-      return mustGenerate(this.#set, this.#replies);
+      return mustGenerate(this.#set, this.replies);
     }
     const val = this.#val;
     if (!Object.isFrozen(val)) {
@@ -152,7 +168,7 @@ export class Gen<T> implements Success<T> {
    * @returns the new value, or undefined if no change is available.
    */
   mutate(edit: IntEditor): Gen<T> | undefined {
-    const picker = new EditPicker(this.#replies, edit);
+    const picker = new EditPicker(this.replies, edit);
     const gen = generate(this.#set, onePlayout(picker));
     if (picker.edits === 0 && picker.deletes === 0) {
       return undefined; // no change
