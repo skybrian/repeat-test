@@ -1,5 +1,12 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
-import { assert, assertEquals, assertThrows, fail } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertFalse,
+  assertThrows,
+  equal,
+  fail,
+} from "@std/assert";
 
 import { repeatTest } from "@/runner.ts";
 import * as arb from "@/arbs.ts";
@@ -206,6 +213,18 @@ describe("PickRequest", () => {
     it("prints the range", () => {
       assertEquals(new PickRequest(0, 1).toString(), "0..1");
     });
+  });
+
+  it("compares equal to a value with the same range", () => {
+    assertEquals(new PickRequest(0, 1), new PickRequest(0, 1));
+  });
+
+  it("compares differently when min is different", () => {
+    assertFalse(equal(new PickRequest(0, 2), new PickRequest(1, 2)));
+  });
+
+  it("compares differently when max is different", () => {
+    assertFalse(equal(new PickRequest(0, 1), new PickRequest(0, 2)));
   });
 });
 

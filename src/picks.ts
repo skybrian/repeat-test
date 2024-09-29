@@ -88,12 +88,7 @@ export type PickRequestOpts = {
  * probability distribution.
  */
 export class PickRequest {
-  /**
-   * The function to call when picking randomly.
-   *
-   * The output is assumed to satisfy {@link PickRequest.inRange}.
-   */
-  readonly random: RandomPicker;
+  #random: RandomPicker;
 
   /**
    * Constructs a request an integer in a given range.
@@ -120,8 +115,17 @@ export class PickRequest {
     if (min > max) {
       throw new Error(`invalid range: ${min}..${max}`);
     }
-    this.random = opts?.bias ?? uniformPicker(min, max);
+    this.#random = opts?.bias ?? uniformPicker(min, max);
     Object.freeze(this);
+  }
+
+  /**
+   * The function to call when picking randomly.
+   *
+   * The output is assumed to satisfy {@link PickRequest.inRange}.
+   */
+  get random(): RandomPicker {
+    return this.#random;
   }
 
   /** Returns true if the given number satisfies this request. */
