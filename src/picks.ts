@@ -1,3 +1,5 @@
+import type { SystemConsole } from "./console.ts";
+
 /**
  * A source of random signed 32-bit integers.
  */
@@ -142,6 +144,11 @@ export class PickRequest {
   toString(): string {
     return `${this.min}..${this.max}`;
   }
+
+  /**
+   * A request for a single bit.
+   */
+  static readonly bit = new PickRequest(0, 1);
 }
 
 /**
@@ -157,6 +164,103 @@ export function biasedBitRequest(probOne: number): PickRequest {
     return next() < threshold ? 0 : 1;
   };
   return new PickRequest(0, 1, { bias });
+}
+
+/** A request-reply pair. */
+export type Pick = {
+  req: PickRequest;
+  reply: number;
+};
+
+/** Something that accepts a stream of picks. */
+export interface PickSink {
+  /**
+   * Accests a pick request and reply.
+   *
+   * If the sink doesn't want more picks, it can return false or throw an Error.
+   */
+  push(req: PickRequest, pick: number): boolean;
+}
+
+/** A list of pick requests with its replies. */
+export class PickList {
+  constructor(readonly reqs: PickRequest[], readonly replies: number[]) {}
+
+  get length(): number {
+    return this.reqs.length;
+  }
+
+  /**
+   * Returns the pick at the given index.
+   */
+  getPick(index: number): Pick {
+    return { req: this.reqs[index], reply: this.replies[index] };
+  }
+
+  /**
+   * If the request at the given index is for a bit, returns the reply.
+   */
+  getOption(index: number): number | undefined {
+    if (index >= this.reqs.length) {
+      return undefined;
+    }
+    const req = this.reqs[index];
+    if (req.min !== 0 || req.max !== 1) {
+      return undefined;
+    }
+    return this.replies[index];
+  }
+
+  /**
+   * Returns the length of the playout with default picks removed from the end.
+   */
+  get trimmedLength(): number {
+    const reqs = this.reqs;
+    const replies = this.replies;
+    let last = replies.length - 1;
+    while (last >= 0 && replies[last] === reqs[last].min) {
+      last--;
+    }
+    return last + 1;
+  }
+
+  /**
+   * Returns the requests and replies with default picks removed from the end.
+   */
+  trimmed(): PickList {
+    const len = this.trimmedLength;
+    return new PickList(
+      this.reqs.slice(0, len),
+      this.replies.slice(0, len),
+    );
+  }
+
+  /**
+   * Writes each pick to a sink.
+   */
+  pushTo(sink: PickSink): boolean {
+    for (let i = 0; i < this.reqs.length; i++) {
+      const req = this.reqs[i];
+      const reply = this.replies[i];
+      if (!sink.push(req, reply)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Writes the picks to a console.
+   */
+  logTo(console: SystemConsole): void {
+    const reqs = this.reqs;
+    const replies = this.replies;
+    for (let i = 0; i < reqs.length; i++) {
+      const req = reqs[i];
+      const reply = replies[i];
+      console.log(`${i}: ${req.min}..${req.max} =>`, reply);
+    }
+  }
 }
 
 /**

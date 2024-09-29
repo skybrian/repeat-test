@@ -8,6 +8,7 @@ export type { Failure, Success } from "../results.ts";
 
 export type {
   IntEditor,
+  PickList,
   PickRequestOpts,
   RandomPicker,
   RandomSource,
@@ -21,7 +22,6 @@ export type {
   PickSet,
 } from "../generated.ts";
 
-export type { Playout } from "../gen_class.ts";
 export type { RecordShape } from "../options.ts";
 
 export { biasedBitRequest, PickRequest } from "../picks.ts";

@@ -8,7 +8,7 @@ import { generate } from "../src/generated.ts";
 import { noChange, PickRequest } from "../src/picks.ts";
 import { RecordingConsole } from "../src/console.ts";
 import * as arb from "../src/entrypoints/arbs.ts";
-import { Gen, Playout } from "../src/gen_class.ts";
+import { Gen } from "../src/gen_class.ts";
 import { equal } from "@std/assert/equal";
 
 const frozen: PickSet<readonly string[]> = {
@@ -76,15 +76,6 @@ describe("Gen", () => {
   it("compares differently with different replies", () => {
     const a = new Gen(hi, [bit], [0], undefined, "hi");
     const b = new Gen(hi, [bit], [1], undefined, "hi");
-    assert(!equal(a, b));
-  });
-});
-
-describe("Playout", () => {
-  const bit = new PickRequest(0, 1);
-  it("compares differently with different replies", () => {
-    const a = new Playout([bit], [0]);
-    const b = new Playout([bit], [1]);
     assert(!equal(a, b));
   });
 });

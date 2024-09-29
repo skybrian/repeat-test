@@ -18,6 +18,7 @@ import {
   EditPicker,
   type IntEditor,
   noChange,
+  PickList,
   PickRequest,
   PlaybackPicker,
 } from "../src/picks.ts";
@@ -253,6 +254,31 @@ describe("biasedBitRequest", () => {
   it("always picks 1 for 1", () => {
     const fair = biasedBitRequest(1);
     assertEquals(scan(fair, 10), [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+  });
+});
+
+describe("PickList", () => {
+  describe("equality", () => {
+    const zero = new PickRequest(0, 0);
+    const bit = PickRequest.bit;
+
+    it("two empty lists are equal", () => {
+      const a = new PickList([], []);
+      const b = new PickList([], []);
+      assertEquals(a, b);
+    });
+
+    it("compares differently with different requests", () => {
+      const a = new PickList([zero], [0]);
+      const b = new PickList([bit], [0]);
+      assert(!equal(a, b));
+    });
+
+    it("compares differently with different replies", () => {
+      const a = new PickList([bit], [0]);
+      const b = new PickList([bit], [1]);
+      assert(!equal(a, b));
+    });
   });
 });
 
