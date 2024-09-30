@@ -54,7 +54,7 @@ function seedFrom(reqs: PickRequest[], replies: number[]): Gen<number[]> {
       return out;
     },
   };
-  return new Gen(fakeSet, reqs, replies, undefined, replies);
+  return Gen.fromSet(fakeSet, reqs, replies, replies);
 }
 
 const emptySeed = seedFrom([], []);

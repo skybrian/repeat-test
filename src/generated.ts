@@ -235,7 +235,7 @@ export function generateValue<T>(
       const val = set.generateFrom(pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
-      return new Gen(set, reqs, replies, undefined, val);
+      return Gen.fromSet(set, reqs, replies, val);
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;
@@ -263,7 +263,7 @@ export function generateValueWithDeps<T>(
   ) {
     const reqs = playouts.getRequests(startDepth);
     const replies = playouts.getReplies(startDepth);
-    deps = new Gen(set, reqs, replies, undefined, val);
+    deps = Gen.fromSet(set, reqs, replies, val);
     startDepth = playouts.depth;
   }
 
@@ -273,7 +273,11 @@ export function generateValueWithDeps<T>(
       const val = set.generateFrom(pick);
       const reqs = playouts.getRequests(startDepth);
       const replies = playouts.getReplies(startDepth);
-      return new Gen(set, reqs, replies, deps, val);
+      if (deps === undefined) {
+        return Gen.fromSet(set, reqs, replies, val);
+      } else {
+        return Gen.fromDeps(set, reqs, replies, deps, val);
+      }
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;

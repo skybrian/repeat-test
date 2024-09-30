@@ -22,7 +22,7 @@ export class Gen<T> implements Success<T> {
    * This constructor should not normally be called directly. Instead, use
    * the {@link generate} method or a {@link Domain}.
    */
-  constructor(
+  private constructor(
     set: PickSet<T>,
     reqs: PickRequest[],
     replies: number[],
@@ -95,5 +95,24 @@ export class Gen<T> implements Success<T> {
       return undefined; // no change
     }
     return gen;
+  }
+
+  static fromSet<T>(
+    set: PickSet<T>,
+    reqs: PickRequest[],
+    replies: number[],
+    val: T,
+  ): Gen<T> {
+    return new Gen(set, reqs, replies, undefined, val);
+  }
+
+  static fromDeps<T>(
+    set: PickSet<T>,
+    reqs: PickRequest[],
+    replies: number[],
+    deps: Gen<unknown>,
+    val: T,
+  ): Gen<T> {
+    return new Gen(set, reqs, replies, deps, val);
   }
 }
