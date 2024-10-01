@@ -1,4 +1,4 @@
-import type { PickSet } from "../src/generated.ts";
+import type { PickSet } from "../src/build.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";

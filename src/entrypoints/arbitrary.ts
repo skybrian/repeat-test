@@ -20,7 +20,7 @@ export type {
   PickFunction,
   PickFunctionOpts,
   PickSet,
-} from "../generated.ts";
+} from "../build.ts";
 
 export type { RecordShape } from "../options.ts";
 

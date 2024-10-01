@@ -10,7 +10,7 @@ import { repeatTest } from "../src/runner.ts";
 
 import { PickRequest } from "../src/picks.ts";
 import { Pruned } from "../src/backtracking.ts";
-import type { BuildFunction, PickSet } from "../src/generated.ts";
+import type { BuildFunction, PickSet } from "../src/build.ts";
 
 import { Arbitrary } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";

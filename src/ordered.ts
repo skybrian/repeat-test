@@ -1,12 +1,12 @@
 import type { Tracker } from "./backtracking.ts";
-import type { PickSet } from "./generated.ts";
+import type { PickSet } from "./build.ts";
 import type { Gen } from "./gen_class.ts";
 
 import { assert } from "@std/assert";
 import { PickRequest } from "./picks.ts";
 import { PlayoutSource, Pruned } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
-import { generate, makeBuildFunction, makePickFunction } from "./generated.ts";
+import { generate, makeBuildFunction, makePickFunction } from "./build.ts";
 
 /**
  * Generates possible playouts in the order used for choosing defaults.

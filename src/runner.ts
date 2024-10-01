@@ -1,6 +1,6 @@
 import type { Failure, Success } from "./results.ts";
 import type { IntPicker } from "./picks.ts";
-import type { PickSet } from "./generated.ts";
+import type { PickSet } from "./build.ts";
 import type { Gen } from "./gen_class.ts";
 import type { Coverage, SystemConsole, TestConsole } from "./console.ts";
 
@@ -8,7 +8,7 @@ import { assert, assertEquals, AssertionError } from "@std/assert";
 
 import { failure, success } from "./results.ts";
 import { alwaysPickMin, PickRequest, PlaybackPicker } from "./picks.ts";
-import { generate } from "./generated.ts";
+import { generate } from "./build.ts";
 import { PartialTracker } from "./partial_tracker.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
 import { generateDefault } from "./ordered.ts";

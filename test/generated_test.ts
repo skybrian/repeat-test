@@ -1,4 +1,4 @@
-import type { PickSet } from "../src/generated.ts";
+import type { PickSet } from "../src/build.ts";
 
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
@@ -23,7 +23,7 @@ import {
   generateValue,
   makePickFunction,
   thenGenerate,
-} from "../src/generated.ts";
+} from "../src/build.ts";
 import { arb } from "@/mod.ts";
 import { PlaybackPicker } from "../src/picks.ts";
 

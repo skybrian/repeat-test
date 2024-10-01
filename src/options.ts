@@ -1,4 +1,4 @@
-import type { PickSet } from "./generated.ts";
+import type { PickSet } from "./build.ts";
 
 /**
  * A callback for reporting errors while validating a value.

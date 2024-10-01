@@ -1,6 +1,6 @@
 import { arb } from "@/mod.ts";
 
-import { generate } from "../src/generated.ts";
+import { generate } from "../src/build.ts";
 import { pickRandomSeed, randomPicker } from "../src/random.ts";
 import { onePlayout } from "../src/backtracking.ts";
 

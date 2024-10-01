@@ -1,11 +1,11 @@
 import type { Failure, Success } from "./results.ts";
 import type { IntEditor, PickRequest } from "./picks.ts";
-import type { PickFunction, PickSet, ThenFunction } from "./generated.ts";
+import type { PickFunction, PickSet, ThenFunction } from "./build.ts";
 
 import { failure } from "./results.ts";
 import { EditPicker, PickList, PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
-import { generate, mustGenerate, thenGenerate } from "./generated.ts";
+import { generate, mustGenerate, thenGenerate } from "./build.ts";
 
 const needGenerate = Symbol("needGenerate");
 

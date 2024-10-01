@@ -1,10 +1,10 @@
 import type { RecordShape } from "./options.ts";
-import type { BuildFunction, PickFunction, PickSet } from "./generated.ts";
+import type { BuildFunction, PickFunction, PickSet } from "./build.ts";
 
 import { assert } from "@std/assert";
 
 import { PickRequest } from "./picks.ts";
-import { generate } from "./generated.ts";
+import { generate } from "./build.ts";
 import { generateDefault } from "./ordered.ts";
 import { randomPlayouts } from "./random.ts";
 

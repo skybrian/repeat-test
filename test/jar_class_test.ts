@@ -9,7 +9,7 @@ import * as arb from "@/arbs.ts";
 import * as dom from "@/doms.ts";
 
 import { onePlayout, Pruned } from "../src/backtracking.ts";
-import { makePickFunction } from "../src/generated.ts";
+import { makePickFunction } from "../src/build.ts";
 import { alwaysPickMin } from "../src/picks.ts";
 import { depthFirstPlayouts } from "../src/partial_tracker.ts";
 import { orderedPlayouts } from "../src/ordered.ts";

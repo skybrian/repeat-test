@@ -1,15 +1,11 @@
 import type { PickRequest } from "./picks.ts";
 import type { PlayoutSource } from "./backtracking.ts";
-import type {
-  IntPickerMiddleware,
-  PickFunction,
-  PickSet,
-} from "./generated.ts";
+import type { IntPickerMiddleware, PickFunction, PickSet } from "./build.ts";
 import type { Gen } from "./gen_class.ts";
 import type { Domain } from "./domain_class.ts";
 
 import { assert } from "@std/assert";
-import { generate } from "./generated.ts";
+import { generate } from "./build.ts";
 import { PickTree } from "./pick_tree.ts";
 import { orderedPlayouts } from "./ordered.ts";
 

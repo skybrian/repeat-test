@@ -12,7 +12,7 @@ import {
 } from "@std/assert";
 
 import { minPlayout, Pruned } from "../src/backtracking.ts";
-import { generate } from "../src/generated.ts";
+import { generate } from "../src/build.ts";
 import { Arbitrary } from "../src/arbitrary_class.ts";
 import * as arb from "@/arbs.ts";
 import * as dom from "@/doms.ts";

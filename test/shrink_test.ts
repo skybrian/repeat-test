@@ -1,5 +1,5 @@
 import type { Domain } from "@/domain.ts";
-import type { PickSet } from "../src/generated.ts";
+import type { PickSet } from "../src/build.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, fail } from "@std/assert";
