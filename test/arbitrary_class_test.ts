@@ -10,7 +10,7 @@ import { repeatTest } from "../src/runner.ts";
 
 import { PickRequest } from "../src/picks.ts";
 import { Pruned } from "../src/backtracking.ts";
-import type { PickCallback, PickSet } from "../src/generated.ts";
+import type { BuildFunction, PickSet } from "../src/generated.ts";
 
 import { Arbitrary } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
@@ -39,30 +39,30 @@ describe("Arbitrary", () => {
         assertValues(arb, ["no", "yes"]);
       });
     });
-    describe("given a callback", () => {
+    describe("given a build function", () => {
       it("throws if given a callback that throws", () => {
-        const callback = () => {
+        const build = () => {
           throw new Error("oops");
         };
-        assertThrows(() => Arbitrary.from(callback), Error, "oops");
+        assertThrows(() => Arbitrary.from(build), Error, "oops");
       });
       it("throws an Error if the Arbitrary didn't generate any values", () => {
-        const callback = () => {
+        const build = () => {
           throw new Pruned("oops");
         };
         assertThrows(
-          () => Arbitrary.from(callback),
+          () => Arbitrary.from(build),
           Error,
           "(unlabeled) couldn't generate a random value",
         );
       });
       it("throws an Error if given a callback that calls pick incorrectly", () => {
         type Pick = (arg: unknown) => number;
-        const callback = ((pick: Pick) => pick("hello")) as PickCallback<
+        const build = ((pick: Pick) => pick("hello")) as BuildFunction<
           number
         >;
         assertThrows(
-          () => Arbitrary.from(callback),
+          () => Arbitrary.from(build),
           Error,
           "pick function called with an invalid argument",
         );

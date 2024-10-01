@@ -1,6 +1,6 @@
 import type { Failure, Success } from "./results.ts";
 import type { IntEditor, PickRequest } from "./picks.ts";
-import type { PickFunction, PickSet } from "./generated.ts";
+import type { PickFunction, PickSet, ThenFunction } from "./generated.ts";
 
 import { failure } from "./results.ts";
 import { EditPicker, PickList, PlaybackPicker } from "./picks.ts";
@@ -8,9 +8,6 @@ import { onePlayout } from "./backtracking.ts";
 import { generate, mustGenerate, thenGenerate } from "./generated.ts";
 
 const needGenerate = Symbol("needGenerate");
-
-/** A function that implements a build step. */
-export type StepFunction<In, Out> = (input: In, pick: PickFunction) => Out;
 
 /**
  * A generated value and the picks that were used to generate it.
@@ -79,7 +76,7 @@ export class Gen<T> implements Success<T> {
   }
 
   /**
-   * The picks that were used to generate this value, divided by build steps
+   * The picks that were used to generate this value, divided up by build step
    */
   get splitPicks(): PickList[] {
     const steps = Gen.steps(this);
@@ -117,7 +114,7 @@ export class Gen<T> implements Success<T> {
   }
 
   thenBuild<Out>(
-    then: StepFunction<T, Out>,
+    then: ThenFunction<T, Out>,
     replies: number[],
   ): Gen<Out> | Failure {
     const picker = new PlaybackPicker(replies);
@@ -130,7 +127,7 @@ export class Gen<T> implements Success<T> {
   }
 
   thenMustBuild<Out>(
-    then: StepFunction<T, Out>,
+    then: ThenFunction<T, Out>,
     replies: number[],
   ): Gen<Out> {
     const gen = this.thenBuild(then, replies);
@@ -152,7 +149,7 @@ export class Gen<T> implements Success<T> {
   static fromStepResult<In, T>(
     label: string,
     input: Gen<In>,
-    then: StepFunction<In, T>,
+    then: ThenFunction<In, T>,
     stepReqs: PickRequest[],
     stepReplies: number[],
     val: T,

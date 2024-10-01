@@ -15,8 +15,8 @@ export type {
 } from "../picks.ts";
 
 export type {
+  BuildFunction,
   IntPickerMiddleware,
-  PickCallback,
   PickFunction,
   PickFunctionOpts,
   PickSet,

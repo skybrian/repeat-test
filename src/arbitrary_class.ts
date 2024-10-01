@@ -1,5 +1,5 @@
 import type { RecordShape } from "./options.ts";
-import type { PickCallback, PickFunction, PickSet } from "./generated.ts";
+import type { BuildFunction, PickFunction, PickSet } from "./generated.ts";
 
 import { assert } from "@std/assert";
 
@@ -30,7 +30,7 @@ function checkRandomGenerate(set: PickSet<unknown>) {
  * {@link maxSize}, providing an upper bound on how many values they can generate.
  */
 export class Arbitrary<T> implements PickSet<T> {
-  readonly #callback: PickCallback<T>;
+  readonly #callback: BuildFunction<T>;
   readonly #label: string;
 
   readonly #examples: T[] | undefined;
@@ -40,13 +40,13 @@ export class Arbitrary<T> implements PickSet<T> {
   protected constructor(arb: Arbitrary<T>);
   /** Initializes an Arbitrary, given a callback function. */
   protected constructor(
-    callback: PickCallback<T>,
+    callback: BuildFunction<T>,
     label: string,
     opts?: ConstructorOpts<T>,
   );
   /** Initializes a callback or another Arbitrary. */
   protected constructor(
-    arg: Arbitrary<T> | PickCallback<T>,
+    arg: Arbitrary<T> | BuildFunction<T>,
     label?: string,
     opts?: ConstructorOpts<T>,
   ) {
@@ -77,12 +77,11 @@ export class Arbitrary<T> implements PickSet<T> {
   }
 
   /**
-   * Returns a bound function that can be used to generate values of this
-   * Arbitrary.
+   * Returns the build function for this Arbitrary.
    *
    * (Satisfies the {@link PickSet} interface. Not normally called directly.)
    */
-  get generateFrom(): PickCallback<T> {
+  get generateFrom(): BuildFunction<T> {
     return this.#callback;
   }
 
@@ -99,12 +98,12 @@ export class Arbitrary<T> implements PickSet<T> {
    * examples are in the same order as in the original.)
    */
   map<U>(convert: (val: T) => U): Arbitrary<U> {
-    const callback: PickCallback<U> = (pick) => {
+    const build: BuildFunction<U> = (pick) => {
       const output = pick(this);
       return convert(output);
     };
     const maxSize = this.maxSize;
-    return new Arbitrary(callback, "map", { maxSize });
+    return new Arbitrary(build, "map", { maxSize });
   }
 
   /**
@@ -150,7 +149,7 @@ export class Arbitrary<T> implements PickSet<T> {
       );
     }
 
-    const callback: PickCallback<T> = (pick) => {
+    const build: BuildFunction<T> = (pick) => {
       return pick(this, { accept });
     };
 
@@ -159,10 +158,10 @@ export class Arbitrary<T> implements PickSet<T> {
       : `${this.label} (filtered)`;
 
     // Check that a default exists
-    generateDefault({ label, generateFrom: callback });
+    generateDefault({ label, generateFrom: build });
 
     const maxSize = this.maxSize;
-    return new Arbitrary(callback, label, { maxSize, dryRun: false });
+    return new Arbitrary(build, label, { maxSize, dryRun: false });
   }
 
   /**
@@ -170,17 +169,17 @@ export class Arbitrary<T> implements PickSet<T> {
    * then picks from it.
    *
    * (This method is provided because it's traditional, but in most cases,
-   * {@link Arbitrary.from} with a callback is more flexible.)
+   * {@link Arbitrary.from} with a build function is more flexible.)
    */
   chain<U>(
     convert: (val: T) => Arbitrary<U>,
   ): Arbitrary<U> {
-    const callback: PickCallback<U> = (pick) => {
+    const build: BuildFunction<U> = (pick) => {
       const output = pick(this);
       const next = convert(output);
       return pick(next);
     };
-    return new Arbitrary(callback, "chain");
+    return new Arbitrary(build, "chain");
   }
 
   /**
@@ -215,16 +214,16 @@ export class Arbitrary<T> implements PickSet<T> {
    */
   static from(req: PickRequest): Arbitrary<number>;
   /**
-   * Creates an Arbitrary from a {@link PickCallback}, or an array of examples.
+   * Creates an Arbitrary from a {@link BuildFunction} or {@link PickSet}.
    */
   static from<T>(
-    callback: PickCallback<T> | PickSet<T>,
+    arg: BuildFunction<T> | PickSet<T>,
   ): Arbitrary<T>;
   /**
-   * Creates an Arbitrary from a {@link PickRequest}, a {@link PickCallback}, or an array of examples.
+   * Creates an Arbitrary from a {@link PickRequest}, a {@link BuildFunction}, or a {@link PickSet}.
    */
   static from<T>(
-    arg: PickRequest | PickCallback<T> | PickSet<T>,
+    arg: PickRequest | BuildFunction<T> | PickSet<T>,
   ): Arbitrary<T> | Arbitrary<number> {
     if (typeof arg === "function") {
       return new Arbitrary(arg, "(unlabeled)");
@@ -283,11 +282,11 @@ export class Arbitrary<T> implements PickSet<T> {
     const req = new PickRequest(0, examples.length - 1);
 
     const label = `${examples.length} examples`;
-    const callback: PickCallback<T> = (pick) => {
+    const build: BuildFunction<T> = (pick) => {
       const i = pick(req);
       return examples[i];
     };
-    return new Arbitrary(callback, label, {
+    return new Arbitrary(build, label, {
       examples,
       maxSize: examples.length,
       dryRun: false,
@@ -319,11 +318,11 @@ export class Arbitrary<T> implements PickSet<T> {
     }
 
     const req = new PickRequest(0, cases.length - 1);
-    const callback: PickCallback<T> = (pick) => {
+    const build: BuildFunction<T> = (pick) => {
       const i = pick(req);
       return arbCases[i].#callback(pick);
     };
-    return new Arbitrary(callback, "oneOf", { maxSize, dryRun: false });
+    return new Arbitrary(build, "oneOf", { maxSize, dryRun: false });
   }
 
   /**
@@ -345,10 +344,10 @@ export class Arbitrary<T> implements PickSet<T> {
     }
 
     if (keys.length === 0) {
-      const callback: PickCallback<T> = () => {
+      const build: BuildFunction<T> = () => {
         return {} as T;
       };
-      return new Arbitrary(callback, "empty record", {
+      return new Arbitrary(build, "empty record", {
         maxSize,
         dryRun: false,
       });

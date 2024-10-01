@@ -1,5 +1,4 @@
 import type { PlayoutSource } from "./backtracking.ts";
-import type { StepFunction } from "./gen_class.ts";
 
 import { assert } from "@std/assert";
 import { PickRequest, PlaybackPicker } from "./picks.ts";
@@ -7,14 +6,22 @@ import { onePlayout, Pruned } from "./backtracking.ts";
 import { Gen } from "./gen_class.ts";
 
 /**
- * A function that generates a value, given some picks.
+ * A function that builds a value, given some picks.
  *
  * The result should be deterministic, depending only on what `pick` returns.
  *
- * It may throw {@link Pruned} to indicate that generation failed for the
- * current pick sequence. (For example, due to filtering.)
+ * It may throw {@link Pruned} to indicate that the picks can't be used to
+ * construct a value. (For example, due to filtering.)
  */
-export type PickCallback<T> = (pick: PickFunction) => T;
+export type BuildFunction<T> = (pick: PickFunction) => T;
+
+/**
+ * A function that transforms a value, given some picks.
+ *
+ * It may throw {@link Pruned} to indicate that the picks can't be used to
+ * transform a value. (For example, due to filtering.)
+ */
+export type ThenFunction<In, Out> = (input: In, pick: PickFunction) => Out;
 
 /**
  * A set of possible values that may be generated.
@@ -26,7 +33,7 @@ export interface PickSet<T> {
   /** A short label to use in error messsages about this PickSet */
   readonly label: string;
   /** Generates a member of this set, given a source of picks. */
-  readonly generateFrom: PickCallback<T>;
+  readonly generateFrom: BuildFunction<T>;
 }
 
 /**
@@ -218,7 +225,7 @@ export function generateValue<T>(
  */
 export function thenGenerate<In, Out>(
   input: Gen<In>,
-  then: StepFunction<In, Out>,
+  then: ThenFunction<In, Out>,
   playouts: PlayoutSource,
 ): Gen<Out> | undefined {
   const label = "untitled";

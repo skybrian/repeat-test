@@ -1,7 +1,7 @@
 import { Arbitrary, biasedBitRequest, PickRequest } from "@/arbitrary.ts";
 
 import type {
-  PickCallback,
+  BuildFunction,
   PickFunction,
   PickSet,
   RecordShape,
@@ -12,17 +12,15 @@ import type { ArrayOpts } from "../options.ts";
 import { arrayLengthBiases } from "../math.ts";
 
 /**
- * Defines an Arbitrary implemented by a callback function.
+ * Defines an Arbitrary implemented by a build function.
  *
- * Note: the callback will be executed immediately to verify that it works. If
+ * Note: the build function will be executed immediately to verify that it works. If
  * this would cause problems, perhaps implement {@link PickSet} instead.
  *
- * For more, see {@link PickCallback}.
+ * For more, see {@link BuildFunction}.
  */
-export function from<T>(
-  callback: PickCallback<T>,
-): Arbitrary<T> {
-  return Arbitrary.from(callback);
+export function from<T>(build: BuildFunction<T>): Arbitrary<T> {
+  return Arbitrary.from(build);
 }
 
 /** Returns an Arbitrary that chooses one of the given arguments. */
