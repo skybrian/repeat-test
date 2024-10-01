@@ -140,27 +140,6 @@ describe("Domain", () => {
   });
 
   describe("generate", () => {
-    it("fails when not enough values were supplied", () => {
-      assertEquals(
-        bit.generate([]),
-        { ok: false, message: "ran out of picks" },
-      );
-    });
-    it("throws when too many values were supplied", () => {
-      assertEquals(
-        bit.generate([1, 1]),
-        { ok: false, message: "read only 1 of 2 available picks" },
-      );
-    });
-    it("throws for an out-of-range value", () => {
-      assertEquals(
-        roll.generate([7]),
-        {
-          ok: false,
-          message: "pick 0 didn't satisfy the request. Want: [1, 6]. Got: 7",
-        },
-      );
-    });
     it("throws due to being filtered out", () => {
       const weird = new Domain(roll.filter((v) => v === 1), (val) => {
         if (val !== 1) throw "oops";
@@ -168,7 +147,10 @@ describe("Domain", () => {
       });
       assertEquals(
         weird.generate([2]),
-        { ok: false, message: "picks not accepted by 1..6 (filtered)" },
+        {
+          ok: false,
+          message: "can't build '1..6 (filtered)': picks not accepted",
+        },
       );
     });
     it("throws due to being filtered out, and without reading all picks", () => {
@@ -180,7 +162,8 @@ describe("Domain", () => {
         weird.generate([2, 3]),
         {
           ok: false,
-          message: "picks not accepted; read only 1 of 2 available picks",
+          message:
+            "can't build '1..6 (filtered)': read only 1 of 2 available picks",
         },
       );
     });

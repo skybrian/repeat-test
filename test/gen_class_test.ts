@@ -16,6 +16,11 @@ const bit: PickSet<number> = {
   generateFrom: (pick) => pick(PickRequest.bit),
 };
 
+const roll: PickSet<number> = {
+  label: "roll",
+  generateFrom: (pick) => pick(new PickRequest(1, 6)),
+};
+
 const frozen: PickSet<readonly string[]> = {
   label: "frozen",
   generateFrom: () => Object.freeze(["frozen"]),
@@ -27,27 +32,60 @@ const mutable: PickSet<string[]> = {
 };
 
 const pruned: PickSet<number> = {
-  label: "(never)",
+  label: "never",
   generateFrom: () => {
     throw new Pruned("nope");
   },
 };
 
 describe("Gen", () => {
-  describe("mustBuild", () => {
+  describe("build", () => {
     it("fails when there aren't enough picks", () => {
-      assertThrows(
-        () => Gen.mustBuild(bit, []),
-        Error,
-        "can't generate bit: ran out of picks",
+      assertEquals(
+        Gen.build(bit, []),
+        {
+          ok: false,
+          message: "can't build 'bit': ran out of picks",
+        },
       );
     });
     it("fails when the picks were pruned", () => {
-      assertThrows(
-        () => Gen.mustBuild(pruned, []),
-        Error,
-        "can't generate (never): picks not accepted",
+      assertEquals(
+        Gen.build(pruned, []),
+        {
+          ok: false,
+          message: "can't build 'never': picks not accepted",
+        },
       );
+    });
+    it("throws when too many values were supplied", () => {
+      assertEquals(
+        Gen.build(bit, [1, 1]),
+        {
+          ok: false,
+          message: "can't build 'bit': read only 1 of 2 available picks",
+        },
+      );
+    });
+    it("throws for an out-of-range value", () => {
+      assertEquals(
+        Gen.build(roll, [7]),
+        {
+          ok: false,
+          message:
+            "can't build 'roll': pick 0 didn't satisfy the request. Want: [1, 6]. Got: 7",
+        },
+      );
+    });
+
+    describe("mustBuild", () => {
+      it("fails when there aren't enough picks", () => {
+        assertThrows(
+          () => Gen.mustBuild(bit, []),
+          Error,
+          "can't build 'bit': ran out of picks",
+        );
+      });
     });
   });
 

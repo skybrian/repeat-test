@@ -1,11 +1,8 @@
-import { Arbitrary, type Gen } from "@/arbitrary.ts";
+import { Arbitrary, Gen } from "@/arbitrary.ts";
 
 import { assertEquals } from "@std/assert";
 
 import { type Failure, failure, type Success, success } from "./results.ts";
-import { PlaybackPicker } from "./picks.ts";
-import { onePlayout } from "./backtracking.ts";
-import { generate } from "./generated.ts";
 import { generateDefault } from "./ordered.ts";
 
 import type { SendErr } from "./options.ts";
@@ -119,25 +116,14 @@ export class Domain<T> extends Arbitrary<T> {
     if (!picks.ok) {
       return picks;
     }
-    return this.generate(picks.val);
+    return Gen.build(this, picks.val);
   }
 
   /**
    * Given some picks, attempts to generate the corresponding value.
    */
   generate(picks: number[]): Gen<T> | Failure {
-    const picker = new PlaybackPicker(picks);
-    const gen = generate(this, onePlayout(picker));
-    if (picker.error) {
-      let msg = picker.error;
-      if (gen === undefined) {
-        msg = `picks not accepted; ${picker.error}`;
-      }
-      return failure(msg);
-    } else if (gen === undefined) {
-      return failure(`picks not accepted by ${this.label}`);
-    }
-    return gen;
+    return Gen.build(this, picks);
   }
 
   /**

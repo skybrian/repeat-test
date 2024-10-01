@@ -1,8 +1,9 @@
-import type { Success } from "./results.ts";
+import type { Failure, Success } from "./results.ts";
 import type { IntEditor, PickRequest } from "./picks.ts";
 import type { PlayoutSource } from "./backtracking.ts";
 import type { PickFunction, PickSet } from "./generated.ts";
 
+import { failure } from "./results.ts";
 import { EditPicker, PickList, PlaybackPicker } from "./picks.ts";
 import { onePlayout, Pruned } from "./backtracking.ts";
 import { generate, makePickFunction, mustGenerate } from "./generated.ts";
@@ -154,13 +155,20 @@ export class Gen<T> implements Success<T> {
     return new Gen(set, reqs, replies, val);
   }
 
-  static mustBuild<T>(set: PickSet<T>, replies: number[]): Gen<T> {
+  static build<T>(set: PickSet<T>, replies: number[]): Gen<T> | Failure {
     const picker = new PlaybackPicker(replies);
     const gen = generate(set, onePlayout(picker));
-    if (picker.error) {
-      throw new Error(`can't generate ${set.label}: ${picker.error}`);
-    } else if (gen === undefined) {
-      throw new Error(`can't generate ${set.label}: picks not accepted`);
+    if (gen === undefined || picker.error !== undefined) {
+      const err = picker.error ?? "picks not accepted";
+      return failure(`can't build '${set.label}': ${err}`);
+    }
+    return gen;
+  }
+
+  static mustBuild<T>(set: PickSet<T>, replies: number[]): Gen<T> {
+    const gen = Gen.build(set, replies);
+    if (!gen.ok) {
+      throw new Error(gen.message);
     }
     return gen;
   }
