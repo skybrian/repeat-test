@@ -84,6 +84,27 @@ describe("makePickFunction", () => {
   });
 });
 
+const bit: PickSet<number> = {
+  label: "bit",
+  generateFrom: (pick) => pick(PickRequest.bit),
+};
+
+const frozen: PickSet<readonly string[]> = {
+  label: "frozen",
+  generateFrom: () => Object.freeze(["frozen"]),
+};
+
+const multiStep: PickSet<string> = {
+  label: "multi-step",
+  generateFrom: {
+    input: bit,
+    then: (a, pick) => {
+      const b = pick(bit);
+      return `(${a}, ${b})`;
+    },
+  },
+};
+
 const fails: PickSet<unknown> = {
   label: "fails",
   generateFrom: () => {
@@ -107,7 +128,7 @@ describe("generate", () => {
     });
   });
 
-  it("passes through an error thrown by the PickSet", () => {
+  it("passes through an error thrown by the build function", () => {
     assertThrows(() => generate(fails, minPlayout()), Error, "oops");
   });
 
@@ -133,12 +154,17 @@ describe("generate", () => {
 });
 
 describe("generateValue", () => {
-  const bitReq = new PickRequest(0, 1);
+  const bitReq = PickRequest.bit;
 
-  const bit: PickSet<number> = {
-    label: "bit",
-    generateFrom: (pick) => pick(bitReq),
-  };
+  it("can run a multi-step build script", () => {
+    const gen = generateValue(multiStep, minPlayout());
+    assertEquals(propsFromGen(gen), {
+      val: "(0, 0)",
+      label: "multi-step",
+      reqs: [bitReq, bitReq],
+      replies: [0, 0],
+    });
+  });
 
   it("can generate two bits in different playouts", () => {
     const playouts = depthFirstPlayouts();
@@ -240,16 +266,6 @@ describe("generateValue", () => {
     assertEquals(generateValue(rejectAll, playouts), undefined);
   });
 });
-
-const bit: PickSet<number> = {
-  label: "bit",
-  generateFrom: (pick) => pick(PickRequest.bit),
-};
-
-const frozen: PickSet<readonly string[]> = {
-  label: "frozen",
-  generateFrom: () => Object.freeze(["frozen"]),
-};
 
 describe("thenGenerate", () => {
   it("generates a value when called", () => {

@@ -23,6 +23,31 @@ export type BuildFunction<T> = (pick: PickFunction) => T;
  */
 export type ThenFunction<In, Out> = (input: In, pick: PickFunction) => Out;
 
+export type BuildStep<Out, Local> = {
+  input: PickSet<Local>;
+  then: ThenFunction<Local, Out>;
+};
+
+export type Script<T, L = unknown> = BuildFunction<T> | BuildStep<T, L>;
+
+/**
+ * Given a script, returns a function that can be used to generate values.
+ */
+export function makeBuildFunction<T, L>(s: Script<T, L>): BuildFunction<T> {
+  if (typeof s === "function") {
+    return s;
+  }
+  const { input, then } = s;
+
+  const buildInput = makeBuildFunction(input.generateFrom);
+
+  function build(pick: PickFunction): T {
+    const local = buildInput(pick);
+    return then(local, pick);
+  }
+  return build;
+}
+
 /**
  * A set of possible values that may be generated.
  *
@@ -33,7 +58,7 @@ export interface PickSet<T> {
   /** A short label to use in error messsages about this PickSet */
   readonly label: string;
   /** Generates a member of this set, given a source of picks. */
-  readonly generateFrom: BuildFunction<T>;
+  readonly generateFrom: Script<T>;
 }
 
 /**
@@ -200,11 +225,13 @@ export function generateValue<T>(
   playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): Gen<T> | undefined {
+  const build = makeBuildFunction(set.generateFrom);
+
   const depth = playouts.depth;
   while (playouts.startValue(depth)) {
     try {
       const pick = makePickFunction(playouts, opts);
-      const val = set.generateFrom(pick);
+      const val = build(pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
       return Gen.fromBuildResult(set, reqs, replies, val);
@@ -261,6 +288,7 @@ export function mustGenerate<T>(
 ): T {
   const playouts = onePlayout(new PlaybackPicker(replies));
   assert(playouts.startAt(0), "no more playouts");
+  const build = makeBuildFunction(set.generateFrom);
   const pick = makePickFunction(playouts);
-  return set.generateFrom(pick);
+  return build(pick);
 }
