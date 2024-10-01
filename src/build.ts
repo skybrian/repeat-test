@@ -39,11 +39,11 @@ export function makeBuildFunction<T, L>(s: Script<T, L>): BuildFunction<T> {
   }
   const { input, then } = s;
 
-  const buildInput = makeBuildFunction(input.generateFrom);
+  const buildInput = makeBuildFunction(input.buildScript);
 
   function build(pick: PickFunction): T {
-    const local = buildInput(pick);
-    return then(local, pick);
+    const input = buildInput(pick);
+    return then(input, pick);
   }
   return build;
 }
@@ -58,7 +58,7 @@ export interface PickSet<T> {
   /** A short label to use in error messsages about this PickSet */
   readonly label: string;
   /** Generates a member of this set, given a source of picks. */
-  readonly generateFrom: Script<T>;
+  readonly buildScript: Script<T>;
 }
 
 /**
@@ -137,7 +137,7 @@ export function makePickFunction<T>(
       if (pick === undefined) throw new Pruned("cancelled in PlayoutSource");
       return pick;
     }
-    const generateFrom = req["generateFrom"];
+    const generateFrom = req["buildScript"];
     if (typeof generateFrom === "function") {
       const startMiddle = opts?.middle;
       const generate = () => {
@@ -225,7 +225,7 @@ export function generateValue<T>(
   playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): Gen<T> | undefined {
-  const build = makeBuildFunction(set.generateFrom);
+  const build = makeBuildFunction(set.buildScript);
 
   const depth = playouts.depth;
   while (playouts.startValue(depth)) {
@@ -288,7 +288,7 @@ export function mustGenerate<T>(
 ): T {
   const playouts = onePlayout(new PlaybackPicker(replies));
   assert(playouts.startAt(0), "no more playouts");
-  const build = makeBuildFunction(set.generateFrom);
+  const build = makeBuildFunction(set.buildScript);
   const pick = makePickFunction(playouts);
   return build(pick);
 }

@@ -11,27 +11,27 @@ import { Gen } from "../src/gen_class.ts";
 
 const bit: PickSet<number> = {
   label: "bit",
-  generateFrom: (pick) => pick(PickRequest.bit),
+  buildScript: (pick) => pick(PickRequest.bit),
 };
 
 const roll: PickSet<number> = {
   label: "roll",
-  generateFrom: (pick) => pick(new PickRequest(1, 6)),
+  buildScript: (pick) => pick(new PickRequest(1, 6)),
 };
 
 const frozen: PickSet<readonly string[]> = {
   label: "frozen",
-  generateFrom: () => Object.freeze(["frozen"]),
+  buildScript: () => Object.freeze(["frozen"]),
 };
 
 const mutable: PickSet<string[]> = {
   label: "mutable",
-  generateFrom: () => ["mutable"],
+  buildScript: () => ["mutable"],
 };
 
 const pruned: PickSet<number> = {
   label: "never",
-  generateFrom: () => {
+  buildScript: () => {
     throw new Pruned("nope");
   },
 };

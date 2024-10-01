@@ -86,17 +86,17 @@ describe("makePickFunction", () => {
 
 const bit: PickSet<number> = {
   label: "bit",
-  generateFrom: (pick) => pick(PickRequest.bit),
+  buildScript: (pick) => pick(PickRequest.bit),
 };
 
 const frozen: PickSet<readonly string[]> = {
   label: "frozen",
-  generateFrom: () => Object.freeze(["frozen"]),
+  buildScript: () => Object.freeze(["frozen"]),
 };
 
 const multiStep: PickSet<string> = {
   label: "multi-step",
-  generateFrom: {
+  buildScript: {
     input: bit,
     then: (a, pick) => {
       const b = pick(bit);
@@ -107,7 +107,7 @@ const multiStep: PickSet<string> = {
 
 const fails: PickSet<unknown> = {
   label: "fails",
-  generateFrom: () => {
+  buildScript: () => {
     throw new Error("oops!");
   },
 };
@@ -115,7 +115,7 @@ const fails: PickSet<unknown> = {
 describe("generate", () => {
   const hello: PickSet<string> = {
     label: "hello",
-    generateFrom: () => "hi",
+    buildScript: () => "hi",
   };
 
   it("generates a single value for a constant", () => {
@@ -215,7 +215,7 @@ describe("generateValue", () => {
 
   const filteredOne: PickSet<number> = {
     label: "filteredOne",
-    generateFrom: (pick) => {
+    buildScript: (pick) => {
       const n = pick(bitReq);
       if (n !== 1) {
         throw new Pruned("try again");
@@ -256,7 +256,7 @@ describe("generateValue", () => {
 
   const rejectAll: PickSet<unknown> = {
     label: "rejectAll",
-    generateFrom: () => {
+    buildScript: () => {
       throw new Pruned("nope");
     },
   };

@@ -179,7 +179,7 @@ export function takeGenerated<T>(set: PickSet<T>, n: number): Gen<T>[] {
  * There may be duplicates.
  */
 export function take<T>(set: PickSet<T>, n: number): T[] {
-  const build = makeBuildFunction(set.generateFrom);
+  const build = makeBuildFunction(set.buildScript);
   const result = [];
   const playouts = orderedPlayouts();
   while (playouts.startAt(0) && result.length < n) {

@@ -156,7 +156,7 @@ export class Gen<T> implements Success<T> {
   ): Gen<T> {
     const set = {
       label,
-      generateFrom: (pick: PickFunction) => then(input.val, pick),
+      buildScript: (pick: PickFunction) => then(input.val, pick),
     };
     return new Gen(set, input, stepReqs, stepReplies, val);
   }

@@ -55,7 +55,7 @@ export class Jar<T> {
    */
   take(pick: PickFunction): T {
     const label = `take(${this.dom.label})`;
-    const wrapped: PickSet<T> = { label, generateFrom: this.dom.generateFrom };
+    const wrapped: PickSet<T> = { label, buildScript: this.dom.buildScript };
 
     const remaining = this.remaining;
     function middle(): IntPickerMiddleware {

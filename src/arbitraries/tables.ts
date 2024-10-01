@@ -150,7 +150,7 @@ export function table<R extends Record<string, unknown>>(
 
     const addRow: PickSet<R | undefined> = {
       label: "addRow",
-      generateFrom: (pick) => {
+      buildScript: (pick) => {
         if (rows.length < min) {
           for (const jar of Object.values(jars)) {
             assert(!jar.isEmpty());

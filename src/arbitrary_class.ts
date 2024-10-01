@@ -81,7 +81,7 @@ export class Arbitrary<T> implements PickSet<T> {
    *
    * (Satisfies the {@link PickSet} interface. Not normally called directly.)
    */
-  get generateFrom(): BuildFunction<T> {
+  get buildScript(): BuildFunction<T> {
     return this.#callback;
   }
 
@@ -158,7 +158,7 @@ export class Arbitrary<T> implements PickSet<T> {
       : `${this.label} (filtered)`;
 
     // Check that a default exists
-    generateDefault({ label, generateFrom: build });
+    generateDefault({ label, buildScript: build });
 
     const maxSize = this.maxSize;
     return new Arbitrary(build, label, { maxSize, dryRun: false });
@@ -240,7 +240,7 @@ export class Arbitrary<T> implements PickSet<T> {
     } else if (arg instanceof Arbitrary) {
       return arg;
     }
-    const generateFrom = arg["generateFrom"];
+    const generateFrom = arg["buildScript"];
     if (typeof generateFrom === "function") {
       const label = arg["label"];
       assert(typeof label === "string");

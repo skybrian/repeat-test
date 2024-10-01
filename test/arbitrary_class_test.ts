@@ -29,7 +29,7 @@ describe("Arbitrary", () => {
     describe("given a PickSet", () => {
       const answer: PickSet<string> = {
         label: "answer",
-        generateFrom: (pick) => {
+        buildScript: (pick) => {
           return pick(bit) == 1 ? "yes" : "no";
         },
       };

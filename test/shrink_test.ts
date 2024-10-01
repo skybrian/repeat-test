@@ -46,7 +46,7 @@ function assertNoChange<T>(
 function seedFrom(reqs: PickRequest[], replies: number[]): Gen<number[]> {
   const fakeSet: PickSet<number[]> = {
     label: "(picks)",
-    generateFrom: (pick) => {
+    buildScript: (pick) => {
       const out: number[] = [];
       for (const req of reqs) {
         out.push(pick(req));
