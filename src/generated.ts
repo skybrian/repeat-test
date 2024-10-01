@@ -1,4 +1,5 @@
 import type { PlayoutSource } from "./backtracking.ts";
+import type { StepFunction } from "./gen_class.ts";
 
 import { assert } from "@std/assert";
 import { PickRequest, PlaybackPicker } from "./picks.ts";
@@ -199,7 +200,7 @@ export function generateValue<T>(
       const val = set.generateFrom(pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
-      return Gen.fromSet(set, reqs, replies, val);
+      return Gen.fromBuildResult(set, reqs, replies, val);
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;
@@ -209,6 +210,38 @@ export function generateValue<T>(
       }
     }
   }
+  return undefined;
+}
+
+/**
+ * Generates a value from this one, using additional picks.
+ */
+export function thenGenerate<In, Out>(
+  input: Gen<In>,
+  then: StepFunction<In, Out>,
+  playouts: PlayoutSource,
+): Gen<Out> | undefined {
+  const label = "untitled";
+  const generateFrom = (pick: PickFunction) => then(input.val, pick);
+
+  const depth = playouts.depth;
+  while (playouts.startValue(depth)) {
+    try {
+      const pick = makePickFunction(playouts);
+      const val = generateFrom(pick);
+      const reqs = playouts.getRequests(depth);
+      const replies = playouts.getReplies(depth);
+      return Gen.fromStepResult(label, input, then, reqs, replies, val);
+    } catch (e) {
+      if (!(e instanceof Pruned)) {
+        throw e;
+      }
+      if (playouts.state === "picking") {
+        playouts.endPlayout(); // pruned, move to next playout
+      }
+    }
+  }
+
   return undefined;
 }
 

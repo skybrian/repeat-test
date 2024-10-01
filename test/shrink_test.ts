@@ -54,7 +54,7 @@ function seedFrom(reqs: PickRequest[], replies: number[]): Gen<number[]> {
       return out;
     },
   };
-  return Gen.fromSet(fakeSet, reqs, replies, replies);
+  return Gen.mustBuild(fakeSet, replies);
 }
 
 const emptySeed = seedFrom([], []);
@@ -127,7 +127,7 @@ describe("shrink", () => {
           const seed = seedFrom(bits.map(() => bit), bits);
           const gen = shrink(seed, acceptAll);
           assert(gen !== undefined);
-          assertEquals(gen.allPicks.trimmed().replies, []);
+          assertEquals(gen.picks.trimmed().replies, []);
         });
       });
 
@@ -143,7 +143,7 @@ describe("shrink", () => {
           const gen = shrink(seed, (arr) => arr.at(prefix.length) === 1);
           assert(gen !== undefined);
           const expected = Array(prefix.length).fill(0).concat(1);
-          assertEquals(gen.allPicks.trimmed().replies, expected);
+          assertEquals(gen.picks.trimmed().replies, expected);
         });
       });
     });
@@ -253,7 +253,7 @@ describe("shrinkTail", () => {
 
       const gen = shrinkTail(seed, acceptAll);
       assert(gen !== undefined, "expected a result from shrinkTail");
-      assertEquals(gen.allPicks.trimmed().replies, []);
+      assertEquals(gen.picks.trimmed().replies, []);
     });
   });
 
@@ -296,7 +296,7 @@ describe("shrinkOnePick", () => {
       const reqs = new Array(replies.length).fill(roll);
       const seed = seedFrom(reqs, replies);
       const gen = shrinkOnePick(prefix.length)(seed, acceptAll);
-      assertEquals(gen?.allReplies, [...prefix, 1, ...suffix]);
+      assertEquals(gen?.replies, [...prefix, 1, ...suffix]);
     });
   });
 
@@ -311,7 +311,7 @@ describe("shrinkOnePick", () => {
       assert(seed.ok);
       const accept = (v: number) => v >= want;
       const gen = shrinkOnePick(0)(seed, accept);
-      assertEquals(gen?.allReplies, [want]);
+      assertEquals(gen?.replies, [want]);
     });
   });
 });
@@ -326,7 +326,7 @@ describe("shrinkAllPicks", () => {
     const hi = new PickRequest(3, 4);
     const seed = seedFrom([lo, hi], [2, 4]);
     const gen = shrinkAllPicks(seed, acceptAll);
-    assertEquals(gen?.allReplies, [1, 3]);
+    assertEquals(gen?.replies, [1, 3]);
   });
 });
 
@@ -340,7 +340,7 @@ describe("shrinkAllOptions", () => {
 
     const gen = shrinkAllOptions(seed, acceptAll);
     assert(gen !== undefined);
-    assertEquals(gen.allPicks.trimmed().replies, []);
+    assertEquals(gen.picks.trimmed().replies, []);
   });
 
   it("removes two options", () => {
@@ -350,7 +350,7 @@ describe("shrinkAllOptions", () => {
     );
     const gen = shrinkAllOptions(seed, acceptAll);
     assert(gen !== undefined);
-    assertEquals(gen.allPicks.trimmed().replies, [6]);
+    assertEquals(gen.picks.trimmed().replies, [6]);
   });
 
   it("removes unused leading characters", () => {

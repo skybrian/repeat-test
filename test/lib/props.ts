@@ -13,7 +13,7 @@ export function propsFromGen<T>(
   gen: Gen<T> | undefined,
 ): GenProps<T> | undefined {
   assert(gen !== undefined);
-  const picks = gen.allPicks;
+  const picks = gen.picks;
   const out: GenProps<T> = {
     val: gen.val,
     label: gen.label,

@@ -70,7 +70,7 @@ export class Domain<T> extends Arbitrary<T> {
         );
       }
       assertEquals(
-        def.allReplies,
+        def.replies,
         picks.val,
         `callback's picks don't match for the default value of ${arb.label}`,
       );
@@ -104,7 +104,7 @@ export class Domain<T> extends Arbitrary<T> {
         sendErr("filter rejected value");
         return undefined;
       }
-      return gen.allReplies;
+      return gen.replies;
     });
   }
 

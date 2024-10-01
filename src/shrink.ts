@@ -51,7 +51,7 @@ export function shrinkTail<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
-  const len = seed.allPicks.trimmedLength;
+  const len = seed.picks.trimmedLength;
   if (len === 0) {
     return undefined; // Nothing to remove
   }
@@ -65,7 +65,7 @@ export function shrinkTail<T>(
   // Binary search to trim a range of unneeded picks at the end of the playout.
   // It might, by luck, jump to an earlier length that works.
   let tooLow = -1;
-  let hi = seed.allPicks.trimmedLength;
+  let hi = seed.picks.trimmedLength;
   while (tooLow + 2 <= hi) {
     const mid = (tooLow + 1 + hi) >>> 1;
     assert(mid > tooLow && mid < hi);
@@ -76,7 +76,7 @@ export function shrinkTail<T>(
       continue;
     }
     seed = next;
-    hi = seed.allPicks.trimmedLength;
+    hi = seed.picks.trimmedLength;
   }
   return seed;
 }
@@ -107,7 +107,7 @@ export function shrinkOnePick(index: number): Shrinker {
     seed: Gen<T>,
     test: (val: T) => boolean,
   ): Gen<T> | undefined => {
-    const picks = seed.allPicks;
+    const picks = seed.picks;
     if (picks.trimmedLength <= index) {
       return undefined; // No change; nothing to shrink
     }
@@ -123,7 +123,7 @@ export function shrinkOnePick(index: number): Shrinker {
       return undefined; // No change; the postcondition already holds
     }
     seed = next;
-    let replies = seed.allReplies;
+    let replies = seed.replies;
 
     // Binary search to find the smallest pick that succeeds.
     let tooLow = req.min - 1;
@@ -138,7 +138,7 @@ export function shrinkOnePick(index: number): Shrinker {
         continue;
       }
       seed = next;
-      replies = seed.allReplies;
+      replies = seed.replies;
       hi = replies[index];
     }
     return seed;
@@ -149,7 +149,7 @@ export function shrinkAllPicks<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
-  const len = seed.allPicks.trimmedLength;
+  const len = seed.picks.trimmedLength;
 
   let changed = false;
   for (let i = 0; i < len; i++) {
@@ -181,7 +181,7 @@ export function shrinkAllOptions<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
-  let picks = seed.allPicks;
+  let picks = seed.picks;
   const len = picks.trimmedLength;
 
   if (len < 1) {
@@ -217,7 +217,7 @@ export function shrinkAllOptions<T>(
     }
 
     seed = next;
-    picks = seed.allPicks;
+    picks = seed.picks;
     end = i;
     changed = true;
   }

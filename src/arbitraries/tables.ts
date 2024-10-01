@@ -76,7 +76,7 @@ function countDistinct(dom: Domain<unknown>, max: number): number {
   for (const gen of generateAll(dom)) {
     const regen = dom.regenerate(gen.val);
     assert(regen.ok);
-    if (remaining.prune(regen.allPicks)) {
+    if (remaining.prune(regen.picks)) {
       count++;
       if (count >= max) {
         return max;

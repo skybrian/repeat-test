@@ -1,7 +1,7 @@
 import type { PickSet } from "../src/generated.ts";
 
 import { beforeEach, describe, it } from "@std/testing/bdd";
-import { assert, assertEquals, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { repeatTest } from "@/runner.ts";
 import { Arbitrary } from "@/arbitrary.ts";
@@ -17,7 +17,13 @@ import { depthFirstPlayouts, PartialTracker } from "../src/partial_tracker.ts";
 import { randomPicker, randomPlayouts } from "../src/random.ts";
 
 import { propsFromGen } from "./lib/props.ts";
-import { generate, generateValue, makePickFunction } from "../src/generated.ts";
+import { Gen } from "../src/gen_class.ts";
+import {
+  generate,
+  generateValue,
+  makePickFunction,
+  thenGenerate,
+} from "../src/generated.ts";
 import { arb } from "@/mod.ts";
 import { PlaybackPicker } from "../src/picks.ts";
 
@@ -232,5 +238,75 @@ describe("generateValue", () => {
   it("returns undefined if there are no matching playouts", () => {
     const playouts = depthFirstPlayouts();
     assertEquals(generateValue(rejectAll, playouts), undefined);
+  });
+});
+
+const bit: PickSet<number> = {
+  label: "bit",
+  generateFrom: (pick) => pick(PickRequest.bit),
+};
+
+const frozen: PickSet<readonly string[]> = {
+  label: "frozen",
+  generateFrom: () => Object.freeze(["frozen"]),
+};
+
+describe("thenGenerate", () => {
+  it("generates a value when called", () => {
+    const input = Gen.mustBuild(bit, [0]);
+
+    const then = thenGenerate(
+      input,
+      (val, pick) => `${val}, ${pick(PickRequest.bit)}`,
+      minPlayout(),
+    );
+    assert(then !== undefined);
+    assertEquals(propsFromGen(then), {
+      label: "untitled",
+      reqs: [PickRequest.bit, PickRequest.bit],
+      replies: [0, 0],
+      val: `0, 0`,
+    });
+  });
+
+  it("regenerates the same value the second time", () => {
+    const input = Gen.mustBuild(frozen, []);
+
+    const then = thenGenerate(
+      input,
+      (val, pick) => val.concat(["" + pick(PickRequest.bit)]),
+      minPlayout(),
+    );
+    assert(then !== undefined);
+    assertEquals(propsFromGen(then), {
+      label: "untitled",
+      reqs: [PickRequest.bit],
+      replies: [0],
+      val: ["frozen", "0"],
+    });
+
+    const first = then.val;
+    assertEquals(first, ["frozen", "0"]);
+    const second = then.val;
+    assertEquals(second, first);
+    assertFalse(second === first);
+  });
+
+  it("fails when the rule throws an error", () => {
+    const input = Gen.mustBuild(bit, [0]);
+    const step = () => {
+      throw new Error("oops");
+    };
+    const picks = onePlayout(new PlaybackPicker([]));
+    assertThrows(() => thenGenerate(input, step, picks), Error, "oops");
+  });
+
+  it("fails when all playouts were rejected", () => {
+    const input = Gen.mustBuild(bit, [0]);
+    const step = () => {
+      throw new Pruned("nope");
+    };
+    const then = thenGenerate(input, step, onePlayout(new PlaybackPicker([])));
+    assert(then === undefined);
   });
 });

@@ -225,7 +225,7 @@ describe("takeGenerated", () => {
     const examples = Arbitrary.of(1, 2, 3);
     const gens = takeGenerated(examples, 4);
     assertEquals(gens.length, 3);
-    const playout = gens[0].allPicks;
+    const playout = gens[0].picks;
     assertEquals(playout.length, 1);
     const req = playout.getPick(0).req;
     assertEquals(req.min, 0);
@@ -273,9 +273,9 @@ describe("takeGenerated", () => {
 
     const vals = Array.from(generateAll(digits));
     assertEquals(vals[0].val, 0);
-    assertEquals(vals[0].allReplies, [0, 0, 0]);
+    assertEquals(vals[0].replies, [0, 0, 0]);
     assertEquals(vals[999].val, 999);
-    assertEquals(vals[999].allReplies, [9, 9, 9]);
+    assertEquals(vals[999].replies, [9, 9, 9]);
   });
 });
 

@@ -34,7 +34,7 @@ export function uniqueArray<T>(
       const gen = item.generate(replies);
       assert(gen.ok, "can't regenerate an accepted value");
 
-      if (!seen.prune(gen.allPicks)) {
+      if (!seen.prune(gen.picks)) {
         sendErr("duplicate item", { at: i });
         return undefined;
       }
@@ -98,7 +98,7 @@ export function table<R extends Record<string, unknown>>(
 
         const seen = trees[key];
         if (seen) {
-          if (!seen.prune(gen.allPicks)) {
+          if (!seen.prune(gen.picks)) {
             sendErr("duplicate field value", { at: `${i}.${key}` });
             return undefined;
           }

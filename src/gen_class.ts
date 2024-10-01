@@ -1,24 +1,29 @@
 import type { Failure, Success } from "./results.ts";
 import type { IntEditor, PickRequest } from "./picks.ts";
-import type { PlayoutSource } from "./backtracking.ts";
 import type { PickFunction, PickSet } from "./generated.ts";
 
 import { failure } from "./results.ts";
 import { EditPicker, PickList, PlaybackPicker } from "./picks.ts";
-import { onePlayout, Pruned } from "./backtracking.ts";
-import { generate, makePickFunction, mustGenerate } from "./generated.ts";
+import { onePlayout } from "./backtracking.ts";
+import { generate, mustGenerate, thenGenerate } from "./generated.ts";
 
 const needGenerate = Symbol("needGenerate");
 
-export type ThenFunction<In, Out> = (deps: In, pick: PickFunction) => Out;
+/** A function that implements a build step. */
+export type StepFunction<In, Out> = (input: In, pick: PickFunction) => Out;
 
 /**
  * A generated value and the picks that were used to generate it.
  */
 export class Gen<T> implements Success<T> {
   readonly #set: PickSet<T>;
-  readonly #makeReqs: () => PickRequest[];
-  readonly #makeReplies: () => number[];
+  readonly #input: Gen<unknown> | undefined;
+
+  /** The requests for the last build step. */
+  readonly #lastReqs: PickRequest[];
+
+  /** The replies for the last build step. */
+  readonly #lastReplies: number[];
 
   #val: T | typeof needGenerate;
   #reqs: PickRequest[] | undefined;
@@ -32,13 +37,15 @@ export class Gen<T> implements Success<T> {
    */
   private constructor(
     set: PickSet<T>,
-    reqs: () => PickRequest[],
-    replies: () => number[],
+    input: Gen<unknown> | undefined,
+    stepReqs: PickRequest[],
+    stepReplies: number[],
     val: T,
   ) {
     this.#set = set;
-    this.#makeReqs = reqs;
-    this.#makeReplies = replies;
+    this.#input = input;
+    this.#lastReqs = stepReqs;
+    this.#lastReplies = stepReplies;
     this.#val = val;
   }
 
@@ -51,22 +58,32 @@ export class Gen<T> implements Success<T> {
     return this.#set.label;
   }
 
-  private get allReqs(): PickRequest[] {
+  get reqs(): PickRequest[] {
     if (this.#reqs === undefined) {
-      this.#reqs = this.#makeReqs();
+      const steps = Gen.steps(this);
+      this.#reqs = steps.flatMap((step) => step.#lastReqs);
     }
     return this.#reqs;
   }
 
-  get allReplies(): number[] {
+  get replies(): number[] {
     if (this.#replies === undefined) {
-      this.#replies = this.#makeReplies();
+      const steps = Gen.steps(this);
+      this.#replies = steps.flatMap((step) => step.#lastReplies);
     }
     return this.#replies;
   }
 
-  get allPicks(): PickList {
-    return new PickList(this.allReqs, this.allReplies);
+  get picks(): PickList {
+    return new PickList(this.reqs, this.replies);
+  }
+
+  /**
+   * The picks that were used to generate this value, divided by build steps
+   */
+  get splitPicks(): PickList[] {
+    const steps = Gen.steps(this);
+    return steps.map((step) => new PickList(step.#lastReqs, step.#lastReplies));
   }
 
   /**
@@ -77,7 +94,7 @@ export class Gen<T> implements Success<T> {
    */
   get val(): T {
     if (this.#val === needGenerate) {
-      return mustGenerate(this.#set, this.allReplies);
+      return mustGenerate(this.#set, this.replies);
     }
     const val = this.#val;
     if (!Object.isFrozen(val)) {
@@ -91,68 +108,60 @@ export class Gen<T> implements Success<T> {
    * @returns the new value, or undefined if no change is available.
    */
   mutate(edit: IntEditor): Gen<T> | undefined {
-    const picker = new EditPicker(this.allReplies, edit);
+    const picker = new EditPicker(this.replies, edit);
     const gen = generate(this.#set, onePlayout(picker));
     if (picker.edits === 0 && picker.deletes === 0) {
       return undefined; // no change
     }
     return gen;
   }
-  /**
-   * Generates a value from this one, using additional picks.
-   */
-  thenGenerate<Out>(
-    then: ThenFunction<T, Out>,
-    playouts: PlayoutSource,
-  ): Gen<Out> | undefined {
-    const label = "untitled";
-    const generateFrom = (pick: PickFunction) => then(this.val, pick);
 
-    const depth = playouts.depth;
-    while (playouts.startValue(depth)) {
-      try {
-        const pick = makePickFunction(playouts);
-        const val = generateFrom(pick);
-        const thenReqs = playouts.getRequests(depth);
-        const thenReplies = playouts.getReplies(depth);
-        const reqs = () => this.allReqs.concat(thenReqs);
-        const replies = () => this.allReplies.concat(thenReplies);
-        return Gen.fromDeps(label, this, then, reqs, replies, val);
-      } catch (e) {
-        if (!(e instanceof Pruned)) {
-          throw e;
-        }
-        if (playouts.state === "picking") {
-          playouts.endPlayout(); // pruned, move to next playout
-        }
-      }
+  thenBuild<Out>(
+    then: StepFunction<T, Out>,
+    replies: number[],
+  ): Gen<Out> | Failure {
+    const picker = new PlaybackPicker(replies);
+    const gen = thenGenerate(this, then, onePlayout(picker));
+    if (gen === undefined || picker.error) {
+      const err = picker.error ?? "picks not accepted";
+      return failure(`build step failed: ${err}`);
     }
-
-    return undefined;
+    return gen;
   }
 
-  static fromSet<T>(
+  thenMustBuild<Out>(
+    then: StepFunction<T, Out>,
+    replies: number[],
+  ): Gen<Out> {
+    const gen = this.thenBuild(then, replies);
+    if (!gen.ok) {
+      throw new Error(gen.message);
+    }
+    return gen;
+  }
+
+  static fromBuildResult<T>(
     set: PickSet<T>,
     reqs: PickRequest[],
     replies: number[],
     val: T,
   ): Gen<T> {
-    return new Gen(set, () => reqs, () => replies, val);
+    return new Gen(set, undefined, reqs, replies, val);
   }
 
-  static fromDeps<Deps, T>(
+  static fromStepResult<In, T>(
     label: string,
-    deps: Gen<Deps>,
-    then: ThenFunction<Deps, T>,
-    reqs: () => PickRequest[],
-    replies: () => number[],
+    input: Gen<In>,
+    then: StepFunction<In, T>,
+    stepReqs: PickRequest[],
+    stepReplies: number[],
     val: T,
   ): Gen<T> {
     const set = {
       label,
-      generateFrom: (pick: PickFunction) => then(deps.val, pick),
+      generateFrom: (pick: PickFunction) => then(input.val, pick),
     };
-    return new Gen(set, reqs, replies, val);
+    return new Gen(set, input, stepReqs, stepReplies, val);
   }
 
   static build<T>(set: PickSet<T>, replies: number[]): Gen<T> | Failure {
@@ -171,5 +180,14 @@ export class Gen<T> implements Success<T> {
       throw new Error(gen.message);
     }
     return gen;
+  }
+
+  static steps(last: Gen<unknown>): Gen<unknown>[] {
+    const steps = [last];
+    for (let step = last.#input; step !== undefined; step = step.#input) {
+      steps.push(step);
+    }
+    steps.reverse();
+    return steps;
   }
 }
