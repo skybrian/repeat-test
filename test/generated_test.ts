@@ -1,5 +1,4 @@
 import type { PickSet } from "../src/generated.ts";
-import type { Gen } from "../src/gen_class.ts";
 
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
@@ -17,12 +16,8 @@ import {
 import { depthFirstPlayouts, PartialTracker } from "../src/partial_tracker.ts";
 import { randomPicker, randomPlayouts } from "../src/random.ts";
 
-import {
-  generate,
-  generateValue,
-  generateValueWithDeps,
-  makePickFunction,
-} from "../src/generated.ts";
+import { propsFromGen } from "./lib/props.ts";
+import { generate, generateValue, makePickFunction } from "../src/generated.ts";
 import { arb } from "@/mod.ts";
 import { PlaybackPicker } from "../src/picks.ts";
 
@@ -90,33 +85,6 @@ const fails: PickSet<unknown> = {
   },
 };
 
-type GenProps<T> = {
-  val: T;
-  deps?: GenProps<unknown>;
-  label: string;
-  reqs: PickRequest[];
-  replies: number[];
-};
-
-function props<T>(
-  gen: Gen<T> | undefined,
-): GenProps<T> | undefined {
-  if (gen === undefined) {
-    return undefined;
-  }
-  const picks = gen.allPicks;
-  const out: GenProps<T> = {
-    val: gen.val,
-    label: gen.label,
-    reqs: picks.reqs,
-    replies: picks.replies,
-  };
-  if (gen.deps !== undefined) {
-    out.deps = props(gen.deps);
-  }
-  return out;
-}
-
 describe("generate", () => {
   const hello: PickSet<string> = {
     label: "hello",
@@ -125,7 +93,7 @@ describe("generate", () => {
 
   it("generates a single value for a constant", () => {
     const gen = generate(hello, minPlayout());
-    assertEquals(props(gen), {
+    assertEquals(propsFromGen(gen), {
       val: "hi",
       label: "hello",
       reqs: [],
@@ -170,7 +138,7 @@ describe("generateValue", () => {
     const playouts = depthFirstPlayouts();
 
     const gen1 = generateValue(bit, playouts);
-    assertEquals(props(gen1), {
+    assertEquals(propsFromGen(gen1), {
       val: 0,
       label: "bit",
       reqs: [bitReq],
@@ -183,7 +151,7 @@ describe("generateValue", () => {
     assertEquals(0, playouts.depth);
 
     const gen2 = generateValue(bit, playouts);
-    assertEquals(props(gen2), {
+    assertEquals(propsFromGen(gen2), {
       val: 1,
       label: "bit",
       reqs: [bitReq],
@@ -195,7 +163,7 @@ describe("generateValue", () => {
     const playouts = onePlayout(new PlaybackPicker([0, 1]));
 
     const gen1 = generateValue(bit, playouts);
-    assertEquals(props(gen1), {
+    assertEquals(propsFromGen(gen1), {
       val: 0,
       label: "bit",
       reqs: [bitReq],
@@ -205,7 +173,7 @@ describe("generateValue", () => {
 
     const gen2 = generateValue(bit, playouts);
     assertEquals(playouts.depth, 2);
-    assertEquals(props(gen2), {
+    assertEquals(propsFromGen(gen2), {
       val: 1,
       label: "bit",
       reqs: [bitReq],
@@ -228,7 +196,7 @@ describe("generateValue", () => {
     const playouts = depthFirstPlayouts();
 
     const gen1 = generateValue(filteredOne, playouts);
-    assertEquals(props(gen1), {
+    assertEquals(propsFromGen(gen1), {
       val: 1,
       label: "filteredOne",
       reqs: [bitReq],
@@ -238,7 +206,7 @@ describe("generateValue", () => {
 
     const gen2 = generateValue(filteredOne, playouts);
     assertEquals(playouts.depth, 2);
-    assertEquals(props(gen2), {
+    assertEquals(propsFromGen(gen2), {
       val: 1,
       label: "filteredOne",
       reqs: [bitReq],
@@ -264,39 +232,5 @@ describe("generateValue", () => {
   it("returns undefined if there are no matching playouts", () => {
     const playouts = depthFirstPlayouts();
     assertEquals(generateValue(rejectAll, playouts), undefined);
-  });
-});
-
-describe("generateValueWithDeps", () => {
-  const bit = new PickRequest(0, 1);
-
-  const depsReq: PickSet<number> = {
-    label: "deps",
-    generateFrom: (pick) => pick(bit),
-  };
-
-  const hasDep: PickSet<string> = {
-    label: "hasDep",
-    generateFrom: (pick) => {
-      const deps = pick(depsReq);
-      const bit2 = pick(bit);
-      return `${deps}, ${bit2}`;
-    },
-  };
-
-  it("saves the first pick as the deps", () => {
-    const gen = generateValueWithDeps(hasDep, depthFirstPlayouts());
-    assertEquals(props(gen), {
-      val: "0, 0",
-      label: "hasDep",
-      reqs: [bit, bit],
-      replies: [0, 0],
-      deps: {
-        val: 0,
-        label: "deps",
-        reqs: [bit],
-        replies: [0],
-      },
-    });
   });
 });

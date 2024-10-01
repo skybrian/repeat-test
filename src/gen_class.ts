@@ -1,20 +1,27 @@
 import type { Success } from "./results.ts";
 import type { IntEditor, PickRequest } from "./picks.ts";
-import type { PickSet } from "./generated.ts";
+import type { PlayoutSource } from "./backtracking.ts";
+import type { PickFunction, PickSet } from "./generated.ts";
 
-import { EditPicker, PickList } from "./picks.ts";
-import { onePlayout } from "./backtracking.ts";
-import { generate, mustGenerate } from "./generated.ts";
+import { EditPicker, PickList, PlaybackPicker } from "./picks.ts";
+import { onePlayout, Pruned } from "./backtracking.ts";
+import { generate, makePickFunction, mustGenerate } from "./generated.ts";
 
 const needGenerate = Symbol("needGenerate");
+
+export type ThenFunction<In, Out> = (deps: In, pick: PickFunction) => Out;
 
 /**
  * A generated value and the picks that were used to generate it.
  */
 export class Gen<T> implements Success<T> {
   readonly #set: PickSet<T>;
+  readonly #makeReqs: () => PickRequest[];
+  readonly #makeReplies: () => number[];
+
   #val: T | typeof needGenerate;
-  readonly playouts: PickList[];
+  #reqs: PickRequest[] | undefined;
+  #replies: number[] | undefined;
 
   /**
    * Creates a generated value with the given contents.
@@ -24,20 +31,14 @@ export class Gen<T> implements Success<T> {
    */
   private constructor(
     set: PickSet<T>,
-    reqs: PickRequest[],
-    replies: number[],
-    readonly deps: Gen<unknown> | undefined,
+    reqs: () => PickRequest[],
+    replies: () => number[],
     val: T,
   ) {
-    const playouts = [];
-    if (deps) {
-      playouts.push(...deps.playouts);
-    }
-    playouts.push(new PickList(reqs, replies));
-
     this.#set = set;
+    this.#makeReqs = reqs;
+    this.#makeReplies = replies;
     this.#val = val;
-    this.playouts = playouts;
   }
 
   /** Satisfies the Success interface. */
@@ -50,17 +51,17 @@ export class Gen<T> implements Success<T> {
   }
 
   private get allReqs(): PickRequest[] {
-    if (this.playouts.length === 1) {
-      return this.playouts[0].reqs;
+    if (this.#reqs === undefined) {
+      this.#reqs = this.#makeReqs();
     }
-    return this.playouts.map((p) => p.reqs).flat();
+    return this.#reqs;
   }
 
   get allReplies(): number[] {
-    if (this.playouts.length === 1) {
-      return this.playouts[0].replies;
+    if (this.#replies === undefined) {
+      this.#replies = this.#makeReplies();
     }
-    return this.playouts.map((p) => p.replies).flat();
+    return this.#replies;
   }
 
   get allPicks(): PickList {
@@ -96,6 +97,38 @@ export class Gen<T> implements Success<T> {
     }
     return gen;
   }
+  /**
+   * Generates a value from this one, using additional picks.
+   */
+  thenGenerate<Out>(
+    then: ThenFunction<T, Out>,
+    playouts: PlayoutSource,
+  ): Gen<Out> | undefined {
+    const label = "untitled";
+    const generateFrom = (pick: PickFunction) => then(this.val, pick);
+
+    const depth = playouts.depth;
+    while (playouts.startValue(depth)) {
+      try {
+        const pick = makePickFunction(playouts);
+        const val = generateFrom(pick);
+        const thenReqs = playouts.getRequests(depth);
+        const thenReplies = playouts.getReplies(depth);
+        const reqs = () => this.allReqs.concat(thenReqs);
+        const replies = () => this.allReplies.concat(thenReplies);
+        return Gen.fromDeps(label, this, then, reqs, replies, val);
+      } catch (e) {
+        if (!(e instanceof Pruned)) {
+          throw e;
+        }
+        if (playouts.state === "picking") {
+          playouts.endPlayout(); // pruned, move to next playout
+        }
+      }
+    }
+
+    return undefined;
+  }
 
   static fromSet<T>(
     set: PickSet<T>,
@@ -103,16 +136,32 @@ export class Gen<T> implements Success<T> {
     replies: number[],
     val: T,
   ): Gen<T> {
-    return new Gen(set, reqs, replies, undefined, val);
+    return new Gen(set, () => reqs, () => replies, val);
   }
 
-  static fromDeps<T>(
-    set: PickSet<T>,
-    reqs: PickRequest[],
-    replies: number[],
-    deps: Gen<unknown>,
+  static fromDeps<Deps, T>(
+    label: string,
+    deps: Gen<Deps>,
+    then: ThenFunction<Deps, T>,
+    reqs: () => PickRequest[],
+    replies: () => number[],
     val: T,
   ): Gen<T> {
-    return new Gen(set, reqs, replies, deps, val);
+    const set = {
+      label,
+      generateFrom: (pick: PickFunction) => then(deps.val, pick),
+    };
+    return new Gen(set, reqs, replies, val);
+  }
+
+  static mustBuild<T>(set: PickSet<T>, replies: number[]): Gen<T> {
+    const picker = new PlaybackPicker(replies);
+    const gen = generate(set, onePlayout(picker));
+    if (picker.error) {
+      throw new Error(`can't generate ${set.label}: ${picker.error}`);
+    } else if (gen === undefined) {
+      throw new Error(`can't generate ${set.label}: picks not accepted`);
+    }
+    return gen;
   }
 }
