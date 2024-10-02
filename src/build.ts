@@ -31,8 +31,8 @@ export type BuildStep<Out, Local> = {
 export function buildStep<Out, Local>(
   input: PickSet<Local>,
   then: ThenFunction<Local, Out>,
-): Script<Out> {
-  return { input, then } as Script<Out>;
+): BuildStep<Out, unknown> {
+  return { input, then } as BuildStep<Out, unknown>;
 }
 
 export type Script<T, L = unknown> = BuildFunction<T> | BuildStep<T, L>;
@@ -234,7 +234,7 @@ export function generateValue<T>(
 ): Gen<T> | undefined {
   const script = set.buildScript;
   if (!(typeof script === "function")) {
-    return generateBuildStep(set.label, script, playouts);
+    return generateFromBuildStep(set.label, script, playouts);
   }
 
   const depth = playouts.depth;
@@ -257,7 +257,7 @@ export function generateValue<T>(
   return undefined;
 }
 
-export function generateBuildStep<T, I>(
+export function generateFromBuildStep<T, I>(
   label: string,
   step: BuildStep<T, I>,
   playouts: PlayoutSource,
@@ -266,25 +266,14 @@ export function generateBuildStep<T, I>(
   if (input === undefined) {
     return undefined;
   }
-  return thenGenerate(label, input, step.then, playouts);
-}
 
-/**
- * Generates a value from this one, using additional picks.
- */
-export function thenGenerate<In, Out>(
-  label: string,
-  input: Gen<In>,
-  then: ThenFunction<In, Out>,
-  playouts: PlayoutSource,
-): Gen<Out> | undefined {
-  const generateFrom = (pick: PickFunction) => then(input.val, pick);
+  const then = step.then;
 
   const depth = playouts.depth;
   while (playouts.startValue(depth)) {
     try {
       const pick = makePickFunction(playouts);
-      const val = generateFrom(pick);
+      const val = then(input.val, pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
       return Gen.fromBuildStepResult(label, input, then, reqs, replies, val);

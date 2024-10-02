@@ -17,12 +17,12 @@ import { depthFirstPlayouts, PartialTracker } from "../src/partial_tracker.ts";
 import { randomPicker, randomPlayouts } from "../src/random.ts";
 
 import { propsFromGen } from "./lib/props.ts";
-import { Gen } from "../src/gen_class.ts";
 import {
+  buildStep,
   generate,
+  generateFromBuildStep,
   generateValue,
   makePickFunction,
-  thenGenerate,
 } from "../src/build.ts";
 import { arb } from "@/mod.ts";
 import { PlaybackPicker } from "../src/picks.ts";
@@ -267,18 +267,17 @@ describe("generateValue", () => {
   });
 });
 
-describe("thenGenerate", () => {
+describe("generateBuildStep", () => {
   it("generates a value when called", () => {
-    const input = Gen.mustBuild(bit, [0]);
+    const script = buildStep(bit, (val, pick) => `${val}, ${pick(bit)}`);
 
-    const then = thenGenerate(
+    const gen = generateFromBuildStep(
       "untitled",
-      input,
-      (val, pick) => `${val}, ${pick(PickRequest.bit)}`,
+      script,
       minPlayout(),
     );
-    assert(then !== undefined);
-    assertEquals(propsFromGen(then), {
+
+    assertEquals(propsFromGen(gen), {
       label: "untitled",
       reqs: [PickRequest.bit, PickRequest.bit],
       replies: [0, 0],
@@ -287,53 +286,56 @@ describe("thenGenerate", () => {
   });
 
   it("regenerates the same value the second time", () => {
-    const input = Gen.mustBuild(frozen, []);
-
-    const then = thenGenerate(
-      "untitled",
-      input,
+    const script = buildStep(
+      frozen,
       (val, pick) => val.concat(["" + pick(PickRequest.bit)]),
+    );
+
+    const gen = generateFromBuildStep(
+      "untitled",
+      script,
       minPlayout(),
     );
-    assert(then !== undefined);
-    assertEquals(propsFromGen(then), {
+
+    assertEquals(propsFromGen(gen), {
       label: "untitled",
       reqs: [PickRequest.bit],
       replies: [0],
       val: ["frozen", "0"],
     });
 
-    const first = then.val;
+    assert(gen !== undefined);
+    const first = gen.val;
     assertEquals(first, ["frozen", "0"]);
-    const second = then.val;
+
+    const second = gen.val;
     assertEquals(second, first);
     assertFalse(second === first);
   });
 
   it("fails when the rule throws an error", () => {
-    const input = Gen.mustBuild(bit, [0]);
-    const step = () => {
+    const script = buildStep(bit, () => {
       throw new Error("oops");
-    };
+    });
+
     const picks = onePlayout(new PlaybackPicker([]));
     assertThrows(
-      () => thenGenerate("untitled", input, step, picks),
+      () => generateFromBuildStep("untitled", script, picks),
       Error,
       "oops",
     );
   });
 
   it("fails when all playouts were rejected", () => {
-    const input = Gen.mustBuild(bit, [0]);
-    const step = () => {
+    const script = buildStep(bit, () => {
       throw new Pruned("nope");
-    };
-    const then = thenGenerate(
+    });
+
+    const gen = generateFromBuildStep(
       "untitled",
-      input,
-      step,
+      script,
       onePlayout(new PlaybackPicker([])),
     );
-    assert(then === undefined);
+    assert(gen === undefined);
   });
 });
