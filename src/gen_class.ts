@@ -1,11 +1,11 @@
 import type { Failure, Success } from "./results.ts";
 import type { IntEditor, PickRequest } from "./picks.ts";
-import type { PickFunction, PickSet, ThenFunction } from "./build.ts";
+import type { PickSet, ThenFunction } from "./build.ts";
 
 import { failure } from "./results.ts";
 import { EditPicker, PickList, PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
-import { generate, mustGenerate, thenGenerate } from "./build.ts";
+import { buildStep, generate, mustGenerate } from "./build.ts";
 
 const needGenerate = Symbol("needGenerate");
 
@@ -113,30 +113,6 @@ export class Gen<T> implements Success<T> {
     return gen;
   }
 
-  thenBuild<Out>(
-    then: ThenFunction<T, Out>,
-    replies: number[],
-  ): Gen<Out> | Failure {
-    const picker = new PlaybackPicker(replies);
-    const gen = thenGenerate(this, then, onePlayout(picker));
-    if (gen === undefined || picker.error) {
-      const err = picker.error ?? "picks not accepted";
-      return failure(`build step failed: ${err}`);
-    }
-    return gen;
-  }
-
-  thenMustBuild<Out>(
-    then: ThenFunction<T, Out>,
-    replies: number[],
-  ): Gen<Out> {
-    const gen = this.thenBuild(then, replies);
-    if (!gen.ok) {
-      throw new Error(gen.message);
-    }
-    return gen;
-  }
-
   static fromBuildResult<T>(
     set: PickSet<T>,
     reqs: PickRequest[],
@@ -146,7 +122,7 @@ export class Gen<T> implements Success<T> {
     return new Gen(set, undefined, reqs, replies, val);
   }
 
-  static fromStepResult<In, T>(
+  static fromBuildStepResult<In, T>(
     label: string,
     input: Gen<In>,
     then: ThenFunction<In, T>,
@@ -156,7 +132,7 @@ export class Gen<T> implements Success<T> {
   ): Gen<T> {
     const set = {
       label,
-      buildScript: (pick: PickFunction) => then(input.val, pick),
+      buildScript: buildStep(input.#set, then),
     };
     return new Gen(set, input, stepReqs, stepReplies, val);
   }

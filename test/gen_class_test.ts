@@ -1,4 +1,4 @@
-import type { PickSet } from "../src/build.ts";
+import { buildStep, type PickSet } from "../src/build.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
@@ -33,6 +33,32 @@ const pruned: PickSet<number> = {
   label: "never",
   buildScript: () => {
     throw new Pruned("nope");
+  },
+};
+
+const multiStep: PickSet<string> = {
+  label: "multi-step",
+  buildScript: buildStep(bit, (a, pick) => {
+    const b = pick(bit);
+    return `(${a}, ${b})`;
+  }),
+};
+
+const multiStepMutable: PickSet<string[]> = {
+  label: "multi-step mutable",
+  buildScript: buildStep(mutable, (a: string[]) => {
+    return [...a, "!"];
+  }),
+};
+
+const firstStepPruned: PickSet<string> = {
+  label: "first-step-pruned",
+  buildScript: {
+    input: pruned,
+    then: (a, pick) => {
+      const b = pick(bit);
+      return `(${a}, ${b})`;
+    },
   },
 };
 
@@ -85,42 +111,30 @@ describe("Gen", () => {
         "can't build 'bit': ran out of picks",
       );
     });
-  });
 
-  describe("thenMustBuild", () => {
-    it("fails when there aren't enough picks", () => {
-      const input = Gen.mustBuild(bit, [0]);
-      assertThrows(
-        () =>
-          input.thenMustBuild(
-            (a, pick) => [a, pick(PickRequest.bit)],
-            [],
-          ),
-        Error,
-        "build step failed: ran out of picks",
-      );
-    });
+    describe("with multiple steps", () => {
+      it("fails when there aren't enough picks", () => {
+        assertThrows(
+          () => Gen.mustBuild(multiStep, []),
+          Error,
+          "can't build 'multi-step': ran out of picks",
+        );
+      });
 
-    it("fails when the picks were pruned", () => {
-      const input = Gen.mustBuild(bit, [0]);
-      assertThrows(
-        () =>
-          input.thenMustBuild(() => {
-            throw new Pruned("nope");
-          }, []),
-        Error,
-        "build step failed: picks not accepted",
-      );
+      it("fails when the first step was pruned", () => {
+        assertThrows(
+          () => Gen.mustBuild(firstStepPruned, [0]),
+          Error,
+          "can't build 'first-step-pruned': read only 0 of 1 available picks",
+        );
+      });
     });
   });
 
   describe("splitPicks", () => {
     it("returns the picks for two build steps", () => {
-      const gen = Gen.mustBuild(bit, [0]).thenMustBuild(
-        (a, pick) => [a, pick(PickRequest.bit)],
-        [1],
-      );
-      assertEquals(gen.val, [0, 1]);
+      const gen = Gen.mustBuild(multiStep, [0, 1]);
+      assertEquals(gen.val, "(0, 1)");
 
       const bitReq = PickRequest.bit;
       const first = new PickList([bitReq], [0]);
@@ -141,6 +155,13 @@ describe("Gen", () => {
       const gen = Gen.mustBuild(mutable, []);
       const first = gen.val;
       assertEquals(first, ["mutable"]);
+      assert(gen.val !== first);
+    });
+
+    it("regenerates using multiple steps", () => {
+      const gen = Gen.mustBuild(multiStepMutable, []);
+      const first = gen.val;
+      assertEquals(first, ["mutable", "!"]);
       assert(gen.val !== first);
     });
   });

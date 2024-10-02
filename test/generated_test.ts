@@ -272,6 +272,7 @@ describe("thenGenerate", () => {
     const input = Gen.mustBuild(bit, [0]);
 
     const then = thenGenerate(
+      "untitled",
       input,
       (val, pick) => `${val}, ${pick(PickRequest.bit)}`,
       minPlayout(),
@@ -289,6 +290,7 @@ describe("thenGenerate", () => {
     const input = Gen.mustBuild(frozen, []);
 
     const then = thenGenerate(
+      "untitled",
       input,
       (val, pick) => val.concat(["" + pick(PickRequest.bit)]),
       minPlayout(),
@@ -314,7 +316,11 @@ describe("thenGenerate", () => {
       throw new Error("oops");
     };
     const picks = onePlayout(new PlaybackPicker([]));
-    assertThrows(() => thenGenerate(input, step, picks), Error, "oops");
+    assertThrows(
+      () => thenGenerate("untitled", input, step, picks),
+      Error,
+      "oops",
+    );
   });
 
   it("fails when all playouts were rejected", () => {
@@ -322,7 +328,12 @@ describe("thenGenerate", () => {
     const step = () => {
       throw new Pruned("nope");
     };
-    const then = thenGenerate(input, step, onePlayout(new PlaybackPicker([])));
+    const then = thenGenerate(
+      "untitled",
+      input,
+      step,
+      onePlayout(new PlaybackPicker([])),
+    );
     assert(then === undefined);
   });
 });

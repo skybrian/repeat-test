@@ -28,6 +28,13 @@ export type BuildStep<Out, Local> = {
   then: ThenFunction<Local, Out>;
 };
 
+export function buildStep<Out, Local>(
+  input: PickSet<Local>,
+  then: ThenFunction<Local, Out>,
+): Script<Out> {
+  return { input, then } as Script<Out>;
+}
+
 export type Script<T, L = unknown> = BuildFunction<T> | BuildStep<T, L>;
 
 /**
@@ -225,13 +232,16 @@ export function generateValue<T>(
   playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): Gen<T> | undefined {
-  const build = makeBuildFunction(set.buildScript);
+  const script = set.buildScript;
+  if (!(typeof script === "function")) {
+    return generateBuildStep(set.label, script, playouts);
+  }
 
   const depth = playouts.depth;
   while (playouts.startValue(depth)) {
     try {
       const pick = makePickFunction(playouts, opts);
-      const val = build(pick);
+      const val = script(pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
       return Gen.fromBuildResult(set, reqs, replies, val);
@@ -247,15 +257,27 @@ export function generateValue<T>(
   return undefined;
 }
 
+export function generateBuildStep<T, I>(
+  label: string,
+  step: BuildStep<T, I>,
+  playouts: PlayoutSource,
+): Gen<T> | undefined {
+  const input = generateValue(step.input, playouts);
+  if (input === undefined) {
+    return undefined;
+  }
+  return thenGenerate(label, input, step.then, playouts);
+}
+
 /**
  * Generates a value from this one, using additional picks.
  */
 export function thenGenerate<In, Out>(
+  label: string,
   input: Gen<In>,
   then: ThenFunction<In, Out>,
   playouts: PlayoutSource,
 ): Gen<Out> | undefined {
-  const label = "untitled";
   const generateFrom = (pick: PickFunction) => then(input.val, pick);
 
   const depth = playouts.depth;
@@ -265,7 +287,7 @@ export function thenGenerate<In, Out>(
       const val = generateFrom(pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
-      return Gen.fromStepResult(label, input, then, reqs, replies, val);
+      return Gen.fromBuildStepResult(label, input, then, reqs, replies, val);
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;
