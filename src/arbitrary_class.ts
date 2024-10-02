@@ -1,10 +1,15 @@
 import type { RecordShape } from "./options.ts";
-import type { BuildFunction, PickFunction, PickSet } from "./build.ts";
+import type { BuildFunction, PickFunction, PickSet, Script } from "./build.ts";
 
 import { assert } from "@std/assert";
 
 import { PickRequest } from "./picks.ts";
-import { generate } from "./build.ts";
+import {
+  buildStep,
+  generate,
+  isBuildScript,
+  makeBuildFunction,
+} from "./build.ts";
 import { generateDefault } from "./ordered.ts";
 import { randomPlayouts } from "./random.ts";
 
@@ -30,7 +35,7 @@ function checkRandomGenerate(set: PickSet<unknown>) {
  * {@link maxSize}, providing an upper bound on how many values they can generate.
  */
 export class Arbitrary<T> implements PickSet<T> {
-  readonly #callback: BuildFunction<T>;
+  readonly #buildScript: Script<T>;
   readonly #label: string;
 
   readonly #examples: T[] | undefined;
@@ -40,25 +45,25 @@ export class Arbitrary<T> implements PickSet<T> {
   protected constructor(arb: Arbitrary<T>);
   /** Initializes an Arbitrary, given a callback function. */
   protected constructor(
-    callback: BuildFunction<T>,
+    buildScript: Script<T>,
     label: string,
     opts?: ConstructorOpts<T>,
   );
   /** Initializes a callback or another Arbitrary. */
   protected constructor(
-    arg: Arbitrary<T> | BuildFunction<T>,
+    arg: Arbitrary<T> | Script<T>,
     label?: string,
     opts?: ConstructorOpts<T>,
   ) {
     if (arg instanceof Arbitrary) {
-      this.#callback = arg.#callback;
+      this.#buildScript = arg.#buildScript;
       this.#label = arg.#label;
       this.#examples = arg.#examples;
       this.#maxSize = arg.#maxSize;
     } else {
-      assert(typeof arg === "function");
+      assert(isBuildScript(arg));
       assert(label !== undefined);
-      this.#callback = arg;
+      this.#buildScript = arg;
       this.#label = label;
       this.#examples = opts?.examples;
       this.#maxSize = opts?.maxSize;
@@ -81,8 +86,8 @@ export class Arbitrary<T> implements PickSet<T> {
    *
    * (Satisfies the {@link PickSet} interface. Not normally called directly.)
    */
-  get buildScript(): BuildFunction<T> {
-    return this.#callback;
+  get buildScript(): Script<T> {
+    return this.#buildScript;
   }
 
   /**
@@ -98,10 +103,7 @@ export class Arbitrary<T> implements PickSet<T> {
    * examples are in the same order as in the original.)
    */
   map<U>(convert: (val: T) => U): Arbitrary<U> {
-    const build: BuildFunction<U> = (pick) => {
-      const output = pick(this);
-      return convert(output);
-    };
+    const build = buildStep(this, convert);
     const maxSize = this.maxSize;
     return new Arbitrary(build, "map", { maxSize });
   }
@@ -168,17 +170,16 @@ export class Arbitrary<T> implements PickSet<T> {
    * Creates a new Arbitrary that maps each example to another Arbitrary and
    * then picks from it.
    *
-   * (This method is provided because it's traditional, but in most cases,
-   * {@link Arbitrary.from} with a build function is more flexible.)
+   * (Although less convenient than calling {@link Arbitrary.from} with a
+   * function, it sometimes allows the intermediate value to be cached.)
    */
   chain<U>(
     convert: (val: T) => Arbitrary<U>,
   ): Arbitrary<U> {
-    const build: BuildFunction<U> = (pick) => {
-      const output = pick(this);
-      const next = convert(output);
+    const build = buildStep(this, (val, pick) => {
+      const next = convert(val);
       return pick(next);
-    };
+    });
     return new Arbitrary(build, "chain");
   }
 
@@ -186,7 +187,7 @@ export class Arbitrary<T> implements PickSet<T> {
    * Returns a new Arbitrary with a different label.
    */
   with(opts: { label: string }): Arbitrary<T> {
-    return new Arbitrary(this.#callback, opts.label, {
+    return new Arbitrary(this.#buildScript, opts.label, {
       examples: this.#examples,
       maxSize: this.#maxSize,
       dryRun: false,
@@ -302,13 +303,13 @@ export class Arbitrary<T> implements PickSet<T> {
     if (cases.length === 0) {
       throw new Error("Arbitrary.oneOf() requires at least one alternative");
     }
-    const arbCases = cases.map((c) => Arbitrary.from(c));
-    if (arbCases.length === 1) {
-      return arbCases[0];
+    const caseArbs = cases.map((c) => Arbitrary.from(c));
+    if (caseArbs.length === 1) {
+      return caseArbs[0];
     }
 
     let maxSize: number | undefined = 0;
-    for (const arb of arbCases) {
+    for (const arb of caseArbs) {
       const caseSize = arb.maxSize;
       if (caseSize === undefined) {
         maxSize = undefined;
@@ -317,10 +318,14 @@ export class Arbitrary<T> implements PickSet<T> {
       maxSize += caseSize;
     }
 
+    const caseFuncs = caseArbs.map((arb) =>
+      makeBuildFunction(arb.#buildScript)
+    );
+
     const req = new PickRequest(0, cases.length - 1);
     const build: BuildFunction<T> = (pick) => {
       const i = pick(req);
-      return arbCases[i].#callback(pick);
+      return caseFuncs[i](pick);
     };
     return new Arbitrary(build, "oneOf", { maxSize, dryRun: false });
   }

@@ -36,6 +36,16 @@ export function buildStep<Out, Local>(
 
 export type Script<T, L = unknown> = BuildFunction<T> | BuildStep<T, L>;
 
+export function isBuildScript(x: unknown): x is Script<unknown> {
+  if (typeof x === "function") {
+    return true;
+  }
+  if (typeof x !== "object" || x === null) {
+    return false;
+  }
+  return "input" in x && "then" in x && typeof x.then === "function";
+}
+
 /**
  * Given a script, returns a function that can be used to generate values.
  */
@@ -143,64 +153,66 @@ export function makePickFunction<T>(
       if (pick === undefined) throw new Pruned("cancelled in PlayoutSource");
       return pick;
     }
-    const generateFrom = req["buildScript"];
-    if (typeof generateFrom === "function") {
-      const startMiddle = opts?.middle;
-      const generate = () => {
-        while (true) {
-          const depth = playouts.depth;
-          try {
-            let innerPick: PickFunction = dispatch;
+    const script = req["buildScript"];
+    if (!isBuildScript(script)) {
+      throw new Error("pick function called with an invalid argument");
+    }
+    const build = makeBuildFunction(script);
 
-            if (startMiddle !== undefined) {
-              const middle = startMiddle();
-              innerPick = function dispatchWithMiddleware<T>(
-                req: PickRequest | PickSet<T>,
-                opts?: PickFunctionOpts<T>,
-              ) {
-                if (req instanceof PickRequest) {
-                  return middle(req, dispatch);
-                } else {
-                  return dispatch(req, opts);
-                }
-              };
-            }
+    const startMiddle = opts?.middle;
+    const generate = () => {
+      while (true) {
+        const depth = playouts.depth;
+        try {
+          let innerPick: PickFunction = dispatch;
 
-            const val = generateFrom(innerPick);
-            return val;
-          } catch (e) {
-            if (!(e instanceof Pruned)) {
-              throw e;
-            }
-            if (!playouts.startAt(depth)) {
-              throw e; // can't recover
-            }
+          if (startMiddle !== undefined) {
+            const middle = startMiddle();
+            innerPick = function dispatchWithMiddleware<T>(
+              req: PickRequest | PickSet<T>,
+              opts?: PickFunctionOpts<T>,
+            ) {
+              if (req instanceof PickRequest) {
+                return middle(req, dispatch);
+              } else {
+                return dispatch(req, opts);
+              }
+            };
+          }
+
+          const val = build(innerPick);
+          return val;
+        } catch (e) {
+          if (!(e instanceof Pruned)) {
+            throw e;
+          }
+          if (!playouts.startAt(depth)) {
+            throw e; // can't recover
           }
         }
-      };
-
-      const accept = opts?.accept;
-      if (accept === undefined) {
-        return generate();
       }
+    };
 
-      // filtered pick
-      const maxTries = opts?.maxTries ?? 1000;
-      for (let i = 0; i < maxTries; i++) {
-        const depth = playouts.depth;
-        const val = generate();
-        if (accept(val)) {
-          return val;
-        }
-        if (!playouts.startAt(depth)) {
-          throw new Pruned("accept() returned false for all possible values");
-        }
-      }
-      throw new Error(
-        `accept() returned false ${maxTries} times for ${req.label}; giving up`,
-      );
+    const accept = opts?.accept;
+    if (accept === undefined) {
+      return generate();
     }
-    throw new Error("pick function called with an invalid argument");
+
+    // filtered pick
+    const maxTries = opts?.maxTries ?? 1000;
+    for (let i = 0; i < maxTries; i++) {
+      const depth = playouts.depth;
+      const val = generate();
+      if (accept(val)) {
+        return val;
+      }
+      if (!playouts.startAt(depth)) {
+        throw new Pruned("accept() returned false for all possible values");
+      }
+    }
+    throw new Error(
+      `accept() returned false ${maxTries} times for ${req.label}; giving up`,
+    );
   };
   return dispatch;
 }
