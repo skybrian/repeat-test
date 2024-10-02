@@ -1,4 +1,5 @@
 import type { Tracker } from "../src/backtracking.ts";
+import type { PickSet } from "../src/build.ts";
 
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows, fail } from "@std/assert";
@@ -7,6 +8,7 @@ import { Arbitrary } from "@/arbitrary.ts";
 
 import { PickRequest } from "../src/picks.ts";
 import { Pruned } from "../src/backtracking.ts";
+import { buildStep } from "../src/build.ts";
 
 import { assertGenerated, assertValues } from "./lib/asserts.ts";
 import {
@@ -327,7 +329,29 @@ describe("take", () => {
     ]);
   });
 
-  it("throws if the callback throws", () => {
+  it("works for a two-step build script", () => {
+    const bit: PickSet<number> = {
+      label: "bit",
+      buildScript: (pick) => pick(PickRequest.bit),
+    };
+
+    const twoBits: PickSet<number[]> = {
+      label: "twoBits",
+      buildScript: buildStep(bit, (a, pick) => {
+        const b = pick(bit);
+        return [a, b];
+      }),
+    };
+
+    assertEquals(take(twoBits, 5), [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [1, 1],
+    ]);
+  });
+
+  it("throws if the build function throws", () => {
     const one = Arbitrary.from((pick) => {
       if (pick(new PickRequest(0, 1)) === 0) return 0;
       throw new Error("oh no!");

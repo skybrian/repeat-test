@@ -1,7 +1,7 @@
 import { buildStep, type PickSet } from "../src/build.ts";
 
 import { describe, it } from "@std/testing/bdd";
-import { assert, assertEquals, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { noChange, PickList } from "../src/picks.ts";
 import { Pruned } from "../src/backtracking.ts";
@@ -41,6 +41,13 @@ const multiStep: PickSet<string> = {
   buildScript: buildStep(bit, (a, pick) => {
     const b = pick(bit);
     return `(${a}, ${b})`;
+  }),
+};
+
+const frozenFirstStep: PickSet<(readonly string[])[]> = {
+  label: "frozen first step",
+  buildScript: buildStep(frozen, (a) => {
+    return [a];
   }),
 };
 
@@ -149,6 +156,15 @@ describe("Gen", () => {
       const first = gen.val;
       assertEquals(first, ["frozen"]);
       assert(gen.val === first);
+    });
+
+    it("doesn't regenerate a frozen previous step", () => {
+      const gen = Gen.mustBuild(frozenFirstStep, []);
+      const first = gen.val;
+      assertEquals(first, [["frozen"]]);
+      const second = gen.val;
+      assertFalse(second === first);
+      assert(second[0] === first[0]);
     });
 
     it("regenerates a mutable object", () => {

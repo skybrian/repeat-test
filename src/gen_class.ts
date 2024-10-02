@@ -5,9 +5,10 @@ import type { PickSet, ThenFunction } from "./build.ts";
 import { failure } from "./results.ts";
 import { EditPicker, PickList, PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
-import { buildStep, generate, mustGenerate } from "./build.ts";
+import { buildStep, generate, makePickFunction } from "./build.ts";
+import { assert } from "@std/assert";
 
-const needGenerate = Symbol("needGenerate");
+const alwaysGenerate = Symbol("alwaysGenerate");
 
 /**
  * A generated value and the picks that were used to generate it.
@@ -22,7 +23,7 @@ export class Gen<T> implements Success<T> {
   /** The replies for the last build step. */
   readonly #lastReplies: number[];
 
-  #val: T | typeof needGenerate;
+  #val: T | typeof alwaysGenerate;
   #reqs: PickRequest[] | undefined;
   #replies: number[] | undefined;
 
@@ -90,14 +91,31 @@ export class Gen<T> implements Success<T> {
    * each time after the first access.
    */
   get val(): T {
-    if (this.#val === needGenerate) {
-      return mustGenerate(this.#set, this.replies);
+    if (this.#val !== alwaysGenerate) {
+      const val = this.#val;
+      if (!Object.isFrozen(val)) {
+        // Regenerate the value from now on.
+        this.#val = alwaysGenerate;
+      }
+      return val;
     }
-    const val = this.#val;
-    if (!Object.isFrozen(val)) {
-      this.#val = needGenerate;
+
+    const script = this.#set.buildScript;
+    if (typeof script === "function") {
+      const playouts = onePlayout(new PlaybackPicker(this.replies));
+      assert(playouts.startAt(0));
+      const pick = makePickFunction(playouts);
+      return script(pick);
     }
-    return val;
+
+    // Recursive case: get the previous input (perhaps also regenerated) and
+    // rerun the last step.
+    assert(this.#input !== undefined);
+    const input = this.#input.val;
+    const playouts = onePlayout(new PlaybackPicker(this.#lastReplies));
+    assert(playouts.startAt(0));
+    const pick = makePickFunction(playouts);
+    return script.then(input, pick);
   }
 
   /**

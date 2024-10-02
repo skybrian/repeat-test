@@ -10,6 +10,7 @@ import * as dom from "@/doms.ts";
 import { minMaxVal } from "./lib/ranges.ts";
 
 import { PickRequest } from "../src/picks.ts";
+import { buildStep } from "../src/build.ts";
 import {
   shrink,
   shrinkAllOptions,
@@ -145,6 +146,33 @@ describe("shrink", () => {
           const expected = Array(prefix.length).fill(0).concat(1);
           assertEquals(gen.picks.trimmed().replies, expected);
         });
+      });
+    });
+
+    describe("for a mult-step build script", () => {
+      const bit: PickSet<number> = {
+        label: "bit",
+        buildScript: (pick) => pick(PickRequest.bit),
+      };
+
+      const twoBits: PickSet<number[]> = {
+        label: "twoBits",
+        buildScript: buildStep(bit, (a, pick) => {
+          const b = pick(bit);
+          return [a, b];
+        }),
+      };
+
+      it("can't shrink the default value", () => {
+        const seed = Gen.mustBuild(twoBits, [0, 0]);
+        const gen = shrink(seed, acceptAll);
+        assertEquals(gen.val, [0, 0]);
+      });
+
+      it("can shrink both bits to zero", () => {
+        const seed = Gen.mustBuild(twoBits, [1, 1]);
+        const gen = shrink(seed, acceptAll);
+        assertEquals(gen.val, [0, 0]);
       });
     });
   });
