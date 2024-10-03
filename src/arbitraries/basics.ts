@@ -31,7 +31,7 @@ export function of<T>(...values: T[]): Arbitrary<T> {
 /** Returns an Arbitrary that generates a boolean. */
 export const boolean: () => Arbitrary<boolean> = Arbitrary.of(false, true).with(
   {
-    label: "boolean",
+    name: "boolean",
   },
 ).asFunction();
 
@@ -48,15 +48,15 @@ export function int(
   min: number,
   max: number,
 ): Arbitrary<number> {
-  const label = `int(${min}, ${max})`;
+  const name = `int(${min}, ${max})`;
   if (min >= 0) {
-    return Arbitrary.from(new PickRequest(min, max)).with({ label });
+    return Arbitrary.from(new PickRequest(min, max)).with({ name });
   } else if (max <= 0) {
     return Arbitrary.from(new PickRequest(-max, -min)).map((v) => -v).with({
-      label,
+      name,
     });
   } else {
-    return Arbitrary.oneOf(int(0, max), int(min, -1)).with({ label });
+    return Arbitrary.oneOf(int(0, max), int(min, -1)).with({ name });
   }
 }
 
@@ -69,10 +69,7 @@ export function int(
  * Setting a bias is useful mostly to encourage an Arbitrary to generate larger
  * values when picking randomly.
  */
-export function biased(
-  probabilityTrue: number,
-  opts?: { label: string },
-): Arbitrary<boolean> {
+export function biased(probabilityTrue: number): Arbitrary<boolean> {
   if (probabilityTrue < 0 || probabilityTrue > 1) {
     throw new Error("probability must be between 0 and 1");
   }
@@ -82,8 +79,8 @@ export function biased(
     return Arbitrary.of(true);
   }
   const req = biasedBitRequest(probabilityTrue);
-  const label = opts?.label ?? "biased boolean";
-  return Arbitrary.from(req).map((v) => v === 1).with({ label });
+  const name = "biased boolean";
+  return Arbitrary.from(req).map((v) => v === 1).with({ name });
 }
 
 /**
@@ -157,5 +154,5 @@ export function array<T>(
     return result;
   }
 
-  return Arbitrary.from(pickArray).with({ label: "array" });
+  return Arbitrary.from(pickArray).with({ name: "array" });
 }

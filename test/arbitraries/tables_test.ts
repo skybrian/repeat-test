@@ -82,9 +82,9 @@ describe("uniqueArray", () => {
       "not enough unique values; want length.min <= 2, got: 3",
     );
   });
-  it("has a label", () => {
+  it("has a name", () => {
     const bools = arb.uniqueArray(dom.boolean());
-    assertEquals(bools.label, "uniqueArray");
+    assertEquals(bools.name, "uniqueArray");
   });
 });
 

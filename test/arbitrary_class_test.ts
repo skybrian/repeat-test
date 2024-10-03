@@ -24,7 +24,7 @@ describe("Arbitrary", () => {
     describe("given a PickRequest", () => {
       it("generates both values", () => {
         const arb = Arbitrary.from(bit);
-        assertEquals("0..1", arb.label);
+        assertEquals("0..1", arb.name);
         assertValues(arb, [0, 1]);
       });
     });
@@ -36,7 +36,7 @@ describe("Arbitrary", () => {
       };
       it("generates both values", () => {
         const arb = Arbitrary.from(answer);
-        assertEquals(arb.label, "answer");
+        assertEquals(arb.name, "answer");
         assertValues(arb, ["no", "yes"]);
       });
     });
@@ -122,9 +122,9 @@ describe("Arbitrary", () => {
       assertGenerated(arb, [{ val: { a: 1, b: 2 }, picks: [] }]);
       assertEquals(arb.maxSize, 1);
     });
-    it("has a default label", () => {
-      assertEquals(Arbitrary.record({}).label, "empty record");
-      assertEquals(Arbitrary.record({ a: Arbitrary.of(1) }).label, "record");
+    it("has a default name", () => {
+      assertEquals(Arbitrary.record({}).name, "empty record");
+      assertEquals(Arbitrary.record({ a: Arbitrary.of(1) }).name, "record");
     });
     describe("for a pair", () => {
       const pair = Arbitrary.record({ a: arb.int32(), b: arb.string() });
@@ -141,7 +141,7 @@ describe("Arbitrary", () => {
 
   describe("filter", () => {
     const sixSided = Arbitrary.from(new PickRequest(1, 6)).with({
-      label: "sixSided",
+      name: "sixSided",
     });
 
     it("disallows filters that don't allow any values through", () => {
@@ -213,19 +213,19 @@ describe("Arbitrary", () => {
         assert(other !== excluded, `want: not ${excluded}`);
       });
     });
-    it("has a label by default", () => {
+    it("has a name by default", () => {
       const original = Arbitrary.of(1, 2, 3);
       const filtered = original.filter(
         (n) => n === 2,
       );
-      assertEquals(filtered.label, "3 examples (filtered)");
+      assertEquals(filtered.name, "3 examples (filtered)");
     });
-    it("doesn't add (filtered) twice to the label", () => {
+    it("doesn't add (filtered) twice to the name", () => {
       const original = Arbitrary.of(1, 2, 3);
       const filtered = original.filter(
         (n) => n > 1,
       ).filter((n) => n === 2);
-      assertEquals(filtered.label, "3 examples (filtered)");
+      assertEquals(filtered.name, "3 examples (filtered)");
     });
     it("recovers cleanly when the filtered arbitrary throws Pruned", () => {
       const original = Arbitrary.from((pick) => {
@@ -256,18 +256,18 @@ describe("Arbitrary", () => {
       const mapped = original.map((n) => n * 2);
       assertFirstGenerated(mapped, [{ val: 2, picks: [1] }]);
     });
-    it("has a label by default", () => {
+    it("has a name by default", () => {
       const original = Arbitrary.from(new PickRequest(1, 6));
       const mapped = original.map((n) => n * 2);
-      assertEquals(mapped.label, "map");
+      assertEquals(mapped.name, "map");
     });
   });
 
   describe("chain", () => {
-    it("has a label by default", () => {
+    it("has a name by default", () => {
       const hello = Arbitrary.from(() => "hello");
       const world = hello.chain(() => Arbitrary.from(() => "world"));
-      assertEquals(world.label, "chain");
+      assertEquals(world.name, "chain");
     });
   });
 
@@ -304,9 +304,9 @@ describe("Arbitrary", () => {
   });
 
   describe("toString", () => {
-    it("returns a string with the label", () => {
+    it("returns a string with the name", () => {
       const original = Arbitrary.of(1, 2, 3);
-      assertEquals(original.toString(), "Arbitrary(3 examples)");
+      assertEquals(original.toString(), "Arbitrary('3 examples')");
     });
   });
 });

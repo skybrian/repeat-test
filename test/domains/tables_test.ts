@@ -45,7 +45,7 @@ describe("uniqueArray", () => {
       assertThrows(
         () => bools.parse(list),
         Error,
-        `${badIndex}: not a boolean`,
+        `${badIndex}: not a member of 'boolean'`,
       );
     });
   });
@@ -207,7 +207,7 @@ describe("table", () => {
         assertThrows(
           () => table.parse(list),
           Error,
-          `${badIndex}.a: not a boolean`,
+          `${badIndex}.a: not a member of 'boolean'`,
         );
       });
     });

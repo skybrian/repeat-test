@@ -123,7 +123,7 @@ describe("generate", () => {
     const gen = generate(hello, minPlayout());
     assertEquals(propsFromGen(gen), {
       val: "hi",
-      label: "hello",
+      name: "hello",
       reqs: [],
       replies: [],
     });
@@ -162,7 +162,7 @@ describe("generateValue", () => {
       const gen = generateValue(multiStep, minPlayout());
       assertEquals(propsFromGen(gen), {
         val: "(0, 0)",
-        label: "multi-step",
+        name: "multi-step",
         reqs: [bitReq, bitReq],
         replies: [0, 0],
       });
@@ -174,7 +174,7 @@ describe("generateValue", () => {
       const gen1 = generateValue(bit, playouts);
       assertEquals(propsFromGen(gen1), {
         val: 0,
-        label: "bit",
+        name: "bit",
         reqs: [bitReq],
         replies: [0],
       });
@@ -187,7 +187,7 @@ describe("generateValue", () => {
       const gen2 = generateValue(bit, playouts);
       assertEquals(propsFromGen(gen2), {
         val: 1,
-        label: "bit",
+        name: "bit",
         reqs: [bitReq],
         replies: [1],
       });
@@ -199,7 +199,7 @@ describe("generateValue", () => {
       const gen1 = generateValue(bit, playouts);
       assertEquals(propsFromGen(gen1), {
         val: 0,
-        label: "bit",
+        name: "bit",
         reqs: [bitReq],
         replies: [0],
       });
@@ -209,7 +209,7 @@ describe("generateValue", () => {
       assertEquals(playouts.depth, 2);
       assertEquals(propsFromGen(gen2), {
         val: 1,
-        label: "bit",
+        name: "bit",
         reqs: [bitReq],
         replies: [1],
       });
@@ -229,7 +229,7 @@ describe("generateValue", () => {
       const gen1 = generateValue(filteredOne, playouts);
       assertEquals(propsFromGen(gen1), {
         val: 1,
-        label: "filteredOne",
+        name: "filteredOne",
         reqs: [bitReq],
         replies: [1],
       });
@@ -239,7 +239,7 @@ describe("generateValue", () => {
       assertEquals(playouts.depth, 2);
       assertEquals(propsFromGen(gen2), {
         val: 1,
-        label: "filteredOne",
+        name: "filteredOne",
         reqs: [bitReq],
         replies: [1],
       });
@@ -273,7 +273,7 @@ describe("generateValue", () => {
       const gen = generateValue(script, minPlayout());
 
       assertEquals(propsFromGen(gen), {
-        label: "untitled",
+        name: "untitled",
         reqs: [PickRequest.bit, PickRequest.bit],
         replies: [0, 0],
         val: `0, 0`,
@@ -292,7 +292,7 @@ describe("generateValue", () => {
       );
 
       assertEquals(propsFromGen(gen), {
-        label: "untitled",
+        name: "untitled",
         reqs: [PickRequest.bit],
         replies: [0],
         val: ["frozen", "0"],

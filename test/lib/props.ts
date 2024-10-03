@@ -4,7 +4,7 @@ import type { PickRequest } from "../../src/picks.ts";
 
 export type GenProps<T> = {
   val: T;
-  label: string;
+  name: string;
   reqs: PickRequest[];
   replies: number[];
 };
@@ -16,7 +16,7 @@ export function propsFromGen<T>(
   const picks = gen.picks;
   const out: GenProps<T> = {
     val: gen.val,
-    label: gen.label,
+    name: gen.name,
     reqs: picks.reqs,
     replies: picks.replies,
   };

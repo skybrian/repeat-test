@@ -44,9 +44,9 @@ describe("asciiChar", () => {
   it("defaults to 'a'", () => {
     assertFirstGenerated(arb.asciiChar(), [{ val: "a", picks: [0] }]);
   });
-  it("has a label", () => {
-    assertEquals(arb.asciiChar().label, "asciiChar");
-    assertEquals(arb.asciiChar(/[a-z]/).label, "/[a-z]/");
+  it("has a name", () => {
+    assertEquals(arb.asciiChar().name, "asciiChar");
+    assertEquals(arb.asciiChar(/[a-z]/).name, "/[a-z]/");
   });
 });
 
@@ -61,8 +61,8 @@ describe("asciiLetter", () => {
         .split(""),
     );
   });
-  it("has a label", () => {
-    assertEquals(arb.asciiLetter().label, "/[a-zA-Z]/");
+  it("has a name", () => {
+    assertEquals(arb.asciiLetter().name, "/[a-zA-Z]/");
   });
 });
 
@@ -82,8 +82,8 @@ describe("asciiWhitespace", () => {
   it("matches the equivalent regexp", () => {
     assertSameExamples(arb.asciiWhitespace(), arb.asciiChar(/\s/));
   });
-  it("has a label", () => {
-    assertEquals(arb.asciiWhitespace().label, "whitespace");
+  it("has a name", () => {
+    assertEquals(arb.asciiWhitespace().name, "whitespace");
   });
 });
 
@@ -120,8 +120,8 @@ describe("char16", () => {
     assertSometimes(arb.char16(), isWellFormed, 850, 950);
   });
 
-  it("has a label", () => {
-    assertEquals(arb.char16().label, "char16");
+  it("has a name", () => {
+    assertEquals(arb.char16().name, "char16");
   });
 });
 
@@ -145,8 +145,8 @@ describe("unicodeChar", () => {
   it("chooses length 1 or 2 with equal probability", () => {
     assertSometimes(arb.unicodeChar(), (str) => str.length === 1, 450, 550);
   });
-  it("has a label", () => {
-    assertEquals(arb.unicodeChar().label, "unicodeChar");
+  it("has a name", () => {
+    assertEquals(arb.unicodeChar().name, "unicodeChar");
   });
 });
 
@@ -176,8 +176,8 @@ describe("string", () => {
     });
   });
 
-  it("has a label", () => {
-    assertEquals(arb.string().label, "string");
+  it("has a name", () => {
+    assertEquals(arb.string().name, "string");
   });
 });
 
@@ -245,7 +245,7 @@ describe("wellFormedString", () => {
     });
   });
 
-  it("has a label", () => {
-    assertEquals(arb.wellFormedString().label, "wellFormedString");
+  it("has a name", () => {
+    assertEquals(arb.wellFormedString().name, "wellFormedString");
   });
 });

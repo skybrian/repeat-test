@@ -7,16 +7,6 @@ import * as dom from "@/doms.ts";
 import { assertEncoding, assertRoundTrip } from "../lib/asserts.ts";
 import { intRange, invalidIntRange, minMaxVal } from "../lib/ranges.ts";
 
-describe("from", () => {
-  it("accepts a constant value", () => {
-    assertRoundTrip(dom.from([1]), 1);
-  });
-  it("accepts a custom label", () => {
-    const one = dom.from([1], { label: "one" });
-    assertEquals(one.label, "one");
-  });
-});
-
 describe("of", () => {
   describe("for a single-item domain", () => {
     const one = dom.of(1);
@@ -24,16 +14,20 @@ describe("of", () => {
       assertRoundTrip(one, 1);
     });
     it("rejects items not passed in as arguments", () => {
-      assertThrows(() => one.parse(2), Error, "not a member");
+      assertThrows(
+        () => one.parse(2),
+        Error,
+        "doesn't match 'untitled constant'",
+      );
     });
   });
   it("rejects items not passed in as arguments", () => {
     const items = dom.of(1, 2, 3);
-    assertThrows(() => items.parse(4), Error, "not a member");
+    assertThrows(() => items.parse(4), Error, "not a member of '3 examples'");
   });
-  it("uses a label added later in error messages", () => {
-    const items = dom.of(1, 2, 3).with({ label: "digit" });
-    assertThrows(() => items.parse(4), Error, "not a digit");
+  it("uses a name added later in error messages", () => {
+    const items = dom.of(1, 2, 3).with({ name: "digit" });
+    assertThrows(() => items.parse(4), Error, "not a member of 'digit'");
   });
 });
 
@@ -44,7 +38,11 @@ describe("boolean", () => {
     assertEncoding(bool, [1], true);
   });
   it("rejects non-booleans", () => {
-    assertThrows(() => bool.parse(undefined), Error, "not a boolean");
+    assertThrows(
+      () => bool.parse(undefined),
+      Error,
+      "not a member of 'boolean'",
+    );
   });
 });
 

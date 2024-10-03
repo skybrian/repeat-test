@@ -44,7 +44,7 @@ export class Jar<T> {
    * (Conceptually; the values will be generated when needed.)
    */
   constructor(readonly dom: Domain<T>) {
-    const name = `take(${this.dom.label})`;
+    const name = `take(${this.dom.name})`;
     this.build = this.dom.buildScript.with({ name });
     this.moreExamples = orderedPlayouts();
     this.example = this.#nextExample();

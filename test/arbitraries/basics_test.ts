@@ -30,8 +30,8 @@ describe("boolean", () => {
   it("has maxSize set to 2", () => {
     assertEquals(arb.boolean().maxSize, 2);
   });
-  it("has a label", () => {
-    assertEquals(arb.boolean().label, "boolean");
+  it("has a name", () => {
+    assertEquals(arb.boolean().name, "boolean");
   });
 });
 
@@ -67,11 +67,11 @@ describe("biased", () => {
   it("has maxSize set to 2", () => {
     assertEquals(arb.biased(0.9).maxSize, 2);
   });
-  it("has a defualt label", () => {
-    assertEquals(arb.biased(0.9).label, "biased boolean");
+  it("has a default name", () => {
+    assertEquals(arb.biased(0.9).name, "biased boolean");
   });
-  it("accepts a custom label", () => {
-    assertEquals(arb.biased(0.9, { label: "my label" }).label, "my label");
+  it("accepts a custom name", () => {
+    assertEquals(arb.biased(0.9).with({ name: "my name" }).name, "my name");
   });
   it("throws if given an invalid probability", () => {
     assertThrows(() => arb.biased(-0.1), Error);
@@ -106,10 +106,10 @@ describe("int", () => {
       assertEquals(arb.int(1, 6).maxSize, 6);
     });
   });
-  it("has a label", () => {
-    assertEquals(arb.int(1, 6).label, "int(1, 6)");
-    assertEquals(arb.int(-6, -1).label, "int(-6, -1)");
-    assertEquals(arb.int(-6, 6).label, "int(-6, 6)");
+  it("has a name", () => {
+    assertEquals(arb.int(1, 6).name, "int(1, 6)");
+    assertEquals(arb.int(-6, -1).name, "int(-6, -1)");
+    assertEquals(arb.int(-6, 6).name, "int(-6, 6)");
   });
 });
 

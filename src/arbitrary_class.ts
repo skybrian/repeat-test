@@ -65,7 +65,7 @@ export class Arbitrary<T> implements PickSet<T> {
   /**
    * A short string describing this Arbitrary, for use in error messages.
    */
-  get label(): string {
+  get name(): string {
     return this.#script.name;
   }
 
@@ -135,15 +135,15 @@ export class Arbitrary<T> implements PickSet<T> {
     }
     if (accepted < threshold) {
       throw new Error(
-        `${this.label} filter didn't allow enough values through; want: ${threshold} of ${total}, got: ${accepted}`,
+        `${this.name} filter didn't allow enough values through; want: ${threshold} of ${total}, got: ${accepted}`,
       );
     }
 
-    const label = this.label.endsWith("(filtered)")
-      ? this.label
-      : `${this.label} (filtered)`;
+    const name = this.name.endsWith("(filtered)")
+      ? this.name
+      : `${this.name} (filtered)`;
 
-    const build = makeScript(label, (pick) => {
+    const build = makeScript(name, (pick) => {
       return pick(this, { accept });
     });
 
@@ -172,10 +172,10 @@ export class Arbitrary<T> implements PickSet<T> {
   }
 
   /**
-   * Returns a new Arbitrary with a different label.
+   * Returns a new Arbitrary with a different name.
    */
-  with(opts: { label: string }): Arbitrary<T> {
-    const script = this.#script.with({ name: opts.label });
+  with(opts: { name: string }): Arbitrary<T> {
+    const script = this.#script.with(opts);
 
     return new Arbitrary(script, {
       examples: this.#examples,
@@ -197,7 +197,7 @@ export class Arbitrary<T> implements PickSet<T> {
    * A short string describing this Arbitrary, for debugging.
    */
   toString(): string {
-    return `Arbitrary(${this.label})`;
+    return `${this.constructor.name}('${this.name}')`;
   }
 
   /**
@@ -219,9 +219,9 @@ export class Arbitrary<T> implements PickSet<T> {
     if (typeof arg === "function") {
       return new Arbitrary(makeScript("(unlabeled)", arg));
     } else if (arg instanceof PickRequest) {
-      const label = `${arg.min}..${arg.max}`;
+      const name = `${arg.min}..${arg.max}`;
       const maxSize = arg.max - arg.min + 1;
-      const build = makeScript(label, (pick: PickFunction) => {
+      const build = makeScript(name, (pick: PickFunction) => {
         return pick(arg);
       });
       return new Arbitrary(build, {
@@ -262,7 +262,7 @@ export class Arbitrary<T> implements PickSet<T> {
       throw new Error("Arbitrary.of() requires at least one argument");
     } else if (examples.length === 1) {
       const constant = examples[0];
-      const build = makeScript("constant", () => {
+      const build = makeScript("untitled constant", () => {
         return constant;
       });
       return new Arbitrary(build, {
@@ -273,8 +273,8 @@ export class Arbitrary<T> implements PickSet<T> {
 
     const req = new PickRequest(0, examples.length - 1);
 
-    const label = `${examples.length} examples`;
-    const build = makeScript(label, (pick) => {
+    const name = `${examples.length} examples`;
+    const build = makeScript(name, (pick) => {
       const i = pick(req);
       return examples[i];
     });

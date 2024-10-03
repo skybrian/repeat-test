@@ -177,9 +177,16 @@ describe("Domain", () => {
   });
 
   describe("with", () => {
-    it("returns a copy with a new label", () => {
-      const newDom = roll.with({ label: "new label" });
-      assertEquals(newDom.label, "new label");
+    it("returns a copy with a new name", () => {
+      const newDom = roll.with({ name: "new name" });
+      assertEquals(newDom.name, "new name");
+    });
+  });
+
+  describe("toString", () => {
+    it("returns a string with the name", () => {
+      const original = Domain.of(1, 2, 3);
+      assertEquals(original.toString(), "Domain('3 examples')");
     });
   });
 });

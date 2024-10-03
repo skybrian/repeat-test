@@ -4,21 +4,6 @@ import * as arb from "@/arbs.ts";
 import { checkArray, checkRecordKeys, parseArrayOpts } from "../options.ts";
 
 /**
- * A domain that accepts only values contained in the array given as its first
- * argument.
- *
- * Comparisons are done using strict equality, the same algorithm used by
- * `===`.
- */
-export function from<T>(
-  values: T[],
-  opts?: { label: string },
-): Domain<T> {
-  const label = opts?.label ?? "member";
-  return Domain.of(...values).with({ label });
-}
-
-/**
  * A domain that accepts only values equal to the given arguments.
  *
  * Comparisons are done using strict equality, the same algorithm used by
@@ -30,7 +15,7 @@ export function of<T>(...values: T[]): Domain<T> {
 
 /** A domain that accepts only booleans. */
 export const boolean: () => Domain<boolean> = Domain.of(false, true).with({
-  label: "boolean",
+  name: "boolean",
 })
   .asFunction();
 

@@ -65,7 +65,7 @@ export function uniqueArray<T>(
       out.push(jar.take(pick));
     }
     return out;
-  }).with({ label: "uniqueArray" });
+  }).with({ name: "uniqueArray" });
 }
 
 function countDistinct(dom: Domain<unknown>, max: number): number {
@@ -188,5 +188,5 @@ export function table<R extends Record<string, unknown>>(
       pick(new PickRequest(0, 0));
     }
     return rows;
-  }).with({ label: "table" });
+  }).with({ name: "table" });
 }

@@ -17,7 +17,7 @@ import type { SendErr } from "./options.ts";
 export type PickifyCallback = (
   val: unknown,
   sendErr: SendErr,
-  label: string,
+  name: string,
 ) => number[] | undefined;
 
 /**
@@ -66,13 +66,13 @@ export class Domain<T> extends Arbitrary<T> {
       );
       if (!picks.ok) {
         throw new Error(
-          `can't pickify default of ${arb.label}: ${picks.message}`,
+          `can't pickify default of ${arb.name}: ${picks.message}`,
         );
       }
       assertEquals(
         def.replies,
         picks.val,
-        `callback's picks don't match for the default value of ${arb.label}`,
+        `callback's picks don't match for the default value of ${arb.name}`,
       );
     }
   }
@@ -148,7 +148,7 @@ export class Domain<T> extends Arbitrary<T> {
         firstError = at !== undefined ? `${at}: ${msg}` : msg;
       }
     };
-    const picks = this.#callback(val, sendErr, this.label);
+    const picks = this.#callback(val, sendErr, this.name);
     if (picks === undefined) {
       const err = firstError ?? defaultMessage ?? "not in domain";
       return failure(err);
@@ -181,13 +181,13 @@ export class Domain<T> extends Arbitrary<T> {
         sendErr(msg, { at });
       };
     }
-    return this.#callback(val, innerErr, this.label);
+    return this.#callback(val, innerErr, this.name);
   }
 
   /**
-   * Returns a copy of the Domain with a different label.
+   * Returns a copy of the Domain with a different name.
    */
-  override with(opts: { label: string }): Domain<T> {
+  override with(opts: { name: string }): Domain<T> {
     return new Domain(super.with(opts), this.#callback, { dryRun: false });
   }
 
@@ -208,22 +208,22 @@ export class Domain<T> extends Arbitrary<T> {
    * `===`.
    */
   static override of<T>(...values: T[]): Domain<T> {
-    const generator = Arbitrary.of(...values).with({ label: "member" });
+    const generator = Arbitrary.of(...values);
 
     if (values.length === 1) {
-      return new Domain(generator, (val, sendErr, label) => {
+      return new Domain(generator, (val, sendErr, name) => {
         if (val !== values[0]) {
-          sendErr(`not a ${label}`);
+          sendErr(`doesn't match '${name}'`);
           return undefined;
         }
         return []; // constant
       });
     }
 
-    return new Domain(generator, (val, sendErr, label) => {
+    return new Domain(generator, (val, sendErr, name) => {
       const pick = values.indexOf(val as T);
       if (pick === -1) {
-        sendErr(`not a ${label}`);
+        sendErr(`not a member of '${name}'`);
         return undefined;
       }
       return [pick];

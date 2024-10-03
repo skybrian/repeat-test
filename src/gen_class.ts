@@ -52,7 +52,7 @@ export class Gen<T> implements Success<T> {
     return true;
   }
 
-  get label(): string {
+  get name(): string {
     return this.#script.name;
   }
 

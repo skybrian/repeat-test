@@ -342,7 +342,7 @@ export function repeatTest<T>(
   function convertExample(ex: T | Arbitrary<T>, index: number): Arbitrary<T> {
     return (ex instanceof Arbitrary)
       ? ex
-      : Arbitrary.of(ex).with({ label: `example ${index}` });
+      : Arbitrary.of(ex).with({ name: `example ${index}` });
   }
 
   const arbs: Arbitrary<T>[] = Array.isArray(input)

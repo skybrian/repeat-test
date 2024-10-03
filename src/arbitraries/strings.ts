@@ -16,7 +16,7 @@ import {
 import { arrayLengthBiases } from "../math.ts";
 import { assert } from "@std/assert/assert";
 
-const asciiTableArb = Arbitrary.of(...pickToAscii).with({ label: "asciiChar" });
+const asciiTableArb = Arbitrary.of(...pickToAscii).with({ name: "asciiChar" });
 
 /**
  * Defines an Arbitrary that generates ASCII characters.
@@ -29,7 +29,7 @@ export function asciiChar(regexp?: RegExp): Arbitrary<string> {
     return asciiTableArb;
   }
   return Arbitrary.of(...pickToAscii.filter((c) => regexp.test(c))).with({
-    label: regexp.toString(),
+    name: regexp.toString(),
   });
 }
 
@@ -50,7 +50,7 @@ export const asciiDigit: () => Arbitrary<string> = asciiChar(/\d/).asFunction();
 export const asciiWhitespace: () => Arbitrary<string> = Arbitrary.of(
   ..." \t\n\v\f\r".split(""),
 ).with({
-  label: "whitespace",
+  name: "whitespace",
 }).asFunction();
 
 /**
@@ -92,7 +92,7 @@ export const char16: () => Arbitrary<string> = Arbitrary.from(
     }
     return String.fromCodePoint(code);
   },
-).with({ label: "char16" }).asFunction();
+).with({ name: "char16" }).asFunction();
 
 const basicPlaneCount = supplementalPlaneStart - surrogateGap;
 
@@ -133,7 +133,7 @@ export const unicodeChar: () => Arbitrary<string> = codePoint.map((code) => {
     return pickToAscii[code];
   }
   return String.fromCodePoint(code);
-}).with({ label: "unicodeChar" }).asFunction();
+}).with({ name: "unicodeChar" }).asFunction();
 
 const basicPlaneCodePoint = arb.int(0, 65535 - surrogateGap).map(
   (code) => (code >= surrogateMin) ? code + surrogateGap : code,
@@ -161,7 +161,7 @@ export function string(
 ): Arbitrary<string> {
   const joinChars = (parts: string[]): string => parts.join("");
   return arb.array(char16(), opts).map(joinChars).with({
-    label: "string",
+    name: "string",
   });
 }
 
@@ -210,5 +210,5 @@ export function wellFormedString(
     }
     return out;
   };
-  return Arbitrary.from(pickArray).with({ label: "wellFormedString" });
+  return Arbitrary.from(pickArray).with({ name: "wellFormedString" });
 }
