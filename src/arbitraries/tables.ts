@@ -150,7 +150,6 @@ export function table<R extends Record<string, unknown>>(
     const rows: R[] = [];
 
     const addRow: PickSet<R | undefined> = {
-      label: "addRow",
       buildScript: makeScript("addRow", (pick) => {
         if (rows.length < min) {
           for (const jar of Object.values(jars)) {

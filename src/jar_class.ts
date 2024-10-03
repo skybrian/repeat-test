@@ -1,6 +1,11 @@
 import type { PickRequest } from "./picks.ts";
 import type { PlayoutSource } from "./backtracking.ts";
-import type { IntPickerMiddleware, PickFunction, PickSet } from "./build.ts";
+import type {
+  IntPickerMiddleware,
+  PickFunction,
+  PickSet,
+  Script,
+} from "./build.ts";
 import type { Gen } from "./gen_class.ts";
 import type { Domain } from "./domain_class.ts";
 
@@ -15,6 +20,8 @@ import { orderedPlayouts } from "./ordered.ts";
  * A jar can be used to generate permutations or unique ids.
  */
 export class Jar<T> {
+  private readonly build: Script<T>;
+
   private readonly remaining = new PickTree();
 
   /**
@@ -37,6 +44,8 @@ export class Jar<T> {
    * (Conceptually; the values will be generated when needed.)
    */
   constructor(readonly dom: Domain<T>) {
+    const name = `take(${this.dom.label})`;
+    this.build = this.dom.buildScript.with({ name });
     this.moreExamples = orderedPlayouts();
     this.example = this.#nextExample();
   }
@@ -54,8 +63,7 @@ export class Jar<T> {
    * @throws {@link Pruned} if the jar is empty.
    */
   take(pick: PickFunction): T {
-    const label = `take(${this.dom.label})`;
-    const wrapped: PickSet<T> = { label, buildScript: this.dom.buildScript };
+    const wrapped: PickSet<T> = { buildScript: this.build };
 
     const remaining = this.remaining;
     function middle(): IntPickerMiddleware {

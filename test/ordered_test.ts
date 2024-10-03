@@ -296,7 +296,7 @@ describe("find", () => {
     assertThrows(
       () => find(letters, (v) => v === "c", { limit: 2 }),
       Error,
-      "findBreadthFirst for '3 examples': no match found in the first 2 values",
+      "find for '3 examples': no match found in the first 2 values",
     );
   });
 });
@@ -333,7 +333,6 @@ describe("take", () => {
     const bit = makeScript("bit", (pick) => pick(PickRequest.bit));
 
     const twoBits: PickSet<number[]> = {
-      label: "twoBits",
       buildScript: bit.then("twoBits", (a, pick) => {
         const b = pick(PickRequest.bit);
         return [a, b];
@@ -403,7 +402,7 @@ describe("takeAll", () => {
     assertThrows(
       () => takeAll(letters, { limit: 2 }),
       Error,
-      "takeAllBreadthFirst for '3 examples': array would have more than 2 elements",
+      "takeAll for '3 examples': array would have more than 2 elements",
     );
   });
 });

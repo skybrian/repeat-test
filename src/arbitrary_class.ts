@@ -148,7 +148,7 @@ export class Arbitrary<T> implements PickSet<T> {
     });
 
     // Check that a default exists
-    generateDefault({ label, buildScript: build });
+    generateDefault({ buildScript: build });
 
     const maxSize = this.maxSize;
     return new Arbitrary(build, { maxSize, dryRun: false });
@@ -233,9 +233,6 @@ export class Arbitrary<T> implements PickSet<T> {
     }
     const script = arg["buildScript"];
     if (isBuildScript(script)) {
-      const label = arg["label"];
-      assert(typeof label === "string");
-      assert(label === script.name);
       return new Arbitrary(script);
     }
     throw new Error("invalid argument to Arbitrary.from");

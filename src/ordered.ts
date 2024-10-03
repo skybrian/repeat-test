@@ -111,8 +111,9 @@ export function orderedPlayouts(): PlayoutSource {
  * possible.
  */
 export function generateDefault<T>(set: PickSet<T>): Gen<T> {
-  const gen = generate(set, orderedPlayouts());
-  assert(gen !== undefined, `${set.label} has no default`);
+  const build = set.buildScript;
+  const gen = generate(build, orderedPlayouts());
+  assert(gen !== undefined, `${build.name} has no default`);
   return gen;
 }
 
@@ -153,8 +154,9 @@ export function find<T>(
       return gen;
     }
     if (++count >= limit) {
+      const name = set.buildScript.name;
       throw new Error(
-        `findBreadthFirst for '${set.label}': no match found in the first ${limit} values`,
+        `find for '${name}': no match found in the first ${limit} values`,
       );
     }
   }
@@ -210,8 +212,9 @@ export function takeAll<T>(
 
   const examples = take(set, limit + 1);
   if ((examples.length > limit)) {
+    const name = set.buildScript.name;
     throw new Error(
-      `takeAllBreadthFirst for '${set.label}': array would have more than ${limit} elements`,
+      `takeAll for '${name}': array would have more than ${limit} elements`,
     );
   }
   return examples;

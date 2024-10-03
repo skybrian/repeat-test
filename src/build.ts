@@ -100,8 +100,6 @@ export function isBuildScript(x: unknown): x is Script<unknown> {
  * way.)
  */
 export interface PickSet<T> {
-  /** A short label to use in error messsages about this PickSet */
-  readonly label: string;
   /** Generates a member of this set, given a source of picks. */
   readonly buildScript: Script<T>;
 }
@@ -243,7 +241,7 @@ export function makePickFunction<T>(
       }
     }
     throw new Error(
-      `accept() returned false ${maxTries} times for ${req.label}; giving up`,
+      `accept() returned false ${maxTries} times for ${script.name}; giving up`,
     );
   };
   return dispatch;
