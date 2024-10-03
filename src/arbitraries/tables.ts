@@ -13,6 +13,7 @@ import { generateAll } from "../ordered.ts";
 import { PickTree } from "../pick_tree.ts";
 import { assert } from "@std/assert/assert";
 import { arrayLengthBiases } from "../math.ts";
+import { makeScript } from "../build.ts";
 
 /**
  * Defines an Arbitrary that generates an array by taking distinct values from a
@@ -150,7 +151,7 @@ export function table<R extends Record<string, unknown>>(
 
     const addRow: PickSet<R | undefined> = {
       label: "addRow",
-      buildScript: (pick) => {
+      buildScript: makeScript("addRow", (pick) => {
         if (rows.length < min) {
           for (const jar of Object.values(jars)) {
             assert(!jar.isEmpty());
@@ -177,7 +178,7 @@ export function table<R extends Record<string, unknown>>(
           }
         }
         return row as R;
-      },
+      }),
     };
 
     for (let row = pick(addRow); row !== undefined; row = pick(addRow)) {

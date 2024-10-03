@@ -1,11 +1,11 @@
 import type { Failure, Success } from "./results.ts";
 import type { IntEditor, PickRequest } from "./picks.ts";
-import type { PickSet, ThenFunction } from "./build.ts";
+import type { Script } from "./build.ts";
 
 import { failure } from "./results.ts";
 import { EditPicker, PickList, PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
-import { buildStep, generate, makePickFunction } from "./build.ts";
+import { generate, makePickFunction } from "./build.ts";
 import { assert } from "@std/assert";
 
 const alwaysGenerate = Symbol("alwaysGenerate");
@@ -14,7 +14,7 @@ const alwaysGenerate = Symbol("alwaysGenerate");
  * A generated value and the picks that were used to generate it.
  */
 export class Gen<T> implements Success<T> {
-  readonly #set: PickSet<T>;
+  readonly #script: Script<T>;
   readonly #input: Gen<unknown> | undefined;
 
   /** The requests for the last build step. */
@@ -34,13 +34,13 @@ export class Gen<T> implements Success<T> {
    * the {@link generate} method or a {@link Domain}.
    */
   private constructor(
-    set: PickSet<T>,
+    script: Script<T>,
     input: Gen<unknown> | undefined,
     stepReqs: PickRequest[],
     stepReplies: number[],
     val: T,
   ) {
-    this.#set = set;
+    this.#script = script;
     this.#input = input;
     this.#lastReqs = stepReqs;
     this.#lastReplies = stepReplies;
@@ -53,7 +53,7 @@ export class Gen<T> implements Success<T> {
   }
 
   get label(): string {
-    return this.#set.label;
+    return this.#script.name;
   }
 
   get reqs(): PickRequest[] {
@@ -100,7 +100,7 @@ export class Gen<T> implements Success<T> {
       return val;
     }
 
-    const script = this.#set.buildScript;
+    const script = this.#script.split();
     if (typeof script === "function") {
       const playouts = onePlayout(new PlaybackPicker(this.replies));
       assert(playouts.startAt(0));
@@ -124,7 +124,7 @@ export class Gen<T> implements Success<T> {
    */
   mutate(edit: IntEditor): Gen<T> | undefined {
     const picker = new EditPicker(this.replies, edit);
-    const gen = generate(this.#set, onePlayout(picker));
+    const gen = generate(this.#script, onePlayout(picker));
     if (picker.edits === 0 && picker.deletes === 0) {
       return undefined; // no change
     }
@@ -132,41 +132,36 @@ export class Gen<T> implements Success<T> {
   }
 
   static fromBuildResult<T>(
-    set: PickSet<T>,
+    script: Script<T>,
     reqs: PickRequest[],
     replies: number[],
     val: T,
   ): Gen<T> {
-    return new Gen(set, undefined, reqs, replies, val);
+    return new Gen(script, undefined, reqs, replies, val);
   }
 
   static fromBuildStepResult<In, T>(
-    label: string,
+    script: Script<T>,
     input: Gen<In>,
-    then: ThenFunction<In, T>,
     stepReqs: PickRequest[],
     stepReplies: number[],
     val: T,
   ): Gen<T> {
-    const set = {
-      label,
-      buildScript: buildStep(input.#set, then),
-    };
-    return new Gen(set, input, stepReqs, stepReplies, val);
+    return new Gen(script, input, stepReqs, stepReplies, val);
   }
 
-  static build<T>(set: PickSet<T>, replies: number[]): Gen<T> | Failure {
+  static build<T>(script: Script<T>, replies: number[]): Gen<T> | Failure {
     const picker = new PlaybackPicker(replies);
-    const gen = generate(set, onePlayout(picker));
+    const gen = generate(script, onePlayout(picker));
     if (gen === undefined || picker.error !== undefined) {
       const err = picker.error ?? "picks not accepted";
-      return failure(`can't build '${set.label}': ${err}`);
+      return failure(`can't build '${script.name}': ${err}`);
     }
     return gen;
   }
 
-  static mustBuild<T>(set: PickSet<T>, replies: number[]): Gen<T> {
-    const gen = Gen.build(set, replies);
+  static mustBuild<T>(script: Script<T>, replies: number[]): Gen<T> {
+    const gen = Gen.build(script, replies);
     if (!gen.ok) {
       throw new Error(gen.message);
     }

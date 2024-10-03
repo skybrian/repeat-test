@@ -8,7 +8,7 @@ import { Arbitrary } from "@/arbitrary.ts";
 
 import { PickRequest } from "../src/picks.ts";
 import { Pruned } from "../src/backtracking.ts";
-import { buildStep } from "../src/build.ts";
+import { makeScript } from "../src/build.ts";
 
 import { assertGenerated, assertValues } from "./lib/asserts.ts";
 import {
@@ -330,15 +330,12 @@ describe("take", () => {
   });
 
   it("works for a two-step build script", () => {
-    const bit: PickSet<number> = {
-      label: "bit",
-      buildScript: (pick) => pick(PickRequest.bit),
-    };
+    const bit = makeScript("bit", (pick) => pick(PickRequest.bit));
 
     const twoBits: PickSet<number[]> = {
       label: "twoBits",
-      buildScript: buildStep(bit, (a, pick) => {
-        const b = pick(bit);
+      buildScript: bit.then("twoBits", (a, pick) => {
+        const b = pick(PickRequest.bit);
         return [a, b];
       }),
     };

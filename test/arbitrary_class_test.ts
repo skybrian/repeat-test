@@ -1,3 +1,5 @@
+import type { BuildFunction, PickSet } from "../src/build.ts";
+
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import {
@@ -10,7 +12,7 @@ import { repeatTest } from "../src/runner.ts";
 
 import { PickRequest } from "../src/picks.ts";
 import { Pruned } from "../src/backtracking.ts";
-import type { BuildFunction, PickSet } from "../src/build.ts";
+import { makeScript } from "../src/build.ts";
 
 import { Arbitrary } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
@@ -29,9 +31,9 @@ describe("Arbitrary", () => {
     describe("given a PickSet", () => {
       const answer: PickSet<string> = {
         label: "answer",
-        buildScript: (pick) => {
+        buildScript: makeScript("answer", (pick) => {
           return pick(bit) == 1 ? "yes" : "no";
-        },
+        }),
       };
       it("generates both values", () => {
         const arb = Arbitrary.from(answer);

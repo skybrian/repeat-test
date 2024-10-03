@@ -23,45 +23,74 @@ export type BuildFunction<T> = (pick: PickFunction) => T;
 export type ThenFunction<In, Out> = (input: In, pick: PickFunction) => Out;
 
 export type BuildStep<Out, Local> = {
-  input: PickSet<Local>;
+  input: Script<Local>;
   then: ThenFunction<Local, Out>;
 };
 
-export function buildStep<Out, Local>(
-  input: PickSet<Local>,
-  then: ThenFunction<Local, Out>,
-): BuildStep<Out, unknown> {
-  return { input, then } as BuildStep<Out, unknown>;
+export interface Script<T> {
+  readonly name: string;
+  split(): BuildFunction<T> | BuildStep<T, unknown>;
+  build(pick: PickFunction): T;
+  with(opts: { name: string }): Script<T>;
+  then<Out>(name: string, then: ThenFunction<T, Out>): Script<Out>;
 }
 
-export type Script<T, L = unknown> = BuildFunction<T> | BuildStep<T, L>;
+export function makeScript<T>(
+  name: string,
+  build: BuildFunction<T>,
+): Script<T> {
+  const script = {
+    get name() {
+      return name;
+    },
+    split: () => build,
+    get build() {
+      return build;
+    },
+    then: <Out>(
+      name: string,
+      then: ThenFunction<T, Out>,
+    ): Script<Out> => makePipeline<T, Out>(name, script, then),
+    with(opts: { name: string }): Script<T> {
+      return makeScript(opts.name, build);
+    },
+  };
+
+  return script;
+}
+
+function makePipeline<Inner, Out>(
+  name: string,
+  input: Script<Inner>,
+  then: ThenFunction<Inner, Out>,
+): Script<Out> {
+  const script = {
+    get name() {
+      return name;
+    },
+    split() {
+      return { input, then } as BuildStep<Out, unknown>;
+    },
+    build(pick: PickFunction): Out {
+      const next = input.build(pick);
+      return then(next, pick);
+    },
+    then: <NextOut>(
+      name: string,
+      then: ThenFunction<Out, NextOut>,
+    ): Script<NextOut> => makePipeline<Out, NextOut>(name, script, then),
+    with(opts: { name: string }): Script<Out> {
+      return makePipeline(opts.name, input, then);
+    },
+  };
+  return script;
+}
 
 export function isBuildScript(x: unknown): x is Script<unknown> {
-  if (typeof x === "function") {
-    return true;
-  }
   if (typeof x !== "object" || x === null) {
     return false;
   }
-  return "input" in x && "then" in x && typeof x.then === "function";
-}
-
-/**
- * Given a script, returns a function that can be used to generate values.
- */
-export function makeBuildFunction<T, L>(s: Script<T, L>): BuildFunction<T> {
-  if (typeof s === "function") {
-    return s;
-  }
-  const { input, then } = s;
-
-  const buildInput = makeBuildFunction(input.buildScript);
-
-  function build(pick: PickFunction): T {
-    const input = buildInput(pick);
-    return then(input, pick);
-  }
-  return build;
+  return "name" in x && "split" in x && "build" in x;
 }
 
 /**
@@ -154,10 +183,13 @@ export function makePickFunction<T>(
       return pick;
     }
     const script = req["buildScript"];
-    if (!isBuildScript(script)) {
+    if (script === null || typeof script !== "object") {
       throw new Error("pick function called with an invalid argument");
     }
-    const build = makeBuildFunction(script);
+    const build = script["build"];
+    if (typeof build !== "function") {
+      throw new Error("pick function called with an invalid argument");
+    }
 
     const startMiddle = opts?.middle;
     const generate = () => {
@@ -223,14 +255,17 @@ export function makePickFunction<T>(
  * Returns undefined if it ran out of playouts without generating anything.
  */
 export function generate<T>(
-  set: PickSet<T>,
+  script: Script<T> | PickSet<T>,
   playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): Gen<T> | undefined {
+  if ("buildScript" in script) {
+    script = script.buildScript;
+  }
   if (!playouts.startAt(0)) {
     return undefined;
   }
-  return generateValue(set, playouts, opts);
+  return generateValue(script, playouts, opts);
 }
 
 /**
@@ -239,23 +274,23 @@ export function generate<T>(
  * Returns undefined if there are no more playouts available at the current depth.
  */
 export function generateValue<T>(
-  set: PickSet<T>,
+  script: Script<T>,
   playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): Gen<T> | undefined {
-  const script = set.buildScript;
-  if (!(typeof script === "function")) {
-    return generateFromBuildStep(set.label, script, playouts);
+  const inner = script.split();
+  if (!(typeof inner === "function")) {
+    return generateFromBuildStep(script, inner, playouts);
   }
 
   const depth = playouts.depth;
   while (playouts.startValue(depth)) {
     try {
       const pick = makePickFunction(playouts, opts);
-      const val = script(pick);
+      const val = inner(pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
-      return Gen.fromBuildResult(set, reqs, replies, val);
+      return Gen.fromBuildResult(script, reqs, replies, val);
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;
@@ -268,8 +303,8 @@ export function generateValue<T>(
   return undefined;
 }
 
-export function generateFromBuildStep<T, I>(
-  label: string,
+function generateFromBuildStep<T, I>(
+  script: Script<T>,
   step: BuildStep<T, I>,
   playouts: PlayoutSource,
 ): Gen<T> | undefined {
@@ -287,7 +322,7 @@ export function generateFromBuildStep<T, I>(
       const val = then(input.val, pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
-      return Gen.fromBuildStepResult(label, input, then, reqs, replies, val);
+      return Gen.fromBuildStepResult(script, input, reqs, replies, val);
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;

@@ -1,5 +1,4 @@
 import type { Domain } from "@/domain.ts";
-import type { PickSet } from "../src/build.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, fail } from "@std/assert";
@@ -10,7 +9,7 @@ import * as dom from "@/doms.ts";
 import { minMaxVal } from "./lib/ranges.ts";
 
 import { PickRequest } from "../src/picks.ts";
-import { buildStep } from "../src/build.ts";
+import { makeScript } from "../src/build.ts";
 import {
   shrink,
   shrinkAllOptions,
@@ -45,17 +44,14 @@ function assertNoChange<T>(
 }
 
 function seedFrom(reqs: PickRequest[], replies: number[]): Gen<number[]> {
-  const fakeSet: PickSet<number[]> = {
-    label: "(picks)",
-    buildScript: (pick) => {
-      const out: number[] = [];
-      for (const req of reqs) {
-        out.push(pick(req));
-      }
-      return out;
-    },
-  };
-  return Gen.mustBuild(fakeSet, replies);
+  const build = makeScript("seedFrom", (pick) => {
+    const out: number[] = [];
+    for (const req of reqs) {
+      out.push(pick(req));
+    }
+    return out;
+  });
+  return Gen.mustBuild(build, replies);
 }
 
 const emptySeed = seedFrom([], []);
@@ -150,18 +146,12 @@ describe("shrink", () => {
     });
 
     describe("for a mult-step build script", () => {
-      const bit: PickSet<number> = {
-        label: "bit",
-        buildScript: (pick) => pick(PickRequest.bit),
-      };
+      const bit = makeScript("bit", (pick) => pick(PickRequest.bit));
 
-      const twoBits: PickSet<number[]> = {
-        label: "twoBits",
-        buildScript: buildStep(bit, (a, pick) => {
-          const b = pick(bit);
-          return [a, b];
-        }),
-      };
+      const twoBits = bit.then("twoBits", (a, pick) => {
+        const b = pick(PickRequest.bit);
+        return [a, b];
+      });
 
       it("can't shrink the default value", () => {
         const seed = Gen.mustBuild(twoBits, [0, 0]);

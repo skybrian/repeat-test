@@ -6,7 +6,7 @@ import { assert } from "@std/assert";
 import { PickRequest } from "./picks.ts";
 import { PlayoutSource, Pruned } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
-import { generate, makeBuildFunction, makePickFunction } from "./build.ts";
+import { generate, makePickFunction } from "./build.ts";
 
 /**
  * Generates possible playouts in the order used for choosing defaults.
@@ -179,13 +179,13 @@ export function takeGenerated<T>(set: PickSet<T>, n: number): Gen<T>[] {
  * There may be duplicates.
  */
 export function take<T>(set: PickSet<T>, n: number): T[] {
-  const build = makeBuildFunction(set.buildScript);
+  const script = set.buildScript;
   const result = [];
   const playouts = orderedPlayouts();
   while (playouts.startAt(0) && result.length < n) {
     try {
       const pick = makePickFunction(playouts);
-      result.push(build(pick));
+      result.push(script.build(pick));
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;

@@ -1,73 +1,46 @@
-import { buildStep, type PickSet } from "../src/build.ts";
-
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
-import { noChange, PickList } from "../src/picks.ts";
+import { noChange, PickList, PickRequest } from "../src/picks.ts";
 import { Pruned } from "../src/backtracking.ts";
-import { PickRequest } from "@/arbitrary.ts";
-
+import { makeScript } from "../src/build.ts";
 import { Gen } from "../src/gen_class.ts";
 
-const bit: PickSet<number> = {
-  label: "bit",
-  buildScript: (pick) => pick(PickRequest.bit),
-};
+const bit = makeScript("bit", (pick) => pick(PickRequest.bit));
 
-const roll: PickSet<number> = {
-  label: "roll",
-  buildScript: (pick) => pick(new PickRequest(1, 6)),
-};
+const roll = makeScript("roll", (pick) => pick(new PickRequest(1, 6)));
 
-const frozen: PickSet<readonly string[]> = {
-  label: "frozen",
-  buildScript: () => Object.freeze(["frozen"]),
-};
+const frozen = makeScript("frozen", () => Object.freeze(["frozen"]));
 
-const mutable: PickSet<string[]> = {
-  label: "mutable",
-  buildScript: () => ["mutable"],
-};
+const mutable = makeScript("mutable", () => ["mutable"]);
 
-const pruned: PickSet<number> = {
-  label: "never",
-  buildScript: () => {
-    throw new Pruned("nope");
-  },
-};
+const pruned = makeScript("never", () => {
+  throw new Pruned("nope");
+});
 
-const multiStep: PickSet<string> = {
-  label: "multi-step",
-  buildScript: buildStep(bit, (a, pick) => {
-    const b = pick(bit);
-    return `(${a}, ${b})`;
-  }),
-};
+const multiStep = bit.then("multi-step", (a, pick) => {
+  const b = pick(PickRequest.bit);
+  return `(${a}, ${b})`;
+});
 
-const frozenFirstStep: PickSet<(readonly string[])[]> = {
-  label: "frozen first step",
-  buildScript: buildStep(frozen, (a) => {
-    return [a];
-  }),
-};
+const frozenFirstStep = frozen.then("frozen-first-step", (a) => {
+  return [a];
+});
 
-const multiStepMutable: PickSet<string[]> = {
-  label: "multi-step mutable",
-  buildScript: buildStep(mutable, (a: string[]) => {
+const multiStepMutable = mutable.then(
+  "multi-step mutable",
+  (a) => {
     return [...a, "!"];
-  }),
-};
-
-const firstStepPruned: PickSet<string> = {
-  label: "first-step-pruned",
-  buildScript: {
-    input: pruned,
-    then: (a, pick) => {
-      const b = pick(bit);
-      return `(${a}, ${b})`;
-    },
   },
-};
+);
+
+const firstStepPruned = pruned.then(
+  "first-step-pruned",
+  (a, pick) => {
+    const b = pick(PickRequest.bit);
+    return `(${a}, ${b})`;
+  },
+);
 
 describe("Gen", () => {
   describe("build", () => {

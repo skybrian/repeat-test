@@ -116,14 +116,14 @@ export class Domain<T> extends Arbitrary<T> {
     if (!picks.ok) {
       return picks;
     }
-    return Gen.build(this, picks.val);
+    return Gen.build(this.buildScript, picks.val);
   }
 
   /**
    * Given some picks, attempts to generate the corresponding value.
    */
   generate(picks: number[]): Gen<T> | Failure {
-    return Gen.build(this, picks);
+    return Gen.build(this.buildScript, picks);
   }
 
   /**
