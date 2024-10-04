@@ -350,7 +350,7 @@ export class PlaybackPicker implements IntPicker {
 /**
  * Edits a stream of integers.
  */
-export interface IntEditor {
+export interface StreamEditor {
   /**
    * Given a pick request and reply from a stream, returns the reply to use in
    * the new stream.
@@ -363,7 +363,7 @@ export interface IntEditor {
 }
 
 /** An editor that doesn't change the stream. */
-export const noChange: IntEditor = {
+export const noChange: StreamEditor = {
   replace(_, before) {
     return before;
   },
@@ -379,7 +379,7 @@ export class EditPicker implements IntPicker {
 
   constructor(
     private readonly before: number[],
-    private readonly editor: IntEditor,
+    private readonly editor: StreamEditor,
   ) {
     for (let i = 0; i < before.length; i++) {
       if (!Number.isSafeInteger(before[i])) {

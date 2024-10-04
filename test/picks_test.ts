@@ -16,11 +16,11 @@ import {
   alwaysPick,
   biasedBitRequest,
   EditPicker,
-  type IntEditor,
   noChange,
   PickList,
   PickRequest,
   PlaybackPicker,
+  type StreamEditor,
 } from "../src/picks.ts";
 import { RecordingConsole } from "../src/console.ts";
 
@@ -321,13 +321,13 @@ describe("PlaybackPicker", () => {
   });
 });
 
-const addOne: IntEditor = {
+const addOne: StreamEditor = {
   replace(_, before) {
     return before + 1;
   },
 };
 
-const deleteAll: IntEditor = {
+const deleteAll: StreamEditor = {
   replace(_req, _before) {
     return undefined;
   },

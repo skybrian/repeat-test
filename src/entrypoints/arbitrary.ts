@@ -7,11 +7,11 @@
 export type { Failure, Success } from "../results.ts";
 
 export type {
-  IntEditor,
   PickList,
   PickRequestOpts,
   RandomPicker,
   RandomSource,
+  StreamEditor,
 } from "../picks.ts";
 
 export type {

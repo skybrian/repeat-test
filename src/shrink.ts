@@ -1,5 +1,5 @@
 import type { Gen } from "./gen_class.ts";
-import type { IntEditor, PickRequest } from "./picks.ts";
+import type { PickRequest, StreamEditor } from "./picks.ts";
 
 import { assert } from "@std/assert/assert";
 
@@ -30,7 +30,7 @@ export function shrink<T>(
 /**
  * Edits a playout by removing picks from the end (forcing them to be the minimum).
  */
-function trimEnd(len: number): IntEditor {
+function trimEnd(len: number): StreamEditor {
   let reqs = 0;
   return {
     replace(_: PickRequest, before: number): number | undefined {
@@ -84,7 +84,7 @@ export function shrinkTail<T>(
 function replaceAt(
   index: number,
   replacement: number,
-): IntEditor {
+): StreamEditor {
   let reqs = 0;
   return {
     replace(_: PickRequest, before: number): number | undefined {
@@ -163,7 +163,7 @@ export function shrinkAllPicks<T>(
   return changed ? seed : undefined;
 }
 
-function deleteRange(start: number, end: number): IntEditor {
+function deleteRange(start: number, end: number): StreamEditor {
   let reqs = 0;
   return {
     replace(_: PickRequest, before: number): number | undefined {

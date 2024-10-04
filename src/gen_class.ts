@@ -1,5 +1,5 @@
 import type { Failure, Success } from "./results.ts";
-import type { IntEditor, PickRequest } from "./picks.ts";
+import type { PickRequest, StreamEditor } from "./picks.ts";
 import type { PickSet, Script } from "./build.ts";
 
 import { failure } from "./results.ts";
@@ -122,7 +122,7 @@ export class Gen<T> implements Success<T> {
    * Regenerates the value after editing its picks.
    * @returns the new value, or undefined if no change is available.
    */
-  mutate(edit: IntEditor): Gen<T> | undefined {
+  mutate(edit: StreamEditor): Gen<T> | undefined {
     const picker = new EditPicker(this.replies, edit);
     const gen = generate(this.#script, onePlayout(picker));
     if (picker.edits === 0 && picker.deletes === 0) {
