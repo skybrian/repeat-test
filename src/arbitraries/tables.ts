@@ -1,19 +1,21 @@
 import type {
   Arbitrary,
   PickFunction,
-  PickSet,
   RecordShape,
+  Script,
 } from "@/arbitrary.ts";
-import { Domain, Jar } from "@/domain.ts";
-import * as arb from "./basics.ts";
-import { PickRequest } from "../picks.ts";
+import type { ArrayOpts, TableOpts } from "../options.ts";
 
-import { type ArrayOpts, parseArrayOpts, type TableOpts } from "../options.ts";
+import { assert } from "@std/assert/assert";
+import { Domain, Jar } from "@/domain.ts";
+import { PickRequest } from "../picks.ts";
+import { parseArrayOpts } from "../options.ts";
 import { generateAll } from "../ordered.ts";
 import { PickTree } from "../pick_tree.ts";
-import { assert } from "@std/assert/assert";
 import { arrayLengthBiases } from "../math.ts";
 import { makeScript } from "../build.ts";
+
+import * as arb from "./basics.ts";
 
 /**
  * Defines an Arbitrary that generates an array by taking distinct values from a
@@ -149,36 +151,34 @@ export function table<R extends Record<string, unknown>>(
 
     const rows: R[] = [];
 
-    const addRow: PickSet<R | undefined> = {
-      buildScript: makeScript("addRow", (pick) => {
-        if (rows.length < min) {
-          for (const jar of Object.values(jars)) {
-            assert(!jar.isEmpty());
-          }
-        } else {
-          if (max !== undefined && rows.length >= max) {
-            return undefined;
-          }
-          if (emptyJar()) {
-            return undefined;
-          }
-          if (!wantItem(rows.length, pick)) {
-            return undefined;
-          }
+    const addRow: Script<R | undefined> = makeScript("addRow", (pick) => {
+      if (rows.length < min) {
+        for (const jar of Object.values(jars)) {
+          assert(!jar.isEmpty());
         }
+      } else {
+        if (max !== undefined && rows.length >= max) {
+          return undefined;
+        }
+        if (emptyJar()) {
+          return undefined;
+        }
+        if (!wantItem(rows.length, pick)) {
+          return undefined;
+        }
+      }
 
-        const row: Record<string, unknown> = {};
-        for (const key of Object.keys(shape)) {
-          const jar = jars[key];
-          if (jar) {
-            row[key] = jar.take(pick);
-          } else {
-            row[key] = pick(shape[key]);
-          }
+      const row: Record<string, unknown> = {};
+      for (const key of Object.keys(shape)) {
+        const jar = jars[key];
+        if (jar) {
+          row[key] = jar.take(pick);
+        } else {
+          row[key] = pick(shape[key]);
         }
-        return row as R;
-      }),
-    };
+      }
+      return row as R;
+    });
 
     for (let row = pick(addRow); row !== undefined; row = pick(addRow)) {
       rows.push(row);

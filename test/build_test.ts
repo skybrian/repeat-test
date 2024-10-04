@@ -48,6 +48,16 @@ describe("makePickFunction", () => {
     assertEquals(pick(bit), 0);
   });
 
+  it("accepts a Script", () => {
+    const script = makeScript("hi", () => "hi");
+    assertEquals(pick(script), "hi");
+  });
+
+  it("accepts a PickSet that's not a Script", () => {
+    const hi = { buildScript: makeScript("hi", () => "hi") };
+    assertEquals(pick(hi), "hi");
+  });
+
   it("accepts an Arbitrary", () => {
     assertEquals(pick(hi), "hi");
   });
@@ -92,6 +102,11 @@ describe("makePickFunction", () => {
   it("throws an error when given an invalid argument", () => {
     assertThrows(
       () => pick("hi" as unknown as PickRequest),
+      Error,
+      "pick function called with an invalid argument",
+    );
+    assertThrows(
+      () => pick({ buildScript: null } as unknown as PickRequest),
       Error,
       "pick function called with an invalid argument",
     );

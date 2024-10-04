@@ -27,7 +27,7 @@ export type BuildStep<Out, Local> = {
   then: ThenFunction<Local, Out>;
 };
 
-export interface Script<T> {
+export interface Script<T> extends PickSet<T> {
   readonly name: string;
   split(): BuildFunction<T> | BuildStep<T, unknown>;
   build(pick: PickFunction): T;
@@ -42,6 +42,9 @@ export function makeScript<T>(
   const script = {
     get name() {
       return name;
+    },
+    get buildScript() {
+      return script;
     },
     split: () => build,
     get build() {
@@ -67,6 +70,9 @@ function makePipeline<Inner, Out>(
   const script = {
     get name() {
       return name;
+    },
+    get buildScript() {
+      return script;
     },
     split() {
       return { input, then } as BuildStep<Out, unknown>;
@@ -180,10 +186,16 @@ export function makePickFunction<T>(
       if (pick === undefined) throw new Pruned("cancelled in PlayoutSource");
       return pick;
     }
+
+    if (req === null || typeof req !== "object") {
+      throw new Error("pick function called with an invalid argument");
+    }
+
     const script = req["buildScript"];
     if (script === null || typeof script !== "object") {
       throw new Error("pick function called with an invalid argument");
     }
+
     const build = script["build"];
     if (typeof build !== "function") {
       throw new Error("pick function called with an invalid argument");
@@ -253,17 +265,14 @@ export function makePickFunction<T>(
  * Returns undefined if it ran out of playouts without generating anything.
  */
 export function generate<T>(
-  script: Script<T> | PickSet<T>,
+  script: PickSet<T>,
   playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): Gen<T> | undefined {
-  if ("buildScript" in script) {
-    script = script.buildScript;
-  }
   if (!playouts.startAt(0)) {
     return undefined;
   }
-  return generateValue(script, playouts, opts);
+  return generateValue(script.buildScript, playouts, opts);
 }
 
 /**

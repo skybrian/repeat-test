@@ -111,9 +111,8 @@ export function orderedPlayouts(): PlayoutSource {
  * possible.
  */
 export function generateDefault<T>(set: PickSet<T>): Gen<T> {
-  const build = set.buildScript;
-  const gen = generate(build, orderedPlayouts());
-  assert(gen !== undefined, `${build.name} has no default`);
+  const gen = generate(set, orderedPlayouts());
+  assert(gen !== undefined, `${set.buildScript.name} has no default`);
   return gen;
 }
 

@@ -1,6 +1,6 @@
 import type { Failure, Success } from "./results.ts";
 import type { IntEditor, PickRequest } from "./picks.ts";
-import type { Script } from "./build.ts";
+import type { PickSet, Script } from "./build.ts";
 
 import { failure } from "./results.ts";
 import { EditPicker, PickList, PlaybackPicker } from "./picks.ts";
@@ -150,18 +150,18 @@ export class Gen<T> implements Success<T> {
     return new Gen(script, input, stepReqs, stepReplies, val);
   }
 
-  static build<T>(script: Script<T>, replies: number[]): Gen<T> | Failure {
+  static build<T>(set: PickSet<T>, replies: number[]): Gen<T> | Failure {
     const picker = new PlaybackPicker(replies);
-    const gen = generate(script, onePlayout(picker));
+    const gen = generate(set, onePlayout(picker));
     if (gen === undefined || picker.error !== undefined) {
       const err = picker.error ?? "picks not accepted";
-      return failure(`can't build '${script.name}': ${err}`);
+      return failure(`can't build '${set.buildScript.name}': ${err}`);
     }
     return gen;
   }
 
-  static mustBuild<T>(script: Script<T>, replies: number[]): Gen<T> {
-    const gen = Gen.build(script, replies);
+  static mustBuild<T>(set: PickSet<T>, replies: number[]): Gen<T> {
+    const gen = Gen.build(set, replies);
     if (!gen.ok) {
       throw new Error(gen.message);
     }

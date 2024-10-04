@@ -148,7 +148,7 @@ export class Arbitrary<T> implements PickSet<T> {
     });
 
     // Check that a default exists
-    generateDefault({ buildScript: build });
+    generateDefault(build);
 
     const maxSize = this.maxSize;
     return new Arbitrary(build, { maxSize, dryRun: false });

@@ -1,5 +1,4 @@
 import type { Tracker } from "../src/backtracking.ts";
-import type { PickSet } from "../src/build.ts";
 
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows, fail } from "@std/assert";
@@ -332,12 +331,10 @@ describe("take", () => {
   it("works for a two-step build script", () => {
     const bit = makeScript("bit", (pick) => pick(PickRequest.bit));
 
-    const twoBits: PickSet<number[]> = {
-      buildScript: bit.then("twoBits", (a, pick) => {
-        const b = pick(PickRequest.bit);
-        return [a, b];
-      }),
-    };
+    const twoBits = bit.then("twoBits", (a, pick) => {
+      const b = pick(PickRequest.bit);
+      return [a, b];
+    });
 
     assertEquals(take(twoBits, 5), [
       [0, 0],

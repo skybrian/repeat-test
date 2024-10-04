@@ -20,6 +20,7 @@ export type {
   PickFunction,
   PickFunctionOpts,
   PickSet,
+  Script,
 } from "../build.ts";
 
 export type { RecordShape } from "../options.ts";
