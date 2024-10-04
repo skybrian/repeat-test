@@ -15,7 +15,7 @@ const alwaysGenerate = Symbol("alwaysGenerate");
  */
 export class Gen<T> implements Success<T> {
   readonly #script: Script<T>;
-  readonly #input: Gen<unknown> | undefined;
+  readonly #pipeInput: Gen<unknown> | undefined;
 
   /** The requests for the last build step. */
   readonly #lastReqs: PickRequest[];
@@ -35,13 +35,13 @@ export class Gen<T> implements Success<T> {
    */
   private constructor(
     script: Script<T>,
-    input: Gen<unknown> | undefined,
+    pipeInput: Gen<unknown> | undefined,
     stepReqs: PickRequest[],
     stepReplies: number[],
     val: T,
   ) {
     this.#script = script;
-    this.#input = input;
+    this.#pipeInput = pipeInput;
     this.#lastReqs = stepReqs;
     this.#lastReplies = stepReplies;
     this.#val = val;
@@ -100,22 +100,22 @@ export class Gen<T> implements Success<T> {
       return val;
     }
 
-    const script = this.#script.split();
-    if (typeof script === "function") {
+    const pipe = this.#script.toPipe();
+    if (pipe === undefined) {
       const playouts = onePlayout(new PlaybackPicker(this.replies));
       assert(playouts.startAt(0));
       const pick = makePickFunction(playouts);
-      return script(pick);
+      return this.#script.build(pick);
     }
 
     // Recursive case: get the previous input (perhaps also regenerated) and
     // rerun the last step.
-    assert(this.#input !== undefined);
-    const input = this.#input.val;
+    assert(this.#pipeInput !== undefined);
+    const input = this.#pipeInput.val;
     const playouts = onePlayout(new PlaybackPicker(this.#lastReplies));
     assert(playouts.startAt(0));
     const pick = makePickFunction(playouts);
-    return script.then(input, pick);
+    return pipe.then(input, pick);
   }
 
   /**
@@ -140,14 +140,14 @@ export class Gen<T> implements Success<T> {
     return new Gen(script, undefined, reqs, replies, val);
   }
 
-  static fromBuildStepResult<In, T>(
+  static fromPipeResult<In, T>(
     script: Script<T>,
-    input: Gen<In>,
-    stepReqs: PickRequest[],
-    stepReplies: number[],
+    pipeInput: Gen<In>,
+    thenReqs: PickRequest[],
+    thenReplies: number[],
     val: T,
   ): Gen<T> {
-    return new Gen(script, input, stepReqs, stepReplies, val);
+    return new Gen(script, pipeInput, thenReqs, thenReplies, val);
   }
 
   static build<T>(set: PickSet<T>, replies: number[]): Gen<T> | Failure {
@@ -170,7 +170,11 @@ export class Gen<T> implements Success<T> {
 
   static steps(last: Gen<unknown>): Gen<unknown>[] {
     const steps = [last];
-    for (let step = last.#input; step !== undefined; step = step.#input) {
+    for (
+      let step = last.#pipeInput;
+      step !== undefined;
+      step = step.#pipeInput
+    ) {
       steps.push(step);
     }
     steps.reverse();

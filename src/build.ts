@@ -22,24 +22,35 @@ export type BuildFunction<T> = (pick: PickFunction) => T;
  */
 export type ThenFunction<In, Out> = (input: In, pick: PickFunction) => Out;
 
-export type BuildStep<Out, Local> = {
-  input: Script<Local>;
-  then: ThenFunction<Local, Out>;
+export type Pipe<Out, Inner> = {
+  input: Script<Inner>;
+  then: ThenFunction<Inner, Out>;
 };
+
+/**
+ * A set of possible values that may be generated.
+ *
+ * (Or perhaps a multiset. PickSets may generate the same value in more than one
+ * way.)
+ */
+export interface PickSet<T> {
+  /** Generates a member of this set, given a source of picks. */
+  readonly buildScript: Script<T>;
+}
 
 export class Script<T> implements PickSet<T> {
   readonly #name: string;
-  readonly #split: BuildFunction<T> | BuildStep<T, unknown>;
   readonly #build: BuildFunction<T>;
+  readonly #pipe: Pipe<T, unknown> | undefined;
 
   private constructor(
     name: string,
-    split: BuildFunction<T> | BuildStep<T, unknown>,
     build: BuildFunction<T>,
+    pipe: Pipe<T, unknown> | undefined,
   ) {
     this.#name = name;
-    this.#split = split;
     this.#build = build;
+    this.#pipe = pipe;
   }
 
   get name(): string {
@@ -50,8 +61,8 @@ export class Script<T> implements PickSet<T> {
     return this;
   }
 
-  split(): BuildFunction<T> | BuildStep<T, unknown> {
-    return this.#split;
+  toPipe(): Pipe<T, unknown> | undefined {
+    return this.#pipe;
   }
 
   get build(): BuildFunction<T> {
@@ -59,7 +70,7 @@ export class Script<T> implements PickSet<T> {
   }
 
   with(opts: { name: string }): Script<T> {
-    return new Script(opts.name, this.#split, this.#build);
+    return new Script(opts.name, this.#build, this.#pipe);
   }
 
   then<Out>(name: string, then: ThenFunction<T, Out>): Script<Out> {
@@ -70,7 +81,7 @@ export class Script<T> implements PickSet<T> {
     name: string,
     build: BuildFunction<T>,
   ): Script<T> {
-    return new Script(name, build, build);
+    return new Script(name, build, undefined);
   }
 
   private static makePipeline<In, Out>(
@@ -86,21 +97,10 @@ export class Script<T> implements PickSet<T> {
     const step = {
       input,
       then,
-    } as BuildStep<Out, unknown>;
+    } as Pipe<Out, unknown>;
 
-    return new Script(name, step, build);
+    return new Script(name, build, step);
   }
-}
-
-/**
- * A set of possible values that may be generated.
- *
- * (Or perhaps a multiset. PickSets may generate the same value in more than one
- * way.)
- */
-export interface PickSet<T> {
-  /** Generates a member of this set, given a source of picks. */
-  readonly buildScript: Script<T>;
 }
 
 /**
@@ -185,17 +185,12 @@ export function makePickFunction<T>(
     }
 
     const script = req["buildScript"];
-    if (script === null || typeof script !== "object") {
-      throw new Error("pick function called with an invalid argument");
-    }
-
-    const build = script["build"];
-    if (typeof build !== "function") {
+    if (!(script instanceof Script)) {
       throw new Error("pick function called with an invalid argument");
     }
 
     const startMiddle = opts?.middle;
-    const generate = () => {
+    const build = () => {
       while (true) {
         const depth = playouts.depth;
         try {
@@ -215,7 +210,7 @@ export function makePickFunction<T>(
             };
           }
 
-          const val = build(innerPick);
+          const val = script.build(innerPick);
           return val;
         } catch (e) {
           if (!(e instanceof Pruned)) {
@@ -230,14 +225,14 @@ export function makePickFunction<T>(
 
     const accept = opts?.accept;
     if (accept === undefined) {
-      return generate();
+      return build();
     }
 
     // filtered pick
     const maxTries = opts?.maxTries ?? 1000;
     for (let i = 0; i < maxTries; i++) {
       const depth = playouts.depth;
-      const val = generate();
+      const val = build();
       if (accept(val)) {
         return val;
       }
@@ -258,14 +253,14 @@ export function makePickFunction<T>(
  * Returns undefined if it ran out of playouts without generating anything.
  */
 export function generate<T>(
-  script: PickSet<T>,
+  set: PickSet<T>,
   playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): Gen<T> | undefined {
   if (!playouts.startAt(0)) {
     return undefined;
   }
-  return generateValue(script.buildScript, playouts, opts);
+  return generateValue(set.buildScript, playouts, opts);
 }
 
 /**
@@ -278,16 +273,16 @@ export function generateValue<T>(
   playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): Gen<T> | undefined {
-  const inner = script.split();
-  if (!(typeof inner === "function")) {
-    return generateFromBuildStep(script, inner, playouts);
+  const pipe = script.toPipe();
+  if (pipe !== undefined) {
+    return generateFromPipe(script, pipe, playouts);
   }
 
   const depth = playouts.depth;
   while (playouts.startValue(depth)) {
     try {
       const pick = makePickFunction(playouts, opts);
-      const val = inner(pick);
+      const val = script.build(pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
       return Gen.fromBuildResult(script, reqs, replies, val);
@@ -303,26 +298,24 @@ export function generateValue<T>(
   return undefined;
 }
 
-function generateFromBuildStep<T, I>(
+function generateFromPipe<T, I>(
   script: Script<T>,
-  step: BuildStep<T, I>,
+  pipe: Pipe<T, I>,
   playouts: PlayoutSource,
 ): Gen<T> | undefined {
-  const input = generateValue(step.input, playouts);
-  if (input === undefined) {
+  const inner = generateValue(pipe.input, playouts);
+  if (inner === undefined) {
     return undefined;
   }
-
-  const then = step.then;
 
   const depth = playouts.depth;
   while (playouts.startValue(depth)) {
     try {
       const pick = makePickFunction(playouts);
-      const val = then(input.val, pick);
+      const val = pipe.then(inner.val, pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
-      return Gen.fromBuildStepResult(script, input, reqs, replies, val);
+      return Gen.fromPipeResult(script, inner, reqs, replies, val);
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;
