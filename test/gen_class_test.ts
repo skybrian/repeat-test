@@ -2,7 +2,7 @@ import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { PickList, PickRequest } from "../src/picks.ts";
-import { noChange } from "../src/edits.ts";
+import { keep } from "../src/edits.ts";
 import { Pruned } from "../src/backtracking.ts";
 import { Script } from "../src/build.ts";
 import { Gen } from "../src/gen_class.ts";
@@ -159,7 +159,7 @@ describe("Gen", () => {
   describe("mutate", () => {
     it("does nothing if there are no edits", () => {
       const gen = Gen.mustBuild(frozen, []);
-      assertEquals(gen.mutate(noChange), undefined);
+      assertEquals(gen.mutate(keep), undefined);
     });
   });
 });

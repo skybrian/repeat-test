@@ -5,83 +5,47 @@ export type Edit =
   | { type: "replace"; val: number }
   | { type: "snip" };
 
+/**
+ * Given a pick request and reply from a stream, returns the reply to use in
+ * the new stream.
+ */
+export type StreamEditor = (
+  index: number,
+  before: number,
+  req: PickRequest,
+) => Edit;
+
+/** An editor that keeps each pick. */
 export function keep(): Edit {
   return { type: "keep" };
 }
 
-export function replace(val: number): Edit {
-  return { type: "replace", val };
-}
-
+/** An editor that deletes each pick. */
 export function snip(): Edit {
   return { type: "snip" };
 }
 
-/**
- * Edits a stream of integers.
- */
-export interface StreamEditor {
-  /**
-   * Given a pick request and reply from a stream, returns the reply to use in
-   * the new stream.
-   *
-   * Returning `undefined` means that the previous reply should be skipped
-   * (deleted). The next call to `replace` will use the same request and the
-   * next reply.
-   */
-  visit(req: PickRequest, before: number): Edit;
+/** Makes an edit that unconditionally replaces a pick. */
+export function replace(val: number): Edit {
+  return { type: "replace", val };
 }
-
-/** An editor that doesn't change the stream. */
-export const noChange: StreamEditor = {
-  visit: keep,
-};
 
 /**
  * Edits a playout by removing picks from the end (forcing them to be the minimum).
  */
 export function trimEnd(len: number): StreamEditor {
-  let reqs = 0;
-  return {
-    visit(): Edit {
-      if (reqs >= len) {
-        return snip();
-      }
-      reqs++;
-      return keep();
-    },
-  };
+  return (index) => index >= len ? snip() : keep();
 }
 
 export function deleteRange(start: number, end: number): StreamEditor {
-  let reqs = 0;
-  return {
-    visit(): Edit {
-      if (reqs < start || reqs >= end) {
-        reqs++;
-        return keep();
-      }
-      reqs++;
-      return snip();
-    },
-  };
+  return (index) => index >= start && index < end ? snip() : keep();
 }
 
 export function replaceAt(
-  index: number,
+  at: number,
   replacement: number,
 ): StreamEditor {
-  let reqs = 0;
-  return {
-    visit(): Edit {
-      if (reqs === index) {
-        reqs++;
-        return replace(replacement);
-      }
-      reqs++;
-      return keep();
-    },
-  };
+  return (index) => index === at ? replace(replacement) : keep();
 }
 
 /**
@@ -112,8 +76,9 @@ export class EditPicker implements IntPicker {
       if (this.index >= this.before.length) {
         return req.min;
       }
-      const before = this.before[this.index++];
-      const edit = this.editor.visit(req, before);
+      const index = this.index++;
+      const before = this.before[index];
+      const edit = this.editor(index, before, req);
       let val = before;
       switch (edit.type) {
         case "keep":
