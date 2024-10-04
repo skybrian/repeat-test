@@ -7,7 +7,7 @@ import { Arbitrary } from "@/arbitrary.ts";
 
 import { PickRequest } from "../src/picks.ts";
 import { Pruned } from "../src/backtracking.ts";
-import { makeScript } from "../src/build.ts";
+import { Script } from "../src/build.ts";
 
 import { assertGenerated, assertValues } from "./lib/asserts.ts";
 import {
@@ -329,7 +329,7 @@ describe("take", () => {
   });
 
   it("works for a two-step build script", () => {
-    const bit = makeScript("bit", (pick) => pick(PickRequest.bit));
+    const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
 
     const twoBits = bit.then("twoBits", (a, pick) => {
       const b = pick(PickRequest.bit);

@@ -27,76 +27,69 @@ export type BuildStep<Out, Local> = {
   then: ThenFunction<Local, Out>;
 };
 
-export interface Script<T> extends PickSet<T> {
-  readonly name: string;
-  split(): BuildFunction<T> | BuildStep<T, unknown>;
-  build(pick: PickFunction): T;
-  with(opts: { name: string }): Script<T>;
-  then<Out>(name: string, then: ThenFunction<T, Out>): Script<Out>;
-}
+export class Script<T> implements PickSet<T> {
+  readonly #name: string;
+  readonly #split: BuildFunction<T> | BuildStep<T, unknown>;
+  readonly #build: BuildFunction<T>;
 
-export function makeScript<T>(
-  name: string,
-  build: BuildFunction<T>,
-): Script<T> {
-  const script = {
-    get name() {
-      return name;
-    },
-    get buildScript() {
-      return script;
-    },
-    split: () => build,
-    get build() {
-      return build;
-    },
-    then: <Out>(
-      name: string,
-      then: ThenFunction<T, Out>,
-    ): Script<Out> => makePipeline<T, Out>(name, script, then),
-    with(opts: { name: string }): Script<T> {
-      return makeScript(opts.name, build);
-    },
-  };
-
-  return script;
-}
-
-function makePipeline<Inner, Out>(
-  name: string,
-  input: Script<Inner>,
-  then: ThenFunction<Inner, Out>,
-): Script<Out> {
-  const script = {
-    get name() {
-      return name;
-    },
-    get buildScript() {
-      return script;
-    },
-    split() {
-      return { input, then } as BuildStep<Out, unknown>;
-    },
-    build(pick: PickFunction): Out {
-      const next = input.build(pick);
-      return then(next, pick);
-    },
-    then: <NextOut>(
-      name: string,
-      then: ThenFunction<Out, NextOut>,
-    ): Script<NextOut> => makePipeline<Out, NextOut>(name, script, then),
-    with(opts: { name: string }): Script<Out> {
-      return makePipeline(opts.name, input, then);
-    },
-  };
-  return script;
-}
-
-export function isBuildScript(x: unknown): x is Script<unknown> {
-  if (typeof x !== "object" || x === null) {
-    return false;
+  private constructor(
+    name: string,
+    split: BuildFunction<T> | BuildStep<T, unknown>,
+    build: BuildFunction<T>,
+  ) {
+    this.#name = name;
+    this.#split = split;
+    this.#build = build;
   }
-  return "name" in x && "split" in x && "build" in x;
+
+  get name(): string {
+    return this.#name;
+  }
+
+  get buildScript() {
+    return this;
+  }
+
+  split(): BuildFunction<T> | BuildStep<T, unknown> {
+    return this.#split;
+  }
+
+  get build(): BuildFunction<T> {
+    return this.#build;
+  }
+
+  with(opts: { name: string }): Script<T> {
+    return new Script(opts.name, this.#split, this.#build);
+  }
+
+  then<Out>(name: string, then: ThenFunction<T, Out>): Script<Out> {
+    return Script.makePipeline(name, this, then);
+  }
+
+  static make<T>(
+    name: string,
+    build: BuildFunction<T>,
+  ): Script<T> {
+    return new Script(name, build, build);
+  }
+
+  private static makePipeline<In, Out>(
+    name: string,
+    input: Script<In>,
+    then: ThenFunction<In, Out>,
+  ): Script<Out> {
+    const build = (pick: PickFunction): Out => {
+      const inner = input.build(pick);
+      return then(inner, pick);
+    };
+
+    const step = {
+      input,
+      then,
+    } as BuildStep<Out, unknown>;
+
+    return new Script(name, step, build);
+  }
 }
 
 /**

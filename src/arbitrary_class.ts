@@ -1,10 +1,10 @@
 import type { RecordShape } from "./options.ts";
-import type { BuildFunction, PickFunction, PickSet, Script } from "./build.ts";
+import type { BuildFunction, PickFunction, PickSet } from "./build.ts";
 
 import { assert } from "@std/assert";
 
 import { PickRequest } from "./picks.ts";
-import { generate, isBuildScript, makeScript } from "./build.ts";
+import { generate, Script } from "./build.ts";
 import { generateDefault } from "./ordered.ts";
 import { randomPlayouts } from "./random.ts";
 
@@ -51,7 +51,7 @@ export class Arbitrary<T> implements PickSet<T> {
       this.#examples = arg.#examples;
       this.#maxSize = arg.#maxSize;
     } else {
-      assert(isBuildScript(arg));
+      assert(arg instanceof Script);
       this.#script = arg;
       this.#examples = opts?.examples;
       this.#maxSize = opts?.maxSize;
@@ -143,7 +143,7 @@ export class Arbitrary<T> implements PickSet<T> {
       ? this.name
       : `${this.name} (filtered)`;
 
-    const build = makeScript(name, (pick) => {
+    const build = Script.make(name, (pick) => {
       return pick(this, { accept });
     });
 
@@ -217,11 +217,11 @@ export class Arbitrary<T> implements PickSet<T> {
     arg: PickRequest | BuildFunction<T> | PickSet<T>,
   ): Arbitrary<T> | Arbitrary<number> {
     if (typeof arg === "function") {
-      return new Arbitrary(makeScript("(unlabeled)", arg));
+      return new Arbitrary(Script.make("(unlabeled)", arg));
     } else if (arg instanceof PickRequest) {
       const name = `${arg.min}..${arg.max}`;
       const maxSize = arg.max - arg.min + 1;
-      const build = makeScript(name, (pick: PickFunction) => {
+      const build = Script.make(name, (pick: PickFunction) => {
         return pick(arg);
       });
       return new Arbitrary(build, {
@@ -232,10 +232,10 @@ export class Arbitrary<T> implements PickSet<T> {
       return arg;
     }
     const script = arg["buildScript"];
-    if (isBuildScript(script)) {
-      return new Arbitrary(script);
+    if (!(script instanceof Script)) {
+      throw new Error("invalid argument to Arbitrary.from");
     }
-    throw new Error("invalid argument to Arbitrary.from");
+    return new Arbitrary(script);
   }
 
   /**
@@ -262,7 +262,7 @@ export class Arbitrary<T> implements PickSet<T> {
       throw new Error("Arbitrary.of() requires at least one argument");
     } else if (examples.length === 1) {
       const constant = examples[0];
-      const build = makeScript("untitled constant", () => {
+      const build = Script.make("untitled constant", () => {
         return constant;
       });
       return new Arbitrary(build, {
@@ -274,7 +274,7 @@ export class Arbitrary<T> implements PickSet<T> {
     const req = new PickRequest(0, examples.length - 1);
 
     const name = `${examples.length} examples`;
-    const build = makeScript(name, (pick) => {
+    const build = Script.make(name, (pick) => {
       const i = pick(req);
       return examples[i];
     });
@@ -312,7 +312,7 @@ export class Arbitrary<T> implements PickSet<T> {
     const req = new PickRequest(0, cases.length - 1);
     const caseScripts = caseArbs.map((arb) => arb.#script);
 
-    const build = makeScript("oneOf", (pick) => {
+    const build = Script.make("oneOf", (pick) => {
       const i = pick(req);
       return caseScripts[i].build(pick);
     });
@@ -338,7 +338,7 @@ export class Arbitrary<T> implements PickSet<T> {
     }
 
     if (keys.length === 0) {
-      const build = makeScript("empty record", () => {
+      const build = Script.make("empty record", () => {
         return {} as T;
       });
       return new Arbitrary(build, {
@@ -347,7 +347,7 @@ export class Arbitrary<T> implements PickSet<T> {
       });
     }
 
-    const build = makeScript("record", (pick: PickFunction) => {
+    const build = Script.make("record", (pick: PickFunction) => {
       const result = {} as Partial<T>;
       for (const key of keys) {
         result[key] = pick(shape[key]);

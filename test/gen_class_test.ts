@@ -3,18 +3,18 @@ import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { noChange, PickList, PickRequest } from "../src/picks.ts";
 import { Pruned } from "../src/backtracking.ts";
-import { makeScript } from "../src/build.ts";
+import { Script } from "../src/build.ts";
 import { Gen } from "../src/gen_class.ts";
 
-const bit = makeScript("bit", (pick) => pick(PickRequest.bit));
+const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
 
-const roll = makeScript("roll", (pick) => pick(new PickRequest(1, 6)));
+const roll = Script.make("roll", (pick) => pick(new PickRequest(1, 6)));
 
-const frozen = makeScript("frozen", () => Object.freeze(["frozen"]));
+const frozen = Script.make("frozen", () => Object.freeze(["frozen"]));
 
-const mutable = makeScript("mutable", () => ["mutable"]);
+const mutable = Script.make("mutable", () => ["mutable"]);
 
-const pruned = makeScript("never", () => {
+const pruned = Script.make("never", () => {
   throw new Pruned("nope");
 });
 

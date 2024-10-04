@@ -18,20 +18,11 @@ import { propsFromGen } from "./lib/props.ts";
 import {
   generate,
   generateValue,
-  isBuildScript,
   makePickFunction,
-  makeScript,
+  Script,
 } from "../src/build.ts";
 import { arb } from "@/mod.ts";
 import { PlaybackPicker } from "../src/picks.ts";
-
-describe("isBuildScript", () => {
-  const hello = makeScript("hello", () => "hi");
-
-  it("accepts a build script", () => {
-    assert(isBuildScript(hello));
-  });
-});
 
 describe("makePickFunction", () => {
   const hi = Arbitrary.of("hi", "there");
@@ -49,12 +40,12 @@ describe("makePickFunction", () => {
   });
 
   it("accepts a Script", () => {
-    const script = makeScript("hi", () => "hi");
+    const script = Script.make("hi", () => "hi");
     assertEquals(pick(script), "hi");
   });
 
   it("accepts a PickSet that's not a Script", () => {
-    const hi = { buildScript: makeScript("hi", () => "hi") };
+    const hi = { buildScript: Script.make("hi", () => "hi") };
     assertEquals(pick(hi), "hi");
   });
 
@@ -118,21 +109,21 @@ describe("makePickFunction", () => {
   });
 });
 
-const bit = makeScript("bit", (pick) => pick(PickRequest.bit));
+const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
 
-const frozen = makeScript("frozen", () => Object.freeze(["frozen"]));
+const frozen = Script.make("frozen", () => Object.freeze(["frozen"]));
 
 const multiStep = bit.then("multi-step", (a, pick) => {
   const b = pick(PickRequest.bit);
   return `(${a}, ${b})`;
 });
 
-const fails = makeScript("fails", () => {
+const fails = Script.make("fails", () => {
   throw new Error("oops!");
 });
 
 describe("generate", () => {
-  const hello = makeScript("hello", () => "hi");
+  const hello = Script.make("hello", () => "hi");
 
   it("generates a single value for a constant", () => {
     const gen = generate(hello, minPlayout());
@@ -151,7 +142,7 @@ describe("generate", () => {
   const biased = new PickRequest(0, 1, {
     bias: () => 1,
   });
-  const deep = makeScript("deep", (pick) => {
+  const deep = Script.make("deep", (pick) => {
     let picks = 0;
     while (pick(biased) === 1) {
       picks++;
@@ -230,7 +221,7 @@ describe("generateValue", () => {
       });
     });
 
-    const filteredOne = makeScript("filteredOne", (pick) => {
+    const filteredOne = Script.make("filteredOne", (pick) => {
       const n = pick(bitReq);
       if (n !== 1) {
         throw new Pruned("try again");
@@ -268,7 +259,7 @@ describe("generateValue", () => {
       );
     });
 
-    const rejectAll = makeScript("rejectAll", () => {
+    const rejectAll = Script.make("rejectAll", () => {
       throw new Pruned("nope");
     });
 

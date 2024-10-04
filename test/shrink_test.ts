@@ -9,7 +9,7 @@ import * as dom from "@/doms.ts";
 import { minMaxVal } from "./lib/ranges.ts";
 
 import { PickRequest } from "../src/picks.ts";
-import { makeScript } from "../src/build.ts";
+import { Script } from "../src/build.ts";
 import {
   shrink,
   shrinkAllOptions,
@@ -44,7 +44,7 @@ function assertNoChange<T>(
 }
 
 function seedFrom(reqs: PickRequest[], replies: number[]): Gen<number[]> {
-  const build = makeScript("seedFrom", (pick) => {
+  const build = Script.make("seedFrom", (pick) => {
     const out: number[] = [];
     for (const req of reqs) {
       out.push(pick(req));
@@ -146,7 +146,7 @@ describe("shrink", () => {
     });
 
     describe("for a mult-step build script", () => {
-      const bit = makeScript("bit", (pick) => pick(PickRequest.bit));
+      const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
 
       const twoBits = bit.then("twoBits", (a, pick) => {
         const b = pick(PickRequest.bit);

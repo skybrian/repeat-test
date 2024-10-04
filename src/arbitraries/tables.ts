@@ -1,19 +1,14 @@
-import type {
-  Arbitrary,
-  PickFunction,
-  RecordShape,
-  Script,
-} from "@/arbitrary.ts";
+import type { Arbitrary, PickFunction, RecordShape } from "@/arbitrary.ts";
 import type { ArrayOpts, TableOpts } from "../options.ts";
 
 import { assert } from "@std/assert/assert";
+import { Script } from "@/arbitrary.ts";
 import { Domain, Jar } from "@/domain.ts";
 import { PickRequest } from "../picks.ts";
 import { parseArrayOpts } from "../options.ts";
 import { generateAll } from "../ordered.ts";
 import { PickTree } from "../pick_tree.ts";
 import { arrayLengthBiases } from "../math.ts";
-import { makeScript } from "../build.ts";
 
 import * as arb from "./basics.ts";
 
@@ -151,7 +146,7 @@ export function table<R extends Record<string, unknown>>(
 
     const rows: R[] = [];
 
-    const addRow: Script<R | undefined> = makeScript("addRow", (pick) => {
+    const addRow: Script<R | undefined> = Script.make("addRow", (pick) => {
       if (rows.length < min) {
         for (const jar of Object.values(jars)) {
           assert(!jar.isEmpty());

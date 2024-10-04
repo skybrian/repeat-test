@@ -12,7 +12,7 @@ import { repeatTest } from "../src/runner.ts";
 
 import { PickRequest } from "../src/picks.ts";
 import { Pruned } from "../src/backtracking.ts";
-import { makeScript } from "../src/build.ts";
+import { Script } from "../src/build.ts";
 
 import { Arbitrary } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
@@ -30,7 +30,7 @@ describe("Arbitrary", () => {
     });
     describe("given a PickSet", () => {
       const answer: PickSet<string> = {
-        buildScript: makeScript("answer", (pick) => {
+        buildScript: Script.make("answer", (pick) => {
           return pick(bit) == 1 ? "yes" : "no";
         }),
       };
