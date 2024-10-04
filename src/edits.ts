@@ -1,5 +1,22 @@
 import type { IntPicker, PickRequest } from "./picks.ts";
 
+export type Edit =
+  | { type: "keep" }
+  | { type: "replace"; val: number }
+  | { type: "snip" };
+
+export function keep(): Edit {
+  return { type: "keep" };
+}
+
+export function replace(val: number): Edit {
+  return { type: "replace", val };
+}
+
+export function snip(): Edit {
+  return { type: "snip" };
+}
+
 /**
  * Edits a stream of integers.
  */
@@ -12,14 +29,12 @@ export interface StreamEditor {
    * (deleted). The next call to `replace` will use the same request and the
    * next reply.
    */
-  replace(req: PickRequest, before: number): number | undefined;
+  replace(req: PickRequest, before: number): Edit;
 }
 
 /** An editor that doesn't change the stream. */
 export const noChange: StreamEditor = {
-  replace(_, before) {
-    return before;
-  },
+  replace: keep,
 };
 
 /**
@@ -51,17 +66,26 @@ export class EditPicker implements IntPicker {
         return req.min;
       }
       const before = this.before[this.index++];
-      let edit = this.editor.replace(req, before);
-      if (edit !== undefined) {
-        if (!req.inRange(edit)) {
-          edit = req.min;
+      const edit = this.editor.replace(req, before);
+      let val = before;
+      switch (edit.type) {
+        case "keep":
+          break;
+        case "replace": {
+          val = edit.val;
+          break;
         }
-        if (edit !== before) {
-          this.#edits++;
-        }
-        return edit;
+        case "snip":
+          this.#deletes++;
+          continue;
       }
-      this.#deletes++;
+      if (!req.inRange(val)) {
+        val = req.min;
+      }
+      if (val != before) {
+        this.#edits++;
+      }
+      return val;
     }
   }
 

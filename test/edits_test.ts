@@ -4,17 +4,17 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { describe, it } from "@std/testing/bdd";
 
 import { PickRequest } from "../src/picks.ts";
-import { EditPicker, noChange } from "../src/edits.ts";
+import { EditPicker, noChange, replace, snip } from "../src/edits.ts";
 
 const addOne: StreamEditor = {
   replace(_, before) {
-    return before + 1;
+    return replace(before + 1);
   },
 };
 
 const deleteAll: StreamEditor = {
   replace(_req, _before) {
-    return undefined;
+    return snip();
   },
 };
 

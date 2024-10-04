@@ -1,6 +1,7 @@
+import type { Edit } from "./edits.ts";
 import type { Gen } from "./gen_class.ts";
-import type { PickRequest } from "./picks.ts";
-import type { StreamEditor } from "./edits.ts";
+
+import { keep, replace, snip, type StreamEditor } from "./edits.ts";
 
 import { assert } from "@std/assert/assert";
 
@@ -34,12 +35,12 @@ export function shrink<T>(
 function trimEnd(len: number): StreamEditor {
   let reqs = 0;
   return {
-    replace(_: PickRequest, before: number): number | undefined {
+    replace(): Edit {
       if (reqs >= len) {
-        return undefined;
+        return snip();
       }
       reqs++;
-      return before;
+      return keep();
     },
   };
 }
@@ -88,13 +89,13 @@ function replaceAt(
 ): StreamEditor {
   let reqs = 0;
   return {
-    replace(_: PickRequest, before: number): number | undefined {
+    replace(): Edit {
       if (reqs === index) {
         reqs++;
-        return replacement;
+        return replace(replacement);
       }
       reqs++;
-      return before;
+      return keep();
     },
   };
 }
@@ -167,13 +168,13 @@ export function shrinkAllPicks<T>(
 function deleteRange(start: number, end: number): StreamEditor {
   let reqs = 0;
   return {
-    replace(_: PickRequest, before: number): number | undefined {
+    replace(): Edit {
       if (reqs < start || reqs >= end) {
         reqs++;
-        return before;
+        return keep();
       }
       reqs++;
-      return undefined;
+      return snip();
     },
   };
 }
