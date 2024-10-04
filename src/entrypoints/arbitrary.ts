@@ -11,8 +11,9 @@ export type {
   PickRequestOpts,
   RandomPicker,
   RandomSource,
-  StreamEditor,
 } from "../picks.ts";
+
+export type { StreamEditor } from "../edits.ts";
 
 export type {
   BuildFunction,

@@ -1,5 +1,6 @@
 import type { Gen } from "./gen_class.ts";
-import type { PickRequest, StreamEditor } from "./picks.ts";
+import type { PickRequest } from "./picks.ts";
+import type { StreamEditor } from "./edits.ts";
 
 import { assert } from "@std/assert/assert";
 

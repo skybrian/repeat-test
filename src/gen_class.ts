@@ -1,9 +1,11 @@
 import type { Failure, Success } from "./results.ts";
-import type { PickRequest, StreamEditor } from "./picks.ts";
+import type { PickRequest } from "./picks.ts";
+import type { StreamEditor } from "./edits.ts";
 import type { PickSet, Script } from "./build.ts";
 
 import { failure } from "./results.ts";
-import { EditPicker, PickList, PlaybackPicker } from "./picks.ts";
+import { PickList, PlaybackPicker } from "./picks.ts";
+import { EditPicker } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
 import { generate, makePickFunction } from "./build.ts";
 import { assert } from "@std/assert";
