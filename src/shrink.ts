@@ -1,9 +1,7 @@
-import type { Edit } from "./edits.ts";
 import type { Gen } from "./gen_class.ts";
 
-import { keep, replace, snip, type StreamEditor } from "./edits.ts";
-
-import { assert } from "@std/assert/assert";
+import { assert } from "@std/assert";
+import { deleteRange, replaceAt, trimEnd } from "./edits.ts";
 
 /**
  * A function that shrinks a generated value if possible.
@@ -27,22 +25,6 @@ export function shrink<T>(
   seed = shrinkAllOptions(seed, test) ?? seed;
   seed = shrinkAllPicks(seed, test) ?? seed;
   return seed;
-}
-
-/**
- * Edits a playout by removing picks from the end (forcing them to be the minimum).
- */
-function trimEnd(len: number): StreamEditor {
-  let reqs = 0;
-  return {
-    replace(): Edit {
-      if (reqs >= len) {
-        return snip();
-      }
-      reqs++;
-      return keep();
-    },
-  };
 }
 
 /**
@@ -81,23 +63,6 @@ export function shrinkTail<T>(
     hi = seed.picks.trimmedLength;
   }
   return seed;
-}
-
-function replaceAt(
-  index: number,
-  replacement: number,
-): StreamEditor {
-  let reqs = 0;
-  return {
-    replace(): Edit {
-      if (reqs === index) {
-        reqs++;
-        return replace(replacement);
-      }
-      reqs++;
-      return keep();
-    },
-  };
 }
 
 /**
@@ -163,20 +128,6 @@ export function shrinkAllPicks<T>(
   }
 
   return changed ? seed : undefined;
-}
-
-function deleteRange(start: number, end: number): StreamEditor {
-  let reqs = 0;
-  return {
-    replace(): Edit {
-      if (reqs < start || reqs >= end) {
-        reqs++;
-        return keep();
-      }
-      reqs++;
-      return snip();
-    },
-  };
 }
 
 export function shrinkAllOptions<T>(

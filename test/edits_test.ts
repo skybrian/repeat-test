@@ -7,15 +7,13 @@ import { PickRequest } from "../src/picks.ts";
 import { EditPicker, noChange, replace, snip } from "../src/edits.ts";
 
 const addOne: StreamEditor = {
-  replace(_, before) {
+  visit(_, before) {
     return replace(before + 1);
   },
 };
 
 const deleteAll: StreamEditor = {
-  replace(_req, _before) {
-    return snip();
-  },
+  visit: snip,
 };
 
 describe("EditPicker", () => {

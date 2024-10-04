@@ -29,13 +29,60 @@ export interface StreamEditor {
    * (deleted). The next call to `replace` will use the same request and the
    * next reply.
    */
-  replace(req: PickRequest, before: number): Edit;
+  visit(req: PickRequest, before: number): Edit;
 }
 
 /** An editor that doesn't change the stream. */
 export const noChange: StreamEditor = {
-  replace: keep,
+  visit: keep,
 };
+
+/**
+ * Edits a playout by removing picks from the end (forcing them to be the minimum).
+ */
+export function trimEnd(len: number): StreamEditor {
+  let reqs = 0;
+  return {
+    visit(): Edit {
+      if (reqs >= len) {
+        return snip();
+      }
+      reqs++;
+      return keep();
+    },
+  };
+}
+
+export function deleteRange(start: number, end: number): StreamEditor {
+  let reqs = 0;
+  return {
+    visit(): Edit {
+      if (reqs < start || reqs >= end) {
+        reqs++;
+        return keep();
+      }
+      reqs++;
+      return snip();
+    },
+  };
+}
+
+export function replaceAt(
+  index: number,
+  replacement: number,
+): StreamEditor {
+  let reqs = 0;
+  return {
+    visit(): Edit {
+      if (reqs === index) {
+        reqs++;
+        return replace(replacement);
+      }
+      reqs++;
+      return keep();
+    },
+  };
+}
 
 /**
  * A picker that replays an array of integers with edits.
@@ -66,7 +113,7 @@ export class EditPicker implements IntPicker {
         return req.min;
       }
       const before = this.before[this.index++];
-      const edit = this.editor.replace(req, before);
+      const edit = this.editor.visit(req, before);
       let val = before;
       switch (edit.type) {
         case "keep":
