@@ -112,18 +112,6 @@ describe("Gen", () => {
     });
   });
 
-  describe("splitPicks", () => {
-    it("returns the picks for two build steps", () => {
-      const gen = Gen.mustBuild(multiStep, [0, 1]);
-      assertEquals(gen.val, "(0, 1)");
-
-      const bitReq = PickRequest.bit;
-      const first = new PickList([bitReq], [0]);
-      const second = new PickList([bitReq], [1]);
-      assertEquals(gen.splitPicks, [first, second]);
-    });
-  });
-
   describe("val", () => {
     it("doesn't regenerate a frozen object", () => {
       const gen = Gen.mustBuild(frozen, []);
@@ -159,7 +147,31 @@ describe("Gen", () => {
   describe("mutate", () => {
     it("does nothing if there are no edits", () => {
       const gen = Gen.mustBuild(frozen, []);
-      assertEquals(gen.mutate(keep), undefined);
+      assert(gen.mutate(keep) === gen);
+      assert(gen.mutate(() => keep()) === gen);
+    });
+  });
+
+  describe("segmentCount", () => {
+    it("returns 1 for a non-piped script", () => {
+      const gen = Gen.mustBuild(bit, [0]);
+      assertEquals(gen.segmentCount, 1);
+    });
+    it("returns 2 for a two-stage pipeline", () => {
+      const gen = Gen.mustBuild(bit.then("pipe", (a) => a), [0]);
+      assertEquals(gen.segmentCount, 2);
+    });
+  });
+
+  describe("segmentPicks", () => {
+    it("returns the picks for two build steps", () => {
+      const gen = Gen.mustBuild(multiStep, [0, 1]);
+      assertEquals(gen.val, "(0, 1)");
+
+      const bitReq = PickRequest.bit;
+      const first = new PickList([bitReq], [0]);
+      const second = new PickList([bitReq], [1]);
+      assertEquals(gen.segmentPicks, [first, second]);
     });
   });
 });

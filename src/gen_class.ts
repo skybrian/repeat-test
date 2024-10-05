@@ -5,7 +5,7 @@ import type { PickSet, Script } from "./build.ts";
 
 import { failure } from "./results.ts";
 import { PickList, PlaybackPicker } from "./picks.ts";
-import { EditPicker } from "./edits.ts";
+import { EditPicker, keep } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
 import { generate, makePickFunction } from "./build.ts";
 import { assert } from "@std/assert";
@@ -79,9 +79,23 @@ export class Gen<T> implements Success<T> {
   }
 
   /**
-   * The picks that were used to generate this value, divided up by build step
+   * The number of segments that were needed to generate this value.
+   *
+   * (Includes empty segments.)
    */
-  get splitPicks(): PickList[] {
+  get segmentCount(): number {
+    if (this.#pipeInput === undefined) {
+      // base case: no pipe
+      return 1;
+    }
+    return this.#pipeInput.segmentCount + 1;
+  }
+
+  /**
+   * The picks that were used to generate this value, divided up by the segment
+   * that used them.
+   */
+  get segmentPicks(): PickList[] {
     const steps = Gen.steps(this);
     return steps.map((step) => new PickList(step.#lastReqs, step.#lastReplies));
   }
@@ -122,14 +136,27 @@ export class Gen<T> implements Success<T> {
 
   /**
    * Regenerates the value after editing its picks.
-   * @returns the new value, or undefined if no change is available.
+   *
+   * Returns the new value, which might be the same one (according to ===) if
+   * there is no change.
+   *
+   * If edit can't be applied, returns undefined.
    */
-  mutate(edit: StreamEditor): Gen<T> | undefined {
-    const picker = new EditPicker(this.replies, edit);
-    const gen = generate(this.#script, onePlayout(picker));
-    if (picker.edits === 0 && picker.deletes === 0) {
-      return undefined; // no change
+  mutate(editor: StreamEditor): Gen<T> | undefined {
+    if (editor === keep) {
+      return this; // no change (performance optimization)
     }
+
+    const picker = new EditPicker(this.replies, editor);
+    const gen = generate(this.#script, onePlayout(picker));
+    if (gen === undefined) {
+      return undefined; // failed edit
+    }
+
+    if (picker.edits === 0 && picker.deletes === 0) {
+      return this; // no change
+    }
+
     return gen;
   }
 

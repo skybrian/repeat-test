@@ -1,4 +1,5 @@
 import type { Domain } from "@/domain.ts";
+import type { SystemConsole } from "@/runner.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, fail } from "@std/assert";
@@ -18,19 +19,22 @@ import {
   shrinkTail,
 } from "../src/shrink.ts";
 import { Gen } from "@/arbitrary.ts";
+import { CountingTestConsole } from "../src/console.ts";
 
 function assertShrinks<T>(
   dom: Domain<T>,
   interesting: (arg: T) => boolean,
   seed: T,
   result: T,
+  console?: SystemConsole,
 ) {
+  console = console ?? new CountingTestConsole();
   const gen = dom.regenerate(seed);
   if (!gen.ok) {
     fail(`couldn't regenerate the starting value: ${gen.message}`);
   }
 
-  const smaller = shrink(gen, interesting);
+  const smaller = shrink(gen, interesting, console);
   assert(smaller, "didn't find the expected smaller value");
   assertEquals(smaller.val, result);
 }
@@ -81,6 +85,7 @@ describe("shrink", () => {
       assertShrinks(dom.int(1, 6), (n) => n >= 3, 6, 3);
     });
   });
+
   describe("for an ascii character", () => {
     it("can't shrink 'a'", () => {
       assertNoChange(dom.asciiChar(), () => true, "a");
@@ -97,6 +102,7 @@ describe("shrink", () => {
       assertShrinks(dom.asciiChar(), (s) => /[A-Z]/.test(s), "Z", "A");
     });
   });
+
   describe("for a string", () => {
     it("can't shrink an empty string", () => {
       assertNoChange(dom.string(), () => true, "");
@@ -115,55 +121,55 @@ describe("shrink", () => {
     it("removes unused leading characters", () => {
       assertShrinks(dom.string(), (s) => s.endsWith("z"), "xyz", "z");
     });
+  });
 
-    describe("for a sequence of options", () => {
-      const bits = arb.array(arb.int(0, 1), { length: { min: 1, max: 100 } });
+  describe("for a sequence of options", () => {
+    const bits = arb.array(arb.int(0, 1), { length: { min: 1, max: 100 } });
 
-      it("removes any sequence of options", () => {
-        repeatTest(bits, (bits) => {
-          const seed = seedFrom(bits.map(() => bit), bits);
-          const gen = shrink(seed, acceptAll);
-          assert(gen !== undefined);
-          assertEquals(gen.picks.trimmed().replies, []);
-        });
-      });
-
-      it("removes everything except one option", () => {
-        const input = arb.from((pick) => {
-          const prefix = pick(bits);
-          const suffix = pick(bits);
-          return { prefix, suffix };
-        });
-        repeatTest(input, ({ prefix, suffix }) => {
-          const val = prefix.concat([1]).concat(suffix);
-          const seed = seedFrom(val.map((_) => bit), val);
-          const gen = shrink(seed, (arr) => arr.at(prefix.length) === 1);
-          assert(gen !== undefined);
-          const expected = Array(prefix.length).fill(0).concat(1);
-          assertEquals(gen.picks.trimmed().replies, expected);
-        });
+    it("removes any sequence of options", () => {
+      repeatTest(bits, (bits) => {
+        const seed = seedFrom(bits.map(() => bit), bits);
+        const gen = shrink(seed, acceptAll);
+        assert(gen !== undefined);
+        assertEquals(gen.picks.trimmed().replies, []);
       });
     });
 
-    describe("for a mult-step build script", () => {
-      const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
-
-      const twoBits = bit.then("twoBits", (a, pick) => {
-        const b = pick(PickRequest.bit);
-        return [a, b];
+    it("removes everything except one option", () => {
+      const input = arb.from((pick) => {
+        const prefix = pick(bits);
+        const suffix = pick(bits);
+        return { prefix, suffix };
       });
-
-      it("can't shrink the default value", () => {
-        const seed = Gen.mustBuild(twoBits, [0, 0]);
-        const gen = shrink(seed, acceptAll);
-        assertEquals(gen.val, [0, 0]);
+      repeatTest(input, ({ prefix, suffix }) => {
+        const val = prefix.concat([1]).concat(suffix);
+        const seed = seedFrom(val.map((_) => bit), val);
+        const gen = shrink(seed, (arr) => arr.at(prefix.length) === 1);
+        assert(gen !== undefined);
+        const expected = Array(prefix.length).fill(0).concat(1);
+        assertEquals(gen.picks.trimmed().replies, expected);
       });
+    });
+  });
 
-      it("can shrink both bits to zero", () => {
-        const seed = Gen.mustBuild(twoBits, [1, 1]);
-        const gen = shrink(seed, acceptAll);
-        assertEquals(gen.val, [0, 0]);
-      });
+  describe("for a mult-step build script", () => {
+    const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
+
+    const twoBits = bit.then("twoBits", (a, pick) => {
+      const b = pick(PickRequest.bit);
+      return [a, b];
+    });
+
+    it("can't shrink the default value", () => {
+      const seed = Gen.mustBuild(twoBits, [0, 0]);
+      const gen = shrink(seed, acceptAll);
+      assertEquals(gen.val, [0, 0]);
+    });
+
+    it("can shrink both bits to zero", () => {
+      const seed = Gen.mustBuild(twoBits, [1, 1]);
+      const gen = shrink(seed, acceptAll);
+      assertEquals(gen.val, [0, 0]);
     });
   });
 
@@ -222,6 +228,20 @@ describe("shrink", () => {
           input,
           needle,
         );
+      }, { reps: 100 });
+    });
+  });
+
+  describe("for a filtered string", () => {
+    const filtered = dom.string().filter((s) =>
+      s.length > 0 && !s.startsWith("a")
+    );
+    it("can't shrink a default value", () => {
+      assertNoChange(filtered, () => true, "b");
+    });
+    it("shrinks non-default values", () => {
+      repeatTest(filtered.filter((s) => s !== "b"), (suffix, console) => {
+        assertShrinks(filtered, () => true, suffix, "b", console);
       }, { reps: 100 });
     });
   });

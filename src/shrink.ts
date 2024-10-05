@@ -1,7 +1,10 @@
+import type { StreamEditor } from "./edits.ts";
 import type { Gen } from "./gen_class.ts";
+import type { SystemConsole } from "./console.ts";
 
 import { assert } from "@std/assert";
 import { deleteRange, replaceAt, trimEnd } from "./edits.ts";
+import { nullConsole } from "./console.ts";
 
 /**
  * A function that shrinks a generated value if possible.
@@ -20,11 +23,39 @@ type Shrinker = <T>(
 export function shrink<T>(
   seed: Gen<T>,
   test: (arg: T) => boolean,
+  console?: SystemConsole,
 ): Gen<T> {
+  console = console ?? nullConsole;
+
+  console.log("shrink:", seed.val);
+
   seed = shrinkTail(seed, test) ?? seed;
+  console.log("after shrinkTail:", seed.val);
+
   seed = shrinkAllOptions(seed, test) ?? seed;
+  console.log("after shrinkAllOptions:", seed.val);
+
   seed = shrinkAllPicks(seed, test) ?? seed;
+  console.log("after shrinkAllPicks:", seed.val);
+
   return seed;
+}
+
+/**
+ * Returns the new seed if the edit succeeded and passes the test.
+ *
+ * It could be the same value if the edit didn't change anything.
+ */
+function tryEdit<T>(
+  editor: StreamEditor,
+  seed: Gen<T>,
+  test: (val: T) => boolean,
+): Gen<T> | undefined {
+  const next = seed.mutate(editor);
+  if (next === undefined || !test(next.val)) {
+    return undefined;
+  }
+  return next;
 }
 
 /**
@@ -41,8 +72,8 @@ export function shrinkTail<T>(
   }
 
   // Try to remove the last pick to fail fast.
-  const next = seed.mutate(trimEnd(len - 1));
-  if (next === undefined || !test(next.val)) {
+  const next = tryEdit(trimEnd(len - 1), seed, test);
+  if (next === undefined) {
     return undefined;
   }
 
@@ -53,8 +84,8 @@ export function shrinkTail<T>(
   while (tooLow + 2 <= hi) {
     const mid = (tooLow + 1 + hi) >>> 1;
     assert(mid > tooLow && mid < hi);
-    const next = seed.mutate(trimEnd(mid));
-    if (next === undefined || !test(next.val)) {
+    const next = tryEdit(trimEnd(mid), seed, test);
+    if (next === undefined) {
       // failed; retry with a higher length
       tooLow = mid;
       continue;
@@ -84,9 +115,9 @@ export function shrinkOnePick(index: number): Shrinker {
       return undefined; // No change; already at the minimum
     }
 
-    // See if the test fails if we substract one.
-    const next = seed.mutate(replaceAt(index, reply - 1));
-    if (next === undefined || !test(next.val)) {
+    // See if the test fails if we subtract one.
+    const next = tryEdit(replaceAt(index, reply - 1), seed, test);
+    if (next === undefined) {
       return undefined; // No change; the postcondition already holds
     }
     seed = next;
@@ -98,8 +129,8 @@ export function shrinkOnePick(index: number): Shrinker {
     while (tooLow + 2 <= hi) {
       const mid = (tooLow + 1 + hi) >>> 1;
       assert(mid > tooLow && mid < hi);
-      const next = seed.mutate(replaceAt(index, mid));
-      if (next === undefined || !test(next.val)) {
+      const next = tryEdit(replaceAt(index, mid), seed, test);
+      if (next === undefined) {
         // failed; retry with a higher pick
         tooLow = mid;
         continue;
@@ -121,7 +152,7 @@ export function shrinkAllPicks<T>(
   let changed = false;
   for (let i = 0; i < len; i++) {
     const next = shrinkOnePick(i)(seed, test);
-    if (next !== undefined && test(next.val)) {
+    if (next !== undefined) {
       changed = true;
       seed = next;
     }
@@ -151,8 +182,8 @@ export function shrinkAllOptions<T>(
       // Try deleting it by itself.
       end = i + 1;
     }
-    let next = seed.mutate(deleteRange(i, end));
-    if (next === undefined || !test(next.val)) {
+    let next = tryEdit(deleteRange(i, end), seed, test);
+    if (next === undefined) {
       const containsEmptyOption = (end === i + 1) &&
         picks.getOption(end) === 0 &&
         picks.getOption(end + 1) !== undefined;
@@ -163,7 +194,7 @@ export function shrinkAllOptions<T>(
       }
 
       // Try extending the range to include an option that wasn't taken
-      next = seed.mutate(deleteRange(i, end + 1));
+      next = tryEdit(deleteRange(i, end + 1), seed, test);
       if (next === undefined || !test(next.val)) {
         continue;
       }

@@ -92,6 +92,8 @@ export class CountingTestConsole implements TestConsole {
   }
 }
 
+export const nullConsole: SystemConsole = new CountingTestConsole();
+
 /**
  * A test console to be used when repeating a test with an example that's
  * expected to fail.

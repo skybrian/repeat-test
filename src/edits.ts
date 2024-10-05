@@ -10,7 +10,7 @@ export type Edit =
  * the new stream.
  */
 export type StreamEditor = (
-  index: number,
+  pickIndex: number,
   before: number,
   req: PickRequest,
 ) => Edit;
