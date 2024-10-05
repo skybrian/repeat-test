@@ -4,6 +4,7 @@ import type { GenPipe } from "./gen_class.ts";
 import { PickRequest } from "./picks.ts";
 import { Pruned } from "./backtracking.ts";
 import { Gen } from "./gen_class.ts";
+import { assert } from "@std/assert/assert";
 
 /**
  * A function that builds a value, given some picks.
@@ -66,6 +67,13 @@ export class Script<T> implements PickSet<T> {
     return this.#pipe;
   }
 
+  toSteps(): {
+    base: Script<unknown>;
+    steps: Script<unknown>[];
+  } {
+    return Script.makeSteps(this);
+  }
+
   get build(): BuildFunction<T> {
     return this.#build;
   }
@@ -83,6 +91,25 @@ export class Script<T> implements PickSet<T> {
     build: BuildFunction<T>,
   ): Script<T> {
     return new Script(name, build, undefined);
+  }
+
+  private static makeSteps(script: Script<unknown>): {
+    base: Script<unknown>;
+    steps: Script<unknown>[];
+  } {
+    if (script.#pipe === undefined) {
+      return { base: script, steps: [] };
+    }
+
+    const steps: Script<unknown>[] = [];
+    let current: Script<unknown> = script;
+    while (current.#pipe !== undefined) {
+      steps.push(current);
+      current = current.#pipe.input;
+    }
+
+    steps.reverse();
+    return { base: current, steps };
   }
 
   private static makePipeline<In, Out>(
@@ -274,16 +301,24 @@ export function generateValue<T>(
   playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): Gen<T> | undefined {
-  const pipe = script.toPipe();
-  if (pipe !== undefined) {
-    return generateFromPipe(script, pipe, playouts);
+  if (script.toPipe() !== undefined) {
+    return generateFromPipe(script, playouts);
+  } else {
+    return generateFromFunction(script, script.build, playouts, opts);
   }
+}
 
+function generateFromFunction<T>(
+  script: Script<T>,
+  build: BuildFunction<T>,
+  playouts: PlayoutSource,
+  opts?: GenerateOpts,
+) {
   const depth = playouts.depth;
   while (playouts.startValue(depth)) {
     try {
       const pick = makePickFunction(playouts, opts);
-      const val = script.build(pick);
+      const val = build(pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
       return Gen.fromBuildResult(script, reqs, replies, val);
@@ -301,20 +336,29 @@ export function generateValue<T>(
 
 function generateFromPipe<T, I>(
   script: Script<T>,
-  pipe: Pipe<T, I>,
   playouts: PlayoutSource,
 ): Gen<T> | undefined {
   const depth = playouts.depth;
-  while (playouts.startValue(depth)) {
-    const input = generateValue(pipe.input, playouts);
-    if (input === undefined) {
+  const { base, steps } = script.toSteps();
+
+  nextPlayout: while (playouts.startValue(depth)) {
+    const first = generateFromFunction(base, base.build, playouts);
+    if (first === undefined) {
       continue;
     }
 
-    const result = thenGenerate(script, { input, then: pipe.then }, playouts);
-    if (result !== undefined) {
-      return result;
+    let input = first;
+    for (const script of steps) {
+      const pipe = script.toPipe();
+      assert(pipe !== undefined);
+      const result = thenGenerate(script, { input, then: pipe.then }, playouts);
+      if (result === undefined) {
+        continue nextPlayout;
+      }
+      input = result;
     }
+
+    return input as Gen<T>;
   }
 }
 

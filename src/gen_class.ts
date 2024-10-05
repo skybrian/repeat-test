@@ -205,6 +205,7 @@ export class Gen<T> implements Success<T> {
     replies: number[],
     val: T,
   ): Gen<T> {
+    assert(script.toPipe() === undefined);
     return new Gen(script, undefined, reqs, replies, val);
   }
 
@@ -215,6 +216,7 @@ export class Gen<T> implements Success<T> {
     thenReplies: number[],
     val: T,
   ): Gen<T> {
+    assert(script.toPipe() !== undefined);
     return new Gen(
       script,
       pipe as GenPipe<unknown, T>,

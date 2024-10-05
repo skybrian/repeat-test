@@ -25,6 +25,15 @@ import { arb } from "@/mod.ts";
 import { PlaybackPicker } from "../src/picks.ts";
 import { orderedPlayouts } from "../src/ordered.ts";
 
+describe("Script", () => {
+  describe("toSteps", () => {
+    it("returns no steps for a simple build script", () => {
+      const hi = Script.make("hello", () => "hi");
+      assertEquals(hi.toSteps(), { base: hi, steps: [] });
+    });
+  });
+});
+
 describe("makePickFunction", () => {
   const hi = Arbitrary.of("hi", "there");
   const bit = new PickRequest(0, 1);
