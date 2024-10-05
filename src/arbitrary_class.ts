@@ -312,10 +312,12 @@ export class Arbitrary<T> implements PickSet<T> {
     const req = new PickRequest(0, cases.length - 1);
     const caseScripts = caseArbs.map((arb) => arb.#script);
 
-    const build = Script.make("oneOf", (pick) => {
-      const i = pick(req);
+    const build = Script.make("oneOf pick", (pick) => {
+      return pick(req);
+    }).then("oneOf", (i, pick) => {
       return caseScripts[i].build(pick);
     });
+
     return new Arbitrary(build, { maxSize, dryRun: false });
   }
 

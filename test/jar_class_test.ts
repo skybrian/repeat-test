@@ -35,7 +35,7 @@ describe("Jar", () => {
         jar = new Jar(overlap);
         const seen = new Set<number>();
         for (let i = 0; i < 3; i++) {
-          assertFalse(jar.isEmpty());
+          assertFalse(jar.isEmpty(), `should not be empty after ${i} picks`);
           const val = jar.take(pick);
           assertFalse(seen.has(val));
           seen.add(val);
@@ -63,7 +63,7 @@ describe("Jar", () => {
     });
 
     describe("with an overlapping oneOf", () => {
-      it("picks values using defaults", () => {
+      it("picks values in order", () => {
         checkPicksFromOverlap(orderedPlayouts());
       });
       it("picks values randomly", () => {

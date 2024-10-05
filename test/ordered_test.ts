@@ -263,6 +263,16 @@ describe("takeGenerated", () => {
     ]);
   });
 
+  it("works for a oneOf", () => {
+    const overlap = arb.oneOf(arb.of(1, 2), arb.of(2, 3));
+    assertGenerated(overlap, [
+      { val: 1, picks: [0, 0] },
+      { val: 2, picks: [1, 0] },
+      { val: 2, picks: [0, 1] },
+      { val: 3, picks: [1, 1] },
+    ]);
+  });
+
   it("generates every combination for an odometer", () => {
     const digit = new PickRequest(0, 9);
     const digits = Arbitrary.from((pick) => {
@@ -342,6 +352,11 @@ describe("take", () => {
       [0, 1],
       [1, 1],
     ]);
+  });
+
+  it("works for a oneOf", () => {
+    const overlap = arb.oneOf(arb.of(1, 2), arb.of(2, 3));
+    assertEquals(take(overlap, 5), [1, 2, 2, 3]);
   });
 
   it("throws if the build function throws", () => {

@@ -304,11 +304,18 @@ function generateFromPipe<T, I>(
   pipe: Pipe<T, I>,
   playouts: PlayoutSource,
 ): Gen<T> | undefined {
-  const input = generateValue(pipe.input, playouts);
-  if (input === undefined) {
-    return undefined;
+  const depth = playouts.depth;
+  while (playouts.startValue(depth)) {
+    const input = generateValue(pipe.input, playouts);
+    if (input === undefined) {
+      continue;
+    }
+
+    const result = thenGenerate(script, { input, then: pipe.then }, playouts);
+    if (result !== undefined) {
+      return result;
+    }
   }
-  return thenGenerate(script, { input, then: pipe.then }, playouts);
 }
 
 export function thenGenerate<I, T>(
@@ -334,5 +341,5 @@ export function thenGenerate<I, T>(
     }
   }
 
-  return undefined;
+  return undefined; // out of playouts at this depth
 }

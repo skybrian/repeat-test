@@ -23,6 +23,7 @@ import {
 } from "../src/build.ts";
 import { arb } from "@/mod.ts";
 import { PlaybackPicker } from "../src/picks.ts";
+import { orderedPlayouts } from "../src/ordered.ts";
 
 describe("makePickFunction", () => {
   const hi = Arbitrary.of("hi", "there");
@@ -122,6 +123,8 @@ const fails = Script.make("fails", () => {
   throw new Error("oops!");
 });
 
+const bitReq = PickRequest.bit;
+
 describe("generate", () => {
   const hello = Script.make("hello", () => "hi");
 
@@ -133,6 +136,36 @@ describe("generate", () => {
       reqs: [],
       replies: [],
     });
+  });
+
+  it("retries for a pruned multi-step build script", () => {
+    const pruned = bit.then("pruned", (val) => {
+      if (val === 0) {
+        throw new Pruned("try again");
+      }
+      return val;
+    });
+    const gen = generate(pruned, orderedPlayouts());
+    assertEquals(propsFromGen(gen), {
+      val: 1,
+      name: "pruned",
+      reqs: [bitReq],
+      replies: [1],
+    });
+  });
+
+  it("generates all values for a multi-step build script", () => {
+    const playouts = orderedPlayouts();
+    for (const expectedReplies of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+      const gen = generate(multiStep, playouts);
+      assertEquals(propsFromGen(gen), {
+        val: `(${expectedReplies[0]}, ${expectedReplies[1]})`,
+        name: "multi-step",
+        reqs: [bitReq, bitReq],
+        replies: expectedReplies,
+      });
+    }
+    assertFalse(generate(multiStep, playouts));
   });
 
   it("passes through an error thrown by the build function", () => {
@@ -162,8 +195,6 @@ describe("generate", () => {
 
 describe("generateValue", () => {
   describe("for a build function", () => {
-    const bitReq = PickRequest.bit;
-
     it("can run a multi-step build script", () => {
       const gen = generateValue(multiStep, minPlayout());
       assertEquals(propsFromGen(gen), {

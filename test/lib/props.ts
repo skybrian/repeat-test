@@ -12,7 +12,7 @@ export type GenProps<T> = {
 export function propsFromGen<T>(
   gen: Gen<T> | undefined,
 ): GenProps<T> | undefined {
-  assert(gen !== undefined);
+  assert(gen !== undefined, "gen is undefined");
   const picks = gen.picks;
   const out: GenProps<T> = {
     val: gen.val,
