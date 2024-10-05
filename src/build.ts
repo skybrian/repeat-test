@@ -1,4 +1,5 @@
 import type { PlayoutSource } from "./backtracking.ts";
+import type { GenPipe } from "./gen_class.ts";
 
 import { PickRequest } from "./picks.ts";
 import { Pruned } from "./backtracking.ts";
@@ -303,19 +304,26 @@ function generateFromPipe<T, I>(
   pipe: Pipe<T, I>,
   playouts: PlayoutSource,
 ): Gen<T> | undefined {
-  const inner = generateValue(pipe.input, playouts);
-  if (inner === undefined) {
+  const input = generateValue(pipe.input, playouts);
+  if (input === undefined) {
     return undefined;
   }
+  return thenGenerate(script, { input, then: pipe.then }, playouts);
+}
 
+export function thenGenerate<I, T>(
+  script: Script<T>,
+  pipe: GenPipe<I, T>,
+  playouts: PlayoutSource,
+): Gen<T> | undefined {
   const depth = playouts.depth;
   while (playouts.startValue(depth)) {
     try {
       const pick = makePickFunction(playouts);
-      const val = pipe.then(inner.val, pick);
+      const val = pipe.then(pipe.input.val, pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
-      return Gen.fromPipeResult(script, inner, reqs, replies, val);
+      return Gen.fromPipeResult(script, pipe, reqs, replies, val);
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;

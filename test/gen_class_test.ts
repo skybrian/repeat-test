@@ -2,7 +2,7 @@ import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { PickList, PickRequest } from "../src/picks.ts";
-import { keep } from "../src/edits.ts";
+import { keep, replace, snip } from "../src/edits.ts";
 import { Pruned } from "../src/backtracking.ts";
 import { Script } from "../src/build.ts";
 import { Gen } from "../src/gen_class.ts";
@@ -172,6 +172,81 @@ describe("Gen", () => {
       const first = new PickList([bitReq], [0]);
       const second = new PickList([bitReq], [1]);
       assertEquals(gen.segmentPicks, [first, second]);
+    });
+  });
+
+  describe("mutateSegments", () => {
+    it("returns the same object if there are no edits, for a single segment", () => {
+      const gen = Gen.mustBuild(bit, [0]);
+      assert(gen.mutateSegments(() => keep) === gen);
+      assert(gen.mutateSegments(() => () => keep()) === gen);
+    });
+
+    it("returns the same object if there are no edits, for a multiple segments", () => {
+      const gen = Gen.mustBuild(multiStep, [0, 0]);
+      assert(gen.mutateSegments(() => keep) === gen);
+      assert(gen.mutateSegments(() => () => keep()) === gen);
+    });
+
+    it("edits a single segment", () => {
+      const seed = Gen.mustBuild(bit, [1]);
+      const gen = seed.mutateSegments(() => snip);
+      assert(gen !== undefined);
+      assertEquals(gen.segmentCount, 1);
+      assertEquals(gen.replies, [0]);
+      assertEquals(gen.val, 0);
+    });
+
+    it("edits the first segment of a pipeline", () => {
+      const gen = Gen.mustBuild(multiStep, [1, 1]).mutateSegments((n) =>
+        (n === 0) ? snip : keep
+      );
+      assert(gen !== undefined);
+      assertEquals(gen.segmentCount, 2);
+      assertEquals(gen.replies, [0, 1]);
+      assertEquals(gen.val, "(0, 1)");
+    });
+
+    it("edits the last segment of a pipeline", () => {
+      const gen = Gen.mustBuild(multiStep, [1, 1]).mutateSegments((n) =>
+        (n === 1) ? snip : keep
+      );
+      assert(gen !== undefined);
+      assertEquals(gen.segmentCount, 2);
+      assertEquals(gen.replies, [1, 0]);
+      assertEquals(gen.val, "(1, 0)");
+    });
+
+    const evenRoll = Script.make("evenRoll", (pick) => {
+      const roll = pick(new PickRequest(1, 6));
+      if (roll % 2 !== 0) {
+        throw new Pruned("that's odd");
+      }
+      return roll;
+    });
+
+    const evenDoubles = evenRoll.then("evenDoubles", (a, pick) => {
+      const b = pick(new PickRequest(1, 6));
+      if (a !== b) {
+        throw new Pruned("not a double");
+      }
+      return [a, b];
+    });
+
+    it("returns undefined if the first segment's edit fails", () => {
+      const gen = Gen.mustBuild(evenDoubles, [2, 2]);
+      assert(
+        gen.mutateSegments((i) => (i === 0) ? () => replace(1) : keep) ===
+          undefined,
+      );
+    });
+
+    it("returns undefined if the second segment's edit fails", () => {
+      const gen = Gen.mustBuild(evenDoubles, [2, 2]);
+      assert(
+        gen.mutateSegments((i) => (i === 1) ? () => replace(1) : keep) ===
+          undefined,
+      );
     });
   });
 });
