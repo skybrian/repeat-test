@@ -51,7 +51,7 @@ function tryEdit<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
-  const next = seed.mutateSegments(editor);
+  const next = seed.mutate(editor);
   if (next === undefined || !test(next.val)) {
     return undefined;
   }

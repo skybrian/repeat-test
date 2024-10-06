@@ -63,7 +63,7 @@ export class Gen<T> implements Success<T> {
     return this.#script.name;
   }
 
-  get reqs(): PickRequest[] {
+  private get reqs(): PickRequest[] {
     if (this.#reqs === undefined) {
       const steps = Gen.steps(this);
       this.#reqs = steps.flatMap((step) => step.#lastReqs);
@@ -147,30 +147,12 @@ export class Gen<T> implements Success<T> {
    *
    * If edit can't be applied, returns undefined.
    */
-  mutate(editor: StreamEditor): Gen<T> | undefined {
-    if (editor === keep) {
-      return this; // no change (performance optimization)
-    }
-
-    const picker = new EditPicker(this.replies, editor);
-    const gen = generate(this.#script, onePlayout(picker));
-    if (gen === undefined) {
-      return undefined; // failed edit
-    }
-
-    if (picker.edits === 0 && picker.deletes === 0) {
-      return this; // no change
-    }
-
-    return gen;
-  }
-
-  mutateSegments(editor: SegmentEditor): Gen<T> | undefined {
+  mutate(editor: SegmentEditor): Gen<T> | undefined {
     if (this.#pipe === undefined) {
-      return this.mutate(editor(0)); // base case: no pipe
+      return this.mutateNonPipe(editor(0)); // base case: no pipe
     }
 
-    const input = this.#pipe.input.mutateSegments(editor);
+    const input = this.#pipe.input.mutate(editor);
     if (input === undefined) {
       return undefined; // failed edit
     }
@@ -188,6 +170,24 @@ export class Gen<T> implements Success<T> {
     } else if (
       input === this.#pipe.input && picks.edits === 0 && picks.deletes === 0
     ) {
+      return this; // no change
+    }
+
+    return gen;
+  }
+
+  private mutateNonPipe(editor: StreamEditor): Gen<T> | undefined {
+    if (editor === keep) {
+      return this; // no change (performance optimization)
+    }
+
+    const picker = new EditPicker(this.replies, editor);
+    const gen = generate(this.#script, onePlayout(picker));
+    if (gen === undefined) {
+      return undefined; // failed edit
+    }
+
+    if (picker.edits === 0 && picker.deletes === 0) {
       return this; // no change
     }
 

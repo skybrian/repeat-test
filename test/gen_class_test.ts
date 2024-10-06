@@ -144,14 +144,6 @@ describe("Gen", () => {
     });
   });
 
-  describe("mutate", () => {
-    it("does nothing if there are no edits", () => {
-      const gen = Gen.mustBuild(frozen, []);
-      assert(gen.mutate(keep) === gen);
-      assert(gen.mutate(() => keep()) === gen);
-    });
-  });
-
   describe("segmentCount", () => {
     it("returns 1 for a non-piped script", () => {
       const gen = Gen.mustBuild(bit, [0]);
@@ -175,22 +167,22 @@ describe("Gen", () => {
     });
   });
 
-  describe("mutateSegments", () => {
+  describe("mutate", () => {
     it("returns the same object if there are no edits, for a single segment", () => {
       const gen = Gen.mustBuild(bit, [0]);
-      assert(gen.mutateSegments(() => keep) === gen);
-      assert(gen.mutateSegments(() => () => keep()) === gen);
+      assert(gen.mutate(() => keep) === gen);
+      assert(gen.mutate(() => () => keep()) === gen);
     });
 
     it("returns the same object if there are no edits, for a multiple segments", () => {
       const gen = Gen.mustBuild(multiStep, [0, 0]);
-      assert(gen.mutateSegments(() => keep) === gen);
-      assert(gen.mutateSegments(() => () => keep()) === gen);
+      assert(gen.mutate(() => keep) === gen);
+      assert(gen.mutate(() => () => keep()) === gen);
     });
 
     it("edits a single segment", () => {
       const seed = Gen.mustBuild(bit, [1]);
-      const gen = seed.mutateSegments(() => snip);
+      const gen = seed.mutate(() => snip);
       assert(gen !== undefined);
       assertEquals(gen.segmentCount, 1);
       assertEquals(gen.replies, [0]);
@@ -198,7 +190,7 @@ describe("Gen", () => {
     });
 
     it("edits the first segment of a pipeline", () => {
-      const gen = Gen.mustBuild(multiStep, [1, 1]).mutateSegments((n) =>
+      const gen = Gen.mustBuild(multiStep, [1, 1]).mutate((n) =>
         (n === 0) ? snip : keep
       );
       assert(gen !== undefined);
@@ -208,7 +200,7 @@ describe("Gen", () => {
     });
 
     it("edits the last segment of a pipeline", () => {
-      const gen = Gen.mustBuild(multiStep, [1, 1]).mutateSegments((n) =>
+      const gen = Gen.mustBuild(multiStep, [1, 1]).mutate((n) =>
         (n === 1) ? snip : keep
       );
       assert(gen !== undefined);
@@ -236,7 +228,7 @@ describe("Gen", () => {
     it("returns undefined if the first segment's edit fails", () => {
       const gen = Gen.mustBuild(evenDoubles, [2, 2]);
       assert(
-        gen.mutateSegments((i) => (i === 0) ? () => replace(1) : keep) ===
+        gen.mutate((i) => (i === 0) ? () => replace(1) : keep) ===
           undefined,
       );
     });
@@ -244,7 +236,7 @@ describe("Gen", () => {
     it("returns undefined if the second segment's edit fails", () => {
       const gen = Gen.mustBuild(evenDoubles, [2, 2]);
       assert(
-        gen.mutateSegments((i) => (i === 1) ? () => replace(1) : keep) ===
+        gen.mutate((i) => (i === 1) ? () => replace(1) : keep) ===
           undefined,
       );
     });
