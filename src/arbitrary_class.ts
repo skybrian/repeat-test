@@ -206,21 +206,11 @@ export class Arbitrary<T> implements PickSet<T>, Pickable<T> {
   }
 
   /**
-   * Converts a {@link PickRequest} to an Arbitrary.
-   */
-  static from<T>(req: Pickable<T>): Arbitrary<T>;
-  /**
-   * Creates an Arbitrary from a {@link BuildFunction} or {@link PickSet}.
+   * Creates an Arbitrary from a {@link Pickable} or {@link BuildFunction}.
    */
   static from<T>(
-    arg: BuildFunction<T> | PickSet<T>,
-  ): Arbitrary<T>;
-  /**
-   * Creates an Arbitrary from a {@link PickRequest}, a {@link BuildFunction}, or a {@link PickSet}.
-   */
-  static from<T>(
-    arg: (Partial<Pickable<T>> & Partial<PickSet<T>>) | BuildFunction<T>,
-  ): Arbitrary<T> | Arbitrary<number> {
+    arg: Pickable<T> | BuildFunction<T>,
+  ): Arbitrary<T> {
     if (typeof arg === "function") {
       return new Arbitrary(Script.make("(unlabeled)", arg));
     } else if (arg instanceof PickRequest) {
@@ -232,15 +222,11 @@ export class Arbitrary<T> implements PickSet<T>, Pickable<T> {
       return new Arbitrary(build, {
         maxSize,
         dryRun: false,
-      });
+      }) as Arbitrary<T>;
     } else if (arg instanceof Arbitrary) {
       return arg;
     }
-    const script = arg["buildScript"];
-    if (!(script instanceof Script)) {
-      throw new Error("invalid argument to Arbitrary.from");
-    }
-    return new Arbitrary(script);
+    return new Arbitrary(Script.from(arg, { caller: "Arbitrary.from" }));
   }
 
   /**
@@ -294,7 +280,7 @@ export class Arbitrary<T> implements PickSet<T>, Pickable<T> {
    * Creates an arbitrary that picks one of the given arbitaries and then returns it.
    */
   static oneOf<T>(
-    ...cases: PickSet<T>[]
+    ...cases: Pickable<T>[]
   ): Arbitrary<T> {
     if (cases.length === 0) {
       throw new Error("Arbitrary.oneOf() requires at least one alternative");
@@ -315,12 +301,12 @@ export class Arbitrary<T> implements PickSet<T>, Pickable<T> {
     }
 
     const req = new PickRequest(0, cases.length - 1);
-    const caseScripts = caseArbs.map((arb) => arb.#script);
+    const scripts = caseArbs.map((arb) => arb.#script);
 
     const build = Script.make("oneOf pick", (pick) => {
       return pick(req);
     }).then("oneOf", (i, pick) => {
-      return caseScripts[i].buildPick(pick);
+      return scripts[i].buildPick(pick);
     });
 
     return new Arbitrary(build, { maxSize, dryRun: false });

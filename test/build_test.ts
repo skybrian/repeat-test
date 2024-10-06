@@ -1,3 +1,5 @@
+import type { Pickable } from "../src/pickable.ts";
+
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
@@ -26,6 +28,16 @@ import { PlaybackPicker } from "../src/picks.ts";
 import { orderedPlayouts } from "../src/ordered.ts";
 
 describe("Script", () => {
+  describe("from", () => {
+    it("throws if given an invalid argument", () => {
+      assertThrows(
+        () => Script.from(null as unknown as Pickable<number>),
+        Error,
+        "Script.from() called with an invalid argument",
+      );
+    });
+  });
+
   describe("toSteps", () => {
     it("returns no steps for a simple build script", () => {
       const hi = Script.make("hello", () => "hi");

@@ -88,7 +88,7 @@ export class Script<T> implements PickSet<T>, Pickable<T> {
     arg: Pickable<T> | PickSet<T>,
     opts?: { caller: string },
   ): Script<T> {
-    const caller = opts?.caller ?? "Script.from";
+    const caller = opts?.caller ?? "Script.from()";
     if (arg === null || typeof arg !== "object") {
       throw new Error(`${caller} called with an invalid argument`);
     }

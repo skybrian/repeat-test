@@ -208,6 +208,17 @@ describe("PickRequest", () => {
     });
   });
 
+  describe("buildPick", () => {
+    it("works in a build script", () => {
+      // Verbose, but valid.
+      const bit = arb.from((pick) => PickRequest.bit.buildPick(pick));
+      repeatTest(bit, (val, console) => {
+        console.sometimes("is zero", val === 0);
+        console.sometimes("is one", val === 1);
+      });
+    });
+  });
+
   describe("toString", () => {
     it("prints the range", () => {
       assertEquals(new PickRequest(0, 1).toString(), "0..1");

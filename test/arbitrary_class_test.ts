@@ -1,5 +1,4 @@
-import type { BuildFunction } from "../src/pickable.ts";
-import type { PickSet } from "../src/build.ts";
+import type { BuildFunction, Pickable } from "../src/pickable.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
@@ -13,7 +12,6 @@ import { repeatTest } from "../src/runner.ts";
 
 import { PickRequest } from "../src/picks.ts";
 import { Pruned } from "../src/backtracking.ts";
-import { Script } from "../src/build.ts";
 
 import { Arbitrary } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
@@ -29,15 +27,15 @@ describe("Arbitrary", () => {
         assertValues(arb, [0, 1]);
       });
     });
-    describe("given a PickSet", () => {
-      const answer: PickSet<string> = {
-        buildScript: Script.make("answer", (pick) => {
+    describe("given a Pickable", () => {
+      const answer: Pickable<string> = {
+        buildPick: (pick) => {
           return pick(bit) == 1 ? "yes" : "no";
-        }),
+        },
       };
       it("generates both values", () => {
         const arb = Arbitrary.from(answer);
-        assertEquals(arb.name, "answer");
+        assertEquals(arb.name, "untitled");
         assertValues(arb, ["no", "yes"]);
       });
     });
@@ -300,6 +298,16 @@ describe("Arbitrary", () => {
       });
       it("returns 1 after filtering", () => {
         assertEquals(Arbitrary.of("hi").filter((s) => s == "hi").maxSize, 1);
+      });
+    });
+  });
+
+  describe("buildPick", () => {
+    it("works in a build script", () => {
+      // Verbose, but valid.
+      const zero = arb.from((pick) => Arbitrary.of(0).buildPick(pick));
+      repeatTest(zero, (val) => {
+        assertEquals(val, 0);
       });
     });
   });

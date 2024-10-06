@@ -1,5 +1,6 @@
 import type { Coverage, TestConsole } from "../src/console.ts";
 import type { Domain } from "../src/domain_class.ts";
+import type { Rep, RepFailure, TestFunction } from "../src/runner.ts";
 
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import {
@@ -11,6 +12,7 @@ import {
   fail,
 } from "@std/assert";
 
+import { PickRequest } from "../src/picks.ts";
 import { minPlayout, Pruned } from "../src/backtracking.ts";
 import { generate } from "../src/build.ts";
 import { Arbitrary } from "../src/arbitrary_class.ts";
@@ -23,15 +25,12 @@ import { RecordingConsole } from "../src/console.ts";
 import {
   generateReps,
   parseRepKey,
-  type Rep,
   repeatTest,
-  type RepFailure,
   reportFailure,
   RepSource,
   runRep,
   runReps,
   serializeRepKey,
-  type TestFunction,
 } from "../src/runner.ts";
 
 const strangeNumber = Arbitrary.of(
@@ -506,31 +505,35 @@ describe("reportFailure", () => {
 });
 
 describe("repeatTest", () => {
+  let collectArgs: number[] = [];
   let con = new RecordingConsole();
 
   beforeEach(() => {
+    collectArgs = [];
     con = new RecordingConsole();
   });
 
-  it("runs a test function once for each of a list of inputs", () => {
-    const inputs: number[] = [];
-    const test = (val: number) => {
-      inputs.push(val);
-    };
-    repeatTest([1, 2, 3], test);
-    assertEquals(inputs, [1, 2, 3]);
+  const collect = (val: number) => {
+    collectArgs.push(val);
+  };
+
+  it("accepts a list of numbers", () => {
+    repeatTest([1, 2, 3], collect);
+    assertEquals(collectArgs, [1, 2, 3]);
     con.checkEmpty();
   });
 
-  it("runs a test function on a list of examples and Arbitraries", () => {
-    const inputs: number[] = [];
-    const test = (val: number) => {
-      inputs.push(val);
-    };
-    repeatTest([1, 2, 3, arb.int32()], test);
-    assertEquals(inputs.length, 1004, "unexpected number of test runs");
-    assertEquals(inputs.slice(0, 4), [1, 2, 3, 0]);
+  it("accepts a list containing an Arbitrary", () => {
+    repeatTest([1, 2, 3, arb.int32()], collect);
+    assertEquals(collectArgs.length, 1004, "unexpected number of test runs");
+    assertEquals(collectArgs.slice(0, 4), [1, 2, 3, 0]);
     con.checkEmpty();
+  });
+
+  it("accepts a PickRequest", () => {
+    repeatTest(PickRequest.bit, collect);
+    assertEquals(collectArgs, [0, 1]);
+    con.checkEmpty;
   });
 
   it("stops running when a test fails with a constant", () => {
@@ -624,15 +627,6 @@ describe("repeatTest", () => {
     });
   });
 
-  it("accepts a list of test arguments", () => {
-    const inputs: number[] = [];
-    const collect = (val: number) => {
-      inputs.push(val);
-    };
-    repeatTest([1, 2, 3], collect);
-    assertEquals(inputs, [1, 2, 3]);
-    con.checkEmpty();
-  });
   it("throws an exception if reps isn't an integer", () => {
     assertThrows(
       () => {

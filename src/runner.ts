@@ -1,6 +1,6 @@
 import type { Failure, Success } from "./results.ts";
+import type { Pickable } from "./pickable.ts";
 import type { IntPicker } from "./picks.ts";
-import type { PickSet } from "./build.ts";
 import type { Gen } from "./gen_class.ts";
 import type { Coverage, SystemConsole, TestConsole } from "./console.ts";
 
@@ -299,7 +299,7 @@ function parseOnlyOption(input: string): RepKey {
 /**
  * Some examples to run using {@link repeatTest}.
  */
-export type Examples<T> = PickSet<T> | (T | Arbitrary<T>)[];
+export type Examples<T> = Pickable<T> | (T | Arbitrary<T>)[];
 
 /**
  * Runs a test function repeatedly.

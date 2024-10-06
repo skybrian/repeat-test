@@ -4,7 +4,6 @@ import type {
   BuildFunction,
   Pickable,
   PickFunction,
-  PickSet,
   RecordShape,
 } from "@/arbitrary.ts";
 
@@ -96,7 +95,7 @@ export function record<T extends Record<string, unknown>>(
 /**
  * Defines an Arbitrary that generates a value using any of the given PickSets.
  */
-export function oneOf<T>(...cases: PickSet<T>[]): Arbitrary<T> {
+export function oneOf<T>(...cases: Pickable<T>[]): Arbitrary<T> {
   return Arbitrary.oneOf(...cases);
 }
 
