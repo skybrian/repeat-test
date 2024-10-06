@@ -20,18 +20,12 @@ export type Pipe<Out, Inner> = {
   then: ThenFunction<Inner, Out>;
 };
 
-/**
- * A set of possible values that may be generated.
- *
- * (Or perhaps a multiset. PickSets may generate the same value in more than one
- * way.)
- */
-export interface PickSet<T> {
+export interface HasScript<T> extends Pickable<T> {
   /** Generates a member of this set, given a source of picks. */
   readonly buildScript: Script<T>;
 }
 
-export class Script<T> implements PickSet<T>, Pickable<T> {
+export class Script<T> implements Pickable<T> {
   readonly #name: string;
   readonly #build: BuildFunction<T>;
   readonly #pipe: Pipe<T, unknown> | undefined;
@@ -48,10 +42,6 @@ export class Script<T> implements PickSet<T>, Pickable<T> {
 
   get name(): string {
     return this.#name;
-  }
-
-  get buildScript() {
-    return this;
   }
 
   toPipe(): Pipe<T, unknown> | undefined {
@@ -85,22 +75,28 @@ export class Script<T> implements PickSet<T>, Pickable<T> {
   }
 
   static from<T>(
-    arg: Pickable<T> | PickSet<T>,
+    arg: Pickable<T>,
     opts?: { caller: string },
   ): Script<T> {
-    const caller = opts?.caller ?? "Script.from()";
-    if (arg === null || typeof arg !== "object") {
+    if (arg instanceof Script) {
+      return arg;
+    }
+
+    if (
+      arg === null || typeof arg !== "object" ||
+      typeof arg.buildPick !== "function"
+    ) {
+      const caller = opts?.caller ?? "Script.from()";
       throw new Error(`${caller} called with an invalid argument`);
     }
 
-    const props: Partial<Pickable<T>> & Partial<PickSet<T>> = arg;
-
-    if (props.buildScript instanceof Script) {
+    const props: Partial<HasScript<T>> = arg;
+    if (
+      props.buildScript !== undefined && props.buildScript instanceof Script
+    ) {
       return props.buildScript;
-    } else if (typeof props.buildPick === "function") {
-      return Script.make("untitled", props.buildPick);
     } else {
-      throw new Error(`${caller} called with an invalid argument`);
+      return Script.make("untitled", arg.buildPick);
     }
   }
 

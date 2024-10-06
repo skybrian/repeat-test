@@ -21,7 +21,6 @@ export type {
   IntPickerMiddleware,
   PickFunction,
   PickFunctionOpts,
-  PickSet,
 } from "../build.ts";
 
 export type { RecordShape } from "../options.ts";

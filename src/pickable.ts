@@ -10,6 +10,9 @@ import type { PickFunction } from "./build.ts";
  */
 export type BuildFunction<T> = (pick: PickFunction) => T;
 
+/**
+ * Something that can generate picks.
+ */
 export type Pickable<T> = {
   readonly buildPick: BuildFunction<T>;
 };
