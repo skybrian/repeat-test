@@ -186,7 +186,7 @@ export function take<T>(set: PickSet<T>, n: number): T[] {
   while (playouts.startAt(0) && result.length < n) {
     try {
       const pick = makePickFunction(playouts);
-      result.push(script.build(pick));
+      result.push(script.buildPick(pick));
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;

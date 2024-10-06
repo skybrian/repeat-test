@@ -54,8 +54,8 @@ describe("makePickFunction", () => {
     assertEquals(pick(script), "hi");
   });
 
-  it("accepts a PickSet that's not a Script", () => {
-    const hi = { buildScript: Script.make("hi", () => "hi") };
+  it("accepts a Pickable that's not a Script", () => {
+    const hi = { buildPick: () => "hi" };
     assertEquals(pick(hi), "hi");
   });
 

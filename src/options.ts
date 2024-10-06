@@ -1,4 +1,4 @@
-import type { PickSet } from "./build.ts";
+import type { Pickable } from "./pickable.ts";
 
 /**
  * A callback for reporting errors while validating a value.
@@ -14,7 +14,7 @@ export type SendErr = (msg: string, opts?: { at: string | number }) => void;
  * Each field will be independently generated.
  */
 export type RecordShape<T> = {
-  [K in keyof T]: PickSet<T[K]>;
+  [K in keyof T]: Pickable<T[K]>;
 };
 
 export function checkRecordKeys<T extends Record<string, unknown>>(

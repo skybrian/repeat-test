@@ -1,5 +1,6 @@
 import type { RecordShape } from "./options.ts";
-import type { BuildFunction, PickFunction, PickSet } from "./build.ts";
+import type { BuildFunction, Pickable } from "./pickable.ts";
+import type { PickFunction, PickSet } from "./build.ts";
 
 import { assert } from "@std/assert";
 
@@ -28,7 +29,7 @@ function checkRandomGenerate(script: Script<unknown>) {
  * Every Arbitrary contains a {@link default} value. Some Arbitraries define
  * {@link maxSize}, providing an upper bound on how many values they can generate.
  */
-export class Arbitrary<T> implements PickSet<T> {
+export class Arbitrary<T> implements PickSet<T>, Pickable<T> {
   readonly #script: Script<T>;
 
   readonly #examples: T[] | undefined;
@@ -76,6 +77,10 @@ export class Arbitrary<T> implements PickSet<T> {
    */
   get buildScript(): Script<T> {
     return this.#script;
+  }
+
+  get buildPick(): BuildFunction<T> {
+    return this.#script.buildPick;
   }
 
   /**
@@ -203,7 +208,7 @@ export class Arbitrary<T> implements PickSet<T> {
   /**
    * Converts a {@link PickRequest} to an Arbitrary.
    */
-  static from(req: PickRequest): Arbitrary<number>;
+  static from<T>(req: Pickable<T>): Arbitrary<T>;
   /**
    * Creates an Arbitrary from a {@link BuildFunction} or {@link PickSet}.
    */
@@ -214,7 +219,7 @@ export class Arbitrary<T> implements PickSet<T> {
    * Creates an Arbitrary from a {@link PickRequest}, a {@link BuildFunction}, or a {@link PickSet}.
    */
   static from<T>(
-    arg: PickRequest | BuildFunction<T> | PickSet<T>,
+    arg: (Partial<Pickable<T>> & Partial<PickSet<T>>) | BuildFunction<T>,
   ): Arbitrary<T> | Arbitrary<number> {
     if (typeof arg === "function") {
       return new Arbitrary(Script.make("(unlabeled)", arg));
@@ -315,7 +320,7 @@ export class Arbitrary<T> implements PickSet<T> {
     const build = Script.make("oneOf pick", (pick) => {
       return pick(req);
     }).then("oneOf", (i, pick) => {
-      return caseScripts[i].build(pick);
+      return caseScripts[i].buildPick(pick);
     });
 
     return new Arbitrary(build, { maxSize, dryRun: false });

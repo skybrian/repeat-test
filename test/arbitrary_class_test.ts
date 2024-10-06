@@ -1,4 +1,5 @@
-import type { BuildFunction, PickSet } from "../src/build.ts";
+import type { BuildFunction } from "../src/pickable.ts";
+import type { PickSet } from "../src/build.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";

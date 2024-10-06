@@ -1,3 +1,4 @@
+import type { BuildFunction, Pickable } from "./pickable.ts";
 import type { PlayoutSource } from "./backtracking.ts";
 import type { GenPipe } from "./gen_class.ts";
 
@@ -5,16 +6,6 @@ import { PickRequest } from "./picks.ts";
 import { Pruned } from "./backtracking.ts";
 import { Gen } from "./gen_class.ts";
 import { assert } from "@std/assert/assert";
-
-/**
- * A function that builds a value, given some picks.
- *
- * The result should be deterministic, depending only on what `pick` returns.
- *
- * It may throw {@link Pruned} to indicate that the picks can't be used to
- * construct a value. (For example, due to filtering.)
- */
-export type BuildFunction<T> = (pick: PickFunction) => T;
 
 /**
  * A function that transforms a value, given some picks.
@@ -40,7 +31,7 @@ export interface PickSet<T> {
   readonly buildScript: Script<T>;
 }
 
-export class Script<T> implements PickSet<T> {
+export class Script<T> implements PickSet<T>, Pickable<T> {
   readonly #name: string;
   readonly #build: BuildFunction<T>;
   readonly #pipe: Pipe<T, unknown> | undefined;
@@ -74,7 +65,7 @@ export class Script<T> implements PickSet<T> {
     return Script.makeSteps(this);
   }
 
-  get build(): BuildFunction<T> {
+  get buildPick(): BuildFunction<T> {
     return this.#build;
   }
 
@@ -91,6 +82,26 @@ export class Script<T> implements PickSet<T> {
     build: BuildFunction<T>,
   ): Script<T> {
     return new Script(name, build, undefined);
+  }
+
+  static from<T>(
+    arg: Pickable<T> | PickSet<T>,
+    opts?: { caller: string },
+  ): Script<T> {
+    const caller = opts?.caller ?? "Script.from";
+    if (arg === null || typeof arg !== "object") {
+      throw new Error(`${caller} called with an invalid argument`);
+    }
+
+    const props: Partial<Pickable<T>> & Partial<PickSet<T>> = arg;
+
+    if (props.buildScript instanceof Script) {
+      return props.buildScript;
+    } else if (typeof props.buildPick === "function") {
+      return Script.make("untitled", props.buildPick);
+    } else {
+      throw new Error(`${caller} called with an invalid argument`);
+    }
   }
 
   private static makeSteps(script: Script<unknown>): {
@@ -118,7 +129,7 @@ export class Script<T> implements PickSet<T> {
     then: ThenFunction<In, Out>,
   ): Script<Out> {
     const build = (pick: PickFunction): Out => {
-      const inner = input.build(pick);
+      const inner = input.buildPick(pick);
       return then(inner, pick);
     };
 
@@ -175,8 +186,7 @@ export type PickFunctionOpts<T> = {
  * Throws {@link Pruned} if no value can be generated, perhaps due to filtering.
  */
 export interface PickFunction {
-  (req: PickRequest): number;
-  <T>(req: PickSet<T>, opts?: PickFunctionOpts<T>): T;
+  <T>(req: Pickable<T>, opts?: PickFunctionOpts<T>): T;
 }
 
 export type GenerateOpts = {
@@ -196,26 +206,24 @@ export function makePickFunction<T>(
 ): PickFunction {
   const limit = opts?.limit;
   const dispatch = <T>(
-    req: PickRequest | PickSet<T>,
+    arg: Pickable<T>,
     opts?: PickFunctionOpts<T>,
-  ): number | T => {
-    if (req instanceof PickRequest) {
+  ): T => {
+    if (arg instanceof PickRequest) {
+      let req: PickRequest = arg;
       if (limit !== undefined && playouts.depth >= limit) {
-        req = new PickRequest(req.min, req.min);
+        req = new PickRequest(arg.min, arg.min);
       }
       const pick = playouts.nextPick(req);
       if (pick === undefined) throw new Pruned("cancelled in PlayoutSource");
-      return pick;
+      return pick as T;
     }
 
-    if (req === null || typeof req !== "object") {
+    if (arg === null || typeof arg !== "object") {
       throw new Error("pick function called with an invalid argument");
     }
 
-    const script = req["buildScript"];
-    if (!(script instanceof Script)) {
-      throw new Error("pick function called with an invalid argument");
-    }
+    const script = Script.from(arg, { caller: "pick function" });
 
     const startMiddle = opts?.middle;
     const build = () => {
@@ -227,18 +235,18 @@ export function makePickFunction<T>(
           if (startMiddle !== undefined) {
             const middle = startMiddle();
             innerPick = function dispatchWithMiddleware<T>(
-              req: PickRequest | PickSet<T>,
+              req: Pickable<T>,
               opts?: PickFunctionOpts<T>,
             ) {
               if (req instanceof PickRequest) {
-                return middle(req, dispatch);
+                return middle(req, dispatch) as T;
               } else {
                 return dispatch(req, opts);
               }
             };
           }
 
-          const val = script.build(innerPick);
+          const val = script.buildPick(innerPick);
           return val;
         } catch (e) {
           if (!(e instanceof Pruned)) {
@@ -304,7 +312,7 @@ export function generateValue<T>(
   if (script.toPipe() !== undefined) {
     return generateFromPipe(script, playouts);
   } else {
-    return generateFromFunction(script, script.build, playouts, opts);
+    return generateFromFunction(script, script.buildPick, playouts, opts);
   }
 }
 
@@ -342,7 +350,7 @@ function generateFromPipe<T, I>(
   const { base, steps } = script.toSteps();
 
   nextPlayout: while (playouts.startValue(depth)) {
-    const first = generateFromFunction(base, base.build, playouts);
+    const first = generateFromFunction(base, base.buildPick, playouts);
     if (first === undefined) {
       continue;
     }

@@ -1,4 +1,5 @@
 import type { SystemConsole } from "./console.ts";
+import type { BuildFunction, Pickable } from "./pickable.ts";
 
 /**
  * A source of random signed 32-bit integers.
@@ -89,7 +90,7 @@ export type PickRequestOpts = {
  * When picking randomly, the {@link random} function implements the requested
  * probability distribution.
  */
-export class PickRequest {
+export class PickRequest implements Pickable<number> {
   #random: RandomPicker;
 
   /**
@@ -128,6 +129,10 @@ export class PickRequest {
    */
   get random(): RandomPicker {
     return this.#random;
+  }
+
+  get buildPick(): BuildFunction<number> {
+    return (pick) => pick(this);
   }
 
   /** Returns true if the given number satisfies this request. */

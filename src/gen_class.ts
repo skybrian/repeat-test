@@ -126,7 +126,7 @@ export class Gen<T> implements Success<T> {
       const playouts = onePlayout(new PlaybackPicker(this.replies));
       assert(playouts.startAt(0));
       const pick = makePickFunction(playouts);
-      return this.#script.build(pick);
+      return this.#script.buildPick(pick);
     }
 
     // Recursive case: get the previous input (perhaps also regenerated) and

@@ -2,6 +2,7 @@ import { Arbitrary, biasedBitRequest, PickRequest } from "@/arbitrary.ts";
 
 import type {
   BuildFunction,
+  Pickable,
   PickFunction,
   PickSet,
   RecordShape,
@@ -106,7 +107,7 @@ export function oneOf<T>(...cases: PickSet<T>[]): Arbitrary<T> {
  * be overriden with the {@link ArrayOpts.length} option.
  */
 export function array<T>(
-  item: PickSet<T>,
+  item: Pickable<T>,
   opts?: ArrayOpts,
 ): Arbitrary<T[]> {
   const { min, max } = parseArrayOpts(opts);
