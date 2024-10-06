@@ -1,4 +1,3 @@
-import type { StreamEditor } from "./edits.ts";
 import type { Gen, SegmentEditor } from "./gen_class.ts";
 import type { SystemConsole } from "./console.ts";
 
@@ -47,23 +46,6 @@ export function shrink<T>(
  * It could be the same value if the edit didn't change anything.
  */
 function tryEdit<T>(
-  editor: StreamEditor,
-  seed: Gen<T>,
-  test: (val: T) => boolean,
-): Gen<T> | undefined {
-  const next = seed.mutate(editor);
-  if (next === undefined || !test(next.val)) {
-    return undefined;
-  }
-  return next;
-}
-
-/**
- * Returns the new seed if the edit succeeded and passes the test.
- *
- * It could be the same value if the edit didn't change anything.
- */
-function tryEditSegments<T>(
   editor: SegmentEditor,
   seed: Gen<T>,
   test: (val: T) => boolean,
@@ -123,7 +105,7 @@ function shrinkSegmentTail<T>(
   assert(len > 0);
 
   // Try to remove the last pick to fail fast.
-  const next = tryEditSegments(trimSegment(segment, len - 1), seed, test);
+  const next = tryEdit(trimSegment(segment, len - 1), seed, test);
   if (next === undefined) {
     return undefined;
   }
@@ -135,7 +117,7 @@ function shrinkSegmentTail<T>(
   while (tooLow + 2 <= hi) {
     const mid = (tooLow + 1 + hi) >>> 1;
     assert(mid > tooLow && mid < hi);
-    const next = tryEditSegments(trimSegment(segment, mid), seed, test);
+    const next = tryEdit(trimSegment(segment, mid), seed, test);
     if (next === undefined) {
       // failed; retry with a higher length
       tooLow = mid;
@@ -176,7 +158,7 @@ export function shrinkOnePick(segment: number, offset: number): Shrinker {
     }
 
     // See if the test fails if we subtract one.
-    const next = tryEditSegments(
+    const next = tryEdit(
       replacePickInSegment(segment, offset, reply - 1),
       seed,
       test,
@@ -193,7 +175,7 @@ export function shrinkOnePick(segment: number, offset: number): Shrinker {
     while (tooLow + 2 <= hi) {
       const mid = (tooLow + 1 + hi) >>> 1;
       assert(mid > tooLow && mid < hi);
-      const next = tryEditSegments(
+      const next = tryEdit(
         replacePickInSegment(segment, offset, mid),
         seed,
         test,
@@ -240,11 +222,41 @@ export function shrinkAllPicks<T>(
   return changed ? seed : undefined;
 }
 
+function deleteSegmentRange(
+  segment: number,
+  start: number,
+  end: number,
+): SegmentEditor {
+  return (seg: number) => (seg === segment) ? deleteRange(start, end) : keep;
+}
+
 export function shrinkAllOptions<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
-  let picks = seed.picks;
+  let changed = false;
+  for (let i = seed.segmentCount - 1; i >= 0; i--) {
+    const next = shrinkSegmentOptions(seed, test, i);
+    if (next !== undefined) {
+      seed = next;
+      changed = true;
+    }
+  }
+  return changed ? seed : undefined;
+}
+
+export function shrinkSegmentOptions<T>(
+  seed: Gen<T>,
+  test: (val: T) => boolean,
+  segment: number,
+): Gen<T> | undefined {
+  function getPicks() {
+    const segments = seed.segmentPicks;
+    assert(segment < segments.length);
+    return seed.segmentPicks[segment];
+  }
+
+  let picks = getPicks();
   const len = picks.trimmedLength;
 
   if (len < 1) {
@@ -261,7 +273,7 @@ export function shrinkAllOptions<T>(
       // Try deleting it by itself.
       end = i + 1;
     }
-    let next = tryEdit(deleteRange(i, end), seed, test);
+    let next = tryEdit(deleteSegmentRange(segment, i, end), seed, test);
     if (next === undefined) {
       const containsEmptyOption = (end === i + 1) &&
         picks.getOption(end) === 0 &&
@@ -273,14 +285,18 @@ export function shrinkAllOptions<T>(
       }
 
       // Try extending the range to include an option that wasn't taken
-      next = tryEdit(deleteRange(i, end + 1), seed, test);
+      next = tryEdit(
+        deleteSegmentRange(segment, i, end + 1),
+        seed,
+        test,
+      );
       if (next === undefined || !test(next.val)) {
         continue;
       }
     }
 
     seed = next;
-    picks = seed.picks;
+    picks = getPicks();
     end = i;
     changed = true;
   }
