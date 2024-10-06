@@ -1,3 +1,5 @@
+import type { Pickable } from "@/arbitrary.ts";
+
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals } from "@std/assert";
 
@@ -15,10 +17,9 @@ import {
 import { isWellFormed } from "../../src/workarounds.ts";
 
 import { takeAll } from "../../src/ordered.ts";
-import type { PickSet } from "../../src/build.ts";
 
 function assertCharCodeRange(
-  set: PickSet<string>,
+  set: Pickable<string>,
   min: number,
   max: number,
 ) {

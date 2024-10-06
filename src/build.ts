@@ -289,14 +289,15 @@ export function makePickFunction<T>(
  * Returns undefined if it ran out of playouts without generating anything.
  */
 export function generate<T>(
-  set: PickSet<T>,
+  arg: Pickable<T>,
   playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): Gen<T> | undefined {
+  const script = Script.from(arg, { caller: "generate" });
   if (!playouts.startAt(0)) {
     return undefined;
   }
-  return generateValue(set.buildScript, playouts, opts);
+  return generateValue(script, playouts, opts);
 }
 
 /**

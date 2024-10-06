@@ -1,4 +1,4 @@
-import type { Arbitrary, PickSet } from "@/arbitrary.ts";
+import type { Arbitrary, Pickable } from "@/arbitrary.ts";
 import type { Domain } from "@/domain.ts";
 
 import { assert, assertEquals } from "@std/assert";
@@ -52,7 +52,7 @@ export function assertSameExamples<T>(
 
 type Gen<T> = { val: T; picks: number[] };
 
-function takeGen<T>(set: PickSet<T>, n: number): Gen<T>[] {
+function takeGen<T>(set: Pickable<T>, n: number): Gen<T>[] {
   return takeGenerated(set, n).map((gen) => ({
     val: gen.val,
     picks: gen.replies,
@@ -74,14 +74,14 @@ export function assertGenerated<T>(
 }
 
 export function assertFirstValues<T>(
-  set: PickSet<T>,
+  set: Pickable<T>,
   expected: T[],
 ) {
   assertEquals(take(set, expected.length), expected);
 }
 
 export function assertValues<T>(
-  set: PickSet<T>,
+  set: Pickable<T>,
   expected: T[],
 ) {
   assertEquals(take(set, expected.length + 5), expected);

@@ -1,7 +1,8 @@
 import type { Failure, Success } from "./results.ts";
+import type { Pickable } from "./pickable.ts";
 import type { PickRequest } from "./picks.ts";
 import type { SegmentEditor, StreamEditor } from "./edits.ts";
-import type { PickSet, Script, ThenFunction } from "./build.ts";
+import type { ThenFunction } from "./build.ts";
 
 import { failure } from "./results.ts";
 import { PickList, PlaybackPicker } from "./picks.ts";
@@ -9,6 +10,7 @@ import { EditPicker, keep } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
 import { generate, makePickFunction, thenGenerate } from "./build.ts";
 import { assert } from "@std/assert";
+import { Script } from "./build.ts";
 
 const alwaysGenerate = Symbol("alwaysGenerate");
 
@@ -221,18 +223,19 @@ export class Gen<T> implements Success<T> {
     );
   }
 
-  static build<T>(set: PickSet<T>, replies: number[]): Gen<T> | Failure {
+  static build<T>(arg: Pickable<T>, replies: number[]): Gen<T> | Failure {
+    const script = Script.from(arg, { caller: "Gen.build()" });
     const picker = new PlaybackPicker(replies);
-    const gen = generate(set, onePlayout(picker));
+    const gen = generate(script, onePlayout(picker));
     if (gen === undefined || picker.error !== undefined) {
       const err = picker.error ?? "picks not accepted";
-      return failure(`can't build '${set.buildScript.name}': ${err}`);
+      return failure(`can't build '${script.name}': ${err}`);
     }
     return gen;
   }
 
-  static mustBuild<T>(set: PickSet<T>, replies: number[]): Gen<T> {
-    const gen = Gen.build(set, replies);
+  static mustBuild<T>(arg: Pickable<T>, replies: number[]): Gen<T> {
+    const gen = Gen.build(arg, replies);
     if (!gen.ok) {
       throw new Error(gen.message);
     }
