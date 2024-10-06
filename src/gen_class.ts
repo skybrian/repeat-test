@@ -1,6 +1,6 @@
 import type { Failure, Success } from "./results.ts";
 import type { PickRequest } from "./picks.ts";
-import type { StreamEditor } from "./edits.ts";
+import type { SegmentEditor, StreamEditor } from "./edits.ts";
 import type { PickSet, Script, ThenFunction } from "./build.ts";
 
 import { failure } from "./results.ts";
@@ -11,11 +11,6 @@ import { generate, makePickFunction, thenGenerate } from "./build.ts";
 import { assert } from "@std/assert";
 
 const alwaysGenerate = Symbol("alwaysGenerate");
-
-/**
- * Edits a stream of picks that's split into segments.
- */
-export type SegmentEditor = (segmentIndex: number) => StreamEditor;
 
 export type GenPipe<I, T> = {
   input: Gen<I>;

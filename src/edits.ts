@@ -31,24 +31,6 @@ export function replace(val: number): Edit {
 }
 
 /**
- * Edits a playout by removing picks from the end (forcing them to be the minimum).
- */
-export function trimEnd(len: number): StreamEditor {
-  return (index) => index >= len ? snip() : keep();
-}
-
-export function deleteRange(start: number, end: number): StreamEditor {
-  return (index) => index >= start && index < end ? snip() : keep();
-}
-
-export function replaceAt(
-  at: number,
-  replacement: number,
-): StreamEditor {
-  return (index) => index === at ? replace(replacement) : keep();
-}
-
-/**
  * A picker that replays an array of integers with edits.
  */
 export class EditPicker implements IntPicker {
@@ -108,4 +90,50 @@ export class EditPicker implements IntPicker {
   get deletes(): number {
     return this.#deletes;
   }
+}
+
+/**
+ * Edits a stream of picks that's split into segments.
+ */
+export type SegmentEditor = (segmentIndex: number) => StreamEditor;
+
+function trimEdit(len: number): StreamEditor {
+  return (index) => index >= len ? snip() : keep();
+}
+
+/**
+ * Edits a segment by removing picks from the end (forcing them to be the minimum).
+ */
+export function trimSegment(
+  segment: number,
+  offset: number,
+): SegmentEditor {
+  return (seg) => (seg === segment) ? trimEdit(offset) : keep;
+}
+
+function snipRangeEdit(start: number, end: number): StreamEditor {
+  return (index) => index >= start && index < end ? snip() : keep();
+}
+
+export function snipRange(
+  segment: number,
+  start: number,
+  end: number,
+): SegmentEditor {
+  return (seg: number) => (seg === segment) ? snipRangeEdit(start, end) : keep;
+}
+
+function replaceEdit(
+  at: number,
+  replacement: number,
+): StreamEditor {
+  return (index) => index === at ? replace(replacement) : keep();
+}
+
+export function replaceAt(
+  segment: number,
+  offset: number,
+  val: number,
+): SegmentEditor {
+  return (seg) => seg === segment ? replaceEdit(offset, val) : keep;
 }
