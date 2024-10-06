@@ -5,8 +5,8 @@ import { assert, assertEquals, assertThrows, fail } from "@std/assert";
 
 import { Arbitrary } from "@/arbitrary.ts";
 
+import { Pruned } from "../src/pickable.ts";
 import { PickRequest } from "../src/picks.ts";
-import { Pruned } from "../src/backtracking.ts";
 import { Script } from "../src/build.ts";
 
 import { assertGenerated, assertValues } from "./lib/asserts.ts";

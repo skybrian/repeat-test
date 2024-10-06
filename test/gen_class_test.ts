@@ -1,9 +1,9 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
+import { Pruned } from "../src/pickable.ts";
 import { PickList, PickRequest } from "../src/picks.ts";
 import { keep, replace, snip } from "../src/edits.ts";
-import { Pruned } from "../src/backtracking.ts";
 import { Script } from "../src/build.ts";
 import { Gen } from "../src/gen_class.ts";
 

@@ -6,13 +6,9 @@ import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import { repeatTest } from "@/runner.ts";
 import { Arbitrary } from "@/arbitrary.ts";
 
+import { Pruned } from "../src/pickable.ts";
 import { alwaysPick, PickRequest } from "../src/picks.ts";
-import {
-  minPlayout,
-  onePlayout,
-  PlayoutSource,
-  Pruned,
-} from "../src/backtracking.ts";
+import { minPlayout, onePlayout, PlayoutSource } from "../src/backtracking.ts";
 import { depthFirstPlayouts, PartialTracker } from "../src/partial_tracker.ts";
 import { randomPicker, randomPlayouts } from "../src/random.ts";
 

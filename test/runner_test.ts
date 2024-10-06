@@ -12,8 +12,9 @@ import {
   fail,
 } from "@std/assert";
 
+import { Pruned } from "../src/pickable.ts";
 import { PickRequest } from "../src/picks.ts";
-import { minPlayout, Pruned } from "../src/backtracking.ts";
+import { minPlayout } from "../src/backtracking.ts";
 import { generate } from "../src/build.ts";
 import { Arbitrary } from "../src/arbitrary_class.ts";
 import * as arb from "@/arbs.ts";

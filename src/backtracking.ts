@@ -2,22 +2,6 @@ import { assert } from "@std/assert";
 import { alwaysPickMin, type IntPicker, type PickRequest } from "./picks.ts";
 
 /**
- * Indicates that a playout didn't result in generating a value.
- *
- * This can happen due to filtering or a partial search.
- *
- * Sometimes recovery is possible by starting a new playout and picking again.
- * (See {@link PlayoutSource.startAt}.) It won't be possible when a search has
- * visited every playout.
- */
-export class Pruned extends Error {
-  readonly ok = false;
-  constructor(msg: string) {
-    super(msg);
-  }
-}
-
-/**
  * Generates pick sequences, avoiding duplicates.
  */
 export interface Tracker {

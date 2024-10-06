@@ -3,8 +3,9 @@ import type { Tracker } from "./backtracking.ts";
 import type { Gen } from "./gen_class.ts";
 
 import { assert } from "@std/assert";
+import { Pruned } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
-import { PlayoutSource, Pruned } from "./backtracking.ts";
+import { PlayoutSource } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
 import { generate, makePickFunction } from "./build.ts";
 import { Script } from "@/arbitrary.ts";

@@ -2,8 +2,8 @@ import type { BuildFunction, Pickable } from "./pickable.ts";
 import type { PlayoutSource } from "./backtracking.ts";
 import type { GenPipe } from "./gen_class.ts";
 
+import { Pruned } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
-import { Pruned } from "./backtracking.ts";
 import { Gen } from "./gen_class.ts";
 import { assert } from "@std/assert/assert";
 

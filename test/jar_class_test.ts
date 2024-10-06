@@ -8,7 +8,8 @@ import { Jar } from "@/domain.ts";
 import * as arb from "@/arbs.ts";
 import * as dom from "@/doms.ts";
 
-import { onePlayout, Pruned } from "../src/backtracking.ts";
+import { Pruned } from "../src/pickable.ts";
+import { onePlayout } from "../src/backtracking.ts";
 import { makePickFunction } from "../src/build.ts";
 import { alwaysPickMin } from "../src/picks.ts";
 import { depthFirstPlayouts } from "../src/partial_tracker.ts";

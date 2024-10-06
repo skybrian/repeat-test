@@ -10,8 +10,8 @@ import {
 } from "./lib/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
+import { Pruned } from "../src/pickable.ts";
 import { PickRequest } from "../src/picks.ts";
-import { Pruned } from "../src/backtracking.ts";
 
 import { Arbitrary } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
