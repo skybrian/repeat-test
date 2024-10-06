@@ -62,7 +62,7 @@ const emptySeed = seedFrom([], []);
 
 const acceptAll = () => true;
 
-const bit = new PickRequest(0, 1);
+const bitReq = new PickRequest(0, 1);
 const roll = new PickRequest(1, 6);
 
 describe("shrink", () => {
@@ -134,7 +134,7 @@ describe("shrink", () => {
 
     it("removes any sequence of options", () => {
       repeatTest(bits, (bits) => {
-        const seed = seedFrom(bits.map(() => bit), bits);
+        const seed = seedFrom(bits.map(() => bitReq), bits);
         const gen = shrink(seed, acceptAll);
         assert(gen !== undefined);
         assertEquals(gen.picks.trimmed().replies, []);
@@ -149,7 +149,7 @@ describe("shrink", () => {
       });
       repeatTest(input, ({ prefix, suffix }) => {
         const val = prefix.concat([1]).concat(suffix);
-        const seed = seedFrom(val.map((_) => bit), val);
+        const seed = seedFrom(val.map((_) => bitReq), val);
         const gen = shrink(seed, (arr) => arr.at(prefix.length) === 1);
         assert(gen !== undefined);
         const expected = Array(prefix.length).fill(0).concat(1);
@@ -282,7 +282,21 @@ describe("shrink", () => {
 
 describe("shrinkTail", () => {
   it("can't shrink an empty seed", () => {
-    assertEquals(undefined, shrinkTail(emptySeed, acceptAll));
+    assertEquals(shrinkTail(emptySeed, acceptAll), undefined);
+  });
+
+  it("shrinks a pipeline", () => {
+    const script = arb.string().buildScript.then(
+      "mapped string",
+      (a) => a.concat("!"),
+    );
+
+    const seed = Gen.mustBuild(script, [1, 0, 0]);
+    assertEquals(seed.val, "a!");
+
+    const gen = shrinkTail(seed, acceptAll);
+    assert(gen !== undefined);
+    assertEquals(gen.val, "!");
   });
 
   const nonEmptySeeds = arb.array(minMaxVal({ minMin: 0 }), {
@@ -319,13 +333,13 @@ describe("shrinkTail", () => {
 
 describe("shrinkOnePick", () => {
   it("can't shrink an empty seed", () => {
-    assertEquals(undefined, shrinkOnePick(0, 0)(emptySeed, acceptAll));
+    assertEquals(shrinkOnePick(0, 0)(emptySeed, acceptAll), undefined);
   });
 
   const roll = new PickRequest(1, 6);
   it("can't shrink a pick already at the minimum", () => {
     const seed = seedFrom([roll], [1]);
-    assertEquals(undefined, shrinkOnePick(0, 0)(seed, acceptAll));
+    assertEquals(shrinkOnePick(0, 0)(seed, acceptAll), undefined);
   });
 
   it("shrinks a pick to the minimum", () => {
@@ -362,7 +376,7 @@ describe("shrinkOnePick", () => {
 
 describe("shrinkAllPicks", () => {
   it("can't shrink an empty seed", () => {
-    assertEquals(undefined, shrinkAllPicks(emptySeed, acceptAll));
+    assertEquals(shrinkAllPicks(emptySeed, acceptAll), undefined);
   });
 
   it("shrinks to default picks", () => {
@@ -375,11 +389,12 @@ describe("shrinkAllPicks", () => {
 
   it("shrinks a pipeline", () => {
     const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
-    const script = bit.then(
+    const twoBits = bit.then(
       "two bits",
       (a, pick) => [a, pick(PickRequest.bit)],
     );
-    const seed = Gen.mustBuild(script, [1, 1]);
+
+    const seed = Gen.mustBuild(twoBits, [1, 1]);
     const gen = shrinkAllPicks(seed, acceptAll);
     assertEquals(gen?.replies, [0, 0]);
   });
@@ -387,11 +402,11 @@ describe("shrinkAllPicks", () => {
 
 describe("shrinkAllOptions", () => {
   it("can't shrink an empty seed", () => {
-    assertEquals(undefined, shrinkAllOptions(emptySeed, acceptAll));
+    assertEquals(shrinkAllOptions(emptySeed, acceptAll), undefined);
   });
 
   it("removes an option by with a value", () => {
-    const seed = seedFrom([bit, roll], [1, 6]);
+    const seed = seedFrom([bitReq, roll], [1, 6]);
 
     const gen = shrinkAllOptions(seed, acceptAll);
     assert(gen !== undefined);
@@ -400,7 +415,7 @@ describe("shrinkAllOptions", () => {
 
   it("removes two options", () => {
     const seed = seedFrom(
-      [roll, bit, roll, bit, roll, bit, roll],
+      [roll, bitReq, roll, bitReq, roll, bitReq, roll],
       [6, 1, 6, 1, 3, 1, 5],
     );
     const gen = shrinkAllOptions(seed, acceptAll);

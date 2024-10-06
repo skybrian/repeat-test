@@ -75,21 +75,55 @@ function tryEditSegments<T>(
   return next;
 }
 
+function trimSegment(
+  segment: number,
+  offset: number,
+): SegmentEditor {
+  return (seg) => (seg === segment) ? trimEnd(offset) : keep;
+}
+
 /**
  * Removes unnecessary picks from the end of a playout.
- * Postcondition: the last pick in the playout is necessary.
+ * Postcondition: the last pick in the last non-empty segment is necessary.
  */
 export function shrinkTail<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
-  const len = seed.picks.trimmedLength;
-  if (len === 0) {
-    return undefined; // Nothing to remove
+  let segs = seed.segmentPicks;
+  let changed = false;
+  for (let i = segs.length - 1; i >= 0; i--) {
+    if (segs[i].trimmedLength === 0) {
+      continue;
+    }
+
+    const next = shrinkSegmentTail(seed, test, i);
+    if (next === undefined) {
+      break;
+    }
+    seed = next;
+    changed = true;
+    segs = seed.segmentPicks;
+  }
+  return changed ? seed : undefined;
+}
+
+function shrinkSegmentTail<T>(
+  seed: Gen<T>,
+  test: (val: T) => boolean,
+  segment: number,
+): Gen<T> | undefined {
+  function getPicks() {
+    const segments = seed.segmentPicks;
+    assert(segment < segments.length);
+    return seed.segmentPicks[segment];
   }
 
+  const len = getPicks().trimmedLength;
+  assert(len > 0);
+
   // Try to remove the last pick to fail fast.
-  const next = tryEdit(trimEnd(len - 1), seed, test);
+  const next = tryEditSegments(trimSegment(segment, len - 1), seed, test);
   if (next === undefined) {
     return undefined;
   }
@@ -101,14 +135,14 @@ export function shrinkTail<T>(
   while (tooLow + 2 <= hi) {
     const mid = (tooLow + 1 + hi) >>> 1;
     assert(mid > tooLow && mid < hi);
-    const next = tryEdit(trimEnd(mid), seed, test);
+    const next = tryEditSegments(trimSegment(segment, mid), seed, test);
     if (next === undefined) {
       // failed; retry with a higher length
       tooLow = mid;
       continue;
     }
     seed = next;
-    hi = seed.picks.trimmedLength;
+    hi = getPicks().trimmedLength;
   }
   return seed;
 }
