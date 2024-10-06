@@ -86,6 +86,12 @@ describe("shrink", () => {
     });
   });
 
+  describe("for an int32", () => {
+    it("shrinks to a positive number", () => {
+      assertShrinks(dom.int32(), (n) => n >= 10, 12345, 10);
+    });
+  });
+
   describe("for an ascii character", () => {
     it("can't shrink 'a'", () => {
       assertNoChange(dom.asciiChar(), () => true, "a");
@@ -313,13 +319,13 @@ describe("shrinkTail", () => {
 
 describe("shrinkOnePick", () => {
   it("can't shrink an empty seed", () => {
-    assertEquals(undefined, shrinkOnePick(0)(emptySeed, acceptAll));
+    assertEquals(undefined, shrinkOnePick(0, 0)(emptySeed, acceptAll));
   });
 
   const roll = new PickRequest(1, 6);
   it("can't shrink a pick already at the minimum", () => {
     const seed = seedFrom([roll], [1]);
-    assertEquals(undefined, shrinkOnePick(0)(seed, acceptAll));
+    assertEquals(undefined, shrinkOnePick(0, 0)(seed, acceptAll));
   });
 
   it("shrinks a pick to the minimum", () => {
@@ -333,7 +339,7 @@ describe("shrinkOnePick", () => {
       const replies = [...prefix, value, ...suffix];
       const reqs = new Array(replies.length).fill(roll);
       const seed = seedFrom(reqs, replies);
-      const gen = shrinkOnePick(prefix.length)(seed, acceptAll);
+      const gen = shrinkOnePick(0, prefix.length)(seed, acceptAll);
       assertEquals(gen?.replies, [...prefix, 1, ...suffix]);
     });
   });
@@ -348,7 +354,7 @@ describe("shrinkOnePick", () => {
       const seed = dom.int(1, 10).regenerate(start);
       assert(seed.ok);
       const accept = (v: number) => v >= want;
-      const gen = shrinkOnePick(0)(seed, accept);
+      const gen = shrinkOnePick(0, 0)(seed, accept);
       assertEquals(gen?.replies, [want]);
     });
   });
@@ -365,6 +371,17 @@ describe("shrinkAllPicks", () => {
     const seed = seedFrom([lo, hi], [2, 4]);
     const gen = shrinkAllPicks(seed, acceptAll);
     assertEquals(gen?.replies, [1, 3]);
+  });
+
+  it("shrinks a pipeline", () => {
+    const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
+    const script = bit.then(
+      "two bits",
+      (a, pick) => [a, pick(PickRequest.bit)],
+    );
+    const seed = Gen.mustBuild(script, [1, 1]);
+    const gen = shrinkAllPicks(seed, acceptAll);
+    assertEquals(gen?.replies, [0, 0]);
   });
 });
 

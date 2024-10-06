@@ -1,9 +1,9 @@
 import type { StreamEditor } from "./edits.ts";
-import type { Gen } from "./gen_class.ts";
+import type { Gen, SegmentEditor } from "./gen_class.ts";
 import type { SystemConsole } from "./console.ts";
 
 import { assert } from "@std/assert";
-import { deleteRange, replaceAt, trimEnd } from "./edits.ts";
+import { deleteRange, keep, replaceAt, trimEnd } from "./edits.ts";
 import { nullConsole } from "./console.ts";
 
 /**
@@ -59,6 +59,23 @@ function tryEdit<T>(
 }
 
 /**
+ * Returns the new seed if the edit succeeded and passes the test.
+ *
+ * It could be the same value if the edit didn't change anything.
+ */
+function tryEditSegments<T>(
+  editor: SegmentEditor,
+  seed: Gen<T>,
+  test: (val: T) => boolean,
+): Gen<T> | undefined {
+  const next = seed.mutateSegments(editor);
+  if (next === undefined || !test(next.val)) {
+    return undefined;
+  }
+  return next;
+}
+
+/**
  * Removes unnecessary picks from the end of a playout.
  * Postcondition: the last pick in the playout is necessary.
  */
@@ -96,48 +113,65 @@ export function shrinkTail<T>(
   return seed;
 }
 
+function replacePickInSegment(
+  segment: number,
+  offset: number,
+  val: number,
+): SegmentEditor {
+  return (seg) => seg === segment ? replaceAt(offset, val) : keep;
+}
+
 /**
  * Shrinks the pick at the given offset.
  * Postcondition: decrementing the pick by one would fail the test.
  */
-export function shrinkOnePick(index: number): Shrinker {
+export function shrinkOnePick(segment: number, offset: number): Shrinker {
   return <T>(
     seed: Gen<T>,
     test: (val: T) => boolean,
   ): Gen<T> | undefined => {
-    const picks = seed.picks;
-    if (picks.trimmedLength <= index) {
+    const picks = seed.segmentPicks[segment];
+
+    if (picks.trimmedLength <= offset) {
       return undefined; // No change; nothing to shrink
     }
 
-    const { req, reply } = picks.getPick(index);
+    const { req, reply } = picks.getPick(offset);
     if (reply === req.min) {
       return undefined; // No change; already at the minimum
     }
 
     // See if the test fails if we subtract one.
-    const next = tryEdit(replaceAt(index, reply - 1), seed, test);
+    const next = tryEditSegments(
+      replacePickInSegment(segment, offset, reply - 1),
+      seed,
+      test,
+    );
     if (next === undefined) {
       return undefined; // No change; the postcondition already holds
     }
     seed = next;
-    let replies = seed.replies;
+    let replies = seed.segmentPicks[segment].replies;
 
     // Binary search to find the smallest pick that succeeds.
     let tooLow = req.min - 1;
-    let hi = replies[index];
+    let hi = replies[offset];
     while (tooLow + 2 <= hi) {
       const mid = (tooLow + 1 + hi) >>> 1;
       assert(mid > tooLow && mid < hi);
-      const next = tryEdit(replaceAt(index, mid), seed, test);
+      const next = tryEditSegments(
+        replacePickInSegment(segment, offset, mid),
+        seed,
+        test,
+      );
       if (next === undefined) {
         // failed; retry with a higher pick
         tooLow = mid;
         continue;
       }
       seed = next;
-      replies = seed.replies;
-      hi = replies[index];
+      replies = seed.segmentPicks[segment].replies;
+      hi = replies[offset];
     }
     return seed;
   };
@@ -147,15 +181,26 @@ export function shrinkAllPicks<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
-  const len = seed.picks.trimmedLength;
-
   let changed = false;
-  for (let i = 0; i < len; i++) {
-    const next = shrinkOnePick(i)(seed, test);
+  let seg = 0;
+  let offset = 0;
+  while (true) {
+    const segments = seed.segmentPicks;
+    if (seg >= segments.length) {
+      break;
+    }
+    const picks = segments[seg];
+    if (offset >= picks.length) {
+      seg++;
+      offset = 0;
+      continue;
+    }
+    const next = shrinkOnePick(seg, offset)(seed, test);
     if (next !== undefined) {
       changed = true;
       seed = next;
     }
+    offset++;
   }
 
   return changed ? seed : undefined;
