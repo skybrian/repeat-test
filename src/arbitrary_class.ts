@@ -1,6 +1,6 @@
 import type { RecordShape } from "./options.ts";
-import type { BuildFunction, Pickable } from "./pickable.ts";
-import type { HasScript, PickFunction } from "./build.ts";
+import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
+import type { HasScript } from "./build.ts";
 
 import { assert } from "@std/assert";
 

@@ -1,4 +1,9 @@
-import type { BuildFunction, Pickable } from "./pickable.ts";
+import type {
+  BuildFunction,
+  Pickable,
+  PickFunction,
+  PickFunctionOpts,
+} from "./pickable.ts";
 import type { PlayoutSource } from "./backtracking.ts";
 import type { GenPipe } from "./gen_class.ts";
 
@@ -172,34 +177,6 @@ export class MiddlewareRequest<T> implements Pickable<T> {
   ): MiddlewareRequest<T> {
     return new MiddlewareRequest(Script.from(pickable), startMiddle);
   }
-}
-
-/**
- * Options for {@link PickFunction}.
- */
-export type PickFunctionOpts<T> = {
-  /**
-   * Filters the generated value.
-   *
-   * If it returns false, the pick function may either try a different value or
-   * throw {@link Pruned}.
-   */
-  accept?: (val: T) => boolean;
-
-  /**
-   * The maximum number of times to try to generate a value when filtering.
-   * (Default: 1000.)
-   */
-  maxTries?: number;
-};
-
-/**
- * Generates a value given a PickRequest, an Arbitrary, or some other PickSet.
- *
- * Throws {@link Pruned} if no value can be generated, perhaps due to filtering.
- */
-export interface PickFunction {
-  <T>(req: Pickable<T>, opts?: PickFunctionOpts<T>): T;
 }
 
 export type GenerateOpts = {

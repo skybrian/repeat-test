@@ -1,5 +1,3 @@
-import type { PickFunction } from "./build.ts";
-
 /**
  * Indicates that no pick could be built and a retry is needed.
  *
@@ -11,6 +9,34 @@ export class Pruned extends Error {
   constructor(msg: string) {
     super(msg);
   }
+}
+
+/**
+ * Options for {@link PickFunction}.
+ */
+export type PickFunctionOpts<T> = {
+  /**
+   * Filters the generated value.
+   *
+   * If it returns false, the pick function may either try a different value or
+   * throw {@link Pruned}.
+   */
+  accept?: (val: T) => boolean;
+
+  /**
+   * The maximum number of times to try to generate a value when filtering.
+   * (Default: 1000.)
+   */
+  maxTries?: number;
+};
+
+/**
+ * Generates a value given a PickRequest, an Arbitrary, or some other PickSet.
+ *
+ * Throws {@link Pruned} if no value can be generated, perhaps due to filtering.
+ */
+export interface PickFunction {
+  <T>(req: Pickable<T>, opts?: PickFunctionOpts<T>): T;
 }
 
 /**

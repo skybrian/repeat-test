@@ -1,6 +1,7 @@
+import type { PickFunction } from "./pickable.ts";
 import type { PickRequest } from "./picks.ts";
 import type { PlayoutSource } from "./backtracking.ts";
-import type { IntPickerMiddleware, PickFunction, Script } from "./build.ts";
+import type { IntPickerMiddleware, Script } from "./build.ts";
 import type { Gen } from "./gen_class.ts";
 import type { Domain } from "./domain_class.ts";
 

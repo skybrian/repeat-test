@@ -6,7 +6,12 @@
 
 export type { Failure, Success } from "../results.ts";
 
-export type { BuildFunction, Pickable } from "../pickable.ts";
+export type {
+  BuildFunction,
+  Pickable,
+  PickFunction,
+  PickFunctionOpts,
+} from "../pickable.ts";
 
 export type {
   PickList,
@@ -16,12 +21,6 @@ export type {
 } from "../picks.ts";
 
 export type { StreamEditor } from "../edits.ts";
-
-export type {
-  IntPickerMiddleware,
-  PickFunction,
-  PickFunctionOpts,
-} from "../build.ts";
 
 export type { RecordShape } from "../options.ts";
 
