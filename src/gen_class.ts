@@ -161,10 +161,13 @@ export class Gen<T> implements Success<T> {
 
     const indexBefore = this.segmentCount - 1;
     const picks = new EditPicker(this.#lastReplies, editor(indexBefore));
+    const playouts = onePlayout(picks);
+    const pick = makePickFunction(playouts);
     const gen = thenGenerate(
       this.#script,
       { input, then: this.#pipe.then },
-      onePlayout(picks),
+      pick,
+      playouts,
     );
 
     if (gen === undefined) {

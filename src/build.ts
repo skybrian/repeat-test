@@ -169,28 +169,47 @@ export function generate<T>(
  *
  * Returns undefined if there are no more playouts available at the current depth.
  */
-export function generateValue<T>(
+export function generateValue<T, I>(
   script: Script<T>,
   playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): Gen<T> | undefined {
-  if (script.toPipe() !== undefined) {
-    return generateFromPipe(script, playouts);
-  } else {
-    return generateFromFunction(script, script.buildPick, playouts, opts);
+  const depth = playouts.depth;
+  const pick = makePickFunction(playouts, opts);
+  const { base, steps } = script.toSteps();
+
+  nextPlayout: while (playouts.startValue(depth)) {
+    const first = generateFromFunction(base, base.buildPick, pick, playouts);
+    if (first === undefined) {
+      continue;
+    }
+
+    let input = first;
+    for (const script of steps) {
+      const pipe = script.toPipe();
+      assert(pipe !== undefined);
+      const genPipe = { input, then: pipe.then };
+
+      const result = thenGenerate(script, genPipe, pick, playouts);
+      if (result === undefined) {
+        continue nextPlayout;
+      }
+      input = result;
+    }
+
+    return input as Gen<T>;
   }
 }
 
 function generateFromFunction<T>(
   script: Script<T>,
   build: BuildFunction<T>,
+  pick: PickFunction,
   playouts: PlayoutSource,
-  opts?: GenerateOpts,
 ) {
   const depth = playouts.depth;
   while (playouts.startValue(depth)) {
     try {
-      const pick = makePickFunction(playouts, opts);
       const val = build(pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
@@ -207,43 +226,15 @@ function generateFromFunction<T>(
   return undefined;
 }
 
-function generateFromPipe<T, I>(
-  script: Script<T>,
-  playouts: PlayoutSource,
-): Gen<T> | undefined {
-  const depth = playouts.depth;
-  const { base, steps } = script.toSteps();
-
-  nextPlayout: while (playouts.startValue(depth)) {
-    const first = generateFromFunction(base, base.buildPick, playouts);
-    if (first === undefined) {
-      continue;
-    }
-
-    let input = first;
-    for (const script of steps) {
-      const pipe = script.toPipe();
-      assert(pipe !== undefined);
-      const result = thenGenerate(script, { input, then: pipe.then }, playouts);
-      if (result === undefined) {
-        continue nextPlayout;
-      }
-      input = result;
-    }
-
-    return input as Gen<T>;
-  }
-}
-
 export function thenGenerate<I, T>(
   script: Script<T>,
   pipe: GenPipe<I, T>,
+  pick: PickFunction,
   playouts: PlayoutSource,
 ): Gen<T> | undefined {
   const depth = playouts.depth;
   while (playouts.startValue(depth)) {
     try {
-      const pick = makePickFunction(playouts);
       const val = pipe.then(pipe.input.val, pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
