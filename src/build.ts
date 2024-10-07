@@ -5,7 +5,7 @@ import type {
   PickFunctionOpts,
 } from "./pickable.ts";
 import type { PlayoutSource } from "./backtracking.ts";
-import type { GenPipe } from "./gen_class.ts";
+import type { PipeRequest } from "./gen_class.ts";
 
 import { assert } from "@std/assert/assert";
 import { Pruned } from "./pickable.ts";
@@ -188,9 +188,8 @@ export function generateValue<T, I>(
     for (const script of steps) {
       const pipe = script.toPipe();
       assert(pipe !== undefined);
-      const genPipe = { input, then: pipe.then };
-
-      const result = thenGenerate(script, genPipe, pick, playouts);
+      const request = { script, input, then: pipe.then };
+      const result = thenGenerate(request, pick, playouts);
       if (result === undefined) {
         continue nextPlayout;
       }
@@ -213,7 +212,7 @@ function generateFromFunction<T>(
       const val = build(pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
-      return Gen.fromBuildResult(script, reqs, replies, val);
+      return Gen.makeBuildResult(script, reqs, replies, val);
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;
@@ -227,18 +226,17 @@ function generateFromFunction<T>(
 }
 
 export function thenGenerate<I, T>(
-  script: Script<T>,
-  pipe: GenPipe<I, T>,
+  pipeReq: PipeRequest<I, T>,
   pick: PickFunction,
   playouts: PlayoutSource,
 ): Gen<T> | undefined {
   const depth = playouts.depth;
   while (playouts.startValue(depth)) {
     try {
-      const val = pipe.then(pipe.input.val, pick);
+      const val = pipeReq.then(pipeReq.input.val, pick);
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
-      return Gen.fromPipeResult(script, pipe, reqs, replies, val);
+      return Gen.makePipeResult(pipeReq, reqs, replies, val);
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;
