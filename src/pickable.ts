@@ -31,7 +31,7 @@ export type PickFunctionOpts<T> = {
 };
 
 /**
- * Generates a value given a PickRequest, an Arbitrary, or some other PickSet.
+ * Generates a value, given a Pickable.
  *
  * Throws {@link Pruned} if no value can be generated, perhaps due to filtering.
  */
@@ -52,6 +52,8 @@ export type BuildFunction<T> = (pick: PickFunction) => T;
 
 /**
  * Something that can generate picks.
+ *
+ * Alternatively, a set of possible values to pick from.
  */
 export type Pickable<T> = {
   readonly buildPick: BuildFunction<T>;

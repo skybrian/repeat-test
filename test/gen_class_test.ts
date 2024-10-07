@@ -4,7 +4,7 @@ import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import { Pruned } from "../src/pickable.ts";
 import { PickList, PickRequest } from "../src/picks.ts";
 import { keep, replace, snip } from "../src/edits.ts";
-import { Script } from "../src/build.ts";
+import { Script } from "../src/script_class.ts";
 import { Gen } from "../src/gen_class.ts";
 
 const bit = Script.make("bit", (pick) => pick(PickRequest.bit));

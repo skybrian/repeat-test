@@ -1,11 +1,12 @@
 import type { RecordShape } from "./options.ts";
 import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
-import type { HasScript } from "./build.ts";
+import type { HasScript } from "./script_class.ts";
 
 import { assert } from "@std/assert";
 
 import { PickRequest } from "./picks.ts";
-import { generate, Script } from "./build.ts";
+import { Script } from "./script_class.ts";
+import { generate } from "./build.ts";
 import { generateDefault } from "./ordered.ts";
 import { randomPlayouts } from "./random.ts";
 

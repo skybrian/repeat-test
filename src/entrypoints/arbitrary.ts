@@ -24,7 +24,8 @@ export type { StreamEditor } from "../edits.ts";
 
 export type { RecordShape } from "../options.ts";
 
+export { Pruned } from "../pickable.ts";
 export { biasedBitRequest, PickRequest } from "../picks.ts";
 export { Gen } from "../gen_class.ts";
-export { Script } from "../build.ts";
+export { Script } from "../script_class.ts";
 export { Arbitrary } from "../arbitrary_class.ts";

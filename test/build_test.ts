@@ -1,12 +1,10 @@
-import type { Pickable } from "../src/pickable.ts";
-
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
+import { Arbitrary, Pruned, Script } from "@/arbitrary.ts";
+import * as arb from "@/arbs.ts";
 import { repeatTest } from "@/runner.ts";
-import { Arbitrary } from "@/arbitrary.ts";
 
-import { Pruned } from "../src/pickable.ts";
 import { alwaysPick, PickRequest } from "../src/picks.ts";
 import { minPlayout, onePlayout, PlayoutSource } from "../src/backtracking.ts";
 import { depthFirstPlayouts, PartialTracker } from "../src/partial_tracker.ts";
@@ -17,28 +15,20 @@ import {
   generate,
   generateValue,
   makePickFunction,
-  Script,
+  MiddlewareRequest,
 } from "../src/build.ts";
-import { arb } from "@/mod.ts";
 import { PlaybackPicker } from "../src/picks.ts";
 import { orderedPlayouts } from "../src/ordered.ts";
 
-describe("Script", () => {
-  describe("from", () => {
-    it("throws if given an invalid argument", () => {
-      assertThrows(
-        () => Script.from(null as unknown as Pickable<number>),
-        Error,
-        "Script.from() called with an invalid argument",
-      );
-    });
-  });
-
-  describe("toSteps", () => {
-    it("returns no steps for a simple build script", () => {
-      const hi = Script.make("hello", () => "hi");
-      assertEquals(hi.toSteps(), { base: hi, steps: [] });
-    });
+describe("MiddlewareRequest", () => {
+  it("throws an error if not intercepted", () => {
+    const req = MiddlewareRequest.wrap(PickRequest.bit, () => () => 0);
+    const pick = makePickFunction(minPlayout());
+    assertThrows(
+      () => req.buildPick(pick),
+      Error,
+      "should have been intercepted",
+    );
   });
 });
 

@@ -1,16 +1,16 @@
 import type { Failure, Success } from "./results.ts";
 import type { Pickable } from "./pickable.ts";
+import type { ThenFunction } from "./script_class.ts";
 import type { PickRequest } from "./picks.ts";
 import type { SegmentEditor, StreamEditor } from "./edits.ts";
-import type { ThenFunction } from "./build.ts";
 
+import { assert } from "@std/assert";
 import { failure } from "./results.ts";
+import { Script } from "./script_class.ts";
 import { PickList, PlaybackPicker } from "./picks.ts";
 import { EditPicker, keep } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
 import { generate, makePickFunction, thenGenerate } from "./build.ts";
-import { assert } from "@std/assert";
-import { Script } from "./build.ts";
 
 const alwaysGenerate = Symbol("alwaysGenerate");
 

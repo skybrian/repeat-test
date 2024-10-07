@@ -10,7 +10,7 @@ import * as dom from "@/doms.ts";
 import { minMaxVal } from "./lib/ranges.ts";
 
 import { PickRequest } from "../src/picks.ts";
-import { Script } from "../src/build.ts";
+import { Script } from "../src/script_class.ts";
 import {
   shrink,
   shrinkAllOptions,

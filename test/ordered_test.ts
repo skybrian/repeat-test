@@ -7,7 +7,7 @@ import { Arbitrary } from "@/arbitrary.ts";
 
 import { Pruned } from "../src/pickable.ts";
 import { PickRequest } from "../src/picks.ts";
-import { Script } from "../src/build.ts";
+import { Script } from "../src/script_class.ts";
 
 import { assertGenerated, assertValues } from "./lib/asserts.ts";
 import {
