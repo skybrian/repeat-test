@@ -20,9 +20,12 @@ export type PipeRequest<I, T> = {
   then: ThenFunction<I, T>;
 };
 
-type PipeResult<I, T> = PipeRequest<I, T> & {
-  output: Gen<T>;
-};
+class PipeResult<I, T> {
+  constructor(readonly request: PipeRequest<I, T>, readonly output: Gen<T>) {}
+  get input(): Gen<I> {
+    return this.request.input;
+  }
+}
 
 /**
  * A generated value and the picks that were used to generate it.
@@ -57,7 +60,7 @@ export class Gen<T> implements Success<T> {
     this.#script = script;
     this.#pipeResult = pipeReq === undefined
       ? undefined
-      : { ...pipeReq, output: this };
+      : new PipeResult(pipeReq, this);
     this.#lastReqs = lastReqs;
     this.#lastReplies = lastReplies;
     this.#val = val;
@@ -191,7 +194,12 @@ export class Gen<T> implements Success<T> {
       const picks = new EditPicker(step.output.#lastReplies, editor);
       const playouts = onePlayout(picks);
       const pick = makePickFunction(playouts);
-      const next = thenGenerate({ ...step, input: gen }, pick, playouts);
+      const pipeReq = {
+        script: step.request.script,
+        input: gen,
+        then: step.request.then,
+      };
+      const next = thenGenerate(pipeReq, pick, playouts);
       if (next === undefined) {
         return undefined; // failed edit
       }
