@@ -67,16 +67,24 @@ export class Gen<T> implements Success<T> {
 
   private get reqs(): PickRequest[] {
     if (this.#reqs === undefined) {
-      const steps = Gen.steps(this);
-      this.#reqs = steps.flatMap((step) => step.#lastReqs);
+      const reqs: PickRequest[] = [];
+      for (const step of Gen.previousSteps(this)) {
+        reqs.push(...step.input.#lastReqs);
+      }
+      reqs.push(...this.#lastReqs);
+      this.#reqs = reqs;
     }
     return this.#reqs;
   }
 
   get replies(): number[] {
     if (this.#replies === undefined) {
-      const steps = Gen.steps(this);
-      this.#replies = steps.flatMap((step) => step.#lastReplies);
+      const replies: number[] = [];
+      for (const step of Gen.previousSteps(this)) {
+        replies.push(...step.input.#lastReplies);
+      }
+      replies.push(...this.#lastReplies);
+      this.#replies = replies;
     }
     return this.#replies;
   }
@@ -103,8 +111,13 @@ export class Gen<T> implements Success<T> {
    * that used them.
    */
   get segmentPicks(): PickList[] {
-    const steps = Gen.steps(this);
-    return steps.map((step) => new PickList(step.#lastReqs, step.#lastReplies));
+    const segments: PickList[] = [];
+    for (const step of Gen.previousSteps(this)) {
+      const gen = step.input;
+      segments.push(new PickList(gen.#lastReqs, gen.#lastReplies));
+    }
+    segments.push(new PickList(this.#lastReqs, this.#lastReplies));
+    return segments;
   }
 
   /**
@@ -245,14 +258,14 @@ export class Gen<T> implements Success<T> {
     return gen;
   }
 
-  static steps(last: Gen<unknown>): Gen<unknown>[] {
-    const steps = [last];
+  static previousSteps(last: Gen<unknown>): GenPipe<unknown, unknown>[] {
+    const steps = [];
     for (
-      let step = last.#pipe?.input;
-      step !== undefined;
-      step = step.#pipe?.input
+      let pipe = last.#pipe;
+      pipe !== undefined;
+      pipe = pipe.input.#pipe
     ) {
-      steps.push(step);
+      steps.push(pipe);
     }
     steps.reverse();
     return steps;
