@@ -21,9 +21,40 @@ export type PipeRequest<I, T> = {
 };
 
 class PipeResult<I, T> {
-  constructor(readonly request: PipeRequest<I, T>, readonly output: Gen<T>) {}
+  constructor(
+    readonly request: PipeRequest<I, T>,
+    readonly lastReplies: number[],
+    readonly output: Gen<T>,
+  ) {}
+
   get input(): Gen<I> {
     return this.request.input;
+  }
+
+  mutate(input: Gen<I>, editor: StreamEditor): Gen<T> | undefined {
+    if (editor === keep && input === this.input) {
+      return this.output; // no change
+    }
+
+    const picks = new EditPicker(this.lastReplies, editor);
+    const playouts = onePlayout(picks);
+    const pick = makePickFunction(playouts);
+    const pipeReq = {
+      script: this.request.script,
+      input,
+      then: this.request.then,
+    };
+    const next = thenGenerate(pipeReq, pick, playouts);
+    if (next === undefined) {
+      return undefined; // failed edit
+    } else if (
+      input === this.input && picks.edits === 0 &&
+      picks.deletes === 0
+    ) {
+      return this.output; // no change
+    } else {
+      return next;
+    }
   }
 }
 
@@ -60,7 +91,7 @@ export class Gen<T> implements Success<T> {
     this.#script = script;
     this.#pipeResult = pipeReq === undefined
       ? undefined
-      : new PipeResult(pipeReq, this);
+      : new PipeResult(pipeReq, lastReplies, this);
     this.#lastReqs = lastReqs;
     this.#lastReplies = lastReplies;
     this.#val = val;
@@ -186,31 +217,11 @@ export class Gen<T> implements Success<T> {
     let gen = next;
     for (const step of steps) {
       const editor = editors(i++);
-      if (editor === keep && gen === step.input) {
-        gen = step.output; // no change
-        continue;
-      }
-
-      const picks = new EditPicker(step.output.#lastReplies, editor);
-      const playouts = onePlayout(picks);
-      const pick = makePickFunction(playouts);
-      const pipeReq = {
-        script: step.request.script,
-        input: gen,
-        then: step.request.then,
-      };
-      const next = thenGenerate(pipeReq, pick, playouts);
+      const next = step.mutate(gen, editor);
       if (next === undefined) {
         return undefined; // failed edit
       }
-      if (
-        gen === step.input && picks.edits === 0 &&
-        picks.deletes === 0
-      ) {
-        gen = step.output; // no change
-      } else {
-        gen = next;
-      }
+      gen = next;
     }
     return gen as Gen<T>;
   }
