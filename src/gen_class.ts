@@ -169,20 +169,26 @@ export class Gen<T> implements Success<T> {
    *
    * If edit can't be applied, returns undefined.
    */
-  mutate(editor: SegmentEditor): Gen<T> | undefined {
+  mutate(editors: SegmentEditor): Gen<T> | undefined {
     const steps = this.getPipeline();
     if (steps.length === 0) {
-      return this.mutateNonPipe(editor(0));
+      return this.mutateNonPipe(editors(0));
     }
 
     let i = 0;
-    const next = steps[0].input.mutateNonPipe(editor(i++));
+    const next = steps[0].input.mutateNonPipe(editors(i++));
     if (next === undefined) {
       return undefined; // failed edit
     }
     let gen = next;
     for (const step of steps) {
-      const picks = new EditPicker(step.output.#lastReplies, editor(i++));
+      const editor = editors(i++);
+      if (editor === keep && gen === step.input) {
+        gen = step.output; // no change
+        continue;
+      }
+
+      const picks = new EditPicker(step.output.#lastReplies, editor);
       const playouts = onePlayout(picks);
       const pick = makePickFunction(playouts);
       const next = thenGenerate({ ...step, input: gen }, pick, playouts);
