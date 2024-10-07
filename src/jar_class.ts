@@ -5,7 +5,7 @@ import type { Gen } from "./gen_class.ts";
 import type { Domain } from "./domain_class.ts";
 
 import { assert } from "@std/assert";
-import { generate } from "./build.ts";
+import { generate, MiddlewareRequest } from "./build.ts";
 import { PickTree } from "./pick_tree.ts";
 import { orderedPlayouts } from "./ordered.ts";
 
@@ -74,7 +74,8 @@ export class Jar<T> {
       return narrowToRemaining;
     }
 
-    const val = pick(this.buildItem, { middle, accept: this.#accept });
+    const req = MiddlewareRequest.wrap(this.buildItem, middle);
+    const val = pick(req, { accept: this.#accept });
     this.#refreshExample();
     return val;
   }

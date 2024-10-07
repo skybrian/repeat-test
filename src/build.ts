@@ -150,17 +150,34 @@ export type IntPickerMiddleware = (
 ) => number;
 
 /**
+ * Creates a request that will be executed with Middleware.
+ */
+export class MiddlewareRequest<T> implements Pickable<T> {
+  private constructor(
+    readonly script: Script<T>,
+    readonly startMiddle: () => IntPickerMiddleware,
+  ) {}
+
+  get buildPick(): BuildFunction<T> {
+    return () => {
+      throw new Error(
+        "MiddlewareRequest.buildPick() called; should have been intercepted",
+      );
+    };
+  }
+
+  static wrap<T>(
+    pickable: Pickable<T>,
+    startMiddle: () => IntPickerMiddleware,
+  ): MiddlewareRequest<T> {
+    return new MiddlewareRequest(Script.from(pickable), startMiddle);
+  }
+}
+
+/**
  * Options for {@link PickFunction}.
  */
 export type PickFunctionOpts<T> = {
-  /**
-   * A function that initializes middleware to respond to PickRequests.
-   *
-   * Multiple attempts may be needed to generate a value. The middle() function
-   * will be called once before each attempt.
-   */
-  middle?: () => IntPickerMiddleware;
-
   /**
    * Filters the generated value.
    *
@@ -205,6 +222,8 @@ export function makePickFunction<T>(
     arg: Pickable<T>,
     opts?: PickFunctionOpts<T>,
   ): T => {
+    let startMiddle: (() => IntPickerMiddleware) | undefined;
+
     if (arg instanceof PickRequest) {
       let req: PickRequest = arg;
       if (limit !== undefined && playouts.depth >= limit) {
@@ -213,6 +232,9 @@ export function makePickFunction<T>(
       const pick = playouts.nextPick(req);
       if (pick === undefined) throw new Pruned("cancelled in PlayoutSource");
       return pick as T;
+    } else if (arg instanceof MiddlewareRequest) {
+      startMiddle = arg.startMiddle;
+      arg = arg.script;
     }
 
     if (arg === null || typeof arg !== "object") {
@@ -221,7 +243,6 @@ export function makePickFunction<T>(
 
     const script = Script.from(arg, { caller: "pick function" });
 
-    const startMiddle = opts?.middle;
     const build = () => {
       while (true) {
         const depth = playouts.depth;
