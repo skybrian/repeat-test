@@ -25,9 +25,9 @@ class PipeResult<I, T> {
 
   constructor(
     readonly request: PipeRequest<I, T>,
-    readonly inputResult: PipeResult<unknown, I> | undefined,
-    readonly lastReqs: PickRequest[],
-    readonly lastReplies: number[],
+    readonly source: PipeResult<unknown, I> | Gen<I>,
+    readonly reqs: PickRequest[],
+    readonly replies: number[],
     readonly output: Gen<T>,
   ) {
     this.index = this.input.segmentCount;
@@ -43,7 +43,7 @@ class PipeResult<I, T> {
 
   regenerate(): T {
     const input = this.input.val;
-    const playouts = onePlayout(new PlaybackPicker(this.lastReplies));
+    const playouts = onePlayout(new PlaybackPicker(this.replies));
     assert(playouts.startAt(0));
     const pick = makePickFunction(playouts);
     return this.request.then(input, pick);
@@ -54,7 +54,7 @@ class PipeResult<I, T> {
       return this.output; // no change
     }
 
-    const picks = new EditPicker(this.lastReplies, editor);
+    const picks = new EditPicker(this.replies, editor);
     const playouts = onePlayout(picks);
     const pick = makePickFunction(playouts);
     const pipeReq = {
@@ -74,25 +74,22 @@ class PipeResult<I, T> {
       return next;
     }
   }
+}
 
-  /**
-   * The pipeline steps that were used to generate this value.
-   */
-  static getPipeline<I, T>(
-    last: PipeResult<I, T>,
-  ): PipeResult<unknown, unknown>[] {
-    const steps = [];
-    const lastResult = last as PipeResult<unknown, unknown> | undefined;
-    for (
-      let res = lastResult;
-      res !== undefined;
-      res = res.inputResult
-    ) {
-      steps.push(res);
-    }
-    steps.reverse();
-    return steps;
+/**
+ * The pipeline steps that were used to generate this value.
+ */
+function getPipeline<T>(
+  last: Gen<T> | PipeResult<unknown, T>,
+): { first: Gen<unknown>; rest: PipeResult<unknown, unknown>[] } {
+  let source: PipeResult<unknown, unknown> | Gen<unknown> = last;
+
+  const rest = [];
+  while (source instanceof PipeResult) {
+    rest.push(source);
+    source = source.source;
   }
+  return { first: source, rest };
 }
 
 /**
@@ -100,7 +97,7 @@ class PipeResult<I, T> {
  */
 export class Gen<T> implements Success<T> {
   readonly #script: Script<T>;
-  readonly #pipeResult: PipeResult<unknown, T> | undefined;
+  readonly #pipe: PipeResult<unknown, T> | Gen<T>;
 
   /** The requests for the last build step. */
   readonly #lastReqs: PickRequest[];
@@ -126,9 +123,9 @@ export class Gen<T> implements Success<T> {
     val: T,
   ) {
     this.#script = script;
-    this.#pipeResult = pipeReq === undefined ? undefined : new PipeResult(
+    this.#pipe = pipeReq === undefined ? this : new PipeResult(
       pipeReq,
-      pipeReq.input.#pipeResult,
+      pipeReq.input.#pipe,
       lastReqs,
       lastReplies,
       this,
@@ -149,11 +146,11 @@ export class Gen<T> implements Success<T> {
 
   private get reqs(): PickRequest[] {
     if (this.#reqs === undefined) {
-      const reqs: PickRequest[] = [];
-      for (const step of this.getPipeline()) {
-        reqs.push(...step.input.#lastReqs);
+      const { first, rest } = getPipeline(this.#pipe);
+      const reqs: PickRequest[] = [...first.#lastReqs];
+      for (const step of rest) {
+        reqs.push(...step.reqs);
       }
-      reqs.push(...this.#lastReqs);
       this.#reqs = reqs;
     }
     return this.#reqs;
@@ -161,11 +158,11 @@ export class Gen<T> implements Success<T> {
 
   get replies(): number[] {
     if (this.#replies === undefined) {
-      const replies: number[] = [];
-      for (const step of this.getPipeline()) {
-        replies.push(...step.input.#lastReplies);
+      const { first, rest } = getPipeline(this.#pipe);
+      const replies: number[] = [...first.#lastReplies];
+      for (const step of rest) {
+        replies.push(...step.replies);
       }
-      replies.push(...this.#lastReplies);
       this.#replies = replies;
     }
     return this.#replies;
@@ -181,7 +178,11 @@ export class Gen<T> implements Success<T> {
    * (Includes empty segments.)
    */
   get segmentCount(): number {
-    return this.#pipeResult?.segmentCount ?? 1;
+    if (this.#pipe instanceof Gen) {
+      return 1;
+    } else {
+      return this.#pipe.segmentCount;
+    }
   }
 
   /**
@@ -189,12 +190,13 @@ export class Gen<T> implements Success<T> {
    * that used them.
    */
   get segmentPicks(): PickList[] {
-    const segments: PickList[] = [];
-    for (const step of this.getPipeline()) {
-      const gen = step.input;
-      segments.push(new PickList(gen.#lastReqs, gen.#lastReplies));
+    const { first, rest } = getPipeline(this.#pipe);
+    const segments: PickList[] = [
+      new PickList(first.#lastReqs, first.#lastReplies),
+    ];
+    for (const step of rest) {
+      segments.push(new PickList(step.reqs, step.replies));
     }
-    segments.push(new PickList(this.#lastReqs, this.#lastReplies));
     return segments;
   }
 
@@ -214,10 +216,10 @@ export class Gen<T> implements Success<T> {
       return val;
     }
 
-    if (this.#pipeResult !== undefined) {
-      return this.#pipeResult.regenerate();
-    }
+    return this.#pipe.regenerate();
+  }
 
+  regenerate(): T {
     const playouts = onePlayout(new PlaybackPicker(this.replies));
     assert(playouts.startAt(0));
     const pick = makePickFunction(playouts);
@@ -233,20 +235,16 @@ export class Gen<T> implements Success<T> {
    * If edit can't be applied, returns undefined.
    */
   mutate(editors: SegmentEditor): Gen<T> | undefined {
-    const steps = this.getPipeline();
-    if (steps.length === 0) {
-      return this.mutateNonPipe(editors(0));
-    }
+    const { first, rest } = getPipeline(this.#pipe);
 
     let i = 0;
-    const next = steps[0].input.mutateNonPipe(editors(i++));
+    const next = first.mutateNonPipe(editors(i++));
     if (next === undefined) {
       return undefined; // failed edit
     }
     let gen = next;
-    for (const step of steps) {
-      const editor = editors(i++);
-      const next = step.mutate(gen, editor);
+    for (const step of rest) {
+      const next = step.mutate(gen, editors(i++));
       if (next === undefined) {
         return undefined; // failed edit
       }
@@ -271,17 +269,6 @@ export class Gen<T> implements Success<T> {
     }
 
     return gen;
-  }
-
-  /**
-   * The pipeline steps that were used to generate this value.
-   *
-   * Returns an empty array if not a pipeline.
-   */
-  private getPipeline(): PipeResult<unknown, unknown>[] {
-    return this.#pipeResult === undefined
-      ? []
-      : PipeResult.getPipeline(this.#pipeResult);
   }
 
   static makeBuildResult<T>(
