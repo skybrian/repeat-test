@@ -7,7 +7,7 @@ import { Script } from "../src/script_class.ts";
 import { onePlayout } from "../src/backtracking.ts";
 import { makePickFunction } from "../src/build.ts";
 import { PlaybackPicker } from "../src/picks.ts";
-import { success } from "../src/results.ts";
+import { done } from "../src/results.ts";
 import { PickRequest } from "@/arbitrary.ts";
 
 function makePick(replies: number[]): PickFunction {
@@ -35,7 +35,7 @@ describe("Script", () => {
     function countOnes(n = 0): Script<number> {
       return Script.fromStep(`countOnes ${n}`, (pick) => {
         if (pick(PickRequest.bit) === 0) {
-          return success(n);
+          return done(n);
         }
         return countOnes(n + 1);
       });
@@ -43,7 +43,7 @@ describe("Script", () => {
 
     it("executes a single-step script", () => {
       const pick = makePick([]);
-      assertEquals(hi.step(pick), success("hi"));
+      assertEquals(hi.step(pick), done("hi"));
     });
 
     it("executes a two-step script", () => {
@@ -52,7 +52,7 @@ describe("Script", () => {
       const first = hiThere.step(pick);
       assert(first instanceof Script);
 
-      assertEquals(first.step(pick), success("hi there"));
+      assertEquals(first.step(pick), done("hi there"));
     });
 
     it("executes a three-step script", () => {
@@ -64,7 +64,7 @@ describe("Script", () => {
       const second = first.step(pick);
       assert(second instanceof Script);
 
-      assertEquals(second.step(pick), success("hi there again"));
+      assertEquals(second.step(pick), done("hi there again"));
     });
 
     it("executes a recursive script", () => {

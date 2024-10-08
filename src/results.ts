@@ -19,3 +19,10 @@ export function success<T>(val?: T): Success<T | undefined> {
 export function failure(message: string): Failure {
   return { ok: false, message };
 }
+
+/** Distinguishes a finished result from one that's still in progress. */
+export type Done<T> = Success<T> & { readonly done: true };
+
+export function done<T>(val: T): Done<T> {
+  return { ok: true, done: true, val };
+}

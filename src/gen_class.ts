@@ -20,21 +20,21 @@ const alwaysGenerate = Symbol("alwaysGenerate");
 
 class Cache<T> {
   #regenerate: () => ScriptResult<T>;
-  #val: ScriptResult<T> | typeof alwaysGenerate;
+  #result: ScriptResult<T> | typeof alwaysGenerate;
 
-  constructor(regenerate: () => ScriptResult<T>, val: ScriptResult<T>) {
+  constructor(regenerate: () => ScriptResult<T>, result: ScriptResult<T>) {
     this.#regenerate = regenerate;
-    this.#val = val;
+    this.#result = result;
   }
 
-  get val(): ScriptResult<T> {
-    if (this.#val !== alwaysGenerate) {
-      const val = this.#val;
-      if (!(val instanceof Script) && !Object.isFrozen(val.val)) {
+  get result(): ScriptResult<T> {
+    if (this.#result !== alwaysGenerate) {
+      const result = this.#result;
+      if (result.done && !Object.isFrozen(result.val)) {
         // Regenerate the value from now on.
-        this.#val = alwaysGenerate;
+        this.#result = alwaysGenerate;
       }
-      return val;
+      return result;
     }
     return this.#regenerate();
   }
@@ -128,8 +128,8 @@ class PipeStep<T> {
     this.index = this.source.segmentCount;
 
     const regenerate = (): ScriptResult<T> => {
-      const script = this.source.cache.val;
-      assert(script instanceof Script);
+      const script = this.source.cache.result;
+      assert(!script.done);
       const playouts = onePlayout(new PlaybackPicker(this.replies));
       assert(playouts.startAt(0));
       const pick = makePickFunction(playouts);
@@ -186,8 +186,8 @@ class PipeStep<T> {
     pick: PickFunction,
     playouts: PlayoutSource,
   ): PipeStep<T> | Success<T> | undefined {
-    const script = source.cache.val;
-    if (!(script instanceof Script)) {
+    const script = source.cache.result;
+    if (script.done) {
       return script;
     }
 
@@ -318,8 +318,8 @@ export class Gen<T> implements Success<T> {
    * each time after the first access.
    */
   get val(): T {
-    const result = this.#end.cache.val;
-    assert(!(result instanceof Script));
+    const result = this.#end.cache.result;
+    assert(result.done);
     return result.val;
   }
 
@@ -353,7 +353,7 @@ export class Gen<T> implements Success<T> {
       return this; // no change
     }
 
-    if (!(end.cache.val instanceof Script)) {
+    if (end.cache.result.done) {
       return new Gen(this.#name, end); // finished in the same number of steps.
     }
 
@@ -361,7 +361,7 @@ export class Gen<T> implements Success<T> {
     const playout = minPlayout();
     const pick = makePickFunction(playout);
 
-    while (end.cache.val instanceof Script) {
+    while (!end.cache.result.done) {
       const next = PipeStep.generateStep(
         end,
         pick,

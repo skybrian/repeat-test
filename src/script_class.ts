@@ -1,5 +1,7 @@
 import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
-import { type Success, success } from "./results.ts";
+import type { Done } from "./results.ts";
+
+import { done } from "./results.ts";
 
 /**
  * A function that transforms a value, given some picks.
@@ -14,13 +16,15 @@ export interface HasScript<T> extends Pickable<T> {
   readonly buildScript: Script<T>;
 }
 
-export type ScriptResult<T> = Success<T> | Script<T>;
+export type ScriptResult<T> = Done<T> | Script<T>;
 
 export type StepFunction<T> = (
   pick: PickFunction,
 ) => ScriptResult<T>;
 
 export class Script<T> implements Pickable<T> {
+  readonly done = false; // To distinguish it from a Done result.
+
   readonly #name: string;
   readonly #build: BuildFunction<T>;
   readonly #step: StepFunction<T>;
@@ -59,12 +63,11 @@ export class Script<T> implements Pickable<T> {
 
     const step = (pick: PickFunction): ScriptResult<Out> => {
       const next = this.step(pick);
-      if (next instanceof Script) {
-        return next.then("step", then);
-      } else {
+      if (next.done) {
         const val = next.val;
         return Script.make(name, (pick) => then(val, pick));
       }
+      return next.then("step", then);
     };
 
     return new Script(name, build, step);
@@ -74,7 +77,7 @@ export class Script<T> implements Pickable<T> {
     name: string,
     build: BuildFunction<T>,
   ): Script<T> {
-    const step = (pick: PickFunction): ScriptResult<T> => success(build(pick));
+    const step = (pick: PickFunction): ScriptResult<T> => done(build(pick));
     return new Script(name, build, step);
   }
 
@@ -84,7 +87,7 @@ export class Script<T> implements Pickable<T> {
   ): Script<T> {
     const build = (pick: PickFunction): T => {
       let next = step(pick);
-      while (next instanceof Script) {
+      while (!next.done) {
         next = next.step(pick);
       }
       return next.val;

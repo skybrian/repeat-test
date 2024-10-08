@@ -1,7 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
-import { success } from "../src/results.ts";
+import { done } from "../src/results.ts";
 import { Pruned } from "../src/pickable.ts";
 import { PickList, PickRequest, PlaybackPicker } from "../src/picks.ts";
 import { keep, replace, replaceAt, snip } from "../src/edits.ts";
@@ -62,7 +62,7 @@ function countOnes(n = 0): Script<number> {
       throw new Pruned("too many ones");
     }
     if (pick(PickRequest.bit) === 0) {
-      return success(n);
+      return done(n);
     }
     return countOnes(n + 1);
   });
