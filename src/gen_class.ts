@@ -1,33 +1,36 @@
 import type { Failure, Success } from "./results.ts";
-import { type Pickable, type PickFunction, Pruned } from "./pickable.ts";
-import type { ThenFunction } from "./script_class.ts";
+import type { Pickable, PickFunction } from "./pickable.ts";
+import type { ScriptResult } from "./script_class.ts";
 import type { PickRequest } from "./picks.ts";
 import type { SegmentEditor, StreamEditor } from "./edits.ts";
 import type { GenerateOpts } from "./build.ts";
+import type { PlayoutSource } from "./backtracking.ts";
 
 import { assert } from "@std/assert";
+import { Pruned } from "./pickable.ts";
 import { failure } from "./results.ts";
 import { Script } from "./script_class.ts";
 import { PickList, PlaybackPicker } from "./picks.ts";
 import { EditPicker, keep } from "./edits.ts";
-import { onePlayout, type PlayoutSource } from "./backtracking.ts";
+import { onePlayout } from "./backtracking.ts";
 import { makePickFunction } from "./build.ts";
+import { minPlayout } from "./backtracking.ts";
 
 const alwaysGenerate = Symbol("alwaysGenerate");
 
 class Cache<T> {
-  #regenerate: () => T;
-  #val: T | typeof alwaysGenerate;
+  #regenerate: () => ScriptResult<T>;
+  #val: ScriptResult<T> | typeof alwaysGenerate;
 
-  constructor(regenerate: () => T, val: T) {
+  constructor(regenerate: () => ScriptResult<T>, val: ScriptResult<T>) {
     this.#regenerate = regenerate;
     this.#val = val;
   }
 
-  get val(): T {
+  get val(): ScriptResult<T> {
     if (this.#val !== alwaysGenerate) {
       const val = this.#val;
-      if (!Object.isFrozen(val)) {
+      if (!(val instanceof Script) && !Object.isFrozen(val.val)) {
         // Regenerate the value from now on.
         this.#val = alwaysGenerate;
       }
@@ -44,13 +47,13 @@ class PipeHead<T> {
     private readonly script: Script<T>,
     readonly reqs: PickRequest[],
     readonly replies: number[],
-    output: T,
+    output: ScriptResult<T>,
   ) {
-    const regenerate = (): T => {
+    const regenerate = (): ScriptResult<T> => {
       const playouts = onePlayout(new PlaybackPicker(this.replies));
       assert(playouts.startAt(0));
       const pick = makePickFunction(playouts);
-      return this.script.buildPick(pick);
+      return this.script.step(pick);
     };
     this.cache = new Cache(regenerate, output);
   }
@@ -95,7 +98,7 @@ class PipeHead<T> {
     const depth = playouts.depth;
     while (playouts.startValue(depth)) {
       try {
-        const val = script.buildPick(pick);
+        const val = script.step(pick);
         const reqs = playouts.getRequests(depth);
         const replies = playouts.getReplies(depth);
         return new PipeHead(script, reqs, replies, val);
@@ -112,25 +115,25 @@ class PipeHead<T> {
   }
 }
 
-class PipeStep<I, T> {
+class PipeStep<T> {
   private readonly index: number;
   readonly #output: Cache<T>;
 
   constructor(
-    readonly source: PipeHead<I> | PipeStep<unknown, I>,
-    readonly then: ThenFunction<I, T>,
+    readonly source: PipeHead<T> | PipeStep<T>,
     readonly reqs: PickRequest[],
     readonly replies: number[],
-    output: T,
+    output: ScriptResult<T>,
   ) {
     this.index = this.source.segmentCount;
 
-    const regenerate = (): T => {
-      const input = this.source.cache.val;
+    const regenerate = (): ScriptResult<T> => {
+      const script = this.source.cache.val;
+      assert(script instanceof Script);
       const playouts = onePlayout(new PlaybackPicker(this.replies));
       assert(playouts.startAt(0));
       const pick = makePickFunction(playouts);
-      return then(input, pick);
+      return script.step(pick);
     };
     this.#output = new Cache(regenerate, output);
   }
@@ -148,9 +151,9 @@ class PipeStep<I, T> {
   }
 
   mutate(
-    nextSource: PipeHead<I> | PipeStep<unknown, I>,
+    nextSource: PipeHead<T> | PipeStep<T>,
     editor: StreamEditor,
-  ): PipeStep<I, T> | undefined {
+  ): PipeStep<T> | Success<T> | undefined {
     if (editor === keep && nextSource === this.source) {
       return this; // no change
     }
@@ -159,14 +162,13 @@ class PipeStep<I, T> {
     const playouts = onePlayout(picks);
     const pick = makePickFunction(playouts);
 
-    const next = PipeStep.generate(
+    const next = PipeStep.generateStep(
       nextSource,
-      this.then,
       pick,
       playouts,
     );
-    if (next === undefined) {
-      return undefined; // failed edit
+    if (!(next instanceof PipeStep)) {
+      return next; // failed or finished early
     }
 
     if (
@@ -179,19 +181,23 @@ class PipeStep<I, T> {
     return next;
   }
 
-  static generate<I, T>(
-    source: PipeHead<I> | PipeStep<unknown, I>,
-    then: ThenFunction<I, T>,
+  static generateStep<T>(
+    source: PipeHead<T> | PipeStep<T>,
     pick: PickFunction,
     playouts: PlayoutSource,
-  ): PipeStep<I, T> | undefined {
+  ): PipeStep<T> | Success<T> | undefined {
+    const script = source.cache.val;
+    if (!(script instanceof Script)) {
+      return script;
+    }
+
     const depth = playouts.depth;
     while (playouts.startValue(depth)) {
       try {
-        const val = then(source.cache.val, pick);
+        const next = script.step(pick);
         const reqs = playouts.getRequests(depth);
         const replies = playouts.getReplies(depth);
-        return new PipeStep(source, then, reqs, replies, val);
+        return new PipeStep(source, reqs, replies, next);
       } catch (e) {
         if (!(e instanceof Pruned)) {
           throw e;
@@ -210,15 +216,16 @@ class PipeStep<I, T> {
  * Given the end of a pipeline, returns all the components.
  */
 function splitPipeline<T>(
-  end: PipeHead<T> | PipeStep<unknown, T>,
-): { first: PipeHead<unknown>; rest: PipeStep<unknown, unknown>[] } {
-  let source: PipeStep<unknown, unknown> | PipeHead<unknown> = end;
+  end: PipeHead<T> | PipeStep<T>,
+): { first: PipeHead<T>; rest: PipeStep<T>[] } {
+  let source: PipeStep<T> | PipeHead<T> = end;
 
   const rest = [];
   while (source instanceof PipeStep) {
     rest.push(source);
     source = source.source;
   }
+  rest.reverse();
   return { first: source, rest };
 }
 
@@ -227,7 +234,7 @@ function splitPipeline<T>(
  */
 export class Gen<T> implements Success<T> {
   readonly #name: string;
-  readonly #end: PipeHead<T> | PipeStep<unknown, T>;
+  readonly #end: PipeHead<T> | PipeStep<T>;
   #reqs: PickRequest[] | undefined;
   #replies: number[] | undefined;
 
@@ -239,7 +246,7 @@ export class Gen<T> implements Success<T> {
    */
   constructor(
     name: string,
-    end: PipeHead<T> | PipeStep<unknown, T>,
+    end: PipeHead<T> | PipeStep<T>,
   ) {
     this.#name = name;
     this.#end = end;
@@ -311,7 +318,9 @@ export class Gen<T> implements Success<T> {
    * each time after the first access.
    */
   get val(): T {
-    return this.#end.cache.val;
+    const result = this.#end.cache.val;
+    assert(!(result instanceof Script));
+    return result.val;
   }
 
   /**
@@ -330,18 +339,42 @@ export class Gen<T> implements Success<T> {
     if (next === undefined) {
       return undefined; // failed edit
     }
-    let end: PipeHead<unknown> | PipeStep<unknown, unknown> = next;
+    let end: PipeHead<T> | PipeStep<T> = next;
     for (const step of rest) {
       const next = step.mutate(end, editors(i++));
       if (next === undefined) {
         return undefined; // failed edit
+      } else if (!(next instanceof PipeStep)) {
+        return new Gen(this.#name, end); // finished earlier than before
       }
       end = next;
     }
     if (end === this.#end) {
       return this; // no change
     }
-    return new Gen(this.#name, end) as Gen<T>;
+
+    if (!(end.cache.val instanceof Script)) {
+      return new Gen(this.#name, end); // finished in the same number of steps.
+    }
+
+    // Pipeline is longer. Keep building with default picks.
+    const playout = minPlayout();
+    const pick = makePickFunction(playout);
+
+    while (end.cache.val instanceof Script) {
+      const next = PipeStep.generateStep(
+        end,
+        pick,
+        playout,
+      );
+      if (next === undefined) {
+        return undefined; // failed edit
+      }
+      assert(next instanceof PipeStep);
+      end = next;
+    }
+
+    return new Gen(this.#name, end);
   }
 
   static mustBuild<T>(arg: Pickable<T>, replies: number[]): Gen<T> {
@@ -374,33 +407,28 @@ export function generate<T>(
   playouts: PlayoutSource,
   opts?: GenerateOpts,
 ): Gen<T> | undefined {
-  const script = Script.from(arg, { caller: "generate" });
+  const start = Script.from(arg, { caller: "generate" });
   const pick = makePickFunction(playouts, opts);
-  const { base, steps } = script.toSteps();
 
   nextPlayout: while (playouts.startAt(0)) {
-    const first = PipeHead.generate(base, pick, playouts);
-    if (first === undefined) {
+    const next = PipeHead.generate(start, pick, playouts);
+    if (next === undefined) {
       continue;
     }
 
-    let source: PipeHead<unknown> | PipeStep<unknown, unknown> = first;
-    for (const script of steps) {
-      const pipe = script.toPipe();
-      assert(pipe !== undefined);
-      const then = pipe.then as ThenFunction<unknown, T>;
-      const next: PipeStep<unknown, unknown> | undefined = PipeStep.generate(
+    let source: PipeHead<T> | PipeStep<T> = next;
+    while (true) {
+      const next: PipeStep<T> | Success<T> | undefined = PipeStep.generateStep(
         source,
-        then,
         pick,
         playouts,
       );
       if (next === undefined) {
         continue nextPlayout;
+      } else if (!(next instanceof PipeStep)) {
+        return new Gen(start.name, source); // finished
       }
       source = next;
     }
-
-    return new Gen<unknown>(script.name, source) as Gen<T>;
   }
 }

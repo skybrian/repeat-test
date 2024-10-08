@@ -8,6 +8,7 @@ import { onePlayout } from "../src/backtracking.ts";
 import { makePickFunction } from "../src/build.ts";
 import { PlaybackPicker } from "../src/picks.ts";
 import { success } from "../src/results.ts";
+import { PickRequest } from "@/arbitrary.ts";
 
 function makePick(replies: number[]): PickFunction {
   const playouts = onePlayout(new PlaybackPicker(replies));
@@ -30,6 +31,15 @@ describe("Script", () => {
     const hi = Script.make("hello", () => "hi");
     const hiThere = hi.then("hi there", (val) => val + " there");
     const hiThereAgain = hiThere.then("again", (val) => val + " again");
+
+    function countOnes(n = 0): Script<number> {
+      return Script.fromStep(`countOnes ${n}`, (pick) => {
+        if (pick(PickRequest.bit) === 0) {
+          return success(n);
+        }
+        return countOnes(n + 1);
+      });
+    }
 
     it("executes a single-step script", () => {
       const pick = makePick([]);
@@ -56,12 +66,12 @@ describe("Script", () => {
 
       assertEquals(second.step(pick), success("hi there again"));
     });
-  });
 
-  describe("toSteps", () => {
-    it("returns no steps for a simple build script", () => {
-      const hi = Script.make("hello", () => "hi");
-      assertEquals(hi.toSteps(), { base: hi, steps: [] });
+    it("executes a recursive script", () => {
+      assertEquals(countOnes().buildPick(makePick([])), 0);
+      assertEquals(countOnes().buildPick(makePick([1])), 1);
+      assertEquals(countOnes().buildPick(makePick([1, 1])), 2);
+      assertEquals(countOnes().buildPick(makePick([1, 1, 1])), 3);
     });
   });
 });

@@ -1,9 +1,10 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
+import { success } from "../src/results.ts";
 import { Pruned } from "../src/pickable.ts";
 import { PickList, PickRequest, PlaybackPicker } from "../src/picks.ts";
-import { keep, replace, snip } from "../src/edits.ts";
+import { keep, replace, replaceAt, snip } from "../src/edits.ts";
 import { Script } from "../src/script_class.ts";
 import { Gen, generate } from "../src/gen_class.ts";
 import { propsFromGen } from "./lib/props.ts";
@@ -54,6 +55,18 @@ const firstStepPruned = pruned.then(
     return `(${a}, ${b})`;
   },
 );
+
+function countOnes(n = 0): Script<number> {
+  return Script.fromStep(`countOnes ${n}`, (pick) => {
+    if (n > 5) {
+      throw new Pruned("too many ones");
+    }
+    if (pick(PickRequest.bit) === 0) {
+      return success(n);
+    }
+    return countOnes(n + 1);
+  });
+}
 
 describe("Gen", () => {
   describe("build", () => {
@@ -252,6 +265,39 @@ describe("Gen", () => {
           undefined,
       );
     });
+
+    it("mutates to a shorter pipeline", () => {
+      const before = Gen.mustBuild(countOnes(), [1, 1, 1, 0]);
+      assertEquals(before.val, 3);
+
+      const after = before.mutate((i) => (i === 1) ? snip : keep);
+      assertEquals(propsFromGen(after), {
+        val: 1,
+        name: "countOnes 0",
+        reqs: [PickRequest.bit, PickRequest.bit],
+        replies: [1, 0],
+      });
+    });
+
+    it("mutates to a longer pipeline", () => {
+      const before = Gen.mustBuild(countOnes(), [1, 0]);
+      assertEquals(before.val, 1);
+
+      const after = before.mutate(replaceAt(1, 0, 1));
+      assertEquals(propsFromGen(after), {
+        val: 2,
+        name: "countOnes 0",
+        reqs: [PickRequest.bit, PickRequest.bit, PickRequest.bit],
+        replies: [1, 1, 0],
+      });
+    });
+
+    it("returns undefined if a new step fails", () => {
+      const before = Gen.mustBuild(countOnes(), [1, 1, 1, 1, 1, 0]);
+      assertEquals(before.val, 5);
+
+      assertEquals(before.mutate(replaceAt(5, 0, 1)), undefined);
+    });
   });
 });
 
@@ -332,7 +378,7 @@ describe("generate", () => {
     });
   });
 
-  describe("for a pipeline", () => {
+  describe("for Script.then", () => {
     it("generates all values", () => {
       const playouts = orderedPlayouts();
       for (const expectedReplies of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
@@ -413,6 +459,22 @@ describe("generate", () => {
         onePlayout(new PlaybackPicker([])),
       );
       assert(gen === undefined);
+    });
+  });
+
+  describe("for Script.fromStep", () => {
+    it("generates values with increasing depth", () => {
+      const script = countOnes();
+      const playouts = orderedPlayouts();
+      for (let i = 0; i < 5; i++) {
+        const gen = generate(script, playouts);
+        assertEquals(propsFromGen(gen), {
+          val: i,
+          name: `countOnes 0`,
+          reqs: new Array(i + 1).fill(bitReq),
+          replies: new Array(i).fill(1).concat([0]),
+        });
+      }
     });
   });
 });
