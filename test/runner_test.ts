@@ -12,7 +12,7 @@ import {
   fail,
 } from "@std/assert";
 
-import { Pruned } from "../src/pickable.ts";
+import { Filtered } from "../src/pickable.ts";
 import { PickRequest } from "../src/picks.ts";
 import { minPlayout } from "../src/backtracking.ts";
 import { generate } from "../src/gen_class.ts";
@@ -209,7 +209,7 @@ describe("generateReps", () => {
     const rerollTwos = Arbitrary.from((pick) => {
       const roll = pick(diceRoll);
       if (roll === 2) {
-        throw new Pruned("try again");
+        throw new Filtered("try again");
       }
       return "good";
     });

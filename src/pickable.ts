@@ -1,10 +1,9 @@
 /**
- * Indicates that no pick could be built and a retry is needed.
+ * Indicates that a value can't be built from the chosen picks.
  *
- * A `PickFunction` may throw `Pruned` to indicate that no pick could be
- * generated and a retry is needed. This can happen if due to filtering.
+ * The build function should be retried if different picks are available.
  */
-export class Pruned extends Error {
+export class Filtered extends Error {
   readonly ok = false;
   constructor(msg: string) {
     super(msg);
@@ -19,7 +18,7 @@ export type PickFunctionOpts<T> = {
    * Filters the generated value.
    *
    * If it returns false, the pick function may either try a different value or
-   * throw {@link Pruned}.
+   * throw {@link Filtered}.
    */
   accept?: (val: T) => boolean;
 
@@ -33,7 +32,7 @@ export type PickFunctionOpts<T> = {
 /**
  * Generates a value, given a Pickable.
  *
- * Throws {@link Pruned} if no value can be generated, perhaps due to filtering.
+ * Throws {@link Filtered} if no value can be generated.
  */
 export interface PickFunction {
   <T>(req: Pickable<T>, opts?: PickFunctionOpts<T>): T;
@@ -44,14 +43,14 @@ export interface PickFunction {
  *
  * The result should only on what `pick` returns.
  *
- * If the {@link PickFunction} throws {@link Pruned} then the build function
+ * If the {@link PickFunction} throws {@link Filtered} then the build function
  * should also throw it. This allow the function call to be retried. The build
- * function could also throw it to if it gets a pick it can't use.
+ * function could also throw `Filtered` itself, if it gets a pick it can't use.
  */
 export type BuildFunction<T> = (pick: PickFunction) => T;
 
 /**
- * Something that can generate picks.
+ * Something that can build values from picks.
  *
  * Alternatively, a set of possible values to pick from.
  */

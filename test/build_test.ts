@@ -1,7 +1,7 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
 
-import { Arbitrary, Pruned, Script } from "@/arbitrary.ts";
+import { Arbitrary, Filtered, Script } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
@@ -59,7 +59,7 @@ describe("makePickFunction", () => {
 
   it("can filter out every value", () => {
     const accept = () => false;
-    assertThrows(() => pick(hi, { accept }), Pruned);
+    assertThrows(() => pick(hi, { accept }), Filtered);
   });
 
   it("gives up eventually", () => {
@@ -76,7 +76,7 @@ describe("makePickFunction", () => {
     const arb = Arbitrary.from((pick) => {
       const n = pick(roll);
       if (n === 3) {
-        throw new Pruned("try again");
+        throw new Filtered("try again");
       }
       return n;
     });

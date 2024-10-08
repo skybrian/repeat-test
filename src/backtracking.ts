@@ -14,7 +14,7 @@ export interface Tracker {
   startPlayout(depth: number): void;
 
   /**
-   * Returns the next pick, or undefined if it's pruned by the tracker.
+   * Returns the next pick, or undefined if it's filtered by the tracker.
    */
   maybePick(req: PickRequest): number | undefined;
 

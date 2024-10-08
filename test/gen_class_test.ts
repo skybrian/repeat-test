@@ -2,7 +2,7 @@ import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { done } from "../src/results.ts";
-import { Pruned } from "../src/pickable.ts";
+import { Filtered } from "../src/pickable.ts";
 import { PickList, PickRequest, PlaybackPicker } from "../src/picks.ts";
 import { keep, replace, replacePick, snip } from "../src/edits.ts";
 import { Script } from "../src/script_class.ts";
@@ -29,7 +29,7 @@ const frozen = Script.make("frozen", () => Object.freeze(["frozen"]));
 const mutable = Script.make("mutable", () => ["mutable"]);
 
 const pruned = Script.make("never", () => {
-  throw new Pruned("nope");
+  throw new Filtered("nope");
 });
 
 const multiStep = bit.then("multi-step", (a, pick) => {
@@ -59,7 +59,7 @@ const firstStepPruned = pruned.then(
 function countOnes(n = 0): Script<number> {
   return Script.fromStep(`countOnes ${n}`, (pick) => {
     if (n > 5) {
-      throw new Pruned("too many ones");
+      throw new Filtered("too many ones");
     }
     if (pick(PickRequest.bit) === 0) {
       return done(n);
@@ -237,7 +237,7 @@ describe("Gen", () => {
     const evenRoll = Script.make("evenRoll", (pick) => {
       const roll = pick(new PickRequest(1, 6));
       if (roll % 2 !== 0) {
-        throw new Pruned("that's odd");
+        throw new Filtered("that's odd");
       }
       return roll;
     });
@@ -245,7 +245,7 @@ describe("Gen", () => {
     const evenDoubles = evenRoll.then("evenDoubles", (a, pick) => {
       const b = pick(new PickRequest(1, 6));
       if (a !== b) {
-        throw new Pruned("not a double");
+        throw new Filtered("not a double");
       }
       return [a, b];
     });
@@ -369,7 +369,7 @@ describe("generate", () => {
     });
 
     const rejectAll = Script.make("rejectAll", () => {
-      throw new Pruned("nope");
+      throw new Filtered("nope");
     });
 
     it("returns undefined if there are no matching playouts", () => {
@@ -396,7 +396,7 @@ describe("generate", () => {
     it("retries for a pruned multi-step build script", () => {
       const pruned = bit.then("pruned", (val) => {
         if (val === 0) {
-          throw new Pruned("try again");
+          throw new Filtered("try again");
         }
         return val;
       });
@@ -451,7 +451,7 @@ describe("generate", () => {
 
     it("fails when all playouts were rejected", () => {
       const script = bit.then("untitled", () => {
-        throw new Pruned("nope");
+        throw new Filtered("nope");
       });
 
       const gen = generate(

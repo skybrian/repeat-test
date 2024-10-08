@@ -6,7 +6,7 @@ import type {
 } from "./pickable.ts";
 import type { PlayoutSource } from "./backtracking.ts";
 
-import { Pruned } from "./pickable.ts";
+import { Filtered } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
 
@@ -74,7 +74,7 @@ export function makePickFunction<T>(
         req = new PickRequest(arg.min, arg.min);
       }
       const pick = playouts.nextPick(req);
-      if (pick === undefined) throw new Pruned("cancelled in PlayoutSource");
+      if (pick === undefined) throw new Filtered("cancelled in PlayoutSource");
       return pick as T;
     } else if (arg instanceof MiddlewareRequest) {
       startMiddle = arg.startMiddle;
@@ -110,7 +110,7 @@ export function makePickFunction<T>(
           const val = script.buildFrom(innerPick);
           return val;
         } catch (e) {
-          if (!(e instanceof Pruned)) {
+          if (!(e instanceof Filtered)) {
             throw e;
           }
           if (!playouts.startAt(depth)) {
@@ -134,7 +134,7 @@ export function makePickFunction<T>(
         return val;
       }
       if (!playouts.startAt(depth)) {
-        throw new Pruned("accept() returned false for all possible values");
+        throw new Filtered("accept() returned false for all possible values");
       }
     }
     throw new Error(

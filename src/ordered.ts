@@ -3,7 +3,7 @@ import type { Tracker } from "./backtracking.ts";
 import type { Gen } from "./gen_class.ts";
 
 import { assert } from "@std/assert";
-import { Pruned } from "./pickable.ts";
+import { Filtered } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
 import { PlayoutSource } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
@@ -192,7 +192,7 @@ export function take<T>(arg: Pickable<T>, n: number): T[] {
     try {
       result.push(script.buildFrom(pick));
     } catch (e) {
-      if (!(e instanceof Pruned)) {
+      if (!(e instanceof Filtered)) {
         throw e;
       }
     }

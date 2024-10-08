@@ -5,7 +5,7 @@ import { assert, assertEquals, assertThrows, fail } from "@std/assert";
 
 import { Arbitrary } from "@/arbitrary.ts";
 
-import { Pruned } from "../src/pickable.ts";
+import { Filtered } from "../src/pickable.ts";
 import { PickRequest } from "../src/picks.ts";
 import { Script } from "../src/script_class.ts";
 
@@ -90,7 +90,7 @@ function runSearch(
         playouts.add(playout, tracker.currentPass);
       }
     } catch (e) {
-      if (!(e instanceof Pruned)) {
+      if (!(e instanceof Filtered)) {
         throw e;
       }
     }
@@ -384,10 +384,10 @@ describe("takeAll", () => {
     assertValues(bool, [false, true]);
   });
 
-  it("handles PlayoutPruned", () => {
+  it("handles filtering by throwing an exception", () => {
     const notTwo = Arbitrary.from((pick) => {
       const n = pick(new PickRequest(1, 3));
-      if (n === 2) throw new Pruned("skip 2");
+      if (n === 2) throw new Filtered("skip 2");
       return n;
     });
     assertValues(notTwo, [1, 3]);

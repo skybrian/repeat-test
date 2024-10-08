@@ -10,7 +10,7 @@ import {
 } from "./lib/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
-import { Pruned } from "../src/pickable.ts";
+import { Filtered } from "../src/pickable.ts";
 import { PickRequest } from "../src/picks.ts";
 
 import { Arbitrary } from "@/arbitrary.ts";
@@ -48,7 +48,7 @@ describe("Arbitrary", () => {
       });
       it("throws an Error if the Arbitrary didn't generate any values", () => {
         const build = () => {
-          throw new Pruned("oops");
+          throw new Filtered("oops");
         };
         assertThrows(
           () => Arbitrary.from(build),
@@ -229,7 +229,7 @@ describe("Arbitrary", () => {
     it("recovers cleanly when the filtered arbitrary throws Pruned", () => {
       const original = Arbitrary.from((pick) => {
         const n = pick(new PickRequest(1, 3));
-        if (n === 2) throw new Pruned("skip 2");
+        if (n === 2) throw new Filtered("skip 2");
         return n;
       });
       const filtered = original.filter(() => true);

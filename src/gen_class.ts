@@ -7,7 +7,7 @@ import type { GenerateOpts } from "./build.ts";
 import type { PlayoutSource } from "./backtracking.ts";
 
 import { assert } from "@std/assert";
-import { Pruned } from "./pickable.ts";
+import { Filtered } from "./pickable.ts";
 import { cacheOnce, failure } from "./results.ts";
 import { Script } from "./script_class.ts";
 import { PickList, PlaybackPicker } from "./picks.ts";
@@ -93,11 +93,11 @@ class PipeHead<T> {
         const replies = playouts.getReplies(depth);
         return new PipeHead(script, reqs, replies, val);
       } catch (e) {
-        if (!(e instanceof Pruned)) {
+        if (!(e instanceof Filtered)) {
           throw e;
         }
         if (playouts.state === "picking") {
-          playouts.endPlayout(); // pruned, move to next playout
+          playouts.endPlayout(); // filtered, move to next playout
         }
       }
     }
@@ -184,11 +184,11 @@ class PipeStep<T> {
         const replies = playouts.getReplies(depth);
         return new PipeStep(source, reqs, replies, next);
       } catch (e) {
-        if (!(e instanceof Pruned)) {
+        if (!(e instanceof Filtered)) {
           throw e;
         }
         if (playouts.state === "picking") {
-          playouts.endPlayout(); // pruned, move to next playout
+          playouts.endPlayout(); // filtered, move to next playout
         }
       }
     }

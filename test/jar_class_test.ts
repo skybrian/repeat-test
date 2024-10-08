@@ -8,7 +8,7 @@ import { Jar } from "@/domain.ts";
 import * as arb from "@/arbs.ts";
 import * as dom from "@/doms.ts";
 
-import { Pruned } from "../src/pickable.ts";
+import { Filtered } from "../src/pickable.ts";
 import { onePlayout } from "../src/backtracking.ts";
 import { makePickFunction } from "../src/build.ts";
 import { alwaysPickMin } from "../src/picks.ts";
@@ -43,7 +43,7 @@ describe("Jar", () => {
         }
         break;
       } catch (e) {
-        if (!(e instanceof Pruned)) {
+        if (!(e instanceof Filtered)) {
           throw e;
         }
       }
@@ -60,7 +60,7 @@ describe("Jar", () => {
     it("throws Pruned if the same playout was seen twice", () => {
       const jar = new Jar(dom.of("hi"));
       jar.take(pick);
-      assertThrows(() => jar.take(pick), Pruned);
+      assertThrows(() => jar.take(pick), Filtered);
     });
 
     describe("with an overlapping oneOf", () => {
