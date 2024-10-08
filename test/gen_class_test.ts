@@ -2,14 +2,23 @@ import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { Pruned } from "../src/pickable.ts";
-import { PickList, PickRequest } from "../src/picks.ts";
+import { PickList, PickRequest, PlaybackPicker } from "../src/picks.ts";
 import { keep, replace, snip } from "../src/edits.ts";
 import { Script } from "../src/script_class.ts";
 import { Gen } from "../src/gen_class.ts";
+import { propsFromGen } from "./lib/props.ts";
+import { minPlayout, onePlayout } from "../src/backtracking.ts";
+import { depthFirstPlayouts } from "../src/partial_tracker.ts";
+
+const bitReq = PickRequest.bit;
 
 const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
 
 const roll = Script.make("roll", (pick) => pick(new PickRequest(1, 6)));
+
+const fails = Script.make("fails", () => {
+  throw new Error("oops!");
+});
 
 const frozen = Script.make("frozen", () => Object.freeze(["frozen"]));
 
@@ -239,6 +248,184 @@ describe("Gen", () => {
         gen.mutate((i) => (i === 1) ? () => replace(1) : keep) ===
           undefined,
       );
+    });
+  });
+});
+
+describe("generateValue", () => {
+  describe("for a build function", () => {
+    it("can run a multi-step build script", () => {
+      const gen = Gen.generate(multiStep, minPlayout());
+      assertEquals(propsFromGen(gen), {
+        val: "(0, 0)",
+        name: "multi-step",
+        reqs: [bitReq, bitReq],
+        replies: [0, 0],
+      });
+    });
+
+    it("can generate two bits in different playouts", () => {
+      const playouts = depthFirstPlayouts();
+
+      const gen1 = Gen.generate(bit, playouts);
+      assertEquals(propsFromGen(gen1), {
+        val: 0,
+        name: "bit",
+        reqs: [bitReq],
+        replies: [0],
+      });
+      assertEquals(playouts.depth, 1);
+
+      playouts.endPlayout();
+      assertEquals(playouts.state, "playoutDone");
+      assertEquals(0, playouts.depth);
+
+      const gen2 = Gen.generate(bit, playouts);
+      assertEquals(propsFromGen(gen2), {
+        val: 1,
+        name: "bit",
+        reqs: [bitReq],
+        replies: [1],
+      });
+    });
+
+    it("can generate two bits in the same playout", () => {
+      const playouts = onePlayout(new PlaybackPicker([0, 1]));
+
+      const gen1 = Gen.generate(bit, playouts);
+      assertEquals(propsFromGen(gen1), {
+        val: 0,
+        name: "bit",
+        reqs: [bitReq],
+        replies: [0],
+      });
+      assertEquals(playouts.depth, 1);
+
+      const gen2 = Gen.generate(bit, playouts);
+      assertEquals(playouts.depth, 2);
+      assertEquals(propsFromGen(gen2), {
+        val: 1,
+        name: "bit",
+        reqs: [bitReq],
+        replies: [1],
+      });
+    });
+
+    const filteredOne = Script.make("filteredOne", (pick) => {
+      const n = pick(bitReq);
+      if (n !== 1) {
+        throw new Pruned("try again");
+      }
+      return n;
+    });
+
+    it("can generate two bits in restarted playouts", () => {
+      const playouts = depthFirstPlayouts();
+
+      const gen1 = Gen.generate(filteredOne, playouts);
+      assertEquals(propsFromGen(gen1), {
+        val: 1,
+        name: "filteredOne",
+        reqs: [bitReq],
+        replies: [1],
+      });
+      assertEquals(playouts.depth, 1);
+
+      const gen2 = Gen.generate(filteredOne, playouts);
+      assertEquals(playouts.depth, 2);
+      assertEquals(propsFromGen(gen2), {
+        val: 1,
+        name: "filteredOne",
+        reqs: [bitReq],
+        replies: [1],
+      });
+    });
+
+    it("passes through an error thrown by the PickSet", () => {
+      assertThrows(
+        () => Gen.generate(fails, depthFirstPlayouts()),
+        Error,
+        "oops",
+      );
+    });
+
+    const rejectAll = Script.make("rejectAll", () => {
+      throw new Pruned("nope");
+    });
+
+    it("returns undefined if there are no matching playouts", () => {
+      const playouts = depthFirstPlayouts();
+      assertEquals(Gen.generate(rejectAll, playouts), undefined);
+    });
+  });
+
+  describe("for a pipeline", () => {
+    it("generates a value when called", () => {
+      const script = bit.then(
+        "untitled",
+        (val, pick) => `${val}, ${pick(PickRequest.bit)}`,
+      );
+
+      const gen = Gen.generate(script, minPlayout());
+
+      assertEquals(propsFromGen(gen), {
+        name: "untitled",
+        reqs: [PickRequest.bit, PickRequest.bit],
+        replies: [0, 0],
+        val: `0, 0`,
+      });
+    });
+
+    it("regenerates the same value the second time", () => {
+      const script = frozen.then(
+        "untitled",
+        (val, pick) => val.concat(["" + pick(PickRequest.bit)]),
+      );
+
+      const gen = Gen.generate(
+        script,
+        minPlayout(),
+      );
+
+      assertEquals(propsFromGen(gen), {
+        name: "untitled",
+        reqs: [PickRequest.bit],
+        replies: [0],
+        val: ["frozen", "0"],
+      });
+
+      assert(gen !== undefined);
+      const first = gen.val;
+      assertEquals(first, ["frozen", "0"]);
+
+      const second = gen.val;
+      assertEquals(second, first);
+      assertFalse(second === first);
+    });
+
+    it("fails when the rule throws an error", () => {
+      const script = bit.then("untitled", () => {
+        throw new Error("oops");
+      });
+
+      const picks = onePlayout(new PlaybackPicker([]));
+      assertThrows(
+        () => Gen.generate(script, picks),
+        Error,
+        "oops",
+      );
+    });
+
+    it("fails when all playouts were rejected", () => {
+      const script = bit.then("untitled", () => {
+        throw new Pruned("nope");
+      });
+
+      const gen = Gen.generate(
+        script,
+        onePlayout(new PlaybackPicker([])),
+      );
+      assert(gen === undefined);
     });
   });
 });

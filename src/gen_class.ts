@@ -3,6 +3,7 @@ import { type Pickable, type PickFunction, Pruned } from "./pickable.ts";
 import type { ThenFunction } from "./script_class.ts";
 import type { PickRequest } from "./picks.ts";
 import type { SegmentEditor, StreamEditor } from "./edits.ts";
+import type { GenerateOpts } from "./build.ts";
 
 import { assert } from "@std/assert";
 import { failure } from "./results.ts";
@@ -10,7 +11,7 @@ import { Script } from "./script_class.ts";
 import { PickList, PlaybackPicker } from "./picks.ts";
 import { EditPicker, keep } from "./edits.ts";
 import { onePlayout, type PlayoutSource } from "./backtracking.ts";
-import { generate, makePickFunction } from "./build.ts";
+import { makePickFunction } from "./build.ts";
 
 const alwaysGenerate = Symbol("alwaysGenerate");
 
@@ -36,7 +37,7 @@ class Cache<T> {
   }
 }
 
-export class PipeHead<T> {
+class PipeHead<T> {
   readonly cache: Cache<T>;
 
   constructor(
@@ -111,7 +112,7 @@ export class PipeHead<T> {
   }
 }
 
-export class PipeStep<I, T> {
+class PipeStep<I, T> {
   private readonly index: number;
   readonly #output: Cache<T>;
 
@@ -343,10 +344,18 @@ export class Gen<T> implements Success<T> {
     return new Gen(this.#name, end) as Gen<T>;
   }
 
+  static mustBuild<T>(arg: Pickable<T>, replies: number[]): Gen<T> {
+    const gen = Gen.build(arg, replies);
+    if (!gen.ok) {
+      throw new Error(gen.message);
+    }
+    return gen;
+  }
+
   static build<T>(arg: Pickable<T>, replies: number[]): Gen<T> | Failure {
     const script = Script.from(arg, { caller: "Gen.build()" });
     const picker = new PlaybackPicker(replies);
-    const gen = generate(script, onePlayout(picker));
+    const gen = Gen.generate(script, onePlayout(picker));
     if (gen === undefined || picker.error !== undefined) {
       const err = picker.error ?? "picks not accepted";
       return failure(`can't build '${script.name}': ${err}`);
@@ -354,11 +363,44 @@ export class Gen<T> implements Success<T> {
     return gen;
   }
 
-  static mustBuild<T>(arg: Pickable<T>, replies: number[]): Gen<T> {
-    const gen = Gen.build(arg, replies);
-    if (!gen.ok) {
-      throw new Error(gen.message);
+  /**
+   * Generates a value at the current depth, continuing the current playout if possible.
+   *
+   * Returns undefined if there are no more playouts available at the current depth.
+   */
+  static generate<T>(
+    script: Script<T>,
+    playouts: PlayoutSource,
+    opts?: GenerateOpts,
+  ): Gen<T> | undefined {
+    const depth = playouts.depth;
+    const pick = makePickFunction(playouts, opts);
+    const { base, steps } = script.toSteps();
+
+    nextPlayout: while (playouts.startValue(depth)) {
+      const first = PipeHead.generate(base, pick, playouts);
+      if (first === undefined) {
+        continue;
+      }
+
+      let source: PipeHead<unknown> | PipeStep<unknown, unknown> = first;
+      for (const script of steps) {
+        const pipe = script.toPipe();
+        assert(pipe !== undefined);
+        const then = pipe.then as ThenFunction<unknown, T>;
+        const next: PipeStep<unknown, unknown> | undefined = PipeStep.generate(
+          source,
+          then,
+          pick,
+          playouts,
+        );
+        if (next === undefined) {
+          continue nextPlayout;
+        }
+        source = next;
+      }
+
+      return new Gen<unknown>(script.name, source) as Gen<T>;
     }
-    return gen;
   }
 }
