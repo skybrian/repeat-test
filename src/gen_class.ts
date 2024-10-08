@@ -355,52 +355,52 @@ export class Gen<T> implements Success<T> {
   static build<T>(arg: Pickable<T>, replies: number[]): Gen<T> | Failure {
     const script = Script.from(arg, { caller: "Gen.build()" });
     const picker = new PlaybackPicker(replies);
-    const gen = Gen.generate(script, onePlayout(picker));
+    const gen = generate(script, onePlayout(picker));
     if (gen === undefined || picker.error !== undefined) {
       const err = picker.error ?? "picks not accepted";
       return failure(`can't build '${script.name}': ${err}`);
     }
     return gen;
   }
+}
 
-  /**
-   * Generates a value at the current depth, continuing the current playout if possible.
-   *
-   * Returns undefined if there are no more playouts available at the current depth.
-   */
-  static generate<T>(
-    script: Script<T>,
-    playouts: PlayoutSource,
-    opts?: GenerateOpts,
-  ): Gen<T> | undefined {
-    const depth = playouts.depth;
-    const pick = makePickFunction(playouts, opts);
-    const { base, steps } = script.toSteps();
+/**
+ * Generates a value at the current depth, continuing the current playout if possible.
+ *
+ * Returns undefined if there are no more playouts available at the current depth.
+ */
+export function generate<T>(
+  arg: Pickable<T>,
+  playouts: PlayoutSource,
+  opts?: GenerateOpts,
+): Gen<T> | undefined {
+  const script = Script.from(arg, { caller: "generate" });
+  const pick = makePickFunction(playouts, opts);
+  const { base, steps } = script.toSteps();
 
-    nextPlayout: while (playouts.startValue(depth)) {
-      const first = PipeHead.generate(base, pick, playouts);
-      if (first === undefined) {
-        continue;
-      }
-
-      let source: PipeHead<unknown> | PipeStep<unknown, unknown> = first;
-      for (const script of steps) {
-        const pipe = script.toPipe();
-        assert(pipe !== undefined);
-        const then = pipe.then as ThenFunction<unknown, T>;
-        const next: PipeStep<unknown, unknown> | undefined = PipeStep.generate(
-          source,
-          then,
-          pick,
-          playouts,
-        );
-        if (next === undefined) {
-          continue nextPlayout;
-        }
-        source = next;
-      }
-
-      return new Gen<unknown>(script.name, source) as Gen<T>;
+  nextPlayout: while (playouts.startAt(0)) {
+    const first = PipeHead.generate(base, pick, playouts);
+    if (first === undefined) {
+      continue;
     }
+
+    let source: PipeHead<unknown> | PipeStep<unknown, unknown> = first;
+    for (const script of steps) {
+      const pipe = script.toPipe();
+      assert(pipe !== undefined);
+      const then = pipe.then as ThenFunction<unknown, T>;
+      const next: PipeStep<unknown, unknown> | undefined = PipeStep.generate(
+        source,
+        then,
+        pick,
+        playouts,
+      );
+      if (next === undefined) {
+        continue nextPlayout;
+      }
+      source = next;
+    }
+
+    return new Gen<unknown>(script.name, source) as Gen<T>;
   }
 }

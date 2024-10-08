@@ -9,7 +9,7 @@ import type { PlayoutSource } from "./backtracking.ts";
 import { Pruned } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
-import { Gen } from "./gen_class.ts";
+export { generate } from "./gen_class.ts";
 
 /**
  * Picks an integer in the given range.
@@ -143,21 +143,4 @@ export function makePickFunction<T>(
     );
   };
   return dispatch;
-}
-
-/**
- * Generates a value in a new playout.
- *
- * Returns undefined if it ran out of playouts without generating anything.
- */
-export function generate<T>(
-  arg: Pickable<T>,
-  playouts: PlayoutSource,
-  opts?: GenerateOpts,
-): Gen<T> | undefined {
-  if (!playouts.startAt(0)) {
-    return undefined;
-  }
-  const script = Script.from(arg, { caller: "generate" });
-  return Gen.generate(script, playouts, opts);
 }
