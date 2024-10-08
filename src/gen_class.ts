@@ -1,4 +1,4 @@
-import type { Failure, Success } from "./results.ts";
+import type { Done, Failure, Success } from "./results.ts";
 import type { Pickable, PickFunction } from "./pickable.ts";
 import type { ScriptResult } from "./script_class.ts";
 import type { PickRequest } from "./picks.ts";
@@ -8,7 +8,7 @@ import type { PlayoutSource } from "./backtracking.ts";
 
 import { assert } from "@std/assert";
 import { Pruned } from "./pickable.ts";
-import { failure } from "./results.ts";
+import { cacheOnce, failure } from "./results.ts";
 import { Script } from "./script_class.ts";
 import { PickList, PlaybackPicker } from "./picks.ts";
 import { EditPicker, keep } from "./edits.ts";
@@ -16,32 +16,23 @@ import { onePlayout } from "./backtracking.ts";
 import { makePickFunction } from "./build.ts";
 import { minPlayout } from "./backtracking.ts";
 
-const alwaysGenerate = Symbol("alwaysGenerate");
-
-class Cache<T> {
-  #regenerate: () => ScriptResult<T>;
-  #result: ScriptResult<T> | typeof alwaysGenerate;
-
-  constructor(regenerate: () => ScriptResult<T>, result: ScriptResult<T>) {
-    this.#regenerate = regenerate;
-    this.#result = result;
+/** Rebuilds a ScriptResult when it's mutable according to Object.isFrozen. */
+function cache<T>(
+  result: ScriptResult<T>,
+  build: () => ScriptResult<T>,
+): ScriptResult<T> {
+  if (!result.done || Object.isFrozen(result.val)) {
+    return result; // assumed immutable
   }
-
-  get result(): ScriptResult<T> {
-    if (this.#result !== alwaysGenerate) {
-      const result = this.#result;
-      if (result.done && !Object.isFrozen(result.val)) {
-        // Regenerate the value from now on.
-        this.#result = alwaysGenerate;
-      }
-      return result;
-    }
-    return this.#regenerate();
-  }
+  return cacheOnce(result.val, () => {
+    const val = build();
+    assert(val.done);
+    return val.val;
+  });
 }
 
 class PipeHead<T> {
-  readonly cache: Cache<T>;
+  readonly result: ScriptResult<T>;
 
   constructor(
     private readonly script: Script<T>,
@@ -49,13 +40,12 @@ class PipeHead<T> {
     readonly replies: number[],
     output: ScriptResult<T>,
   ) {
-    const regenerate = (): ScriptResult<T> => {
+    this.result = cache(output, () => {
       const playouts = onePlayout(new PlaybackPicker(this.replies));
       assert(playouts.startAt(0));
       const pick = makePickFunction(playouts);
       return this.script.step(pick);
-    };
-    this.cache = new Cache(regenerate, output);
+    });
   }
 
   get segmentCount(): number {
@@ -117,7 +107,7 @@ class PipeHead<T> {
 
 class PipeStep<T> {
   private readonly index: number;
-  readonly #output: Cache<T>;
+  readonly result: ScriptResult<T>;
 
   constructor(
     readonly source: PipeHead<T> | PipeStep<T>,
@@ -125,21 +115,16 @@ class PipeStep<T> {
     readonly replies: number[],
     output: ScriptResult<T>,
   ) {
-    this.index = this.source.segmentCount;
+    const script = source.result;
+    assert(!script.done);
 
-    const regenerate = (): ScriptResult<T> => {
-      const script = this.source.cache.result;
-      assert(!script.done);
+    this.index = this.source.segmentCount;
+    this.result = cache(output, () => {
       const playouts = onePlayout(new PlaybackPicker(this.replies));
       assert(playouts.startAt(0));
       const pick = makePickFunction(playouts);
       return script.step(pick);
-    };
-    this.#output = new Cache(regenerate, output);
-  }
-
-  get cache(): Cache<T> {
-    return this.#output;
+    });
   }
 
   get segmentCount(): number {
@@ -186,7 +171,7 @@ class PipeStep<T> {
     pick: PickFunction,
     playouts: PlayoutSource,
   ): PipeStep<T> | Success<T> | undefined {
-    const script = source.cache.result;
+    const script = source.result;
     if (script.done) {
       return script;
     }
@@ -235,6 +220,7 @@ function splitPipeline<T>(
 export class Gen<T> implements Success<T> {
   readonly #name: string;
   readonly #end: PipeHead<T> | PipeStep<T>;
+  readonly #result: Done<T>;
   #reqs: PickRequest[] | undefined;
   #replies: number[] | undefined;
 
@@ -250,6 +236,8 @@ export class Gen<T> implements Success<T> {
   ) {
     this.#name = name;
     this.#end = end;
+    assert(end.result.done);
+    this.#result = end.result;
   }
 
   /** Satisfies the Success interface. */
@@ -318,9 +306,7 @@ export class Gen<T> implements Success<T> {
    * each time after the first access.
    */
   get val(): T {
-    const result = this.#end.cache.result;
-    assert(result.done);
-    return result.val;
+    return this.#result.val;
   }
 
   /**
@@ -353,7 +339,7 @@ export class Gen<T> implements Success<T> {
       return this; // no change
     }
 
-    if (end.cache.result.done) {
+    if (end.result.done) {
       return new Gen(this.#name, end); // finished in the same number of steps.
     }
 
@@ -361,7 +347,7 @@ export class Gen<T> implements Success<T> {
     const playout = minPlayout();
     const pick = makePickFunction(playout);
 
-    while (!end.cache.result.done) {
+    while (!end.result.done) {
       const next = PipeStep.generateStep(
         end,
         pick,
