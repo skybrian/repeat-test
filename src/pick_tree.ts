@@ -1,4 +1,4 @@
-import type { PickList, RandomSource } from "./picks.ts";
+import type { PickList, RandomSource, Range } from "./picks.ts";
 
 import { assert } from "@std/assert";
 import { PickRequest } from "./picks.ts";
@@ -44,7 +44,7 @@ class Node {
     return new Node(0, 0);
   }
 
-  static from(req: PickRequest): Node {
+  static from(req: Range): Node {
     return new Node(req.min, req.max);
   }
 
@@ -59,7 +59,7 @@ class Node {
   }
 
   /** Throws an Error if the range matches the one used to create the node. */
-  checkRangeMatches(req: PickRequest) {
+  checkRangeMatches(req: Range) {
     if (this.#reqMin !== req.min || this.#max !== req.max) {
       throw new Error(
         `pick request range doesn't match previous playout; wanted [${this.#reqMin}, ${this.#max}] but got [${req.min}, ${req.max}]`,
@@ -72,7 +72,7 @@ class Node {
     return this[pick];
   }
 
-  addChild(pick: number, req: PickRequest): Node {
+  addChild(pick: number, req: Range): Node {
     assert(this[pick] === undefined);
     this.#children++;
     const node = Node.from(req);
@@ -184,12 +184,12 @@ export class PickTree {
   /**
    * Prunes a possible playout.
    *
-   * If a previous playout had the same prefix, each PickRequest in the prefix
-   * is checked to ensure that it has the same range as before.
+   * If a previous playout had the same prefix, each pick in the prefix must
+   * have the same range as before.
    *
    * Returns true if the playout was available before being pruned.
    *
-   * Throws an error if a PickRequest's range doesn't match a previous playout.
+   * Throws an error if a pick's range doesn't match a previous playout.
    */
   prune(playout: PickList): boolean {
     const walk = this.walk();
@@ -342,7 +342,7 @@ export class Walk {
    *
    * Throws an Error if a request's range doesn't match a previous playout.
    */
-  push(req: PickRequest, pick: number): boolean {
+  push(req: Range, pick: number): boolean {
     let last = this.parent.getBranch(this.lastReply);
     if (last === PRUNED) {
       return false;
@@ -369,7 +369,7 @@ export class Walk {
    */
   pushUnpruned(
     firstChoice: number,
-    req: PickRequest,
+    req: Range,
     opts?: { track?: boolean },
   ): number {
     const parent = this.parent;

@@ -1,11 +1,11 @@
 import { assert } from "@std/assert/assert";
 import type { Gen } from "../../src/gen_class.ts";
-import type { PickRequest } from "../../src/picks.ts";
+import type { Range } from "../../src/picks.ts";
 
 export type GenProps<T> = {
   val: T;
   name: string;
-  reqs: PickRequest[];
+  reqs: Range[];
   replies: number[];
 };
 

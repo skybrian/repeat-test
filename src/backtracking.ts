@@ -1,5 +1,7 @@
+import type { IntPicker, PickRequest, Range } from "./picks.ts";
+
 import { assert } from "@std/assert";
-import { alwaysPickMin, type IntPicker, type PickRequest } from "./picks.ts";
+import { alwaysPickMin } from "./picks.ts";
 
 /**
  * Generates pick sequences, avoiding duplicates.
@@ -37,7 +39,7 @@ export interface Tracker {
 export class PlayoutSource {
   #state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
   #depth = 0;
-  readonly #reqs: PickRequest[] = [];
+  readonly #reqs: Range[] = [];
 
   constructor(private readonly tracker: Tracker) {}
 
@@ -142,7 +144,7 @@ export class PlayoutSource {
    *
    * Available only between {@link startAt} and {@link endPlayout}.
    */
-  getRequests(start?: number): PickRequest[] {
+  getRequests(start?: number): Range[] {
     start = start ?? 0;
     if (this.state !== "picking") {
       throw new Error(

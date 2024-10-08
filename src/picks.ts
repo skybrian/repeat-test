@@ -72,6 +72,16 @@ function uniformPicker(min: number, max: number): RandomPicker {
   }
 }
 
+/**
+ * A range of non-negative safe integers.
+ *
+ * Must contain one number: min <= max.
+ */
+export type Range = {
+  readonly min: number;
+  readonly max: number;
+};
+
 /** Options on a {@link PickRequest}. */
 export type PickRequestOpts = {
   /**
@@ -90,7 +100,7 @@ export type PickRequestOpts = {
  * When picking randomly, the {@link random} function implements the requested
  * probability distribution.
  */
-export class PickRequest implements Pickable<number> {
+export class PickRequest implements Pickable<number>, Range {
   #random: RandomPicker;
 
   /**
@@ -174,7 +184,7 @@ export function biasedBitRequest(probOne: number): PickRequest {
 
 /** A request-reply pair. */
 export type Pick = {
-  req: PickRequest;
+  req: Range;
   reply: number;
 };
 
@@ -185,12 +195,12 @@ export interface PickSink {
    *
    * If the sink doesn't want more picks, it can return false or throw an Error.
    */
-  push(req: PickRequest, pick: number): boolean;
+  push(req: Range, pick: number): boolean;
 }
 
 /** A list of pick requests with its replies. */
 export class PickList {
-  constructor(readonly reqs: PickRequest[], readonly replies: number[]) {}
+  constructor(readonly reqs: Range[], readonly replies: number[]) {}
 
   get length(): number {
     return this.reqs.length;

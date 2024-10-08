@@ -1,7 +1,7 @@
 import type { Done, Failure, Success } from "./results.ts";
 import type { Pickable, PickFunction } from "./pickable.ts";
 import type { ScriptResult } from "./script_class.ts";
-import type { PickRequest } from "./picks.ts";
+import type { Range } from "./picks.ts";
 import type { StepEditor, StreamEditor } from "./edits.ts";
 import type { GenerateOpts } from "./build.ts";
 import type { PlayoutSource } from "./backtracking.ts";
@@ -36,7 +36,7 @@ class PipeHead<T> {
 
   constructor(
     private readonly script: Script<T>,
-    readonly reqs: PickRequest[],
+    readonly reqs: Range[],
     readonly replies: number[],
     output: ScriptResult<T>,
   ) {
@@ -111,7 +111,7 @@ class PipeStep<T> {
 
   constructor(
     readonly source: PipeHead<T> | PipeStep<T>,
-    readonly reqs: PickRequest[],
+    readonly reqs: Range[],
     readonly replies: number[],
     output: ScriptResult<T>,
   ) {
@@ -221,7 +221,7 @@ export class Gen<T> implements Success<T> {
   readonly #name: string;
   readonly #end: PipeHead<T> | PipeStep<T>;
   readonly #result: Done<T>;
-  #reqs: PickRequest[] | undefined;
+  #reqs: Range[] | undefined;
   #replies: number[] | undefined;
 
   /**
@@ -249,10 +249,10 @@ export class Gen<T> implements Success<T> {
     return this.#name;
   }
 
-  get reqs(): PickRequest[] {
+  get reqs(): Range[] {
     if (this.#reqs === undefined) {
       const { first, rest } = splitPipeline(this.#end);
-      const reqs: PickRequest[] = [...first.reqs];
+      const reqs: Range[] = [...first.reqs];
       for (const step of rest) {
         reqs.push(...step.reqs);
       }
