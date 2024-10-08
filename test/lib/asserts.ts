@@ -2,7 +2,7 @@ import type { Arbitrary, Pickable } from "@/arbitrary.ts";
 import type { Domain } from "@/domain.ts";
 
 import { assert, assertEquals } from "@std/assert";
-import { generate } from "../../src/build.ts";
+import { generate } from "../../src/gen_class.ts";
 import { take, takeAll, takeGenerated } from "../../src/ordered.ts";
 import { onePlayout } from "../../src/backtracking.ts";
 import { randomPicker } from "../../src/random.ts";

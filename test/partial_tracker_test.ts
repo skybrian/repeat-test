@@ -13,7 +13,7 @@ import * as arb from "@/arbs.ts";
 import { alwaysPick, alwaysPickMin, PickRequest } from "../src/picks.ts";
 import { randomPicker, randomPlayouts } from "../src/random.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
-import { generate } from "../src/build.ts";
+import { generate } from "../src/gen_class.ts";
 import { PlayoutSource } from "../src/backtracking.ts";
 
 const bit = new PickRequest(0, 1);

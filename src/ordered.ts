@@ -7,8 +7,9 @@ import { Pruned } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
 import { PlayoutSource } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
-import { generate, makePickFunction } from "./build.ts";
+import { makePickFunction } from "./build.ts";
 import { Script } from "@/arbitrary.ts";
+import { generate } from "./gen_class.ts";
 
 /**
  * Generates possible playouts in the order used for choosing defaults.

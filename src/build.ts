@@ -9,7 +9,6 @@ import type { PlayoutSource } from "./backtracking.ts";
 import { Pruned } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
-export { generate } from "./gen_class.ts";
 
 /**
  * Picks an integer in the given range.

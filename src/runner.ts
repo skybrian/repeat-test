@@ -8,7 +8,7 @@ import { assert, assertEquals, AssertionError } from "@std/assert";
 
 import { failure, success } from "./results.ts";
 import { alwaysPickMin, PickRequest, PlaybackPicker } from "./picks.ts";
-import { generate } from "./build.ts";
+import { generate } from "./gen_class.ts";
 import { PartialTracker } from "./partial_tracker.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
 import { generateDefault } from "./ordered.ts";

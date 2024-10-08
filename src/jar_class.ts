@@ -7,7 +7,8 @@ import type { Gen } from "./gen_class.ts";
 import type { Domain } from "./domain_class.ts";
 
 import { assert } from "@std/assert";
-import { generate, MiddlewareRequest } from "./build.ts";
+import { MiddlewareRequest } from "./build.ts";
+import { generate } from "./gen_class.ts";
 import { PickTree } from "./pick_tree.ts";
 import { orderedPlayouts } from "./ordered.ts";
 

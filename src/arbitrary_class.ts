@@ -6,7 +6,7 @@ import { assert } from "@std/assert";
 
 import { PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
-import { generate } from "./build.ts";
+import { generate } from "./gen_class.ts";
 import { generateDefault } from "./ordered.ts";
 import { randomPlayouts } from "./random.ts";
 
