@@ -43,7 +43,7 @@ export class Script<T> implements Pickable<T> {
     return this.#name;
   }
 
-  get buildPick(): BuildFunction<T> {
+  get buildFrom(): BuildFunction<T> {
     return this.#build;
   }
 
@@ -57,7 +57,7 @@ export class Script<T> implements Pickable<T> {
 
   then<Out>(name: string, then: ThenFunction<T, Out>): Script<Out> {
     const build = (pick: PickFunction): Out => {
-      const val = this.buildPick(pick);
+      const val = this.buildFrom(pick);
       return then(val, pick);
     };
 
@@ -105,7 +105,7 @@ export class Script<T> implements Pickable<T> {
 
     if (
       arg === null || typeof arg !== "object" ||
-      typeof arg.buildPick !== "function"
+      typeof arg.buildFrom !== "function"
     ) {
       const caller = opts?.caller ?? "Script.from()";
       throw new Error(`${caller} called with an invalid argument`);
@@ -117,7 +117,7 @@ export class Script<T> implements Pickable<T> {
     ) {
       return props.buildScript;
     } else {
-      return Script.make("untitled", arg.buildPick);
+      return Script.make("untitled", arg.buildFrom);
     }
   }
 }

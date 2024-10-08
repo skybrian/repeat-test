@@ -30,10 +30,10 @@ export class MiddlewareRequest<T> implements Pickable<T> {
     readonly startMiddle: () => IntPickerMiddleware,
   ) {}
 
-  get buildPick(): BuildFunction<T> {
+  get buildFrom(): BuildFunction<T> {
     return () => {
       throw new Error(
-        "MiddlewareRequest.buildPick() called; should have been intercepted",
+        "MiddlewareRequest.buildFrom() called; should have been intercepted",
       );
     };
   }
@@ -107,7 +107,7 @@ export function makePickFunction<T>(
             };
           }
 
-          const val = script.buildPick(innerPick);
+          const val = script.buildFrom(innerPick);
           return val;
         } catch (e) {
           if (!(e instanceof Pruned)) {

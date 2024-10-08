@@ -131,7 +131,8 @@ export class PickRequest implements Pickable<number> {
     return this.#random;
   }
 
-  get buildPick(): BuildFunction<number> {
+  /** Returns the next pick from the given source. */
+  get buildFrom(): BuildFunction<number> {
     return (pick) => pick(this);
   }
 

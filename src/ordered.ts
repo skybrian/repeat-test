@@ -190,7 +190,7 @@ export function take<T>(arg: Pickable<T>, n: number): T[] {
   const pick = makePickFunction(playouts);
   while (playouts.startAt(0) && result.length < n) {
     try {
-      result.push(script.buildPick(pick));
+      result.push(script.buildFrom(pick));
     } catch (e) {
       if (!(e instanceof Pruned)) {
         throw e;

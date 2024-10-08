@@ -10,11 +10,13 @@ import { PlaybackPicker } from "../src/picks.ts";
 import { done } from "../src/results.ts";
 import { PickRequest } from "@/arbitrary.ts";
 
-function makePick(replies: number[]): PickFunction {
+function picks(...replies: number[]): PickFunction {
   const playouts = onePlayout(new PlaybackPicker(replies));
   assert(playouts.startAt(0));
   return makePickFunction(playouts);
 }
+
+const noPicks = picks();
 
 describe("Script", () => {
   describe("from", () => {
@@ -42,36 +44,31 @@ describe("Script", () => {
     }
 
     it("executes a single-step script", () => {
-      const pick = makePick([]);
-      assertEquals(hi.step(pick), done("hi"));
+      assertEquals(hi.step(noPicks), done("hi"));
     });
 
     it("executes a two-step script", () => {
-      const pick = makePick([]);
-
-      const first = hiThere.step(pick);
+      const first = hiThere.step(noPicks);
       assert(first instanceof Script);
 
-      assertEquals(first.step(pick), done("hi there"));
+      assertEquals(first.step(noPicks), done("hi there"));
     });
 
     it("executes a three-step script", () => {
-      const pick = makePick([]);
-
-      const first = hiThereAgain.step(pick);
+      const first = hiThereAgain.step(noPicks);
       assert(first instanceof Script);
 
-      const second = first.step(pick);
+      const second = first.step(noPicks);
       assert(second instanceof Script);
 
-      assertEquals(second.step(pick), done("hi there again"));
+      assertEquals(second.step(noPicks), done("hi there again"));
     });
 
     it("executes a recursive script", () => {
-      assertEquals(countOnes().buildPick(makePick([])), 0);
-      assertEquals(countOnes().buildPick(makePick([1])), 1);
-      assertEquals(countOnes().buildPick(makePick([1, 1])), 2);
-      assertEquals(countOnes().buildPick(makePick([1, 1, 1])), 3);
+      assertEquals(countOnes().buildFrom(noPicks), 0);
+      assertEquals(countOnes().buildFrom(picks(1)), 1);
+      assertEquals(countOnes().buildFrom(picks(1, 1)), 2);
+      assertEquals(countOnes().buildFrom(picks(1, 1, 1)), 3);
     });
   });
 });

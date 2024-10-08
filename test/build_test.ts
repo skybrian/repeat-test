@@ -16,7 +16,7 @@ describe("MiddlewareRequest", () => {
     const req = MiddlewareRequest.wrap(PickRequest.bit, () => () => 0);
     const pick = makePickFunction(minPlayout());
     assertThrows(
-      () => req.buildPick(pick),
+      () => req.buildFrom(pick),
       Error,
       "should have been intercepted",
     );
@@ -44,7 +44,7 @@ describe("makePickFunction", () => {
   });
 
   it("accepts a Pickable that's not a Script", () => {
-    const hi = { buildPick: () => "hi" };
+    const hi = { buildFrom: () => "hi" };
     assertEquals(pick(hi), "hi");
   });
 

@@ -72,16 +72,19 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
   }
 
   /**
-   * Returns the build function for this Arbitrary.
+   * Returns the build script for this Arbitrary.
    *
-   * (Satisfies the {@link PickSet} interface. Not normally called directly.)
+   * (Satisfies the {@link HasScript} interface. Not normally called directly.)
    */
   get buildScript(): Script<T> {
     return this.#script;
   }
 
-  get buildPick(): BuildFunction<T> {
-    return this.#script.buildPick;
+  /**
+   * Builds a value from picks.
+   */
+  get buildFrom(): BuildFunction<T> {
+    return this.#script.buildFrom;
   }
 
   /**
@@ -307,7 +310,7 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
     const build = Script.make("oneOf pick", (pick) => {
       return pick(req);
     }).then("oneOf", (i, pick) => {
-      return scripts[i].buildPick(pick);
+      return scripts[i].buildFrom(pick);
     });
 
     return new Arbitrary(build, { maxSize, dryRun: false });

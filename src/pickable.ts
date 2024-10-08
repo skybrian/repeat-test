@@ -40,12 +40,12 @@ export interface PickFunction {
 }
 
 /**
- * A function that builds a value, given some picks.
+ * A deterministic function from a source of picks to a value.
  *
- * The result should be deterministic, depending only on what `pick` returns.
+ * The result should only on what `pick` returns.
  *
  * If the {@link PickFunction} throws {@link Pruned} then the build function
- * should also throw it to allow the function call to be retried. The build
+ * should also throw it. This allow the function call to be retried. The build
  * function could also throw it to if it gets a pick it can't use.
  */
 export type BuildFunction<T> = (pick: PickFunction) => T;
@@ -56,5 +56,6 @@ export type BuildFunction<T> = (pick: PickFunction) => T;
  * Alternatively, a set of possible values to pick from.
  */
 export type Pickable<T> = {
-  readonly buildPick: BuildFunction<T>;
+  /** Builds a value from the given source of picks. */
+  readonly buildFrom: BuildFunction<T>;
 };
