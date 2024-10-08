@@ -1,4 +1,5 @@
 import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
+import { type Success, success } from "./results.ts";
 
 /**
  * A function that transforms a value, given some picks.
@@ -18,18 +19,27 @@ export interface HasScript<T> extends Pickable<T> {
   readonly buildScript: Script<T>;
 }
 
+export type ScriptResult<T> = Success<T> | Script<T>;
+
+export type StepFunction<T> = (
+  pick: PickFunction,
+) => ScriptResult<T>;
+
 export class Script<T> implements Pickable<T> {
   readonly #name: string;
   readonly #build: BuildFunction<T>;
+  readonly #step: StepFunction<T>;
   readonly #pipe: Pipe<T, unknown> | undefined;
 
   private constructor(
     name: string,
     build: BuildFunction<T>,
+    step: StepFunction<T>,
     pipe: Pipe<T, unknown> | undefined,
   ) {
     this.#name = name;
     this.#build = build;
+    this.#step = step;
     this.#pipe = pipe;
   }
 
@@ -52,8 +62,12 @@ export class Script<T> implements Pickable<T> {
     return this.#build;
   }
 
+  get step(): StepFunction<T> {
+    return this.#step;
+  }
+
   with(opts: { name: string }): Script<T> {
-    return new Script(opts.name, this.#build, this.#pipe);
+    return new Script(opts.name, this.#build, this.#step, this.#pipe);
   }
 
   then<Out>(name: string, then: ThenFunction<T, Out>): Script<Out> {
@@ -64,7 +78,8 @@ export class Script<T> implements Pickable<T> {
     name: string,
     build: BuildFunction<T>,
   ): Script<T> {
-    return new Script(name, build, undefined);
+    const step = (pick: PickFunction): ScriptResult<T> => success(build(pick));
+    return new Script(name, build, step, undefined);
   }
 
   static from<T>(
@@ -122,11 +137,21 @@ export class Script<T> implements Pickable<T> {
       return then(inner, pick);
     };
 
-    const step = {
+    const step = (pick: PickFunction): ScriptResult<Out> => {
+      const next = input.step(pick);
+      if (next instanceof Script) {
+        return this.makePipeline("step", next, then);
+      } else {
+        const val = next.val;
+        return Script.make(name, (pick) => then(val, pick));
+      }
+    };
+
+    const pipe = {
       input,
       then,
     } as Pipe<Out, unknown>;
 
-    return new Script(name, build, step);
+    return new Script(name, build, step, pipe);
   }
 }

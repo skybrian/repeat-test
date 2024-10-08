@@ -1,9 +1,19 @@
-import type { Pickable } from "../src/pickable.ts";
+import type { Pickable, PickFunction } from "../src/pickable.ts";
 
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 
 import { Script } from "../src/script_class.ts";
+import { onePlayout } from "../src/backtracking.ts";
+import { makePickFunction } from "../src/build.ts";
+import { PlaybackPicker } from "../src/picks.ts";
+import { success } from "../src/results.ts";
+
+function makePick(replies: number[]): PickFunction {
+  const playouts = onePlayout(new PlaybackPicker(replies));
+  assert(playouts.startAt(0));
+  return makePickFunction(playouts);
+}
 
 describe("Script", () => {
   describe("from", () => {
@@ -13,6 +23,38 @@ describe("Script", () => {
         Error,
         "Script.from() called with an invalid argument",
       );
+    });
+  });
+
+  describe("step", () => {
+    const hi = Script.make("hello", () => "hi");
+    const hiThere = hi.then("hi there", (val) => val + " there");
+    const hiThereAgain = hiThere.then("again", (val) => val + " again");
+
+    it("executes a single-step script", () => {
+      const pick = makePick([]);
+      assertEquals(hi.step(pick), success("hi"));
+    });
+
+    it("executes a two-step script", () => {
+      const pick = makePick([]);
+
+      const first = hiThere.step(pick);
+      assert(first instanceof Script);
+
+      assertEquals(first.step(pick), success("hi there"));
+    });
+
+    it("executes a three-step script", () => {
+      const pick = makePick([]);
+
+      const first = hiThereAgain.step(pick);
+      assert(first instanceof Script);
+
+      const second = first.step(pick);
+      assert(second instanceof Script);
+
+      assertEquals(second.step(pick), success("hi there again"));
     });
   });
 
