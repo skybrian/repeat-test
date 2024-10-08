@@ -93,47 +93,51 @@ export class EditPicker implements IntPicker {
 }
 
 /**
- * Edits a stream of picks that's split into segments.
+ * Edits a stream of picks that's split into steps.
  */
-export type SegmentEditor = (segmentIndex: number) => StreamEditor;
+export type StepEditor = (segmentIndex: number) => StreamEditor;
 
-function trimEdit(len: number): StreamEditor {
-  return (index) => index >= len ? snip() : keep();
+function trimEnd(len: number): StreamEditor {
+  return (offset) => offset >= len ? snip() : keep();
 }
 
 /**
- * Edits a segment by removing picks from the end (forcing them to be the minimum).
+ * Edits a step's picks by removing picks from the end.
+ *
+ * (This forces them to be the minimum value.)
  */
-export function trimSegment(
-  segment: number,
-  offset: number,
-): SegmentEditor {
-  return (seg) => (seg === segment) ? trimEdit(offset) : keep;
+export function trimStep(
+  stepKey: number,
+  len: number,
+): StepEditor {
+  return (key) => (key === stepKey) ? trimEnd(len) : keep;
 }
 
-function snipRangeEdit(start: number, end: number): StreamEditor {
-  return (index) => index >= start && index < end ? snip() : keep();
+function snipRange(start: number, end: number): StreamEditor {
+  return (offset) => offset >= start && offset < end ? snip() : keep();
 }
 
-export function snipRange(
-  segment: number,
+/** Removes a range of picks in one step. */
+export function removeRange(
+  stepKey: number,
   start: number,
   end: number,
-): SegmentEditor {
-  return (seg: number) => (seg === segment) ? snipRangeEdit(start, end) : keep;
+): StepEditor {
+  return (key: number) => (key === stepKey) ? snipRange(start, end) : keep;
 }
 
-function replaceEdit(
+function replaceAt(
   at: number,
   replacement: number,
 ): StreamEditor {
-  return (index) => index === at ? replace(replacement) : keep();
+  return (offset) => offset === at ? replace(replacement) : keep();
 }
 
-export function replaceAt(
-  segment: number,
+/** Replaces one pick in one step. */
+export function replacePick(
+  stepKey: number,
   offset: number,
-  val: number,
-): SegmentEditor {
-  return (seg) => seg === segment ? replaceEdit(offset, val) : keep;
+  newVal: number,
+): StepEditor {
+  return (key) => key === stepKey ? replaceAt(offset, newVal) : keep;
 }

@@ -1,9 +1,9 @@
 import type { Gen } from "./gen_class.ts";
-import type { SegmentEditor } from "./edits.ts";
+import type { StepEditor } from "./edits.ts";
 import type { SystemConsole } from "./console.ts";
 
 import { assert } from "@std/assert";
-import { replaceAt, snipRange, trimSegment } from "./edits.ts";
+import { removeRange, replacePick, trimStep } from "./edits.ts";
 import { nullConsole } from "./console.ts";
 
 /**
@@ -47,7 +47,7 @@ export function shrink<T>(
  * It could be the same value if the edit didn't change anything.
  */
 function tryEdit<T>(
-  editor: SegmentEditor,
+  editor: StepEditor,
   seed: Gen<T>,
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
@@ -59,26 +59,26 @@ function tryEdit<T>(
 }
 
 /**
- * Removes unnecessary picks from the end of the given segment.
+ * Removes unnecessary picks from the end of the given step.
  *
- * Postcondition: the last pick is necessary, or the segment has no picks left.
+ * Postcondition: the last pick is necessary, or the step has no picks left.
  */
 function shrinkTailAt<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
-  segment: number,
+  stepKey: number,
 ): Gen<T> | undefined {
   function getPicks() {
-    const segments = seed.segmentPicks;
-    assert(segment < segments.length);
-    return seed.segmentPicks[segment];
+    const segments = seed.picksByStep;
+    assert(stepKey < segments.length);
+    return seed.picksByStep[stepKey];
   }
 
   const len = getPicks().trimmedLength;
   assert(len > 0);
 
   // Try to remove the last pick to fail fast.
-  const next = tryEdit(trimSegment(segment, len - 1), seed, test);
+  const next = tryEdit(trimStep(stepKey, len - 1), seed, test);
   if (next === undefined) {
     return undefined;
   }
@@ -90,7 +90,7 @@ function shrinkTailAt<T>(
   while (tooLow + 2 <= hi) {
     const mid = (tooLow + 1 + hi) >>> 1;
     assert(mid > tooLow && mid < hi);
-    const next = tryEdit(trimSegment(segment, mid), seed, test);
+    const next = tryEdit(trimStep(stepKey, mid), seed, test);
     if (next === undefined) {
       // failed; retry with a higher length
       tooLow = mid;
@@ -105,14 +105,14 @@ function shrinkTailAt<T>(
 /**
  * Removes unnecessary picks from the end of a playout.
  *
- * Postcondition: the last pick in the last non-empty segment is necessary, or
- * all segments are empty.
+ * Postcondition: the last pick in the last non-empty step is necessary, or
+ * no steps have any picks.
  */
 export function shrinkTail<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
-  let segs = seed.segmentPicks;
+  let segs = seed.picksByStep;
   let changed = false;
   for (let i = segs.length - 1; i >= 0; i--) {
     if (segs[i].trimmedLength === 0) {
@@ -125,7 +125,7 @@ export function shrinkTail<T>(
     }
     seed = next;
     changed = true;
-    segs = seed.segmentPicks;
+    segs = seed.picksByStep;
   }
   return changed ? seed : undefined;
 }
@@ -135,12 +135,12 @@ export function shrinkTail<T>(
  *
  * Postcondition: decrementing the pick by one would fail the test.
  */
-export function shrinkOnePick(segment: number, offset: number): Shrinker {
+export function shrinkOnePick(stepKey: number, offset: number): Shrinker {
   return <T>(
     seed: Gen<T>,
     test: (val: T) => boolean,
   ): Gen<T> | undefined => {
-    const picks = seed.segmentPicks[segment];
+    const picks = seed.picksByStep[stepKey];
 
     if (picks.trimmedLength <= offset) {
       return undefined; // No change; nothing to shrink
@@ -153,7 +153,7 @@ export function shrinkOnePick(segment: number, offset: number): Shrinker {
 
     // See if the test fails if we subtract one.
     const next = tryEdit(
-      replaceAt(segment, offset, reply - 1),
+      replacePick(stepKey, offset, reply - 1),
       seed,
       test,
     );
@@ -161,7 +161,7 @@ export function shrinkOnePick(segment: number, offset: number): Shrinker {
       return undefined; // No change; the postcondition already holds
     }
     seed = next;
-    let replies = seed.segmentPicks[segment].replies;
+    let replies = seed.picksByStep[stepKey].replies;
 
     // Binary search to find the smallest pick that succeeds.
     let tooLow = req.min - 1;
@@ -170,7 +170,7 @@ export function shrinkOnePick(segment: number, offset: number): Shrinker {
       const mid = (tooLow + 1 + hi) >>> 1;
       assert(mid > tooLow && mid < hi);
       const next = tryEdit(
-        replaceAt(segment, offset, mid),
+        replacePick(stepKey, offset, mid),
         seed,
         test,
       );
@@ -180,7 +180,7 @@ export function shrinkOnePick(segment: number, offset: number): Shrinker {
         continue;
       }
       seed = next;
-      replies = seed.segmentPicks[segment].replies;
+      replies = seed.picksByStep[stepKey].replies;
       hi = replies[offset];
     }
     return seed;
@@ -188,7 +188,7 @@ export function shrinkOnePick(segment: number, offset: number): Shrinker {
 }
 
 /**
- * Shrinks each pick in every segment.
+ * Attempts to shrink each pick in every step.
  *
  * Postcondition: reducing any pick by one would fail the test.
  */
@@ -197,20 +197,20 @@ export function shrinkAllPicks<T>(
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
   let changed = false;
-  let seg = 0;
+  let key = 0;
   let offset = 0;
   while (true) {
-    const segments = seed.segmentPicks;
-    if (seg >= segments.length) {
+    const byStep = seed.picksByStep;
+    if (key >= byStep.length) {
       break;
     }
-    const picks = segments[seg];
+    const picks = byStep[key];
     if (offset >= picks.length) {
-      seg++;
+      key++;
       offset = 0;
       continue;
     }
-    const next = shrinkOnePick(seg, offset)(seed, test);
+    const next = shrinkOnePick(key, offset)(seed, test);
     if (next !== undefined) {
       changed = true;
       seed = next;
@@ -224,12 +224,12 @@ export function shrinkAllPicks<T>(
 function shrinkSegmentOptions<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
-  segment: number,
+  stepKey: number,
 ): Gen<T> | undefined {
   function getPicks() {
-    const segments = seed.segmentPicks;
-    assert(segment < segments.length);
-    return seed.segmentPicks[segment];
+    const segments = seed.picksByStep;
+    assert(stepKey < segments.length);
+    return seed.picksByStep[stepKey];
   }
 
   let picks = getPicks();
@@ -249,7 +249,7 @@ function shrinkSegmentOptions<T>(
       // Try deleting it by itself.
       end = i + 1;
     }
-    let next = tryEdit(snipRange(segment, i, end), seed, test);
+    let next = tryEdit(removeRange(stepKey, i, end), seed, test);
     if (next === undefined) {
       const containsEmptyOption = (end === i + 1) &&
         picks.getOption(end) === 0 &&
@@ -262,7 +262,7 @@ function shrinkSegmentOptions<T>(
 
       // Try extending the range to include an option that wasn't taken
       next = tryEdit(
-        snipRange(segment, i, end + 1),
+        removeRange(stepKey, i, end + 1),
         seed,
         test,
       );
@@ -285,7 +285,7 @@ export function shrinkAllOptions<T>(
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
   let changed = false;
-  for (let i = seed.segmentCount - 1; i >= 0; i--) {
+  for (let i = seed.stepCount - 1; i >= 0; i--) {
     const next = shrinkSegmentOptions(seed, test, i);
     if (next !== undefined) {
       seed = next;

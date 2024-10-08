@@ -4,7 +4,7 @@ import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import { done } from "../src/results.ts";
 import { Pruned } from "../src/pickable.ts";
 import { PickList, PickRequest, PlaybackPicker } from "../src/picks.ts";
-import { keep, replace, replaceAt, snip } from "../src/edits.ts";
+import { keep, replace, replacePick, snip } from "../src/edits.ts";
 import { Script } from "../src/script_class.ts";
 import { Gen, generate } from "../src/gen_class.ts";
 import { propsFromGen } from "./lib/props.ts";
@@ -172,11 +172,11 @@ describe("Gen", () => {
   describe("segmentCount", () => {
     it("returns 1 for a non-piped script", () => {
       const gen = Gen.mustBuild(bit, [0]);
-      assertEquals(gen.segmentCount, 1);
+      assertEquals(gen.stepCount, 1);
     });
     it("returns 2 for a two-stage pipeline", () => {
       const gen = Gen.mustBuild(bit.then("pipe", (a) => a), [0]);
-      assertEquals(gen.segmentCount, 2);
+      assertEquals(gen.stepCount, 2);
     });
   });
 
@@ -188,48 +188,48 @@ describe("Gen", () => {
       const bitReq = PickRequest.bit;
       const first = new PickList([bitReq], [0]);
       const second = new PickList([bitReq], [1]);
-      assertEquals(gen.segmentPicks, [first, second]);
+      assertEquals(gen.picksByStep, [first, second]);
     });
   });
 
   describe("mutate", () => {
-    it("returns the same object if there are no edits, for a single segment", () => {
+    it("returns itself when there are no edits, for a single-step build", () => {
       const gen = Gen.mustBuild(bit, [0]);
       assert(gen.mutate(() => keep) === gen);
       assert(gen.mutate(() => () => keep()) === gen);
     });
 
-    it("returns the same object if there are no edits, for a multiple segments", () => {
+    it("returns itself when there are no edits, for a multi-step build", () => {
       const gen = Gen.mustBuild(multiStep, [0, 0]);
       assert(gen.mutate(() => keep) === gen);
       assert(gen.mutate(() => () => keep()) === gen);
     });
 
-    it("edits a single segment", () => {
+    it("can edit a single-step build", () => {
       const seed = Gen.mustBuild(bit, [1]);
       const gen = seed.mutate(() => snip);
       assert(gen !== undefined);
-      assertEquals(gen.segmentCount, 1);
+      assertEquals(gen.stepCount, 1);
       assertEquals(gen.replies, [0]);
       assertEquals(gen.val, 0);
     });
 
-    it("edits the first segment of a pipeline", () => {
+    it("can edit the first step of a two-step build", () => {
       const original = Gen.mustBuild(multiStep, [1, 1]);
       const gen = original.mutate((n) => (n === 0) ? snip : keep);
       assert(gen !== undefined);
       assert(gen !== original);
-      assertEquals(gen.segmentCount, 2);
+      assertEquals(gen.stepCount, 2);
       assertEquals(gen.val, "(0, 1)");
       assertEquals(gen.replies, [0, 1]);
     });
 
-    it("edits the last segment of a pipeline", () => {
+    it("can edit the last step of a two-step build", () => {
       const gen = Gen.mustBuild(multiStep, [1, 1]).mutate((n) =>
         (n === 1) ? snip : keep
       );
       assert(gen !== undefined);
-      assertEquals(gen.segmentCount, 2);
+      assertEquals(gen.stepCount, 2);
       assertEquals(gen.replies, [1, 0]);
       assertEquals(gen.val, "(1, 0)");
     });
@@ -250,7 +250,7 @@ describe("Gen", () => {
       return [a, b];
     });
 
-    it("returns undefined if the first segment's edit fails", () => {
+    it("returns undefined if editing the first step fails", () => {
       const gen = Gen.mustBuild(evenDoubles, [2, 2]);
       assert(
         gen.mutate((i) => (i === 0) ? () => replace(1) : keep) ===
@@ -258,7 +258,7 @@ describe("Gen", () => {
       );
     });
 
-    it("returns undefined if the second segment's edit fails", () => {
+    it("returns undefined if editing the second step fails", () => {
       const gen = Gen.mustBuild(evenDoubles, [2, 2]);
       assert(
         gen.mutate((i) => (i === 1) ? () => replace(1) : keep) ===
@@ -266,7 +266,7 @@ describe("Gen", () => {
       );
     });
 
-    it("mutates to a shorter pipeline", () => {
+    it("mutates a multi-step build to have fewer steps", () => {
       const before = Gen.mustBuild(countOnes(), [1, 1, 1, 0]);
       assertEquals(before.val, 3);
 
@@ -279,11 +279,11 @@ describe("Gen", () => {
       });
     });
 
-    it("mutates to a longer pipeline", () => {
+    it("mutates a multi-step build to have more steps", () => {
       const before = Gen.mustBuild(countOnes(), [1, 0]);
       assertEquals(before.val, 1);
 
-      const after = before.mutate(replaceAt(1, 0, 1));
+      const after = before.mutate(replacePick(1, 0, 1));
       assertEquals(propsFromGen(after), {
         val: 2,
         name: "countOnes 0",
@@ -296,7 +296,7 @@ describe("Gen", () => {
       const before = Gen.mustBuild(countOnes(), [1, 1, 1, 1, 1, 0]);
       assertEquals(before.val, 5);
 
-      assertEquals(before.mutate(replaceAt(5, 0, 1)), undefined);
+      assertEquals(before.mutate(replacePick(5, 0, 1)), undefined);
     });
   });
 });

@@ -2,7 +2,7 @@ import type { Done, Failure, Success } from "./results.ts";
 import type { Pickable, PickFunction } from "./pickable.ts";
 import type { ScriptResult } from "./script_class.ts";
 import type { PickRequest } from "./picks.ts";
-import type { SegmentEditor, StreamEditor } from "./edits.ts";
+import type { StepEditor, StreamEditor } from "./edits.ts";
 import type { GenerateOpts } from "./build.ts";
 import type { PlayoutSource } from "./backtracking.ts";
 
@@ -48,7 +48,7 @@ class PipeHead<T> {
     });
   }
 
-  get segmentCount(): number {
+  get stepCount(): number {
     return 1;
   }
 
@@ -118,7 +118,7 @@ class PipeStep<T> {
     const script = source.result;
     assert(!script.done);
 
-    this.index = this.source.segmentCount;
+    this.index = this.source.stepCount;
     this.result = cache(output, () => {
       const playouts = onePlayout(new PlaybackPicker(this.replies));
       assert(playouts.startAt(0));
@@ -127,7 +127,7 @@ class PipeStep<T> {
     });
   }
 
-  get segmentCount(): number {
+  get stepCount(): number {
     return this.index + 1;
   }
 
@@ -278,19 +278,19 @@ export class Gen<T> implements Success<T> {
   }
 
   /**
-   * The number of segments that were needed to generate this value.
+   * The number of steps that were needed to generate this value.
    *
-   * (Includes empty segments.)
+   * (Some steps might use zero picks.)
    */
-  get segmentCount(): number {
-    return this.#end.segmentCount;
+  get stepCount(): number {
+    return this.#end.stepCount;
   }
 
   /**
-   * The picks that were used to generate this value, divided up by the segment
+   * The picks that were used to generate this value, divided up by the steps
    * that used them.
    */
-  get segmentPicks(): PickList[] {
+  get picksByStep(): PickList[] {
     const { first, rest } = splitPipeline(this.#end);
     const segments: PickList[] = [first.picks];
     for (const step of rest) {
@@ -317,7 +317,7 @@ export class Gen<T> implements Success<T> {
    *
    * If edit can't be applied, returns undefined.
    */
-  mutate(editors: SegmentEditor): Gen<T> | undefined {
+  mutate(editors: StepEditor): Gen<T> | undefined {
     const { first, rest } = splitPipeline(this.#end);
 
     let i = 0;
