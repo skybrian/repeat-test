@@ -190,13 +190,13 @@ describe("Gen", () => {
     });
 
     it("edits the first segment of a pipeline", () => {
-      const gen = Gen.mustBuild(multiStep, [1, 1]).mutate((n) =>
-        (n === 0) ? snip : keep
-      );
+      const original = Gen.mustBuild(multiStep, [1, 1]);
+      const gen = original.mutate((n) => (n === 0) ? snip : keep);
       assert(gen !== undefined);
+      assert(gen !== original);
       assertEquals(gen.segmentCount, 2);
-      assertEquals(gen.replies, [0, 1]);
       assertEquals(gen.val, "(0, 1)");
+      assertEquals(gen.replies, [0, 1]);
     });
 
     it("edits the last segment of a pipeline", () => {

@@ -5,13 +5,13 @@ import type {
   PickFunctionOpts,
 } from "./pickable.ts";
 import type { PlayoutSource } from "./backtracking.ts";
-import type { PipeRequest } from "./gen_class.ts";
+import type { ThenFunction } from "./script_class.ts";
 
 import { assert } from "@std/assert/assert";
 import { Pruned } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
-import { Gen } from "./gen_class.ts";
+import { Gen, PipeHead, PipeStep } from "./gen_class.ts";
 
 /**
  * Picks an integer in the given range.
@@ -165,11 +165,11 @@ export function generate<T>(
 }
 
 /**
- * Generates a value a the current depth, continuing the current playout if possible.
+ * Generates a value at the current depth, continuing the current playout if possible.
  *
  * Returns undefined if there are no more playouts available at the current depth.
  */
-export function generateValue<T, I>(
+export function generateValue<T>(
   script: Script<T>,
   playouts: PlayoutSource,
   opts?: GenerateOpts,
@@ -179,73 +179,28 @@ export function generateValue<T, I>(
   const { base, steps } = script.toSteps();
 
   nextPlayout: while (playouts.startValue(depth)) {
-    const first = generateFromFunction(base, base.buildPick, pick, playouts);
+    const first = PipeHead.generate(base, pick, playouts);
     if (first === undefined) {
       continue;
     }
 
-    let input = first;
+    let source: PipeHead<unknown> | PipeStep<unknown, unknown> = first;
     for (const script of steps) {
       const pipe = script.toPipe();
       assert(pipe !== undefined);
-      const request = { script, input, then: pipe.then };
-      const result = thenGenerate(request, pick, playouts);
-      if (result === undefined) {
+      const then = pipe.then as ThenFunction<unknown, T>;
+      const next: PipeStep<unknown, unknown> | undefined = PipeStep.generate(
+        source,
+        then,
+        pick,
+        playouts,
+      );
+      if (next === undefined) {
         continue nextPlayout;
       }
-      input = result;
+      source = next;
     }
 
-    return input as Gen<T>;
+    return new Gen<unknown>(script.name, source) as Gen<T>;
   }
-}
-
-function generateFromFunction<T>(
-  script: Script<T>,
-  build: BuildFunction<T>,
-  pick: PickFunction,
-  playouts: PlayoutSource,
-) {
-  const depth = playouts.depth;
-  while (playouts.startValue(depth)) {
-    try {
-      const val = build(pick);
-      const reqs = playouts.getRequests(depth);
-      const replies = playouts.getReplies(depth);
-      return Gen.makeBuildResult(script, reqs, replies, val);
-    } catch (e) {
-      if (!(e instanceof Pruned)) {
-        throw e;
-      }
-      if (playouts.state === "picking") {
-        playouts.endPlayout(); // pruned, move to next playout
-      }
-    }
-  }
-  return undefined;
-}
-
-export function thenGenerate<I, T>(
-  pipeReq: PipeRequest<I, T>,
-  pick: PickFunction,
-  playouts: PlayoutSource,
-): Gen<T> | undefined {
-  const depth = playouts.depth;
-  while (playouts.startValue(depth)) {
-    try {
-      const val = pipeReq.then(pipeReq.input.val, pick);
-      const reqs = playouts.getRequests(depth);
-      const replies = playouts.getReplies(depth);
-      return Gen.makePipeResult(pipeReq, reqs, replies, val);
-    } catch (e) {
-      if (!(e instanceof Pruned)) {
-        throw e;
-      }
-      if (playouts.state === "picking") {
-        playouts.endPlayout(); // pruned, move to next playout
-      }
-    }
-  }
-
-  return undefined; // out of playouts at this depth
 }
