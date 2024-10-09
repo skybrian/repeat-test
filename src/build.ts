@@ -4,7 +4,6 @@ import type {
   PickFunction,
   PickFunctionOpts,
 } from "./pickable.ts";
-import type { PlayoutSource } from "./backtracking.ts";
 
 import { Filtered } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
@@ -57,8 +56,51 @@ export type GenerateOpts = {
   limit?: number;
 };
 
+export interface PickFunctionSource {
+  /** Attempts to start a new playout, continuing at the given depth. */
+  startAt(depth: number): boolean;
+
+  /** Returns undefined if the current playout is filtered out. */
+  nextPick(req: PickRequest): number | undefined;
+
+  get depth(): number;
+}
+
+/** Creates a simple, non-backtracking pick source. */
+function pickSource(replies: number[]): PickFunctionSource {
+  let depth = 0;
+
+  return {
+    startAt(newDepth: number): boolean {
+      // can't backtrack; no alternative picks available
+      return newDepth === depth;
+    },
+    nextPick(req: PickRequest): number | undefined {
+      if (depth >= replies.length) {
+        depth++; // prevent backtracking
+        return req.min;
+      }
+      const pick = replies[depth++];
+      if (pick < req.min || pick > req.max) {
+        return undefined; // filtered out
+      }
+      return pick;
+    },
+    get depth(): number {
+      return depth;
+    },
+  };
+}
+
+/**
+ * Creates a pick function that plays a single pick sequence.
+ */
+export function usePicks(...replies: number[]): PickFunction {
+  return makePickFunction(pickSource(replies));
+}
+
 export function makePickFunction<T>(
-  playouts: PlayoutSource,
+  playouts: PickFunctionSource,
   opts?: GenerateOpts,
 ): PickFunction {
   const limit = opts?.limit;

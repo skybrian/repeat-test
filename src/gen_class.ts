@@ -13,7 +13,7 @@ import { Script } from "./script_class.ts";
 import { PickList, PlaybackPicker } from "./picks.ts";
 import { EditPicker, keep } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
-import { makePickFunction } from "./build.ts";
+import { makePickFunction, usePicks } from "./build.ts";
 import { minPlayout } from "./backtracking.ts";
 
 /** Rebuilds a ScriptResult when it's mutable according to Object.isFrozen. */
@@ -41,9 +41,7 @@ class PipeHead<T> {
     output: ScriptResult<T>,
   ) {
     this.result = cache(output, () => {
-      const playouts = onePlayout(new PlaybackPicker(this.replies));
-      assert(playouts.startAt(0));
-      const pick = makePickFunction(playouts);
+      const pick = usePicks(...this.replies);
       return this.script.step(pick);
     });
   }
@@ -120,9 +118,7 @@ class PipeStep<T> {
 
     this.index = this.source.stepCount;
     this.result = cache(output, () => {
-      const playouts = onePlayout(new PlaybackPicker(this.replies));
-      assert(playouts.startAt(0));
-      const pick = makePickFunction(playouts);
+      const pick = usePicks(...this.replies);
       return script.step(pick);
     });
   }

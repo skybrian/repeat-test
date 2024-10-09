@@ -1,4 +1,5 @@
 import type { IntPicker, PickRequest, Range } from "./picks.ts";
+import type { PickFunctionSource } from "./build.ts";
 
 import { assert } from "@std/assert";
 import { alwaysPickMin } from "./picks.ts";
@@ -36,7 +37,7 @@ export interface Tracker {
  * A picker that can back up to a previous point in a playout and try a
  * different path.
  */
-export class PlayoutSource {
+export class PlayoutSource implements PickFunctionSource {
   #state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
   #depth = 0;
   readonly #reqs: Range[] = [];
@@ -77,19 +78,14 @@ export class PlayoutSource {
    * The depth must be between 0 and the current depth.
    *
    * If currently picking and the depth matches the current depth, does nothing
-   * (continuing the current playout).
-   *
-   * If the depth is lower than the current depth, starts a new playout at that
-   * depth (backtracks).
+   * (continuing the current playout). Otherwise, starts a new playout.
    *
    * Returns false if there are no more playouts at the given depth.
    */
   startValue(depth: number): boolean {
     if (this.#state === "picking") {
-      if (depth === this.#depth) {
-        return true; // continue the current playout
-      }
-      this.nextPlayout();
+      assert(depth === this.#depth);
+      return true;
     }
     return this.startPlayout(depth);
   }

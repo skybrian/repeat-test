@@ -9,7 +9,7 @@ import { minPlayout, PlayoutSource } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
 import { randomPlayouts } from "../src/random.ts";
 
-import { makePickFunction, MiddlewareRequest } from "../src/build.ts";
+import { makePickFunction, MiddlewareRequest, usePicks } from "../src/build.ts";
 
 describe("MiddlewareRequest", () => {
   it("throws an error if not intercepted", () => {
@@ -23,19 +23,31 @@ describe("MiddlewareRequest", () => {
   });
 });
 
+const bitReq = PickRequest.bit;
+
+function useRandomPicks() {
+  const playouts = randomPlayouts(123);
+  playouts.startAt(0);
+  return makePickFunction(playouts);
+}
+
 describe("makePickFunction", () => {
-  const hi = Arbitrary.of("hi", "there");
-  const bit = new PickRequest(0, 1);
-  let pick = makePickFunction(minPlayout());
+  let pick = usePicks();
 
   beforeEach(() => {
-    const playouts = randomPlayouts(123);
-    playouts.startAt(0);
-    pick = makePickFunction(playouts);
+    pick = usePicks();
   });
 
   it("accepts a PickRequest", () => {
-    assertEquals(pick(bit), 0);
+    pick = usePicks(0);
+    assertEquals(pick(bitReq), 0);
+    pick = usePicks(1);
+    assertEquals(pick(bitReq), 1);
+  });
+
+  it("throws filtered for an invalid pick", () => {
+    pick = usePicks(42);
+    assertThrows(() => pick(bitReq), Filtered);
   });
 
   it("accepts a Script", () => {
@@ -49,21 +61,29 @@ describe("makePickFunction", () => {
   });
 
   it("accepts an Arbitrary", () => {
+    const hi = Arbitrary.of("hi", "there");
     assertEquals(pick(hi), "hi");
   });
 
   it("filters an Arbitrary", () => {
+    const hi = Arbitrary.of("hi", "there");
     const accept = (x: string) => x !== "hi";
+    pick = useRandomPicks();
     assertEquals(pick(hi, { accept }), "there");
   });
 
   it("can filter out every value", () => {
+    const hi = Arbitrary.of("hi", "there");
     const accept = () => false;
+    pick = useRandomPicks();
+    assertThrows(() => pick(hi, { accept }), Filtered);
+    pick = usePicks();
     assertThrows(() => pick(hi, { accept }), Filtered);
   });
 
   it("gives up eventually", () => {
     const accept = () => false;
+    pick = useRandomPicks();
     assertThrows(
       () => pick(arb.string(), { accept }),
       Error,

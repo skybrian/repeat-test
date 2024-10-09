@@ -415,10 +415,7 @@ describe("generate", () => {
         (val, pick) => val.concat(["" + pick(PickRequest.bit)]),
       );
 
-      const gen = generate(
-        script,
-        minPlayout(),
-      );
+      const gen = generate(script, minPlayout());
 
       assertEquals(propsFromGen(gen), {
         name: "untitled",

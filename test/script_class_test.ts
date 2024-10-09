@@ -1,22 +1,14 @@
-import type { Pickable, PickFunction } from "../src/pickable.ts";
+import type { Pickable } from "../src/pickable.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 
-import { Script } from "../src/script_class.ts";
-import { onePlayout } from "../src/backtracking.ts";
-import { makePickFunction } from "../src/build.ts";
-import { PlaybackPicker } from "../src/picks.ts";
 import { done } from "../src/results.ts";
-import { PickRequest } from "@/arbitrary.ts";
+import { PickRequest } from "../src/picks.ts";
+import { usePicks } from "../src/build.ts";
+import { Script } from "../src/script_class.ts";
 
-function picks(...replies: number[]): PickFunction {
-  const playouts = onePlayout(new PlaybackPicker(replies));
-  assert(playouts.startAt(0));
-  return makePickFunction(playouts);
-}
-
-const noPicks = picks();
+const noPicks = usePicks();
 
 describe("Script", () => {
   describe("from", () => {
@@ -66,9 +58,9 @@ describe("Script", () => {
 
     it("executes a recursive script", () => {
       assertEquals(countOnes().buildFrom(noPicks), 0);
-      assertEquals(countOnes().buildFrom(picks(1)), 1);
-      assertEquals(countOnes().buildFrom(picks(1, 1)), 2);
-      assertEquals(countOnes().buildFrom(picks(1, 1, 1)), 3);
+      assertEquals(countOnes().buildFrom(usePicks(1)), 1);
+      assertEquals(countOnes().buildFrom(usePicks(1, 1)), 2);
+      assertEquals(countOnes().buildFrom(usePicks(1, 1, 1)), 3);
     });
   });
 });
