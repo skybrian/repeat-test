@@ -1,7 +1,7 @@
 import * as arb from "@/arbs.ts";
 import * as dom from "@/doms.ts";
 
-import { generate } from "../src/build.ts";
+import { generate } from "../src/gen_class.ts";
 import { pickRandomSeed, randomPicker } from "../src/random.ts";
 import { onePlayout } from "../src/backtracking.ts";
 import { take } from "../src/ordered.ts";
