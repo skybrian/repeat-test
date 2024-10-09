@@ -36,6 +36,8 @@ export class Jar<T> {
    */
   private readonly moreExamples: PlayoutSource;
 
+  private taken = 0;
+
   /**
    * Creates a mutable set of all the values in a domain.
    *
@@ -77,9 +79,15 @@ export class Jar<T> {
       return narrowToRemaining;
     }
 
+    // Hack: increase the number of tries to try to avoid running out when many
+    // values have already been taken. (Ideally we'd use some better way than
+    // filtering when there are few values left.)
+    const maxTries = this.taken + 1000;
+
     const req = MiddlewareRequest.wrap(this.buildItem, middle);
-    const val = pick(req, { accept: this.#accept });
+    const val = pick(req, { accept: this.#accept, maxTries });
     this.#refreshExample();
+    this.taken++;
     return val;
   }
 
