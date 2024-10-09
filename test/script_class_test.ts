@@ -63,4 +63,23 @@ describe("Script", () => {
       assertEquals(countOnes().buildFrom(usePicks(1, 1, 1)), 3);
     });
   });
+
+  describe("maybeStep", () => {
+    it("returns undefined if the script is filtered", () => {
+      const bool = Script.make("bool", (pick) => pick(PickRequest.bit) === 1);
+      assertEquals(bool.maybeStep(usePicks(3)), undefined);
+    });
+
+    it("throws an error if the script does", () => {
+      const fails = Script.make("fails", () => {
+        throw new Error("failed");
+      });
+
+      assertThrows(
+        () => fails.maybeStep(usePicks(3)),
+        Error,
+        "failed",
+      );
+    });
+  });
 });

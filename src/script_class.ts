@@ -2,6 +2,7 @@ import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
 import type { Done } from "./results.ts";
 
 import { done } from "./results.ts";
+import { Filtered } from "./pickable.ts";
 
 /**
  * A function that transforms a value, given some picks.
@@ -49,6 +50,18 @@ export class Script<T> implements Pickable<T> {
 
   get step(): StepFunction<T> {
     return this.#step;
+  }
+
+  /** Like step, but returns undefined if the picks are filtered. */
+  maybeStep(pick: PickFunction): ScriptResult<T> | undefined {
+    try {
+      return this.#step(pick);
+    } catch (e) {
+      if (!(e instanceof Filtered)) {
+        throw e;
+      }
+      return undefined; // failed edit
+    }
   }
 
   with(opts: { name: string }): Script<T> {

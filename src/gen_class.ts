@@ -11,7 +11,7 @@ import { Filtered } from "./pickable.ts";
 import { cacheOnce, failure } from "./results.ts";
 import { Script } from "./script_class.ts";
 import { PickList, PlaybackPicker } from "./picks.ts";
-import { EditPicker, keep } from "./edits.ts";
+import { EditedPickSource, keep } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
 import { makePickFunction, usePicks } from "./build.ts";
 import { minPlayout } from "./backtracking.ts";
@@ -59,23 +59,17 @@ class PipeHead<T> {
       return this; // no change (performance optimization)
     }
 
-    const picker = new EditPicker(this.replies, editor);
-    const playout = onePlayout(picker);
-    const pick = makePickFunction(playout);
-    const next = PipeHead.generate(
-      this.script,
-      pick,
-      playout,
-    );
+    const picks = new EditedPickSource(this.replies, editor);
+    const next = this.script.maybeStep(makePickFunction(picks));
     if (next === undefined) {
       return undefined; // failed edit
     }
 
-    if (picker.edits === 0 && picker.deletes === 0) {
+    if (!picks.edited) {
       return this; // no change
     }
 
-    return next;
+    return new PipeHead(this.script, picks.reqs, picks.replies, next);
   }
 
   static generate<T>(
@@ -139,27 +133,22 @@ class PipeStep<T> {
       return this; // no change
     }
 
-    const picks = new EditPicker(this.replies, editor);
-    const playouts = onePlayout(picks);
-    const pick = makePickFunction(playouts);
-
-    const next = PipeStep.generateStep(
-      nextSource,
-      pick,
-      playouts,
-    );
-    if (!(next instanceof PipeStep)) {
-      return next; // failed or finished early
+    const script = nextSource.result;
+    if (script.done) {
+      return script; // finished early
     }
 
-    if (
-      nextSource === this.source &&
-      picks.edits === 0 && picks.deletes === 0
-    ) {
+    const picks = new EditedPickSource(this.replies, editor);
+    const next = script.maybeStep(makePickFunction(picks));
+    if (next === undefined) {
+      return undefined;
+    }
+
+    if (nextSource === this.source && !picks.edited) {
       return this; // no change
     }
 
-    return next;
+    return new PipeStep(nextSource, picks.reqs, picks.replies, next);
   }
 
   static generateStep<T>(

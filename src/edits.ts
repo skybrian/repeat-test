@@ -1,4 +1,5 @@
-import type { IntPicker, PickRequest } from "./picks.ts";
+import type { Range } from "./picks.ts";
+import type { PickFunctionSource } from "./build.ts";
 
 export type Edit =
   | { type: "keep" }
@@ -12,7 +13,7 @@ export type Edit =
 export type StreamEditor = (
   pickIndex: number,
   before: number,
-  req: PickRequest,
+  req: Range,
 ) => Edit;
 
 /** An editor that keeps each pick. */
@@ -31,10 +32,14 @@ export function replace(val: number): Edit {
 }
 
 /**
- * A picker that replays an array of integers with edits.
+ * Replays a stream of picks, applying the given editor to each pick.
  */
-export class EditPicker implements IntPicker {
-  private index = 0;
+export class EditedPickSource implements PickFunctionSource {
+  private offset = 0;
+
+  readonly reqs: Range[] = [];
+  readonly replies: number[] = [];
+
   #edits = 0;
   #deletes = 0;
 
@@ -53,12 +58,27 @@ export class EditPicker implements IntPicker {
     }
   }
 
-  pick(req: PickRequest): number {
+  startAt(depth: number): boolean {
+    return depth === this.depth;
+  }
+
+  nextPick(req: Range): number {
+    const pick = this.edit(req);
+    this.reqs.push(req);
+    this.replies.push(pick);
+    return pick;
+  }
+
+  get depth(): number {
+    return this.replies.length;
+  }
+
+  private edit(req: Range): number {
     while (true) {
-      if (this.index >= this.before.length) {
+      if (this.offset >= this.before.length) {
         return req.min;
       }
-      const index = this.index++;
+      const index = this.offset++;
       const before = this.before[index];
       const edit = this.editor(index, before, req);
       let val = before;
@@ -73,7 +93,7 @@ export class EditPicker implements IntPicker {
           this.#deletes++;
           continue;
       }
-      if (!req.inRange(val)) {
+      if (val < req.min || val > req.max) {
         val = req.min;
       }
       if (val != before) {
@@ -81,6 +101,10 @@ export class EditPicker implements IntPicker {
       }
       return val;
     }
+  }
+
+  get edited(): boolean {
+    return this.#edits > 0 || this.#deletes > 0;
   }
 
   get edits(): number {
