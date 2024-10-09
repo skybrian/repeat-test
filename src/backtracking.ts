@@ -68,13 +68,7 @@ export class PlayoutSource {
     if (this.#state === "picking") {
       this.nextPlayout();
     }
-    if (this.#state === "searchDone" || depth > this.depth) {
-      return false;
-    }
-    this.tracker.startPlayout(depth);
-    this.#depth = depth;
-    this.#state = "picking";
-    return true;
+    return this.startPlayout(depth);
   }
 
   /**
@@ -91,10 +85,13 @@ export class PlayoutSource {
    * Returns false if there are no more playouts at the given depth.
    */
   startValue(depth: number): boolean {
-    if (this.#state === "picking" && depth === this.#depth) {
-      return true; // continue the current playout
+    if (this.#state === "picking") {
+      if (depth === this.#depth) {
+        return true; // continue the current playout
+      }
+      this.nextPlayout();
     }
-    return this.startAt(depth);
+    return this.startPlayout(depth);
   }
 
   /**
@@ -157,6 +154,16 @@ export class PlayoutSource {
   getReplies(start?: number) {
     start = start ?? 0;
     return this.tracker.getReplies(start);
+  }
+
+  private startPlayout(depth: number): boolean {
+    if (this.#state === "searchDone" || depth > this.depth) {
+      return false;
+    }
+    this.tracker.startPlayout(depth);
+    this.#depth = depth;
+    this.#state = "picking";
+    return true;
   }
 
   private nextPlayout() {
