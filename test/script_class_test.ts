@@ -62,6 +62,20 @@ describe("Script", () => {
     });
   });
 
+  describe("paused", () => {
+    it("executes a recursive script", () => {
+      const start = countOnes.paused;
+      assert(start instanceof Paused);
+
+      const first = start.step(usePicks(1));
+      assert(first instanceof Paused);
+
+      const second = first.step(usePicks(0));
+      assert(second !== filtered && second.done);
+      assertEquals(second.val, 1);
+    });
+  });
+
   describe("maybeStep", () => {
     it("executes a single-step script", () => {
       assertEquals(bool.step(usePicks(1)), done(true));

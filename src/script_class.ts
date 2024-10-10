@@ -5,31 +5,19 @@ import { done } from "./results.ts";
 import { Filtered } from "./pickable.ts";
 
 /**
- * A function that transforms a value, given some picks.
- *
- * It may throw {@link Pruned} to indicate that the picks can't be used to
- * transform a value. (For example, due to filtering.)
+ * A script may pause instead of returning a value.
  */
-export type ThenFunction<In, Out> = (input: In, pick: PickFunction) => Out;
-
-export interface HasScript<T> extends Pickable<T> {
-  /** Generates a member of this set, given a source of picks. */
-  readonly buildScript: Script<T>;
-}
-
-export const filtered = Symbol("filtered");
-
 export type ScriptResult<T> = Done<T> | Paused<T>;
 
 /**
  * Like a {@link BuildFunction}, except that it can pause.
  *
- * It can also throw {@link Filtered}.
+ * (May throw {@link Filtered}.)
  */
 export type StepFunction<T> = (pick: PickFunction) => ScriptResult<T>;
 
 /** Converts a StepFunction to a BuildFunction. */
-function makeBuildFunction<T>(step: StepFunction<T>): BuildFunction<T> {
+function stepToBuild<T>(step: StepFunction<T>): BuildFunction<T> {
   return (pick: PickFunction): T => {
     let next = step(pick);
     while (!next.done) {
@@ -39,14 +27,45 @@ function makeBuildFunction<T>(step: StepFunction<T>): BuildFunction<T> {
   };
 }
 
+/**
+ * A function that transforms a value, given some picks.
+ *
+ * (May throw {@link Filtered}.)
+ */
+export type ThenFunction<In, Out> = (input: In, pick: PickFunction) => Out;
+
+/**
+ * Some Pickables can pause instead of returning a value immediately.
+ */
+export interface HasScript<T> extends Pickable<T> {
+  /**
+   * Returns a script that builds the same values as {@link Pickable.buildFrom},
+   * but may also pause.
+   */
+  readonly buildScript: Script<T>;
+}
+
+/**
+ * Value returned by {@link Paused.step} instead of throwing {@link Filtered}.
+ */
+export const filtered = Symbol("filtered");
+
+/**
+ * A paused script. It may resume more than once.
+ */
 export class Paused<T> implements Pickable<T> {
-  readonly done = false;
+  readonly done = false; // To distinguish it from a Done result.
   readonly buildFrom: BuildFunction<T>;
 
   constructor(readonly innerStep: StepFunction<T>) {
-    this.buildFrom = makeBuildFunction(innerStep);
+    this.buildFrom = stepToBuild(innerStep);
   }
 
+  /**
+   * Reads picks and calculates the next step, or the final result.
+   *
+   * Returns {@link filtered} if the picks can't be used to build the value.
+   */
   step(pick: PickFunction): ScriptResult<T> | typeof filtered {
     try {
       return this.innerStep(pick);
@@ -58,6 +77,10 @@ export class Paused<T> implements Pickable<T> {
     }
   }
 
+  /**
+   * Returns a new Paused value that will take an additional step at the end,
+   * calling the given function.
+   */
   then<Out>(
     then: ThenFunction<T, Out>,
   ): Paused<Out> {
@@ -74,10 +97,17 @@ export class Paused<T> implements Pickable<T> {
   }
 }
 
+/**
+ * Returns a {@link Paused} value that will call the given function to take the
+ * next step.
+ */
 export function paused<T>(innerStep: StepFunction<T>): Paused<T> {
   return new Paused(innerStep);
 }
 
+/**
+ * A Pickable that can pause.
+ */
 export class Script<T> implements Pickable<T> {
   readonly done = false; // To distinguish it from a Done result.
 
@@ -101,6 +131,13 @@ export class Script<T> implements Pickable<T> {
 
   get buildFrom(): BuildFunction<T> {
     return this.#build;
+  }
+
+  /**
+   * Pauses at the beginning of the script.
+   */
+  get paused(): ScriptResult<T> {
+    return new Paused(this.#step);
   }
 
   step(pick: PickFunction): ScriptResult<T> | typeof filtered {
