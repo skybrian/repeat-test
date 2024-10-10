@@ -72,8 +72,20 @@ function countOnesAt(n: number): Paused<number> {
 
 const countOnes = Script.fromPaused("countOnes", countOnesAt(0));
 
+const pi = Script.constant("pi", Math.PI);
+
 describe("Gen", () => {
   describe("build", () => {
+    it("works for a constant", () => {
+      const gen = Gen.build(pi, []);
+      assert(gen.ok);
+      assertEquals(propsFromGen(gen), {
+        name: "pi",
+        val: Math.PI,
+        reqs: [],
+        replies: [],
+      });
+    });
     it("fails when there aren't enough picks", () => {
       assertEquals(
         Gen.build(bit, []),
@@ -114,6 +126,15 @@ describe("Gen", () => {
   });
 
   describe("mustBuild", () => {
+    it("works for a constant", () => {
+      const gen = Gen.mustBuild(pi, []);
+      assertEquals(propsFromGen(gen), {
+        name: "pi",
+        val: Math.PI,
+        reqs: [],
+        replies: [],
+      });
+    });
     it("fails when there aren't enough picks", () => {
       assertThrows(
         () => Gen.mustBuild(bit, []),
@@ -197,6 +218,12 @@ describe("Gen", () => {
   });
 
   describe("mutate", () => {
+    it("returns the same value for a constant", () => {
+      const gen = Gen.mustBuild(pi, []);
+      assertEquals(gen.val, Math.PI);
+      assertEquals(gen.stepCount, 0);
+      assert(gen.mutate(() => keep) === gen);
+    });
     it("returns itself when there are no edits, for a single-step build", () => {
       const gen = Gen.mustBuild(bit, [0]);
       assert(gen.mutate(() => keep) === gen);

@@ -35,7 +35,17 @@ const countOnes = Script.fromPaused("count ones", countOnesAt(0));
 
 const doubleOnes = countOnes.then("double ones", (n) => n * 2);
 
+const pi = Script.constant("pi", Math.PI);
+
 describe("Script", () => {
+  describe("constant", () => {
+    it("evaluates to a constant", () => {
+      assertEquals(pi.buildFrom(noPicks), Math.PI);
+      assert(pi.paused.done);
+      assertEquals(pi.paused.val, Math.PI);
+    });
+  });
+
   describe("from", () => {
     it("throws if given an invalid argument", () => {
       assertThrows(
@@ -76,20 +86,42 @@ describe("Script", () => {
     });
   });
 
-  describe("maybeStep", () => {
+  describe("then", () => {
+    it("passes a constant to the then function", () => {
+      const tau = pi.then("tau", (pi) => pi * 2);
+      assertEquals(tau.buildFrom(noPicks), Math.PI * 2);
+
+      assertFalse(tau.paused.done);
+      const first = tau.paused.step(usePicks());
+      assert(first !== filtered && first.done);
+      assertEquals(first.val, Math.PI * 2);
+    });
+  });
+});
+
+describe("Paused", () => {
+  describe("step", () => {
     it("executes a single-step script", () => {
-      assertEquals(bool.step(usePicks(1)), done(true));
+      const start = bool.paused;
+      assert(start instanceof Paused);
+      assertEquals(start.step(usePicks(1)), done(true));
     });
 
     it("executes a two-step script", () => {
-      const first = twoBools.step(usePicks(1));
+      const start = twoBools.paused;
+      assert(start instanceof Paused);
+
+      const first = start.step(usePicks(1));
       assert(first instanceof Paused);
 
       assertEquals(first.step(usePicks(0)), done([true, false]));
     });
 
     it("executes a three-step script", () => {
-      const first = threeBools.step(usePicks(0));
+      const start = threeBools.paused;
+      assert(start instanceof Paused);
+
+      const first = start.step(usePicks(0));
       assert(first instanceof Paused);
 
       const second = first.step(usePicks(1));
@@ -99,7 +131,10 @@ describe("Script", () => {
     });
 
     it("executes a three-step script with a then function", () => {
-      const first = doubleOnes.step(usePicks(1));
+      const start = doubleOnes.paused;
+      assert(start instanceof Paused);
+
+      const first = start.step(usePicks(1));
       assert(first instanceof Paused);
 
       const second = first.step(usePicks(1));
@@ -112,11 +147,17 @@ describe("Script", () => {
     });
 
     it("returns filtered for an invalid pick", () => {
-      assertEquals(bool.step(usePicks(3)), filtered);
+      const start = bool.paused;
+      assert(start instanceof Paused);
+
+      assertEquals(start.step(usePicks(3)), filtered);
     });
 
     it("returns filtered for an invalid pick in the second step", () => {
-      const first = twoBools.step(usePicks(1));
+      const start = twoBools.paused;
+      assert(start instanceof Paused);
+
+      const first = start.step(usePicks(1));
       assert(first !== filtered);
       assertFalse(first.done);
       assertEquals(first.step(usePicks(3)), filtered);
@@ -126,9 +167,11 @@ describe("Script", () => {
       const fails = Script.make("fails", () => {
         throw new Error("failed");
       });
+      const start = fails.paused;
+      assert(start instanceof Paused);
 
       assertThrows(
-        () => fails.step(usePicks(3)),
+        () => start.step(usePicks(3)),
         Error,
         "failed",
       );
