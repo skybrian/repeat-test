@@ -1,6 +1,6 @@
 import type { Done, Failure, Success } from "./results.ts";
 import type { Pickable, PickFunction } from "./pickable.ts";
-import type { ScriptResult } from "./script_class.ts";
+import type { StepKey, StepResult } from "./script_class.ts";
 import type { Range } from "./picks.ts";
 import type { StepEditor, StreamEditor } from "./edits.ts";
 import type { GenerateOpts } from "./build.ts";
@@ -17,9 +17,9 @@ import { minPlayout } from "./backtracking.ts";
 
 /** Rebuilds a ScriptResult when it's mutable according to Object.isFrozen. */
 function cache<T>(
-  result: ScriptResult<T>,
-  build: () => ScriptResult<T>,
-): ScriptResult<T> {
+  result: StepResult<T>,
+  build: () => StepResult<T>,
+): StepResult<T> {
   if (!result.done || Object.isFrozen(result.val)) {
     return result; // assumed immutable
   }
@@ -31,32 +31,26 @@ function cache<T>(
 }
 
 class PipeStart<T> {
-  readonly result: ScriptResult<T>;
+  readonly result: StepResult<T>;
 
   constructor(script: Script<T>) {
     this.result = script.paused;
   }
-
-  get stepCount(): number {
-    return 0;
-  }
 }
 
 class PipeStep<T> {
-  private readonly index: number;
-  readonly result: ScriptResult<T>;
+  readonly key: StepKey;
+  readonly result: StepResult<T>;
 
   constructor(
     readonly source: PipeStart<T> | PipeStep<T>,
     readonly reqs: Range[],
     readonly replies: number[],
-    output: ScriptResult<T>,
+    output: StepResult<T>,
   ) {
     const paused = source.result;
     assert(!paused.done);
-
-    this.index = this.source.stepCount;
-    assert(this.index === paused.key);
+    this.key = paused.key;
 
     this.result = cache(output, () => {
       const pick = usePicks(...this.replies);
@@ -67,10 +61,6 @@ class PipeStep<T> {
       );
       return result;
     });
-  }
-
-  get stepCount(): number {
-    return this.index + 1;
   }
 
   get picks(): PickList {
@@ -216,8 +206,9 @@ export class Gen<T> implements Success<T> {
    *
    * (Some steps might use zero picks.)
    */
-  get stepCount(): number {
-    return this.#end.stepCount;
+  get stepKeys(): StepKey[] {
+    const { rest } = splitPipeline(this.#end);
+    return rest.map((step) => step.key);
   }
 
   /**

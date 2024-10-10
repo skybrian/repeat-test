@@ -195,14 +195,14 @@ describe("Gen", () => {
     });
   });
 
-  describe("segmentCount", () => {
-    it("returns 1 for a non-piped script", () => {
+  describe("stepKeys", () => {
+    it("returns a single key for a non-piped script", () => {
       const gen = Gen.mustBuild(bit, [0]);
-      assertEquals(gen.stepCount, 1);
+      assertEquals(gen.stepKeys, [0]);
     });
-    it("returns 2 for a two-stage pipeline", () => {
+    it("returns two keys for a two-stage pipeline", () => {
       const gen = Gen.mustBuild(bit.then("pipe", (a) => a), [0]);
-      assertEquals(gen.stepCount, 2);
+      assertEquals(gen.stepKeys, [0, 1]);
     });
   });
 
@@ -222,7 +222,7 @@ describe("Gen", () => {
     it("returns the same value for a constant", () => {
       const gen = Gen.mustBuild(pi, []);
       assertEquals(gen.val, Math.PI);
-      assertEquals(gen.stepCount, 0);
+      assertEquals(gen.stepKeys, []);
       assert(gen.mutate(() => keep) === gen);
     });
     it("returns itself when there are no edits, for a single-step build", () => {
@@ -241,7 +241,7 @@ describe("Gen", () => {
       const seed = Gen.mustBuild(bit, [1]);
       const gen = seed.mutate(() => snip);
       assert(gen !== undefined);
-      assertEquals(gen.stepCount, 1);
+      assertEquals(gen.stepKeys, [0]);
       assertEquals(gen.replies, [0]);
       assertEquals(gen.val, 0);
     });
@@ -251,7 +251,7 @@ describe("Gen", () => {
       const gen = original.mutate((n) => (n === 0) ? snip : keep);
       assert(gen !== undefined);
       assert(gen !== original);
-      assertEquals(gen.stepCount, 2);
+      assertEquals(gen.stepKeys, [0, 1]);
       assertEquals(gen.val, "(0, 1)");
       assertEquals(gen.replies, [0, 1]);
     });
@@ -261,7 +261,7 @@ describe("Gen", () => {
         (n === 1) ? snip : keep
       );
       assert(gen !== undefined);
-      assertEquals(gen.stepCount, 2);
+      assertEquals(gen.stepKeys, [0, 1]);
       assertEquals(gen.replies, [1, 0]);
       assertEquals(gen.val, "(1, 0)");
     });
@@ -327,7 +327,7 @@ describe("Gen", () => {
     it("returns undefined if a new step fails", () => {
       const before = Gen.mustBuild(countOnesTo5, [1, 1, 1, 1, 1, 0]);
       assertEquals(before.val, 5);
-      assertEquals(before.stepCount, 6);
+      assertEquals(before.stepKeys, [0, 1, 2, 3, 4, 5]);
 
       assertEquals(before.mutate(replacePick(5, 0, 1)), undefined);
     });

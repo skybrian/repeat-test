@@ -51,10 +51,12 @@ export interface HasScript<T> extends Pickable<T> {
  */
 export const filtered = Symbol("filtered");
 
+export type StepKey = number;
+
 /**
  * A script may pause instead of returning a value.
  */
-export type ScriptResult<T> = Done<T> | Paused<T>;
+export type StepResult<T> = Done<T> | Paused<T>;
 
 /**
  * A paused script. It may resume more than once.
@@ -64,7 +66,7 @@ export class Paused<T> implements Pickable<T> {
   readonly buildFrom: BuildFunction<T>;
   readonly #step: StepFunction<T>;
 
-  constructor(readonly key: number, step: StepFunction<T>) {
+  constructor(readonly key: StepKey, step: StepFunction<T>) {
     this.buildFrom = (pick: PickFunction): T => {
       let next = step(pick);
       while (!next.done) {
@@ -80,7 +82,7 @@ export class Paused<T> implements Pickable<T> {
    *
    * Returns {@link filtered} if the picks can't be used to build the value.
    */
-  step(pick: PickFunction): ScriptResult<T> | typeof filtered {
+  step(pick: PickFunction): StepResult<T> | typeof filtered {
     try {
       const result = this.#step(pick);
       if (result.done) {
@@ -125,12 +127,12 @@ export class Paused<T> implements Pickable<T> {
 export class Script<T> implements Pickable<T> {
   readonly #name: string;
   readonly #build: BuildFunction<T>;
-  readonly #start: ScriptResult<T>;
+  readonly #start: StepResult<T>;
 
   private constructor(
     name: string,
     build: BuildFunction<T>,
-    start: ScriptResult<T>,
+    start: StepResult<T>,
   ) {
     this.#name = name;
     this.#build = build;
@@ -150,7 +152,7 @@ export class Script<T> implements Pickable<T> {
    *
    * In the case of a constant, this will be a Done result.
    */
-  get paused(): ScriptResult<T> {
+  get paused(): StepResult<T> {
     return this.#start;
   }
 

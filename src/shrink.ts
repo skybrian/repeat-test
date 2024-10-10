@@ -1,5 +1,6 @@
 import type { Gen } from "./gen_class.ts";
 import type { StepEditor } from "./edits.ts";
+import type { StepKey } from "./script_class.ts";
 import type { SystemConsole } from "./console.ts";
 
 import { assert } from "@std/assert";
@@ -224,7 +225,7 @@ export function shrinkAllPicks<T>(
 function shrinkSegmentOptions<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
-  stepKey: number,
+  stepKey: StepKey,
 ): Gen<T> | undefined {
   function getPicks() {
     const segments = seed.picksByStep;
@@ -285,8 +286,8 @@ export function shrinkAllOptions<T>(
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
   let changed = false;
-  for (let i = seed.stepCount - 1; i >= 0; i--) {
-    const next = shrinkSegmentOptions(seed, test, i);
+  for (const key of seed.stepKeys) {
+    const next = shrinkSegmentOptions(seed, test, key);
     if (next !== undefined) {
       seed = next;
       changed = true;
