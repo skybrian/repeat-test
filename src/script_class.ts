@@ -6,16 +6,27 @@ import { Filtered } from "./pickable.ts";
 import { assert } from "@std/assert/assert";
 
 /**
- * A script may pause instead of returning a value.
+ * Returned by a step function to indicate that there's another step.
  */
-export type ScriptResult<T> = Done<T> | Paused<T>;
+export type Resume<T> = {
+  readonly done: false;
+  readonly step: StepFunction<T>;
+};
 
 /**
  * Like a {@link BuildFunction}, except that it can pause.
  *
  * (May throw {@link Filtered}.)
  */
-export type StepFunction<T> = (pick: PickFunction) => ScriptResult<T>;
+export type StepFunction<T> = (pick: PickFunction) => Done<T> | Resume<T>;
+
+/**
+ * Returns a {@link Paused} value that will call the given function to take the
+ * next step.
+ */
+export function resume<T>(step: StepFunction<T>): Resume<T> {
+  return { done: false, step };
+}
 
 /**
  * A function that transforms a value, given some picks.
@@ -41,6 +52,11 @@ export interface HasScript<T> extends Pickable<T> {
 export const filtered = Symbol("filtered");
 
 /**
+ * A script may pause instead of returning a value.
+ */
+export type ScriptResult<T> = Done<T> | Paused<T>;
+
+/**
  * A paused script. It may resume more than once.
  */
 export class Paused<T> implements Pickable<T> {
@@ -48,11 +64,11 @@ export class Paused<T> implements Pickable<T> {
   readonly buildFrom: BuildFunction<T>;
   readonly #step: StepFunction<T>;
 
-  constructor(step: StepFunction<T>) {
+  constructor(readonly key: number, step: StepFunction<T>) {
     this.buildFrom = (pick: PickFunction): T => {
       let next = step(pick);
       while (!next.done) {
-        next = next.#step(pick);
+        next = next.step(pick);
       }
       return next.val;
     };
@@ -66,7 +82,11 @@ export class Paused<T> implements Pickable<T> {
    */
   step(pick: PickFunction): ScriptResult<T> | typeof filtered {
     try {
-      return this.#step(pick);
+      const result = this.#step(pick);
+      if (result.done) {
+        return result;
+      }
+      return new Paused(this.key + 1, result.step);
     } catch (e) {
       if (!(e instanceof Filtered)) {
         throw e;
@@ -79,28 +99,24 @@ export class Paused<T> implements Pickable<T> {
    * Returns a new Paused value that will take an additional step at the end,
    * calling the given function.
    */
-  then<Out>(
+  then<Out>(then: ThenFunction<T, Out>): Paused<Out> {
+    // Adding a step to the end doesn't change the current key.
+    return new Paused(this.key, Paused.addToEnd(this.#step, then));
+  }
+
+  static addToEnd<T, Out>(
+    first: StepFunction<T>,
     then: ThenFunction<T, Out>,
-  ): Paused<Out> {
-    const innerStep = (pick: PickFunction): ScriptResult<Out> => {
-      const next = this.#step(pick);
+  ): StepFunction<Out> {
+    return (pick: PickFunction): Done<Out> | Resume<Out> => {
+      const next = first(pick);
       if (next.done) {
         const val = next.val;
-        return paused((pick) => done(then(val, pick)));
+        return resume((pick) => done(then(val, pick)));
       }
-      return next.then(then);
+      return resume(Paused.addToEnd(next.step, then));
     };
-
-    return paused(innerStep);
   }
-}
-
-/**
- * Returns a {@link Paused} value that will call the given function to take the
- * next step.
- */
-export function paused<T>(step: StepFunction<T>): Paused<T> {
-  return new Paused(step);
 }
 
 /**
@@ -151,7 +167,7 @@ export class Script<T> implements Pickable<T> {
     if (this.#start.done) {
       const val = this.#start.val;
       const step = (pick: PickFunction) => done(then(val, pick));
-      return new Script(name, build, paused(step));
+      return new Script(name, build, new Paused(0, step));
     }
 
     return new Script(name, build, this.#start.then(then));
@@ -169,11 +185,12 @@ export class Script<T> implements Pickable<T> {
     name: string,
     build: BuildFunction<T>,
   ): Script<T> {
-    const step = (pick: PickFunction): ScriptResult<T> => done(build(pick));
-    return new Script(name, build, paused(step));
+    const step = (pick: PickFunction) => done(build(pick));
+    return new Script(name, build, new Paused(0, step));
   }
 
-  static fromPaused<T>(name: string, paused: Paused<T>): Script<T> {
+  static fromStep<T>(name: string, step: StepFunction<T>): Script<T> {
+    const paused = new Paused(0, step);
     return new Script(name, paused.buildFrom, paused);
   }
 

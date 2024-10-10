@@ -56,6 +56,8 @@ class PipeStep<T> {
     assert(!paused.done);
 
     this.index = this.source.stepCount;
+    assert(this.index === paused.key);
+
     this.result = cache(output, () => {
       const pick = usePicks(...this.replies);
       const result = paused.step(pick);

@@ -1,4 +1,6 @@
-import type { Pickable } from "../src/pickable.ts";
+import type { Done } from "../src/results.ts";
+import type { Pickable, PickFunction } from "../src/pickable.ts";
+import type { Resume, StepFunction } from "../src/script_class.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
@@ -6,7 +8,7 @@ import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import { done } from "../src/results.ts";
 import { PickRequest } from "../src/picks.ts";
 import { usePicks } from "../src/build.ts";
-import { filtered, Paused, paused, Script } from "../src/script_class.ts";
+import { filtered, Paused, resume, Script } from "../src/script_class.ts";
 
 const noPicks = usePicks();
 
@@ -22,18 +24,18 @@ const threeBools = twoBools.then("three bools", ([a, b], pick) => {
   return [a, b, c];
 });
 
-function countOnesAt(n: number): Paused<number> {
-  return paused((pick) => {
+function countOnesAt(n: number): StepFunction<number> {
+  return (pick: PickFunction): Done<number> | Resume<number> => {
     if (pick(PickRequest.bit) === 0) {
       return done(n);
     }
-    return countOnesAt(n + 1);
-  });
+    return resume(countOnesAt(n + 1));
+  };
 }
 
-const countOnes = Script.fromPaused("count ones", countOnesAt(0));
+const countOnes = Script.fromStep("countOnes", countOnesAt(0));
 
-const doubleOnes = countOnes.then("double ones", (n) => n * 2);
+const doubleOnes = countOnes.then("doubleOnes", (n) => n * 2);
 
 const pi = Script.constant("pi", Math.PI);
 
@@ -104,6 +106,7 @@ describe("Paused", () => {
     it("executes a single-step script", () => {
       const start = bool.paused;
       assert(start instanceof Paused);
+      assertEquals(start.key, 0);
       assertEquals(start.step(usePicks(1)), done(true));
     });
 
@@ -113,6 +116,7 @@ describe("Paused", () => {
 
       const first = start.step(usePicks(1));
       assert(first instanceof Paused);
+      assertEquals(first.key, 1);
 
       assertEquals(first.step(usePicks(0)), done([true, false]));
     });
@@ -126,6 +130,7 @@ describe("Paused", () => {
 
       const second = first.step(usePicks(1));
       assert(second instanceof Paused);
+      assertEquals(second.key, 2);
 
       assertEquals(second.step(usePicks(0)), done([false, true, false]));
     });
