@@ -464,7 +464,7 @@ describe("generate", () => {
     });
   });
 
-  describe("for Script.fromStep", () => {
+  describe("for Script.fromPaused", () => {
     it("generates values with increasing depth", () => {
       const script = countOnes;
       const playouts = orderedPlayouts();

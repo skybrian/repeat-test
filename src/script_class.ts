@@ -17,6 +17,8 @@ export interface HasScript<T> extends Pickable<T> {
   readonly buildScript: Script<T>;
 }
 
+export const filtered = Symbol("filtered");
+
 export type ScriptResult<T> = Done<T> | Paused<T>;
 
 export type StepFunction<T> = (
@@ -25,32 +27,36 @@ export type StepFunction<T> = (
 
 export class Paused<T> {
   readonly done = false;
+
   constructor(readonly step: StepFunction<T>) {
   }
 
-  maybeStep(pick: PickFunction): ScriptResult<T> | undefined {
+  maybeStep(pick: PickFunction): ScriptResult<T> | typeof filtered {
     try {
       return this.step(pick);
     } catch (e) {
       if (!(e instanceof Filtered)) {
         throw e;
       }
-      return undefined; // failed edit
+      return filtered; // failed edit
     }
   }
+}
 
-  then<Out>(then: ThenFunction<T, Out>): Paused<Out> {
-    const step = (pick: PickFunction): ScriptResult<Out> => {
-      const next = this.step(pick);
-      if (next.done) {
-        const val = next.val;
-        return new Paused((pick) => done(then(val, pick)));
-      }
-      return next.then(then);
-    };
+function addThen<T, Out>(
+  paused: Paused<T>,
+  then: ThenFunction<T, Out>,
+): Paused<Out> {
+  const step = (pick: PickFunction): ScriptResult<Out> => {
+    const next = paused.step(pick);
+    if (next.done) {
+      const val = next.val;
+      return new Paused((pick) => done(then(val, pick)));
+    }
+    return addThen(next, then);
+  };
 
-    return new Paused(step);
-  }
+  return new Paused(step);
 }
 
 export function paused<T>(step: StepFunction<T>): Paused<T> {
@@ -87,14 +93,14 @@ export class Script<T> implements Pickable<T> {
   }
 
   /** Like step, but returns undefined if the picks are filtered. */
-  maybeStep(pick: PickFunction): ScriptResult<T> | undefined {
+  maybeStep(pick: PickFunction): ScriptResult<T> | typeof filtered {
     try {
       return this.#step(pick);
     } catch (e) {
       if (!(e instanceof Filtered)) {
         throw e;
       }
-      return undefined; // failed edit
+      return filtered; // failed edit
     }
   }
 
@@ -114,7 +120,7 @@ export class Script<T> implements Pickable<T> {
         const val = next.val;
         return new Paused((pick) => done(then(val, pick)));
       }
-      return next.then(then);
+      return addThen(next, then);
     };
 
     return new Script(name, build, step);
@@ -125,20 +131,6 @@ export class Script<T> implements Pickable<T> {
     build: BuildFunction<T>,
   ): Script<T> {
     const step = (pick: PickFunction): ScriptResult<T> => done(build(pick));
-    return new Script(name, build, step);
-  }
-
-  static fromStep<T>(
-    name: string,
-    step: StepFunction<T>,
-  ): Script<T> {
-    const build = (pick: PickFunction): T => {
-      let next = step(pick);
-      while (!next.done) {
-        next = next.step(pick);
-      }
-      return next.val;
-    };
     return new Script(name, build, step);
   }
 
