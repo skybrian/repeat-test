@@ -133,15 +133,15 @@ class PipeStep<T> {
       return this; // no change
     }
 
-    const script = nextSource.result;
-    if (script.done) {
-      return script; // finished early
+    const paused = nextSource.result;
+    if (paused.done) {
+      return paused; // finished early
     }
 
     const picks = new EditedPickSource(this.replies, editor);
-    const next = script.maybeStep(makePickFunction(picks));
+    const next = paused.maybeStep(makePickFunction(picks));
     if (next === undefined) {
-      return undefined;
+      return undefined; // filtered
     }
 
     if (nextSource === this.source && !picks.edited) {
@@ -156,26 +156,23 @@ class PipeStep<T> {
     pick: PickFunction,
     playouts: PlayoutSource,
   ): PipeStep<T> | Success<T> | undefined {
-    const script = source.result;
-    if (script.done) {
-      return script;
+    const paused = source.result;
+    if (paused.done) {
+      return paused;
     }
 
     const depth = playouts.depth;
     while (playouts.startValue(depth)) {
-      try {
-        const next = script.step(pick);
-        const reqs = playouts.getRequests(depth);
-        const replies = playouts.getReplies(depth);
-        return new PipeStep(source, reqs, replies, next);
-      } catch (e) {
-        if (!(e instanceof Filtered)) {
-          throw e;
-        }
+      const next = paused.maybeStep(pick);
+      if (next === undefined) {
         if (playouts.state === "picking") {
-          playouts.endPlayout(); // filtered, move to next playout
+          playouts.endPlayout();
         }
+        continue;
       }
+      const reqs = playouts.getRequests(depth);
+      const replies = playouts.getReplies(depth);
+      return new PipeStep(source, reqs, replies, next);
     }
 
     return undefined; // out of playouts at this depth

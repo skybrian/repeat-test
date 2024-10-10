@@ -17,11 +17,45 @@ export interface HasScript<T> extends Pickable<T> {
   readonly buildScript: Script<T>;
 }
 
-export type ScriptResult<T> = Done<T> | Script<T>;
+export type ScriptResult<T> = Done<T> | Paused<T>;
 
 export type StepFunction<T> = (
   pick: PickFunction,
 ) => ScriptResult<T>;
+
+export class Paused<T> {
+  readonly done = false;
+  constructor(readonly step: StepFunction<T>) {
+  }
+
+  maybeStep(pick: PickFunction): ScriptResult<T> | undefined {
+    try {
+      return this.step(pick);
+    } catch (e) {
+      if (!(e instanceof Filtered)) {
+        throw e;
+      }
+      return undefined; // failed edit
+    }
+  }
+
+  then<Out>(then: ThenFunction<T, Out>): Paused<Out> {
+    const step = (pick: PickFunction): ScriptResult<Out> => {
+      const next = this.step(pick);
+      if (next.done) {
+        const val = next.val;
+        return new Paused((pick) => done(then(val, pick)));
+      }
+      return next.then(then);
+    };
+
+    return new Paused(step);
+  }
+}
+
+export function paused<T>(step: StepFunction<T>): Paused<T> {
+  return new Paused(step);
+}
 
 export class Script<T> implements Pickable<T> {
   readonly done = false; // To distinguish it from a Done result.
@@ -78,9 +112,9 @@ export class Script<T> implements Pickable<T> {
       const next = this.step(pick);
       if (next.done) {
         const val = next.val;
-        return Script.make(name, (pick) => then(val, pick));
+        return new Paused((pick) => done(then(val, pick)));
       }
-      return next.then("step", then);
+      return next.then(then);
     };
 
     return new Script(name, build, step);
@@ -106,6 +140,17 @@ export class Script<T> implements Pickable<T> {
       return next.val;
     };
     return new Script(name, build, step);
+  }
+
+  static fromPaused<T>(name: string, paused: Paused<T>): Script<T> {
+    const build = (pick: PickFunction): T => {
+      let next = paused.step(pick);
+      while (!next.done) {
+        next = next.step(pick);
+      }
+      return next.val;
+    };
+    return new Script(name, build, paused.step);
   }
 
   static from<T>(

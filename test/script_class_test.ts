@@ -1,12 +1,12 @@
 import type { Pickable } from "../src/pickable.ts";
 
 import { describe, it } from "@std/testing/bdd";
-import { assert, assertEquals, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { done } from "../src/results.ts";
 import { PickRequest } from "../src/picks.ts";
 import { usePicks } from "../src/build.ts";
-import { Script } from "../src/script_class.ts";
+import { Paused, paused, Script } from "../src/script_class.ts";
 
 const noPicks = usePicks();
 
@@ -26,14 +26,16 @@ describe("Script", () => {
     const hiThere = hi.then("hi there", (val) => val + " there");
     const hiThereAgain = hiThere.then("again", (val) => val + " again");
 
-    function countOnes(n = 0): Script<number> {
-      return Script.fromStep(`countOnes ${n}`, (pick) => {
+    function countOnesAt(n: number): Paused<number> {
+      return paused((pick) => {
         if (pick(PickRequest.bit) === 0) {
           return done(n);
         }
-        return countOnes(n + 1);
+        return countOnesAt(n + 1);
       });
     }
+
+    const countOnes = Script.fromPaused("count ones", countOnesAt(0));
 
     it("executes a single-step script", () => {
       assertEquals(hi.step(noPicks), done("hi"));
@@ -41,26 +43,27 @@ describe("Script", () => {
 
     it("executes a two-step script", () => {
       const first = hiThere.step(noPicks);
-      assert(first instanceof Script);
+      assertFalse(first.done);
+      assert(first instanceof Paused);
 
       assertEquals(first.step(noPicks), done("hi there"));
     });
 
     it("executes a three-step script", () => {
       const first = hiThereAgain.step(noPicks);
-      assert(first instanceof Script);
+      assert(first instanceof Paused);
 
       const second = first.step(noPicks);
-      assert(second instanceof Script);
+      assert(second instanceof Paused);
 
       assertEquals(second.step(noPicks), done("hi there again"));
     });
 
     it("executes a recursive script", () => {
-      assertEquals(countOnes().buildFrom(noPicks), 0);
-      assertEquals(countOnes().buildFrom(usePicks(1)), 1);
-      assertEquals(countOnes().buildFrom(usePicks(1, 1)), 2);
-      assertEquals(countOnes().buildFrom(usePicks(1, 1, 1)), 3);
+      assertEquals(countOnes.buildFrom(noPicks), 0);
+      assertEquals(countOnes.buildFrom(usePicks(1)), 1);
+      assertEquals(countOnes.buildFrom(usePicks(1, 1)), 2);
+      assertEquals(countOnes.buildFrom(usePicks(1, 1, 1)), 3);
     });
   });
 

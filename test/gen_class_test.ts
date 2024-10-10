@@ -1,3 +1,5 @@
+import type { Paused } from "../src/script_class.ts";
+
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
@@ -5,7 +7,7 @@ import { done } from "../src/results.ts";
 import { Filtered } from "../src/pickable.ts";
 import { PickList, PickRequest, PlaybackPicker } from "../src/picks.ts";
 import { keep, replace, replacePick, snip } from "../src/edits.ts";
-import { Script } from "../src/script_class.ts";
+import { paused, Script } from "../src/script_class.ts";
 import { Gen, generate } from "../src/gen_class.ts";
 import { propsFromGen } from "./lib/props.ts";
 import { minPlayout, onePlayout } from "../src/backtracking.ts";
@@ -56,17 +58,19 @@ const firstStepPruned = pruned.then(
   },
 );
 
-function countOnes(n = 0): Script<number> {
-  return Script.fromStep(`countOnes ${n}`, (pick) => {
+function countOnesAt(n: number): Paused<number> {
+  return paused((pick) => {
     if (n > 5) {
       throw new Filtered("too many ones");
     }
     if (pick(PickRequest.bit) === 0) {
       return done(n);
     }
-    return countOnes(n + 1);
+    return countOnesAt(n + 1);
   });
 }
+
+const countOnes = Script.fromPaused("countOnes", countOnesAt(0));
 
 describe("Gen", () => {
   describe("build", () => {
@@ -267,34 +271,35 @@ describe("Gen", () => {
     });
 
     it("mutates a multi-step build to have fewer steps", () => {
-      const before = Gen.mustBuild(countOnes(), [1, 1, 1, 0]);
+      const before = Gen.mustBuild(countOnes, [1, 1, 1, 0]);
       assertEquals(before.val, 3);
 
       const after = before.mutate((i) => (i === 1) ? snip : keep);
       assertEquals(propsFromGen(after), {
         val: 1,
-        name: "countOnes 0",
+        name: "countOnes",
         reqs: [PickRequest.bit, PickRequest.bit],
         replies: [1, 0],
       });
     });
 
     it("mutates a multi-step build to have more steps", () => {
-      const before = Gen.mustBuild(countOnes(), [1, 0]);
+      const before = Gen.mustBuild(countOnes, [1, 0]);
       assertEquals(before.val, 1);
 
       const after = before.mutate(replacePick(1, 0, 1));
       assertEquals(propsFromGen(after), {
         val: 2,
-        name: "countOnes 0",
+        name: "countOnes",
         reqs: [PickRequest.bit, PickRequest.bit, PickRequest.bit],
         replies: [1, 1, 0],
       });
     });
 
     it("returns undefined if a new step fails", () => {
-      const before = Gen.mustBuild(countOnes(), [1, 1, 1, 1, 1, 0]);
+      const before = Gen.mustBuild(countOnes, [1, 1, 1, 1, 1, 0]);
       assertEquals(before.val, 5);
+      assertEquals(before.stepCount, 6);
 
       assertEquals(before.mutate(replacePick(5, 0, 1)), undefined);
     });
@@ -461,13 +466,13 @@ describe("generate", () => {
 
   describe("for Script.fromStep", () => {
     it("generates values with increasing depth", () => {
-      const script = countOnes();
+      const script = countOnes;
       const playouts = orderedPlayouts();
       for (let i = 0; i < 5; i++) {
         const gen = generate(script, playouts);
         assertEquals(propsFromGen(gen), {
           val: i,
-          name: `countOnes 0`,
+          name: `countOnes`,
           reqs: new Array(i + 1).fill(bitReq),
           replies: new Array(i).fill(1).concat([0]),
         });
