@@ -21,19 +21,35 @@ export const filtered = Symbol("filtered");
 
 export type ScriptResult<T> = Done<T> | Paused<T>;
 
-export type StepFunction<T> = (
-  pick: PickFunction,
-) => ScriptResult<T>;
+/**
+ * Like a {@link BuildFunction}, except that it can pause.
+ *
+ * It can also throw {@link Filtered}.
+ */
+export type StepFunction<T> = (pick: PickFunction) => ScriptResult<T>;
 
-export class Paused<T> {
+/** Converts a StepFunction to a BuildFunction. */
+function makeBuildFunction<T>(step: StepFunction<T>): BuildFunction<T> {
+  return (pick: PickFunction): T => {
+    let next = step(pick);
+    while (!next.done) {
+      next = next.innerStep(pick);
+    }
+    return next.val;
+  };
+}
+
+export class Paused<T> implements Pickable<T> {
   readonly done = false;
+  readonly buildFrom: BuildFunction<T>;
 
-  constructor(readonly step: StepFunction<T>) {
+  constructor(readonly innerStep: StepFunction<T>) {
+    this.buildFrom = makeBuildFunction(innerStep);
   }
 
-  maybeStep(pick: PickFunction): ScriptResult<T> | typeof filtered {
+  step(pick: PickFunction): ScriptResult<T> | typeof filtered {
     try {
-      return this.step(pick);
+      return this.innerStep(pick);
     } catch (e) {
       if (!(e instanceof Filtered)) {
         throw e;
@@ -41,26 +57,25 @@ export class Paused<T> {
       return filtered; // failed edit
     }
   }
+
+  then<Out>(
+    then: ThenFunction<T, Out>,
+  ): Paused<Out> {
+    const innerStep = (pick: PickFunction): ScriptResult<Out> => {
+      const next = this.innerStep(pick);
+      if (next.done) {
+        const val = next.val;
+        return paused((pick) => done(then(val, pick)));
+      }
+      return next.then(then);
+    };
+
+    return paused(innerStep);
+  }
 }
 
-function addThen<T, Out>(
-  paused: Paused<T>,
-  then: ThenFunction<T, Out>,
-): Paused<Out> {
-  const step = (pick: PickFunction): ScriptResult<Out> => {
-    const next = paused.step(pick);
-    if (next.done) {
-      const val = next.val;
-      return new Paused((pick) => done(then(val, pick)));
-    }
-    return addThen(next, then);
-  };
-
-  return new Paused(step);
-}
-
-export function paused<T>(step: StepFunction<T>): Paused<T> {
-  return new Paused(step);
+export function paused<T>(innerStep: StepFunction<T>): Paused<T> {
+  return new Paused(innerStep);
 }
 
 export class Script<T> implements Pickable<T> {
@@ -88,12 +103,7 @@ export class Script<T> implements Pickable<T> {
     return this.#build;
   }
 
-  get step(): StepFunction<T> {
-    return this.#step;
-  }
-
-  /** Like step, but returns undefined if the picks are filtered. */
-  maybeStep(pick: PickFunction): ScriptResult<T> | typeof filtered {
+  step(pick: PickFunction): ScriptResult<T> | typeof filtered {
     try {
       return this.#step(pick);
     } catch (e) {
@@ -115,12 +125,12 @@ export class Script<T> implements Pickable<T> {
     };
 
     const step = (pick: PickFunction): ScriptResult<Out> => {
-      const next = this.step(pick);
+      const next = this.#step(pick);
       if (next.done) {
         const val = next.val;
-        return new Paused((pick) => done(then(val, pick)));
+        return paused((pick) => done(then(val, pick)));
       }
-      return addThen(next, then);
+      return next.then(then);
     };
 
     return new Script(name, build, step);
@@ -135,14 +145,7 @@ export class Script<T> implements Pickable<T> {
   }
 
   static fromPaused<T>(name: string, paused: Paused<T>): Script<T> {
-    const build = (pick: PickFunction): T => {
-      let next = paused.step(pick);
-      while (!next.done) {
-        next = next.step(pick);
-      }
-      return next.val;
-    };
-    return new Script(name, build, paused.step);
+    return new Script(name, paused.buildFrom, paused.innerStep);
   }
 
   static from<T>(

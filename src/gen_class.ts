@@ -41,8 +41,11 @@ class PipeHead<T> {
   ) {
     this.result = cache(output, () => {
       const pick = usePicks(...this.replies);
-      const result = this.script.maybeStep(pick);
-      assert(result !== filtered, "nondeterministic script");
+      const result = this.script.step(pick);
+      assert(
+        result !== filtered,
+        "nondeterministic script (wasn't filtered before)",
+      );
       return result;
     });
   }
@@ -61,7 +64,7 @@ class PipeHead<T> {
     }
 
     const picks = new EditedPickSource(this.replies, editor);
-    const next = this.script.maybeStep(makePickFunction(picks));
+    const next = this.script.step(makePickFunction(picks));
     if (next === filtered) {
       return undefined; // failed edit
     }
@@ -80,7 +83,7 @@ class PipeHead<T> {
   ): PipeHead<T> | undefined {
     const depth = playouts.depth;
     while (playouts.startValue(depth)) {
-      const val = script.maybeStep(pick);
+      const val = script.step(pick);
       if (val === filtered) {
         if (playouts.state === "picking") {
           playouts.endPlayout();
@@ -105,13 +108,18 @@ class PipeStep<T> {
     readonly replies: number[],
     output: ScriptResult<T>,
   ) {
-    const script = source.result;
-    assert(!script.done);
+    const paused = source.result;
+    assert(!paused.done);
 
     this.index = this.source.stepCount;
     this.result = cache(output, () => {
       const pick = usePicks(...this.replies);
-      return script.step(pick);
+      const result = paused.step(pick);
+      assert(
+        result !== filtered,
+        "nondeterministic step (wasn't filtered before)",
+      );
+      return result;
     });
   }
 
@@ -137,7 +145,7 @@ class PipeStep<T> {
     }
 
     const picks = new EditedPickSource(this.replies, editor);
-    const next = paused.maybeStep(makePickFunction(picks));
+    const next = paused.step(makePickFunction(picks));
     if (next === filtered) {
       return undefined;
     }
@@ -161,7 +169,7 @@ class PipeStep<T> {
 
     const depth = playouts.depth;
     while (playouts.startValue(depth)) {
-      const next = paused.maybeStep(pick);
+      const next = paused.step(pick);
       if (next === filtered) {
         if (playouts.state === "picking") {
           playouts.endPlayout();

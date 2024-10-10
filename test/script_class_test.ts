@@ -64,48 +64,48 @@ describe("Script", () => {
 
   describe("maybeStep", () => {
     it("executes a single-step script", () => {
-      assertEquals(bool.maybeStep(usePicks(1)), done(true));
+      assertEquals(bool.step(usePicks(1)), done(true));
     });
 
     it("executes a two-step script", () => {
-      const first = twoBools.maybeStep(usePicks(1));
+      const first = twoBools.step(usePicks(1));
       assert(first instanceof Paused);
 
       assertEquals(first.step(usePicks(0)), done([true, false]));
     });
 
     it("executes a three-step script", () => {
-      const first = threeBools.maybeStep(usePicks(0));
+      const first = threeBools.step(usePicks(0));
       assert(first instanceof Paused);
 
-      const second = first.maybeStep(usePicks(1));
+      const second = first.step(usePicks(1));
       assert(second instanceof Paused);
 
       assertEquals(second.step(usePicks(0)), done([false, true, false]));
     });
 
     it("executes a three-step script with a then function", () => {
-      const first = doubleOnes.maybeStep(usePicks(1));
+      const first = doubleOnes.step(usePicks(1));
       assert(first instanceof Paused);
 
-      const second = first.maybeStep(usePicks(1));
+      const second = first.step(usePicks(1));
       assert(second instanceof Paused);
 
-      const third = second.maybeStep(usePicks(0));
+      const third = second.step(usePicks(0));
       assert(third instanceof Paused);
 
-      assertEquals(third.maybeStep(usePicks()), done(4));
+      assertEquals(third.step(usePicks()), done(4));
     });
 
     it("returns filtered for an invalid pick", () => {
-      assertEquals(bool.maybeStep(usePicks(3)), filtered);
+      assertEquals(bool.step(usePicks(3)), filtered);
     });
 
     it("returns filtered for an invalid pick in the second step", () => {
-      const first = twoBools.maybeStep(usePicks(1));
+      const first = twoBools.step(usePicks(1));
       assert(first !== filtered);
       assertFalse(first.done);
-      assertEquals(first.maybeStep(usePicks(3)), filtered);
+      assertEquals(first.step(usePicks(3)), filtered);
     });
 
     it("throws an error if the script does", () => {
@@ -114,7 +114,7 @@ describe("Script", () => {
       });
 
       assertThrows(
-        () => fails.maybeStep(usePicks(3)),
+        () => fails.step(usePicks(3)),
         Error,
         "failed",
       );
