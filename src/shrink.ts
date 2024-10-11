@@ -58,6 +58,11 @@ function tryEdit<T>(
   return next;
 }
 
+function trimmedLength(seed: Gen<unknown>, key: StepKey): number {
+  const picks = seed.getPicks(key);
+  return picks === undefined ? 0 : picks.trimmedLength;
+}
+
 /**
  * Removes unnecessary picks from the end of the given step.
  *
@@ -66,13 +71,13 @@ function tryEdit<T>(
 function shrinkTailAt<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
-  stepKey: number,
+  key: StepKey,
 ): Gen<T> | undefined {
-  const len = seed.getPicks(stepKey).trimmedLength;
+  const len = trimmedLength(seed, key);
   assert(len > 0);
 
   // Try to remove the last pick to fail fast.
-  const next = tryEdit(trimStep(stepKey, len - 1), seed, test);
+  const next = tryEdit(trimStep(key, len - 1), seed, test);
   if (next === undefined) {
     return undefined;
   }
@@ -84,14 +89,14 @@ function shrinkTailAt<T>(
   while (tooLow + 2 <= hi) {
     const mid = (tooLow + 1 + hi) >>> 1;
     assert(mid > tooLow && mid < hi);
-    const next = tryEdit(trimStep(stepKey, mid), seed, test);
+    const next = tryEdit(trimStep(key, mid), seed, test);
     if (next === undefined) {
       // failed; retry with a higher length
       tooLow = mid;
       continue;
     }
     seed = next;
-    hi = seed.getPicks(stepKey).trimmedLength;
+    hi = trimmedLength(seed, key);
   }
   return seed;
 }
@@ -110,7 +115,7 @@ export function shrinkTail<T>(
   let changed = false;
   for (let i = keys.length - 1; i >= 0; i--) {
     const key = keys[i];
-    if (seed.getPicks(key).trimmedLength === 0) {
+    if (trimmedLength(seed, key) === 0) {
       continue;
     }
 
@@ -136,6 +141,9 @@ export function shrinkOnePick(stepKey: StepKey, offset: number): Shrinker {
     test: (val: T) => boolean,
   ): Gen<T> | undefined => {
     const picks = seed.getPicks(stepKey);
+    if (picks === undefined) {
+      return undefined;
+    }
 
     if (picks.trimmedLength <= offset) {
       return undefined; // No change; nothing to shrink
@@ -156,7 +164,10 @@ export function shrinkOnePick(stepKey: StepKey, offset: number): Shrinker {
       return undefined; // No change; the postcondition already holds
     }
     seed = next;
-    let replies = seed.getPicks(stepKey).replies;
+    let replies = seed.getPicks(stepKey)?.replies;
+    if (replies === undefined) {
+      return seed;
+    }
 
     // Binary search to find the smallest pick that succeeds.
     let tooLow = req.min - 1;
@@ -175,7 +186,10 @@ export function shrinkOnePick(stepKey: StepKey, offset: number): Shrinker {
         continue;
       }
       seed = next;
-      replies = seed.getPicks(stepKey).replies;
+      replies = seed.getPicks(stepKey)?.replies;
+      if (replies === undefined) {
+        return seed;
+      }
       hi = replies[offset];
     }
     return seed;
@@ -199,7 +213,9 @@ export function shrinkAllPicks<T>(
       break;
     }
     for (const key of todo) {
-      for (let offset = 0; offset <= seed.getPicks(key).length; offset++) {
+      for (
+        let offset = 0; offset < (seed.getPicks(key)?.length ?? 0); offset++
+      ) {
         const next = shrinkOnePick(key, offset)(seed, test);
         if (next !== undefined) {
           changed = true;
@@ -219,6 +235,9 @@ function shrinkSegmentOptions<T>(
   stepKey: StepKey,
 ): Gen<T> | undefined {
   let picks = seed.getPicks(stepKey);
+  if (picks == undefined) {
+    return undefined;
+  }
   const len = picks.trimmedLength;
 
   if (len < 1) {
@@ -259,6 +278,9 @@ function shrinkSegmentOptions<T>(
 
     seed = next;
     picks = seed.getPicks(stepKey);
+    if (picks == undefined) {
+      break;
+    }
     end = i;
     changed = true;
   }

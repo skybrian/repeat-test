@@ -21,7 +21,14 @@ const bitReq = PickRequest.bit;
 
 const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
 
-const roll = Script.make("roll", (pick) => pick(new PickRequest(1, 6)));
+const rollReq = new PickRequest(1, 6);
+
+const roll = Script.make("roll", (pick) => pick(rollReq));
+
+const twoRolls = roll.then("twoRolls", (a, pick) => {
+  const b = pick(rollReq);
+  return [a, b];
+});
 
 const fails = Script.make("fails", () => {
   throw new Error("oops!");
@@ -196,13 +203,22 @@ describe("Gen", () => {
   });
 
   describe("stepKeys", () => {
+    it("returns no keys for a constant", () => {
+      const gen = Gen.mustBuild(pi, []);
+      assertEquals(gen.stepKeys, []);
+    });
     it("returns a single key for a non-piped script", () => {
       const gen = Gen.mustBuild(bit, [0]);
       assertEquals(gen.stepKeys, [0]);
     });
     it("returns two keys for a two-stage pipeline", () => {
-      const gen = Gen.mustBuild(bit.then("pipe", (a) => a), [0]);
+      const gen = Gen.mustBuild(twoRolls, [5, 4]);
       assertEquals(gen.stepKeys, [0, 1]);
+    });
+    it("skips steps that have no picks", () => {
+      const tau = pi.then("tau", (v) => v * 2);
+      const gen = Gen.mustBuild(tau, []);
+      assertEquals(gen.stepKeys, []);
     });
   });
 

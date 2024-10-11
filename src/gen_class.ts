@@ -178,7 +178,7 @@ export class Gen<T> implements Success<T> {
   get reqs(): Range[] {
     if (this.#reqs === undefined) {
       const reqs: Range[] = [];
-      for (const step of this.steps.values()) {
+      for (const step of this.stepsWithPicks.values()) {
         reqs.push(...step.reqs);
       }
       this.#reqs = reqs;
@@ -189,7 +189,7 @@ export class Gen<T> implements Success<T> {
   get replies(): number[] {
     if (this.#replies === undefined) {
       const replies: number[] = [];
-      for (const step of this.steps.values()) {
+      for (const step of this.stepsWithPicks.values()) {
         replies.push(...step.replies);
       }
       this.#replies = replies;
@@ -207,13 +207,12 @@ export class Gen<T> implements Success<T> {
    * (Some steps might use zero picks.)
    */
   get stepKeys(): StepKey[] {
-    return Array.from(this.steps.keys());
+    return Array.from(this.stepsWithPicks.keys());
   }
 
-  getPicks(key: StepKey): PickList {
-    const step = this.steps.get(key);
-    assert(step !== undefined);
-    return step.picks;
+  getPicks(key: StepKey): PickList | undefined {
+    const step = this.stepsWithPicks.get(key);
+    return step?.picks;
   }
 
   /**
@@ -276,12 +275,14 @@ export class Gen<T> implements Success<T> {
     return new Gen(this.#script, end);
   }
 
-  private get steps(): Map<StepKey, PipeStep<T>> {
+  private get stepsWithPicks(): Map<StepKey, PipeStep<T>> {
     if (this.#steps === undefined) {
       const { rest } = splitPipeline(this.#end);
       const steps = new Map<StepKey, PipeStep<T>>();
       for (const step of rest) {
-        steps.set(step.key, step);
+        if (step.reqs.length > 0) {
+          steps.set(step.key, step);
+        }
       }
       this.#steps = steps;
     }

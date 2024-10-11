@@ -133,7 +133,7 @@ function trimEnd(len: number): StreamEditor {
  * (This forces them to be the minimum value.)
  */
 export function trimStep(
-  stepKey: number,
+  stepKey: StepKey,
   len: number,
 ): StepEditor {
   return (key) => (key === stepKey) ? trimEnd(len) : keep;
