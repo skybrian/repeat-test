@@ -76,7 +76,7 @@ class PipeStep<T> {
   mutate(
     nextSource: PipeStart<T> | PipeStep<T>,
     editor: StreamEditor,
-  ): PipeStep<T> | Done<T> | undefined {
+  ): PipeStep<T> | Done<T> | typeof filtered {
     if (editor === keep && nextSource === this.source) {
       return this; // no change
     }
@@ -89,7 +89,7 @@ class PipeStep<T> {
     const picks = new EditedPickSource(this.replies, editor);
     const next = paused.step(makePickFunction(picks));
     if (next === filtered) {
-      return undefined;
+      return filtered;
     }
 
     if (nextSource === this.source && !picks.edited) {
@@ -103,7 +103,7 @@ class PipeStep<T> {
     source: PipeStart<T> | PipeStep<T>,
     pick: PickFunction,
     playouts: PlayoutSource,
-  ): PipeStep<T> | Done<T> | undefined {
+  ): PipeStep<T> | Done<T> | typeof filtered {
     const paused = source.result;
     if (paused.done) {
       return paused;
@@ -123,7 +123,7 @@ class PipeStep<T> {
       return new PipeStep(source, reqs, replies, next);
     }
 
-    return undefined; // out of playouts at this depth
+    return filtered; // no playouts matched at this depth
   }
 }
 
@@ -246,7 +246,7 @@ export class Gen<T> implements Success<T> {
     let end: PipeStart<T> | PipeStep<T> = first;
     for (const step of rest) {
       const next = step.mutate(end, editors(i++));
-      if (next === undefined) {
+      if (next === filtered) {
         return undefined; // failed edit
       } else if (!(next instanceof PipeStep)) {
         return new Gen(this.#script, end); // finished earlier than before
@@ -271,7 +271,7 @@ export class Gen<T> implements Success<T> {
         pick,
         playout,
       );
-      if (next === undefined) {
+      if (next === filtered) {
         return undefined; // failed edit
       }
       assert(next instanceof PipeStep);
@@ -331,12 +331,13 @@ export function generate<T>(
   nextPlayout: while (playouts.startAt(0)) {
     let source: PipeStart<T> | PipeStep<T> = new PipeStart(script);
     while (true) {
-      const next: PipeStep<T> | Done<T> | undefined = PipeStep.generateStep(
-        source,
-        pick,
-        playouts,
-      );
-      if (next === undefined) {
+      const next: PipeStep<T> | Done<T> | typeof filtered = PipeStep
+        .generateStep(
+          source,
+          pick,
+          playouts,
+        );
+      if (next === filtered) {
         continue nextPlayout;
       } else if (!(next instanceof PipeStep)) {
         return new Gen(script, source); // finished
@@ -344,4 +345,5 @@ export function generate<T>(
       source = next;
     }
   }
+  return undefined;
 }
