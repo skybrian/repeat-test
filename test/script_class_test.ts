@@ -191,7 +191,7 @@ describe("Paused", () => {
 
       const first = start.step(usePicks());
       assert(first !== filtered);
-      assert(!first.done);
+      assertFalse(first.done);
       assertEquals(first.key, "0.foo");
     });
   });

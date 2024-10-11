@@ -1,8 +1,8 @@
 import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
 
+import { assert } from "@std/assert/assert";
 import { filtered } from "./results.ts";
 import { Filtered } from "./pickable.ts";
-import { assert } from "@std/assert/assert";
 
 /** Distinguishes a finished result from one that's still in progress. */
 export type Done<T> = { readonly done: true; readonly val: T };
@@ -81,11 +81,6 @@ export interface HasScript<T> extends Pickable<T> {
 }
 
 /**
- * A script may pause instead of returning a value.
- */
-export type StepResult<T> = Done<T> | Paused<T>;
-
-/**
  * A paused script. It may resume more than once.
  */
 export class Paused<T> implements Pickable<T> {
@@ -118,7 +113,7 @@ export class Paused<T> implements Pickable<T> {
    *
    * Returns {@link filtered} if the picks can't be used to build the value.
    */
-  step(pick: PickFunction): StepResult<T> | typeof filtered {
+  step(pick: PickFunction): Paused<T> | Done<T> | typeof filtered {
     try {
       const result = this.#step(pick);
       if (result.done) {
@@ -130,10 +125,10 @@ export class Paused<T> implements Pickable<T> {
         return new Paused(result.step, this.index + 1, undefined);
       }
     } catch (e) {
-      if (!(e instanceof Filtered)) {
-        throw e;
+      if ((e instanceof Filtered)) {
+        return filtered;
       }
-      return filtered; // failed edit
+      throw e;
     }
   }
 
@@ -176,12 +171,12 @@ export class Paused<T> implements Pickable<T> {
 export class Script<T> implements Pickable<T> {
   readonly #name: string;
   readonly #build: BuildFunction<T>;
-  readonly #start: StepResult<T>;
+  readonly #start: Done<T> | Paused<T>;
 
   private constructor(
     name: string,
     build: BuildFunction<T>,
-    start: StepResult<T>,
+    start: Done<T> | Paused<T>,
   ) {
     this.#name = name;
     this.#build = build;
@@ -201,7 +196,7 @@ export class Script<T> implements Pickable<T> {
    *
    * In the case of a constant, this will be a Done result.
    */
-  get paused(): StepResult<T> {
+  get paused(): Paused<T> | Done<T> {
     return this.#start;
   }
 

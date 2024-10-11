@@ -1,6 +1,6 @@
 import type { Failure, Success } from "./results.ts";
 import type { Pickable, PickFunction } from "./pickable.ts";
-import type { Done, StepResult } from "./script_class.ts";
+import type { Done, Paused } from "./script_class.ts";
 import type { Range } from "./picks.ts";
 import type { StepEditor, StepKey, StreamEditor } from "./edits.ts";
 import type { GenerateOpts } from "./build.ts";
@@ -15,11 +15,15 @@ import { onePlayout } from "./backtracking.ts";
 import { makePickFunction, usePicks } from "./build.ts";
 import { minPlayout } from "./backtracking.ts";
 
-/** Rebuilds a ScriptResult when it's mutable according to Object.isFrozen. */
+type PipeResult<T> = Paused<T> | Done<T>;
+
+/**
+ * Rebuilds a {@link PipeResult} when it's mutable according to Object.isFrozen.
+ */
 function cache<T>(
-  result: StepResult<T>,
-  build: () => StepResult<T>,
-): StepResult<T> {
+  result: PipeResult<T>,
+  build: () => PipeResult<T>,
+): PipeResult<T> {
   if (!result.done || Object.isFrozen(result.val)) {
     return result; // assumed immutable
   }
@@ -31,7 +35,7 @@ function cache<T>(
 }
 
 class PipeStart<T> {
-  readonly result: StepResult<T>;
+  readonly result: PipeResult<T>;
 
   constructor(script: Script<T>) {
     this.result = script.paused;
@@ -40,19 +44,19 @@ class PipeStart<T> {
 
 class PipeStep<T> {
   readonly key: StepKey;
-  readonly result: StepResult<T>;
+  readonly result: PipeResult<T>;
 
   constructor(
     readonly source: PipeStart<T> | PipeStep<T>,
     readonly reqs: Range[],
     readonly replies: number[],
-    output: StepResult<T>,
+    output: PipeResult<T>,
   ) {
     const paused = source.result;
     assert(!paused.done);
     this.key = paused.key;
 
-    this.result = cache(output, () => {
+    const regenerate = (): PipeResult<T> => {
       const pick = usePicks(...this.replies);
       const result = paused.step(pick);
       assert(
@@ -60,7 +64,9 @@ class PipeStep<T> {
         "nondeterministic step (wasn't filtered before)",
       );
       return result;
-    });
+    };
+
+    this.result = cache(output, regenerate);
   }
 
   get picks(): PickList {
