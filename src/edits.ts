@@ -116,10 +116,12 @@ export class EditedPickSource implements PickFunctionSource {
   }
 }
 
+export type StepKey = number;
+
 /**
  * Edits a stream of picks that's split into steps.
  */
-export type StepEditor = (segmentIndex: number) => StreamEditor;
+export type StepEditor = (key: StepKey) => StreamEditor;
 
 function trimEnd(len: number): StreamEditor {
   return (offset) => offset >= len ? snip() : keep();

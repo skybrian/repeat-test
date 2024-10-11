@@ -206,15 +206,12 @@ describe("Gen", () => {
     });
   });
 
-  describe("segmentPicks", () => {
+  describe("getPicks", () => {
     it("returns the picks for two build steps", () => {
       const gen = Gen.mustBuild(multiStep, [0, 1]);
       assertEquals(gen.val, "(0, 1)");
-
-      const bitReq = PickRequest.bit;
-      const first = new PickList([bitReq], [0]);
-      const second = new PickList([bitReq], [1]);
-      assertEquals(gen.picksByStep, [first, second]);
+      assertEquals(gen.getPicks(0), new PickList([bitReq], [0]));
+      assertEquals(gen.getPicks(1), new PickList([bitReq], [1]));
     });
   });
 

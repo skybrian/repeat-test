@@ -1,5 +1,6 @@
 import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
 import type { Done } from "./results.ts";
+import type { StepKey } from "./edits.ts";
 
 import { done } from "./results.ts";
 import { Filtered } from "./pickable.ts";
@@ -50,8 +51,6 @@ export interface HasScript<T> extends Pickable<T> {
  * Value returned by {@link Paused.step} instead of throwing {@link Filtered}.
  */
 export const filtered = Symbol("filtered");
-
-export type StepKey = number;
 
 /**
  * A script may pause instead of returning a value.

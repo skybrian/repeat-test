@@ -1,6 +1,5 @@
 import type { Gen } from "./gen_class.ts";
-import type { StepEditor } from "./edits.ts";
-import type { StepKey } from "./script_class.ts";
+import type { StepEditor, StepKey } from "./edits.ts";
 import type { SystemConsole } from "./console.ts";
 
 import { assert } from "@std/assert";
@@ -69,13 +68,7 @@ function shrinkTailAt<T>(
   test: (val: T) => boolean,
   stepKey: number,
 ): Gen<T> | undefined {
-  function getPicks() {
-    const segments = seed.picksByStep;
-    assert(stepKey < segments.length);
-    return seed.picksByStep[stepKey];
-  }
-
-  const len = getPicks().trimmedLength;
+  const len = seed.getPicks(stepKey).trimmedLength;
   assert(len > 0);
 
   // Try to remove the last pick to fail fast.
@@ -98,7 +91,7 @@ function shrinkTailAt<T>(
       continue;
     }
     seed = next;
-    hi = getPicks().trimmedLength;
+    hi = seed.getPicks(stepKey).trimmedLength;
   }
   return seed;
 }
@@ -113,10 +106,11 @@ export function shrinkTail<T>(
   seed: Gen<T>,
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
-  let segs = seed.picksByStep;
+  let keys = seed.stepKeys;
   let changed = false;
-  for (let i = segs.length - 1; i >= 0; i--) {
-    if (segs[i].trimmedLength === 0) {
+  for (let i = keys.length - 1; i >= 0; i--) {
+    const key = keys[i];
+    if (seed.getPicks(key).trimmedLength === 0) {
       continue;
     }
 
@@ -126,7 +120,7 @@ export function shrinkTail<T>(
     }
     seed = next;
     changed = true;
-    segs = seed.picksByStep;
+    keys = seed.stepKeys;
   }
   return changed ? seed : undefined;
 }
@@ -141,7 +135,7 @@ export function shrinkOnePick(stepKey: number, offset: number): Shrinker {
     seed: Gen<T>,
     test: (val: T) => boolean,
   ): Gen<T> | undefined => {
-    const picks = seed.picksByStep[stepKey];
+    const picks = seed.getPicks(stepKey);
 
     if (picks.trimmedLength <= offset) {
       return undefined; // No change; nothing to shrink
@@ -162,7 +156,7 @@ export function shrinkOnePick(stepKey: number, offset: number): Shrinker {
       return undefined; // No change; the postcondition already holds
     }
     seed = next;
-    let replies = seed.picksByStep[stepKey].replies;
+    let replies = seed.getPicks(stepKey).replies;
 
     // Binary search to find the smallest pick that succeeds.
     let tooLow = req.min - 1;
@@ -181,7 +175,7 @@ export function shrinkOnePick(stepKey: number, offset: number): Shrinker {
         continue;
       }
       seed = next;
-      replies = seed.picksByStep[stepKey].replies;
+      replies = seed.getPicks(stepKey).replies;
       hi = replies[offset];
     }
     return seed;
@@ -198,25 +192,22 @@ export function shrinkAllPicks<T>(
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
   let changed = false;
-  let key = 0;
-  let offset = 0;
+  const seen = new Set<StepKey>();
   while (true) {
-    const byStep = seed.picksByStep;
-    if (key >= byStep.length) {
+    const todo = seed.stepKeys.filter((key) => !seen.has(key));
+    if (todo.length === 0) {
       break;
     }
-    const picks = byStep[key];
-    if (offset >= picks.length) {
-      key++;
-      offset = 0;
-      continue;
+    for (const key of todo) {
+      for (let offset = 0; offset <= seed.getPicks(key).length; offset++) {
+        const next = shrinkOnePick(key, offset)(seed, test);
+        if (next !== undefined) {
+          changed = true;
+          seed = next;
+        }
+      }
+      seen.add(key);
     }
-    const next = shrinkOnePick(key, offset)(seed, test);
-    if (next !== undefined) {
-      changed = true;
-      seed = next;
-    }
-    offset++;
   }
 
   return changed ? seed : undefined;
@@ -227,13 +218,7 @@ function shrinkSegmentOptions<T>(
   test: (val: T) => boolean,
   stepKey: StepKey,
 ): Gen<T> | undefined {
-  function getPicks() {
-    const segments = seed.picksByStep;
-    assert(stepKey < segments.length);
-    return seed.picksByStep[stepKey];
-  }
-
-  let picks = getPicks();
+  let picks = seed.getPicks(stepKey);
   const len = picks.trimmedLength;
 
   if (len < 1) {
@@ -273,7 +258,7 @@ function shrinkSegmentOptions<T>(
     }
 
     seed = next;
-    picks = getPicks();
+    picks = seed.getPicks(stepKey);
     end = i;
     changed = true;
   }

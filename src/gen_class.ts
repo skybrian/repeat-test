@@ -1,8 +1,8 @@
 import type { Done, Failure, Success } from "./results.ts";
 import type { Pickable, PickFunction } from "./pickable.ts";
-import type { StepKey, StepResult } from "./script_class.ts";
+import type { StepResult } from "./script_class.ts";
 import type { Range } from "./picks.ts";
-import type { StepEditor, StreamEditor } from "./edits.ts";
+import type { StepEditor, StepKey, StreamEditor } from "./edits.ts";
 import type { GenerateOpts } from "./build.ts";
 import type { PlayoutSource } from "./backtracking.ts";
 
@@ -145,6 +145,8 @@ export class Gen<T> implements Success<T> {
   readonly #script: Script<T>;
   readonly #end: PipeStart<T> | PipeStep<T>;
   readonly #result: Done<T>;
+
+  #steps: Map<StepKey, PipeStep<T>> | undefined;
   #reqs: Range[] | undefined;
   #replies: number[] | undefined;
 
@@ -175,9 +177,8 @@ export class Gen<T> implements Success<T> {
 
   get reqs(): Range[] {
     if (this.#reqs === undefined) {
-      const { rest } = splitPipeline(this.#end);
       const reqs: Range[] = [];
-      for (const step of rest) {
+      for (const step of this.steps.values()) {
         reqs.push(...step.reqs);
       }
       this.#reqs = reqs;
@@ -187,9 +188,8 @@ export class Gen<T> implements Success<T> {
 
   get replies(): number[] {
     if (this.#replies === undefined) {
-      const { rest } = splitPipeline(this.#end);
       const replies: number[] = [];
-      for (const step of rest) {
+      for (const step of this.steps.values()) {
         replies.push(...step.replies);
       }
       this.#replies = replies;
@@ -207,21 +207,13 @@ export class Gen<T> implements Success<T> {
    * (Some steps might use zero picks.)
    */
   get stepKeys(): StepKey[] {
-    const { rest } = splitPipeline(this.#end);
-    return rest.map((step) => step.key);
+    return Array.from(this.steps.keys());
   }
 
-  /**
-   * The picks that were used to generate this value, divided up by the steps
-   * that used them.
-   */
-  get picksByStep(): PickList[] {
-    const { rest } = splitPipeline(this.#end);
-    const segments: PickList[] = [];
-    for (const step of rest) {
-      segments.push(step.picks);
-    }
-    return segments;
+  getPicks(key: StepKey): PickList {
+    const step = this.steps.get(key);
+    assert(step !== undefined);
+    return step.picks;
   }
 
   /**
@@ -282,6 +274,18 @@ export class Gen<T> implements Success<T> {
     }
 
     return new Gen(this.#script, end);
+  }
+
+  private get steps(): Map<StepKey, PipeStep<T>> {
+    if (this.#steps === undefined) {
+      const { rest } = splitPipeline(this.#end);
+      const steps = new Map<StepKey, PipeStep<T>>();
+      for (const step of rest) {
+        steps.set(step.key, step);
+      }
+      this.#steps = steps;
+    }
+    return this.#steps;
   }
 
   static mustBuild<T>(arg: Pickable<T>, replies: number[]): Gen<T> {
