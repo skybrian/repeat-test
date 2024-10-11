@@ -4,6 +4,7 @@ import type { HasScript } from "./script_class.ts";
 
 import { assert } from "@std/assert";
 
+import { filtered } from "./results.ts";
 import { PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
 import { generate } from "./gen_class.ts";
@@ -18,7 +19,7 @@ type ConstructorOpts<T> = {
 
 function checkRandomGenerate(script: Script<unknown>) {
   const gen = generate(script, randomPlayouts(123), { limit: 1000 });
-  if (gen !== undefined) {
+  if (gen !== filtered) {
     return;
   }
   throw new Error(`${script.name} couldn't generate a random value.`);
@@ -127,7 +128,7 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
     const maxTries = 50;
     while (total < maxTries) {
       const gen = generate(this, playouts, { limit: 1000 });
-      if (gen === undefined) {
+      if (gen === filtered) {
         break; // visited all values
       }
       total++;

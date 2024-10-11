@@ -7,6 +7,7 @@ import type { Gen } from "./gen_class.ts";
 import type { Domain } from "./domain_class.ts";
 
 import { assert } from "@std/assert";
+import { filtered } from "./results.ts";
 import { MiddlewareRequest } from "./build.ts";
 import { generate } from "./gen_class.ts";
 import { PickTree } from "./pick_tree.ts";
@@ -111,7 +112,7 @@ export class Jar<T> {
 
   #nextExample(): Gen<T> | undefined {
     const next = generate(this.dom, this.moreExamples);
-    if (next === undefined) {
+    if (next === filtered) {
       return undefined;
     }
     const regen = this.dom.regenerate(next.val);

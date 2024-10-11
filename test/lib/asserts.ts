@@ -1,6 +1,7 @@
 import type { Arbitrary, Pickable } from "@/arbitrary.ts";
 import type { Domain } from "@/domain.ts";
 
+import { filtered } from "../../src/results.ts";
 import { assert, assertEquals } from "@std/assert";
 import { generate } from "../../src/gen_class.ts";
 import { take, takeAll, takeGenerated } from "../../src/ordered.ts";
@@ -31,7 +32,7 @@ export function assertSometimes<T>(
   let count = 0;
   for (let i = 0; i < 1000; i++) {
     const gen = generate(input, onePlayout(rand));
-    assert(gen !== undefined);
+    assert(gen !== filtered);
     if (predicate(gen.val)) {
       count++;
     }

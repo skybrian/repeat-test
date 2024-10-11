@@ -237,9 +237,9 @@ export class Gen<T> implements Success<T> {
    * Returns the new value, which might be the same one (according to ===) if
    * there is no change.
    *
-   * If edit can't be applied, returns undefined.
+   * If edit can't be applied, returns {@link filtered}.
    */
-  mutate(editors: StepEditor): Gen<T> | undefined {
+  mutate(editors: StepEditor): Gen<T> | typeof filtered {
     const { first, rest } = splitPipeline(this.#end);
 
     let i = 0;
@@ -247,7 +247,7 @@ export class Gen<T> implements Success<T> {
     for (const step of rest) {
       const next = step.mutate(end, editors(i++));
       if (next === filtered) {
-        return undefined; // failed edit
+        return filtered; // failed edit
       } else if (!(next instanceof PipeStep)) {
         return new Gen(this.#script, end); // finished earlier than before
       }
@@ -272,7 +272,7 @@ export class Gen<T> implements Success<T> {
         playout,
       );
       if (next === filtered) {
-        return undefined; // failed edit
+        return filtered; // failed edit
       }
       assert(next instanceof PipeStep);
       end = next;
@@ -307,7 +307,7 @@ export class Gen<T> implements Success<T> {
     const script = Script.from(arg, { caller: "Gen.build()" });
     const picker = new PlaybackPicker(replies);
     const gen = generate(script, onePlayout(picker));
-    if (gen === undefined || picker.error !== undefined) {
+    if (gen === filtered || picker.error !== undefined) {
       const err = picker.error ?? "picks not accepted";
       return failure(`can't build '${script.name}': ${err}`);
     }
@@ -316,15 +316,15 @@ export class Gen<T> implements Success<T> {
 }
 
 /**
- * Generates a value at the current depth, continuing the current playout if possible.
+ * Generates a value from a source of playouts.
  *
- * Returns undefined if there are no more playouts available at the current depth.
+ * Returns {@link filtered} if no playout was accepted.
  */
 export function generate<T>(
   arg: Pickable<T>,
   playouts: PlayoutSource,
   opts?: GenerateOpts,
-): Gen<T> | undefined {
+): Gen<T> | typeof filtered {
   const script = Script.from(arg, { caller: "generate" });
   const pick = makePickFunction(playouts, opts);
 
@@ -345,5 +345,5 @@ export function generate<T>(
       source = next;
     }
   }
-  return undefined;
+  return filtered;
 }

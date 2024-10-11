@@ -1,6 +1,6 @@
-import { assert } from "@std/assert/assert";
 import type { Gen } from "../../src/gen_class.ts";
 import type { Range } from "../../src/picks.ts";
+import { filtered } from "../../src/results.ts";
 
 export type GenProps<T> = {
   val: T;
@@ -10,9 +10,11 @@ export type GenProps<T> = {
 };
 
 export function propsFromGen<T>(
-  gen: Gen<T> | undefined,
-): GenProps<T> | undefined {
-  assert(gen !== undefined, "gen is undefined");
+  gen: Gen<T> | typeof filtered,
+): GenProps<T> | typeof filtered {
+  if (gen === filtered) {
+    return filtered;
+  }
   const picks = gen.picks;
   const out: GenProps<T> = {
     val: gen.val,

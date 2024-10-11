@@ -3,6 +3,7 @@ import type { StepEditor, StepKey } from "./edits.ts";
 import type { SystemConsole } from "./console.ts";
 
 import { assert } from "@std/assert";
+import { filtered } from "./results.ts";
 import { removeRange, replacePick, trimStep } from "./edits.ts";
 import { nullConsole } from "./console.ts";
 
@@ -52,7 +53,7 @@ function tryEdit<T>(
   test: (val: T) => boolean,
 ): Gen<T> | undefined {
   const next = seed.mutate(editor);
-  if (next === undefined || !test(next.val)) {
+  if (next === filtered || !test(next.val)) {
     return undefined;
   }
   return next;
@@ -214,7 +215,9 @@ export function shrinkAllPicks<T>(
     }
     for (const key of todo) {
       for (
-        let offset = 0; offset < (seed.getPicks(key)?.length ?? 0); offset++
+        let offset = 0;
+        offset < (seed.getPicks(key)?.length ?? 0);
+        offset++
       ) {
         const next = shrinkOnePick(key, offset)(seed, test);
         if (next !== undefined) {

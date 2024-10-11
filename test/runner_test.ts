@@ -12,6 +12,7 @@ import {
   fail,
 } from "@std/assert";
 
+import { filtered } from "../src/results.ts";
 import { Filtered } from "../src/pickable.ts";
 import { PickRequest } from "../src/picks.ts";
 import { minPlayout } from "../src/backtracking.ts";
@@ -292,7 +293,7 @@ describe("generateReps", () => {
 
 function makeDefaultRep<T>(input: Arbitrary<T>, test: TestFunction<T>): Rep<T> {
   const gen = generate(input, minPlayout());
-  assert(gen !== undefined);
+  assert(gen !== filtered);
 
   const rep: Rep<T> = {
     ok: true,

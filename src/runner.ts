@@ -6,7 +6,7 @@ import type { Coverage, SystemConsole, TestConsole } from "./console.ts";
 
 import { assert, assertEquals, AssertionError } from "@std/assert";
 
-import { failure, success } from "./results.ts";
+import { failure, filtered, success } from "./results.ts";
 import { alwaysPickMin, PickRequest, PlaybackPicker } from "./picks.ts";
 import { generate } from "./gen_class.ts";
 import { PartialTracker } from "./partial_tracker.ts";
@@ -114,7 +114,7 @@ export class RepSource<T> {
     // Generate a second time to prune from the search space.
     this.tracker.pickSource = new PlaybackPicker(replies);
     const arg = generate(this.arb, this.stream);
-    assert(arg !== undefined);
+    assert(arg !== filtered);
     assertEquals(replies, arg.replies);
 
     const key = { id: this.id, seed: 0, index: 0 };
@@ -127,7 +127,7 @@ export class RepSource<T> {
     const key = { id: this.id, seed: this.seed, index: this.randomReps };
     try {
       const arg = generate(this.arb, this.stream);
-      if (arg === undefined) {
+      if (arg === filtered) {
         return undefined;
       }
       return { ok: true, key, arb: this.arb, arg, test: this.test };

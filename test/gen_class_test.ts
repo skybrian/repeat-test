@@ -3,6 +3,7 @@ import type { Done, Resume, StepFunction } from "../src/script_class.ts";
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
+import { filtered } from "../src/results.ts";
 import { Filtered, type PickFunction } from "../src/pickable.ts";
 import { PickList, PickRequest, PlaybackPicker } from "../src/picks.ts";
 import { keep, replace, replacePick, snip } from "../src/edits.ts";
@@ -251,27 +252,33 @@ describe("Gen", () => {
     it("can edit a single-step build", () => {
       const seed = Gen.mustBuild(bit, [1]);
       const gen = seed.mutate(() => snip);
-      assert(gen !== undefined);
-      assertEquals(gen.stepKeys, [0]);
-      assertEquals(gen.replies, [0]);
-      assertEquals(gen.val, 0);
+      assertEquals(propsFromGen(gen), {
+        name: "bit",
+        val: 0,
+        reqs: [PickRequest.bit],
+        replies: [0],
+      });
     });
 
     it("can edit the first step of a two-step build", () => {
       const original = Gen.mustBuild(multiStep, [1, 1]);
       const gen = original.mutate((n) => (n === 0) ? snip : keep);
-      assert(gen !== undefined);
       assert(gen !== original);
+      assertEquals(propsFromGen(gen), {
+        name: "multi-step",
+        val: "(0, 1)",
+        reqs: [PickRequest.bit, PickRequest.bit],
+        replies: [0, 1],
+      });
+      assert(gen !== filtered);
       assertEquals(gen.stepKeys, [0, 1]);
-      assertEquals(gen.val, "(0, 1)");
-      assertEquals(gen.replies, [0, 1]);
     });
 
     it("can edit the last step of a two-step build", () => {
       const gen = Gen.mustBuild(multiStep, [1, 1]).mutate((n) =>
         (n === 1) ? snip : keep
       );
-      assert(gen !== undefined);
+      assert(gen !== filtered);
       assertEquals(gen.stepKeys, [0, 1]);
       assertEquals(gen.replies, [1, 0]);
       assertEquals(gen.val, "(1, 0)");
@@ -293,20 +300,16 @@ describe("Gen", () => {
       return [a, b];
     });
 
-    it("returns undefined if editing the first step fails", () => {
+    it("returns filtered if editing the first step fails", () => {
       const gen = Gen.mustBuild(evenDoubles, [2, 2]);
-      assert(
-        gen.mutate((i) => (i === 0) ? () => replace(1) : keep) ===
-          undefined,
-      );
+      const after = gen.mutate((i) => (i === 0) ? () => replace(1) : keep);
+      assertEquals(propsFromGen(after), filtered);
     });
 
-    it("returns undefined if editing the second step fails", () => {
+    it("returns filtered if editing the second step fails", () => {
       const gen = Gen.mustBuild(evenDoubles, [2, 2]);
-      assert(
-        gen.mutate((i) => (i === 1) ? () => replace(1) : keep) ===
-          undefined,
-      );
+      const after = gen.mutate((i) => (i === 1) ? () => replace(1) : keep);
+      assertEquals(propsFromGen(after), filtered);
     });
 
     it("mutates a multi-step build to have fewer steps", () => {
@@ -335,12 +338,12 @@ describe("Gen", () => {
       });
     });
 
-    it("returns undefined if a new step fails", () => {
+    it("returns filtered if the picks for a new step are rejected", () => {
       const before = Gen.mustBuild(countOnesTo5, [1, 1, 1, 1, 1, 0]);
       assertEquals(before.val, 5);
       assertEquals(before.stepKeys, [0, 1, 2, 3, 4, 5]);
 
-      assertEquals(before.mutate(replacePick(5, 0, 1)), undefined);
+      assertEquals(before.mutate(replacePick(5, 0, 1)), filtered);
     });
   });
 });
@@ -399,7 +402,7 @@ describe("generate", () => {
 
       repeatTest(new PickRequest(0, 10000), (limit) => {
         const gen = generate(deep, onePlayout(randomPicker(123)), { limit });
-        assert(gen !== undefined);
+        assert(gen !== filtered);
         assertEquals(gen.val, limit);
       }, { reps: 100 });
     });
@@ -416,9 +419,9 @@ describe("generate", () => {
       throw new Filtered("nope");
     });
 
-    it("returns undefined if there are no matching playouts", () => {
+    it("returns filtered if there are no matching playouts", () => {
       const playouts = depthFirstPlayouts();
-      assertEquals(generate(rejectAll, playouts), undefined);
+      assertEquals(generate(rejectAll, playouts), filtered);
     });
   });
 
@@ -434,7 +437,7 @@ describe("generate", () => {
           replies: expectedReplies,
         });
       }
-      assertFalse(generate(multiStep, playouts));
+      assertEquals(generate(multiStep, playouts), filtered);
     });
 
     it("retries for a pruned multi-step build script", () => {
@@ -468,7 +471,7 @@ describe("generate", () => {
         val: ["frozen", "0"],
       });
 
-      assert(gen !== undefined);
+      assert(gen !== filtered);
       const first = gen.val;
       assertEquals(first, ["frozen", "0"]);
 
@@ -499,7 +502,7 @@ describe("generate", () => {
         script,
         onePlayout(new PlaybackPicker([])),
       );
-      assert(gen === undefined);
+      assertEquals(gen, filtered);
     });
   });
 

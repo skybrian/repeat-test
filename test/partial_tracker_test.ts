@@ -10,6 +10,7 @@ import {
 import { repeatTest } from "@/runner.ts";
 import * as arb from "@/arbs.ts";
 
+import { filtered } from "../src/results.ts";
 import { alwaysPick, alwaysPickMin, PickRequest } from "../src/picks.ts";
 import { randomPicker, randomPlayouts } from "../src/random.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
@@ -222,7 +223,7 @@ describe("PartialTracker", () => {
     const seen = new Set<string>();
     for (let i = 0; i < 100000; i++) {
       const gen = generate(str, stream);
-      assert(gen !== undefined);
+      assert(gen !== filtered);
       const s = gen.val;
       if (s.length <= 1) {
         assert(!seen.has(s), `duplicate string: ${s}`);

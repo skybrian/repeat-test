@@ -7,6 +7,7 @@ import {
   assertValues,
 } from "../lib/asserts.ts";
 
+import { filtered } from "../../src/results.ts";
 import { repeatTest } from "@/runner.ts";
 import { Arbitrary } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
@@ -60,7 +61,7 @@ describe("biased", () => {
       return result;
     });
     const gen = generate(wrapped, onePlayout(randomPicker(123)));
-    assert(gen !== undefined);
+    assert(gen !== filtered);
     const falseCount = gen.val.filter((val) => val === false).length;
     assertEquals(falseCount, 100);
   });

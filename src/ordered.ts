@@ -3,6 +3,7 @@ import type { Tracker } from "./backtracking.ts";
 import type { Gen } from "./gen_class.ts";
 
 import { assert } from "@std/assert";
+import { filtered } from "./results.ts";
 import { Filtered } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
 import { PlayoutSource } from "./backtracking.ts";
@@ -116,7 +117,7 @@ export function orderedPlayouts(): PlayoutSource {
 export function generateDefault<T>(arg: Pickable<T>): Gen<T> {
   const script = Script.from(arg);
   const gen = generate(script, orderedPlayouts());
-  assert(gen !== undefined, `${script.name} has no default`);
+  assert(gen !== filtered, `${script.name} has no default`);
   return gen;
 }
 
@@ -132,7 +133,7 @@ export function* generateAll<T>(
 ): IterableIterator<Gen<T>> {
   const candidates = orderedPlayouts();
   let gen = generate(arg, candidates);
-  while (gen) {
+  while (gen !== filtered) {
     yield gen;
     gen = generate(arg, candidates);
   }
