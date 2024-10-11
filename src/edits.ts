@@ -116,7 +116,7 @@ export class EditedPickSource implements PickFunctionSource {
   }
 }
 
-export type StepKey = number;
+export type StepKey = number | string;
 
 /**
  * Edits a stream of picks that's split into steps.
@@ -145,11 +145,11 @@ function snipRange(start: number, end: number): StreamEditor {
 
 /** Removes a range of picks in one step. */
 export function removeRange(
-  stepKey: number,
+  stepKey: StepKey,
   start: number,
   end: number,
 ): StepEditor {
-  return (key: number) => (key === stepKey) ? snipRange(start, end) : keep;
+  return (key: StepKey) => (key === stepKey) ? snipRange(start, end) : keep;
 }
 
 function replaceAt(
@@ -161,7 +161,7 @@ function replaceAt(
 
 /** Replaces one pick in one step. */
 export function replacePick(
-  stepKey: number,
+  stepKey: StepKey,
   offset: number,
   newVal: number,
 ): StepEditor {

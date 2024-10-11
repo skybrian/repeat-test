@@ -1,6 +1,5 @@
 import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
 import type { Done } from "./results.ts";
-import type { StepKey } from "./edits.ts";
 
 import { done } from "./results.ts";
 import { Filtered } from "./pickable.ts";
@@ -65,7 +64,7 @@ export class Paused<T> implements Pickable<T> {
   readonly buildFrom: BuildFunction<T>;
   readonly #step: StepFunction<T>;
 
-  constructor(readonly key: StepKey, step: StepFunction<T>) {
+  constructor(readonly key: number, step: StepFunction<T>) {
     this.buildFrom = (pick: PickFunction): T => {
       let next = step(pick);
       while (!next.done) {

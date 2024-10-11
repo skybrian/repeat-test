@@ -130,7 +130,7 @@ export function shrinkTail<T>(
  *
  * Postcondition: decrementing the pick by one would fail the test.
  */
-export function shrinkOnePick(stepKey: number, offset: number): Shrinker {
+export function shrinkOnePick(stepKey: StepKey, offset: number): Shrinker {
   return <T>(
     seed: Gen<T>,
     test: (val: T) => boolean,
