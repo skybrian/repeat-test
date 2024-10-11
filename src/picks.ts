@@ -164,7 +164,7 @@ export class PickRequest implements Pickable<number>, Range {
   /**
    * A request for a single bit.
    */
-  static readonly bit = new PickRequest(0, 1);
+  static readonly bit: PickRequest = new PickRequest(0, 1);
 }
 
 /**

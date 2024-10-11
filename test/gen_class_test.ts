@@ -1,14 +1,12 @@
-import type { Done } from "../src/results.ts";
-import type { Resume, StepFunction } from "../src/script_class.ts";
+import type { Done, Resume, StepFunction } from "../src/script_class.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
-import { done } from "../src/results.ts";
 import { Filtered, type PickFunction } from "../src/pickable.ts";
 import { PickList, PickRequest, PlaybackPicker } from "../src/picks.ts";
 import { keep, replace, replacePick, snip } from "../src/edits.ts";
-import { resume, Script } from "../src/script_class.ts";
+import { done, resume, Script } from "../src/script_class.ts";
 import { Gen, generate } from "../src/gen_class.ts";
 import { propsFromGen } from "./lib/props.ts";
 import { minPlayout, onePlayout } from "../src/backtracking.ts";

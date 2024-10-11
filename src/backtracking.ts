@@ -49,7 +49,7 @@ export class PlayoutSource implements PickFunctionSource {
   }
 
   /** Returns true if no more playouts are available and the search is done. */
-  get done() {
+  get done(): boolean {
     return this.state === "searchDone";
   }
 
@@ -147,7 +147,7 @@ export class PlayoutSource implements PickFunctionSource {
     return this.#reqs.slice(start, this.#depth); // trailing reqs are garbage
   }
 
-  getReplies(start?: number) {
+  getReplies(start?: number): number[] {
     start = start ?? 0;
     return this.tracker.getReplies(start);
   }

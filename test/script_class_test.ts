@@ -1,20 +1,13 @@
-import type { Done } from "../src/results.ts";
 import type { Pickable, PickFunction } from "../src/pickable.ts";
-import type { Resume, StepFunction } from "../src/script_class.ts";
+import type { Done, Resume, StepFunction } from "../src/script_class.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
-import { done } from "../src/results.ts";
+import { filtered } from "../src/results.ts";
 import { PickRequest } from "../src/picks.ts";
 import { usePicks } from "../src/build.ts";
-import {
-  filtered,
-  Paused,
-  resume,
-  resumeAt,
-  Script,
-} from "../src/script_class.ts";
+import { done, Paused, resume, resumeAt, Script } from "../src/script_class.ts";
 
 const noPicks = usePicks();
 

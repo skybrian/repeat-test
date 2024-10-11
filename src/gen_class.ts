@@ -1,14 +1,14 @@
-import type { Done, Failure, Success } from "./results.ts";
+import type { Failure, Success } from "./results.ts";
 import type { Pickable, PickFunction } from "./pickable.ts";
-import type { StepResult } from "./script_class.ts";
+import type { Done, StepResult } from "./script_class.ts";
 import type { Range } from "./picks.ts";
 import type { StepEditor, StepKey, StreamEditor } from "./edits.ts";
 import type { GenerateOpts } from "./build.ts";
 import type { PlayoutSource } from "./backtracking.ts";
 
 import { assert } from "@std/assert";
-import { cacheOnce, failure } from "./results.ts";
-import { filtered, Script } from "./script_class.ts";
+import { failure, filtered } from "./results.ts";
+import { cacheOnce, Script } from "./script_class.ts";
 import { PickList, PlaybackPicker } from "./picks.ts";
 import { EditedPickSource, keep } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
@@ -70,7 +70,7 @@ class PipeStep<T> {
   mutate(
     nextSource: PipeStart<T> | PipeStep<T>,
     editor: StreamEditor,
-  ): PipeStep<T> | Success<T> | undefined {
+  ): PipeStep<T> | Done<T> | undefined {
     if (editor === keep && nextSource === this.source) {
       return this; // no change
     }
@@ -97,7 +97,7 @@ class PipeStep<T> {
     source: PipeStart<T> | PipeStep<T>,
     pick: PickFunction,
     playouts: PlayoutSource,
-  ): PipeStep<T> | Success<T> | undefined {
+  ): PipeStep<T> | Done<T> | undefined {
     const paused = source.result;
     if (paused.done) {
       return paused;
@@ -325,7 +325,7 @@ export function generate<T>(
   nextPlayout: while (playouts.startAt(0)) {
     let source: PipeStart<T> | PipeStep<T> = new PipeStart(script);
     while (true) {
-      const next: PipeStep<T> | Success<T> | undefined = PipeStep.generateStep(
+      const next: PipeStep<T> | Done<T> | undefined = PipeStep.generateStep(
         source,
         pick,
         playouts,

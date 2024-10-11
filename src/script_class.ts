@@ -1,9 +1,38 @@
 import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
-import type { Done } from "./results.ts";
 
-import { done } from "./results.ts";
+import { filtered } from "./results.ts";
 import { Filtered } from "./pickable.ts";
 import { assert } from "@std/assert/assert";
+
+/** Distinguishes a finished result from one that's still in progress. */
+export type Done<T> = { readonly done: true; readonly val: T };
+
+export function done<T>(val: T): Done<T> {
+  return { done: true, val };
+}
+
+const alwaysBuild = Symbol("alwaysBuild");
+
+/**
+ * A Done result that rebuilds the value after its first access.
+ *
+ * (For returning mutable objects.)
+ */
+export function cacheOnce<T>(val: T, build: () => T): Done<T> {
+  let cache: T | typeof alwaysBuild = val;
+
+  return {
+    done: true,
+    get val() {
+      if (cache === alwaysBuild) {
+        return build();
+      }
+      const val = cache;
+      cache = alwaysBuild;
+      return val;
+    },
+  };
+}
 
 /**
  * Returned by a step function to indicate that there's another step.
@@ -50,11 +79,6 @@ export interface HasScript<T> extends Pickable<T> {
    */
   readonly buildScript: Script<T>;
 }
-
-/**
- * Value returned by {@link Paused.step} instead of throwing {@link Filtered}.
- */
-export const filtered = Symbol("filtered");
 
 /**
  * A script may pause instead of returning a value.

@@ -20,33 +20,9 @@ export function failure(message: string): Failure {
   return { ok: false, message };
 }
 
-/** Distinguishes a finished result from one that's still in progress. */
-export type Done<T> = Success<T> & { readonly done: true };
-
-export function done<T>(val: T): Done<T> {
-  return { ok: true, done: true, val };
-}
-
-const alwaysBuild = Symbol("alwaysBuild");
-
 /**
- * A Done result that rebuilds the value after its first access.
+ * Indicates that no value is available due to being rejected by a filter.
  *
- * (For returning mutable objects.)
+ * To pass the filter, the request should be retried with different picks.
  */
-export function cacheOnce<T>(val: T, build: () => T): Done<T> {
-  let cache: T | typeof alwaysBuild = val;
-
-  return {
-    ok: true,
-    done: true,
-    get val() {
-      if (cache === alwaysBuild) {
-        return build();
-      }
-      const val = cache;
-      cache = alwaysBuild;
-      return val;
-    },
-  };
-}
+export const filtered = Symbol("filtered");
