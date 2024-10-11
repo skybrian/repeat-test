@@ -11,6 +11,7 @@ import { assert } from "@std/assert/assert";
 export type Resume<T> = {
   readonly done: false;
   readonly step: StepFunction<T>;
+  readonly label?: string;
 };
 
 /**
@@ -26,6 +27,10 @@ export type StepFunction<T> = (pick: PickFunction) => Done<T> | Resume<T>;
  */
 export function resume<T>(step: StepFunction<T>): Resume<T> {
   return { done: false, step };
+}
+
+export function resumeAt<T>(label: string, step: StepFunction<T>): Resume<T> {
+  return { done: false, step, label };
 }
 
 /**
@@ -60,11 +65,16 @@ export type StepResult<T> = Done<T> | Paused<T>;
  * A paused script. It may resume more than once.
  */
 export class Paused<T> implements Pickable<T> {
-  readonly done = false; // To distinguish it from a Done result.
   readonly buildFrom: BuildFunction<T>;
   readonly #step: StepFunction<T>;
+  readonly key: string | number;
 
-  constructor(readonly key: number, step: StepFunction<T>) {
+  private constructor(
+    step: StepFunction<T>,
+    private readonly index: number,
+    private readonly label: string | undefined,
+  ) {
+    this.key = label ? `${this.index}.${label}` : this.index;
     this.buildFrom = (pick: PickFunction): T => {
       let next = step(pick);
       while (!next.done) {
@@ -73,6 +83,10 @@ export class Paused<T> implements Pickable<T> {
       return next.val;
     };
     this.#step = step;
+  }
+
+  get done(): false {
+    return false;
   }
 
   /**
@@ -86,7 +100,11 @@ export class Paused<T> implements Pickable<T> {
       if (result.done) {
         return result;
       }
-      return new Paused(this.key + 1, result.step);
+      if (result.label !== undefined) {
+        return new Paused(result.step, this.index, result.label);
+      } else {
+        return new Paused(result.step, this.index + 1, undefined);
+      }
     } catch (e) {
       if (!(e instanceof Filtered)) {
         throw e;
@@ -101,10 +119,19 @@ export class Paused<T> implements Pickable<T> {
    */
   then<Out>(then: ThenFunction<T, Out>): Paused<Out> {
     // Adding a step to the end doesn't change the current key.
-    return new Paused(this.key, Paused.addToEnd(this.#step, then));
+    return new Paused(
+      Paused.addToEnd(this.#step, then),
+      this.index,
+      this.label,
+    );
   }
 
-  static addToEnd<T, Out>(
+  /** Pauses at the start of a script.  */
+  static atStart<T>(step: StepFunction<T>): Paused<T> {
+    return new Paused(step, 0, undefined);
+  }
+
+  private static addToEnd<T, Out>(
     first: StepFunction<T>,
     then: ThenFunction<T, Out>,
   ): StepFunction<Out> {
@@ -167,7 +194,7 @@ export class Script<T> implements Pickable<T> {
     if (this.#start.done) {
       const val = this.#start.val;
       const step = (pick: PickFunction) => done(then(val, pick));
-      return new Script(name, build, new Paused(0, step));
+      return new Script(name, build, Paused.atStart(step));
     }
 
     return new Script(name, build, this.#start.then(then));
@@ -186,11 +213,11 @@ export class Script<T> implements Pickable<T> {
     build: BuildFunction<T>,
   ): Script<T> {
     const step = (pick: PickFunction) => done(build(pick));
-    return new Script(name, build, new Paused(0, step));
+    return new Script(name, build, Paused.atStart(step));
   }
 
   static fromStep<T>(name: string, step: StepFunction<T>): Script<T> {
-    const paused = new Paused(0, step);
+    const paused = Paused.atStart(step);
     return new Script(name, paused.buildFrom, paused);
   }
 

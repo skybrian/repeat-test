@@ -8,7 +8,13 @@ import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import { done } from "../src/results.ts";
 import { PickRequest } from "../src/picks.ts";
 import { usePicks } from "../src/build.ts";
-import { filtered, Paused, resume, Script } from "../src/script_class.ts";
+import {
+  filtered,
+  Paused,
+  resume,
+  resumeAt,
+  Script,
+} from "../src/script_class.ts";
 
 const noPicks = usePicks();
 
@@ -180,6 +186,20 @@ describe("Paused", () => {
         Error,
         "failed",
       );
+    });
+
+    it("emits keys with labels", () => {
+      const script = Script.fromStep("with a label", () => {
+        return resumeAt("foo", () => done(123));
+      });
+      const start = script.paused;
+      assert(start instanceof Paused);
+      assertEquals(start.key, 0);
+
+      const first = start.step(usePicks());
+      assert(first !== filtered);
+      assert(!first.done);
+      assertEquals(first.key, "0.foo");
     });
   });
 });
