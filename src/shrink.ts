@@ -1,5 +1,5 @@
 import type { Gen } from "./gen_class.ts";
-import type { StepEditor, StepKey } from "./edits.ts";
+import type { StepKey } from "./edits.ts";
 import type { SystemConsole } from "./console.ts";
 
 import { assert } from "@std/assert";
@@ -42,23 +42,6 @@ export function shrink<T>(
   return seed;
 }
 
-/**
- * Returns the new seed if the edit succeeded and passes the test.
- *
- * It could be the same value if the edit didn't change anything.
- */
-function tryEdit<T>(
-  editor: StepEditor,
-  seed: Gen<T>,
-  test: (val: T) => boolean,
-): Gen<T> | undefined {
-  const next = seed.mutate(editor);
-  if (next === filtered || !test(next.val)) {
-    return undefined;
-  }
-  return next;
-}
-
 function trimmedLength(seed: Gen<unknown>, key: StepKey): number {
   const picks = seed.getPicks(key);
   return picks === undefined ? 0 : picks.trimmedLength;
@@ -78,8 +61,8 @@ function shrinkTailAt<T>(
   assert(len > 0);
 
   // Try to remove the last pick to fail fast.
-  const next = tryEdit(trimStep(key, len - 1), seed, test);
-  if (next === undefined) {
+  const next = seed.tryMutate(trimStep(key, len - 1), test);
+  if (next === filtered) {
     return undefined;
   }
 
@@ -90,8 +73,8 @@ function shrinkTailAt<T>(
   while (tooLow + 2 <= hi) {
     const mid = (tooLow + 1 + hi) >>> 1;
     assert(mid > tooLow && mid < hi);
-    const next = tryEdit(trimStep(key, mid), seed, test);
-    if (next === undefined) {
+    const next = seed.tryMutate(trimStep(key, mid), test);
+    if (next === filtered) {
       // failed; retry with a higher length
       tooLow = mid;
       continue;
@@ -156,12 +139,11 @@ export function shrinkOnePick(stepKey: StepKey, offset: number): Shrinker {
     }
 
     // See if the test fails if we subtract one.
-    const next = tryEdit(
+    const next = seed.tryMutate(
       replacePick(stepKey, offset, reply - 1),
-      seed,
       test,
     );
-    if (next === undefined) {
+    if (next === filtered) {
       return undefined; // No change; the postcondition already holds
     }
     seed = next;
@@ -176,12 +158,11 @@ export function shrinkOnePick(stepKey: StepKey, offset: number): Shrinker {
     while (tooLow + 2 <= hi) {
       const mid = (tooLow + 1 + hi) >>> 1;
       assert(mid > tooLow && mid < hi);
-      const next = tryEdit(
+      const next = seed.tryMutate(
         replacePick(stepKey, offset, mid),
-        seed,
         test,
       );
-      if (next === undefined) {
+      if (next === filtered) {
         // failed; retry with a higher pick
         tooLow = mid;
         continue;
@@ -257,8 +238,8 @@ function shrinkSegmentOptions<T>(
       // Try deleting it by itself.
       end = i + 1;
     }
-    let next = tryEdit(removeRange(stepKey, i, end), seed, test);
-    if (next === undefined) {
+    let next = seed.tryMutate(removeRange(stepKey, i, end), test);
+    if (next === filtered) {
       const containsEmptyOption = (end === i + 1) &&
         picks.getOption(end) === 0 &&
         picks.getOption(end + 1) !== undefined;
@@ -269,12 +250,11 @@ function shrinkSegmentOptions<T>(
       }
 
       // Try extending the range to include an option that wasn't taken
-      next = tryEdit(
+      next = seed.tryMutate(
         removeRange(stepKey, i, end + 1),
-        seed,
         test,
       );
-      if (next === undefined || !test(next.val)) {
+      if (next === filtered) {
         continue;
       }
     }

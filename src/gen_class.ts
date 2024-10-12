@@ -232,6 +232,25 @@ export class Gen<T> implements Success<T> {
   }
 
   /**
+   * Returns an edited value if the edit worked and it passes the test.
+   *
+   * If the edit had no effect, returns this.
+   */
+  tryMutate(
+    editor: StepEditor,
+    test: (val: T) => boolean,
+  ): Gen<T> | typeof filtered {
+    const next = this.mutate(editor);
+    if (next === filtered) {
+      return filtered;
+    }
+    if (next !== this && !test(next.val)) {
+      return filtered;
+    }
+    return next;
+  }
+
+  /**
    * Regenerates the value after editing its picks.
    *
    * Returns the new value, which might be the same one (according to ===) if
