@@ -1,4 +1,4 @@
-import type { Range } from "./picks.ts";
+import { PickList, type Range } from "./picks.ts";
 import type { PickFunctionSource } from "./build.ts";
 
 export type Edit =
@@ -31,22 +31,47 @@ export function replace(val: number): Edit {
   return { type: "replace", val };
 }
 
+export class EditLog {
+  reqs: Range[] = [];
+  replies: number[] = [];
+
+  reset() {
+    this.reqs.length = 0;
+    this.replies.length = 0;
+  }
+
+  push(req: Range, reply: number) {
+    this.reqs.push(req);
+    this.replies.push(reply);
+  }
+
+  take(): PickList {
+    const result = new PickList(this.reqs, this.replies);
+    this.reqs = [];
+    this.replies = [];
+    return result;
+  }
+}
+
 /**
  * Replays a stream of picks, applying the given editor to each pick.
  */
 export class EditedPickSource implements PickFunctionSource {
+  private readonly log: EditLog;
   private offset = 0;
-
-  readonly reqs: Range[] = [];
-  readonly replies: number[] = [];
 
   #edits = 0;
   #deletes = 0;
 
   constructor(
-    private readonly before: number[],
+    private readonly before: readonly number[],
     private readonly editor: StreamEditor,
+    log?: EditLog,
   ) {
+    if (log) {
+      log.reset();
+    }
+    this.log = log ?? new EditLog();
     for (let i = 0; i < before.length; i++) {
       if (!Number.isSafeInteger(before[i])) {
         throw new Error(`${i}: expected a safe integer, got: ${before[i]}`);
@@ -64,13 +89,12 @@ export class EditedPickSource implements PickFunctionSource {
 
   nextPick(req: Range): number {
     const pick = this.edit(req);
-    this.reqs.push(req);
-    this.replies.push(pick);
+    this.log.push(req, pick);
     return pick;
   }
 
   get depth(): number {
-    return this.replies.length;
+    return this.log.replies.length;
   }
 
   private edit(req: Range): number {

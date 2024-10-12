@@ -10,7 +10,7 @@ import { assert } from "@std/assert";
 import { failure, filtered } from "./results.ts";
 import { cacheOnce, Script } from "./script_class.ts";
 import { PickList, PlaybackPicker } from "./picks.ts";
-import { EditedPickSource, keep } from "./edits.ts";
+import { EditedPickSource, EditLog, keep } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
 import { makePickFunction, usePicks } from "./build.ts";
 import { minPlayout } from "./backtracking.ts";
@@ -48,8 +48,7 @@ class PipeStep<T> {
 
   constructor(
     readonly source: PipeStart<T> | PipeStep<T>,
-    readonly reqs: Range[],
-    readonly replies: number[],
+    readonly picks: PickList,
     output: PipeResult<T>,
   ) {
     const paused = source.result;
@@ -57,7 +56,7 @@ class PipeStep<T> {
     this.key = paused.key;
 
     const regenerate = (): PipeResult<T> => {
-      const pick = usePicks(...this.replies);
+      const pick = usePicks(...this.picks.replies);
       const result = paused.step(pick);
       assert(
         result !== filtered,
@@ -69,13 +68,10 @@ class PipeStep<T> {
     this.result = cache(output, regenerate);
   }
 
-  get picks(): PickList {
-    return new PickList(this.reqs, this.replies);
-  }
-
   mutate(
     nextSource: PipeStart<T> | PipeStep<T>,
     editor: StreamEditor,
+    buffer: EditLog,
   ): PipeStep<T> | Done<T> | typeof filtered {
     if (editor === keep && nextSource === this.source) {
       return this; // no change
@@ -86,7 +82,7 @@ class PipeStep<T> {
       return paused; // finished early
     }
 
-    const picks = new EditedPickSource(this.replies, editor);
+    const picks = new EditedPickSource(this.picks.replies, editor, buffer);
     const next = paused.step(makePickFunction(picks));
     if (next === filtered) {
       return filtered;
@@ -96,7 +92,11 @@ class PipeStep<T> {
       return this; // no change
     }
 
-    return new PipeStep(nextSource, picks.reqs, picks.replies, next);
+    return new PipeStep(
+      nextSource,
+      buffer.take(),
+      next,
+    );
   }
 
   static generateStep<T>(
@@ -120,7 +120,8 @@ class PipeStep<T> {
       }
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
-      return new PipeStep(source, reqs, replies, next);
+      const picks = new PickList(reqs, replies);
+      return new PipeStep(source, picks, next);
     }
 
     return filtered; // no playouts matched at this depth
@@ -185,7 +186,7 @@ export class Gen<T> implements Success<T> {
     if (this.#reqs === undefined) {
       const reqs: Range[] = [];
       for (const step of this.stepsWithPicks.values()) {
-        reqs.push(...step.reqs);
+        reqs.push(...step.picks.reqs);
       }
       this.#reqs = reqs;
     }
@@ -196,7 +197,7 @@ export class Gen<T> implements Success<T> {
     if (this.#replies === undefined) {
       const replies: number[] = [];
       for (const step of this.stepsWithPicks.values()) {
-        replies.push(...step.replies);
+        replies.push(...step.picks.replies);
       }
       this.#replies = replies;
     }
@@ -268,7 +269,8 @@ export class Gen<T> implements Success<T> {
     let i = 0;
     let end: PipeStart<T> | PipeStep<T> = first;
     for (const step of rest) {
-      const next = step.mutate(end, editors(i++));
+      const buffer = new EditLog();
+      const next = step.mutate(end, editors(i++), buffer);
       if (next === filtered) {
         return filtered; // failed edit
       } else if (!(next instanceof PipeStep)) {
@@ -309,7 +311,7 @@ export class Gen<T> implements Success<T> {
       const { rest } = splitPipeline(this.#end);
       const steps = new Map<StepKey, PipeStep<T>>();
       for (const step of rest) {
-        if (step.reqs.length > 0) {
+        if (step.picks.reqs.length > 0) {
           steps.set(step.key, step);
         }
       }
