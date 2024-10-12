@@ -216,9 +216,13 @@ export class Gen<T> implements Success<T> {
     return Array.from(this.stepsWithPicks.keys());
   }
 
-  getPicks(key: StepKey): PickList | undefined {
+  /** Returns the picks for the given step, or an empty PickList if not found. */
+  getPicks(key: StepKey): PickList {
     const step = this.stepsWithPicks.get(key);
-    return step?.picks;
+    if (step === undefined) {
+      return PickList.empty;
+    }
+    return step.picks;
   }
 
   /**

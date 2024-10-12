@@ -43,8 +43,7 @@ export function shrink<T>(
 }
 
 function trimmedLength(seed: Gen<unknown>, key: StepKey): number {
-  const picks = seed.getPicks(key);
-  return picks === undefined ? 0 : picks.trimmedLength;
+  return seed.getPicks(key).trimmedLength;
 }
 
 /**
@@ -125,9 +124,6 @@ export function shrinkOnePick(stepKey: StepKey, offset: number): Shrinker {
     test: (val: T) => boolean,
   ): Gen<T> | undefined => {
     const picks = seed.getPicks(stepKey);
-    if (picks === undefined) {
-      return undefined;
-    }
 
     if (picks.trimmedLength <= offset) {
       return undefined; // No change; nothing to shrink
@@ -147,10 +143,8 @@ export function shrinkOnePick(stepKey: StepKey, offset: number): Shrinker {
       return undefined; // No change; the postcondition already holds
     }
     seed = next;
-    let replies = seed.getPicks(stepKey)?.replies;
-    if (replies === undefined) {
-      return seed;
-    }
+    let replies = seed.getPicks(stepKey).replies;
+    assert(offset < replies.length, "picks shrank unexpectedly");
 
     // Binary search to find the smallest pick that succeeds.
     let tooLow = req.min - 1;
@@ -168,10 +162,8 @@ export function shrinkOnePick(stepKey: StepKey, offset: number): Shrinker {
         continue;
       }
       seed = next;
-      replies = seed.getPicks(stepKey)?.replies;
-      if (replies === undefined) {
-        return seed;
-      }
+      replies = seed.getPicks(stepKey).replies;
+      assert(offset < replies.length, "picks shrank unexpectedly");
       hi = replies[offset];
     }
     return seed;
@@ -197,7 +189,7 @@ export function shrinkAllPicks<T>(
     for (const key of todo) {
       for (
         let offset = 0;
-        offset < (seed.getPicks(key)?.length ?? 0);
+        offset < seed.getPicks(key).length;
         offset++
       ) {
         const next = shrinkOnePick(key, offset)(seed, test);
@@ -219,9 +211,6 @@ function shrinkSegmentOptions<T>(
   stepKey: StepKey,
 ): Gen<T> | undefined {
   let picks = seed.getPicks(stepKey);
-  if (picks == undefined) {
-    return undefined;
-  }
   const len = picks.trimmedLength;
 
   if (len < 1) {
@@ -261,9 +250,6 @@ function shrinkSegmentOptions<T>(
 
     seed = next;
     picks = seed.getPicks(stepKey);
-    if (picks == undefined) {
-      break;
-    }
     end = i;
     changed = true;
   }

@@ -5,8 +5,8 @@ import { filtered } from "../../src/results.ts";
 export type GenProps<T> = {
   val: T;
   name: string;
-  reqs: Range[];
-  replies: number[];
+  reqs: readonly Range[];
+  replies: readonly number[];
 };
 
 export function propsFromGen<T>(

@@ -228,6 +228,11 @@ describe("Gen", () => {
       assertEquals(gen.getPicks(0), new PickList([bitReq], [0]));
       assertEquals(gen.getPicks(1), new PickList([bitReq], [1]));
     });
+
+    it("returns empty for an unknown key", () => {
+      const gen = Gen.mustBuild(multiStep, [0, 1]);
+      assert(gen.getPicks(2) === PickList.empty);
+    });
   });
 
   describe("mutate", () => {

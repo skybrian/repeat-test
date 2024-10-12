@@ -198,9 +198,15 @@ export interface PickSink {
   push(req: Range, pick: number): boolean;
 }
 
+const frozenReqs = Object.freeze<Range[]>([]);
+const frozenReplies = Object.freeze<number[]>([]);
+
 /** A list of pick requests with its replies. */
 export class PickList {
-  constructor(readonly reqs: Range[], readonly replies: number[]) {}
+  constructor(
+    readonly reqs: readonly Range[],
+    readonly replies: readonly number[],
+  ) {}
 
   get length(): number {
     return this.reqs.length;
@@ -277,6 +283,8 @@ export class PickList {
       console.log(`${i}: ${req.min}..${req.max} =>`, reply);
     }
   }
+
+  static empty = new PickList(frozenReqs, frozenReplies);
 }
 
 /**
