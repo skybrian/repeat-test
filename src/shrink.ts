@@ -6,6 +6,7 @@ import { assert } from "@std/assert";
 import { filtered } from "./results.ts";
 import { removeRange, replacePick, trimStep } from "./edits.ts";
 import { nullConsole } from "./console.ts";
+import { PickLog } from "./picks.ts";
 
 /**
  * Given a generated value, returns a smaller one that satisfies a predicate.
@@ -22,6 +23,7 @@ export function shrink<T>(
 
 export class Shrinker<T> {
   private console: SystemConsole;
+  private log = new PickLog();
 
   constructor(
     public seed: Gen<T>,
@@ -51,11 +53,13 @@ export class Shrinker<T> {
   }
 
   tryMutate(edit: StepEditor): boolean {
-    const next = this.seed.tryMutate(edit, this.test);
+    const next = this.seed.tryMutate(edit, this.test, this.log);
     if (next === filtered) {
+      this.log.reset();
       return false;
     }
     this.seed = next;
+    this.log = new PickLog();
     return true;
   }
 

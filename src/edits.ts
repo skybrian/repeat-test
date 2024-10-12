@@ -1,6 +1,7 @@
 import type { Range } from "./picks.ts";
 import type { PickFunctionSource } from "./build.ts";
 
+import { assert } from "@std/assert";
 import { PickLog } from "./picks.ts";
 
 export type Edit =
@@ -49,6 +50,8 @@ export class EditedPickSource implements PickFunctionSource {
     log?: PickLog,
   ) {
     this.log = log ?? new PickLog();
+    assert(this.depth === 0);
+
     for (let i = 0; i < before.length; i++) {
       if (!Number.isSafeInteger(before[i])) {
         throw new Error(`${i}: expected a safe integer, got: ${before[i]}`);
@@ -71,7 +74,7 @@ export class EditedPickSource implements PickFunctionSource {
   }
 
   get depth(): number {
-    return this.log.length - this.log.start;
+    return this.log.length - this.log.viewStart;
   }
 
   private edit(req: Range): number {

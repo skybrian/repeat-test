@@ -201,10 +201,18 @@ export interface PickSink {
 export class PickLog {
   reqs: Range[] = [];
   replies: number[] = [];
-  start = 0;
+
+  /** The start of the next view. */
+  viewStart = 0;
 
   get length() {
     return this.reqs.length;
+  }
+
+  reset() {
+    this.reqs.length = 0;
+    this.replies.length = 0;
+    this.viewStart = 0;
   }
 
   push(req: Range, reply: number) {
@@ -212,10 +220,22 @@ export class PickLog {
     this.replies.push(reply);
   }
 
-  take(): PickView {
-    const result = new PickView(this, this.start, this.length);
-    this.start = this.length;
+  /**
+   * Returns a view from {@link viewStart} to the end of the log.
+   * Also sets viewStart to the end of the log.
+   */
+  takeView(): PickView {
+    const result = new PickView(this, this.viewStart, this.length);
+    this.viewStart = this.length;
     return result;
+  }
+
+  /**
+   * Removes all picks after {@link viewStart}.
+   */
+  cancelView() {
+    this.reqs.length = this.viewStart;
+    this.replies.length = this.viewStart;
   }
 }
 

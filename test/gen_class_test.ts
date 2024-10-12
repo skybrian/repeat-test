@@ -1,11 +1,16 @@
 import type { Done, Resume, StepFunction } from "../src/script_class.ts";
 
-import { describe, it } from "@std/testing/bdd";
+import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { filtered } from "../src/results.ts";
 import { Filtered, type PickFunction } from "../src/pickable.ts";
-import { PickRequest, PickView, PlaybackPicker } from "../src/picks.ts";
+import {
+  PickLog,
+  PickRequest,
+  PickView,
+  PlaybackPicker,
+} from "../src/picks.ts";
 import { keep, replace, replacePick, snip } from "../src/edits.ts";
 import { done, resume, Script } from "../src/script_class.ts";
 import { Gen, generate } from "../src/gen_class.ts";
@@ -236,27 +241,33 @@ describe("Gen", () => {
   });
 
   describe("mutate", () => {
+    let log = new PickLog();
+
+    beforeEach(() => {
+      log = new PickLog();
+    });
+
     it("returns the same value for a constant", () => {
       const gen = Gen.mustBuild(pi, []);
       assertEquals(gen.val, Math.PI);
       assertEquals(gen.stepKeys, []);
-      assert(gen.mutate(() => keep) === gen);
+      assert(gen.mutate(() => keep, log) === gen);
     });
     it("returns itself when there are no edits, for a single-step build", () => {
       const gen = Gen.mustBuild(bit, [0]);
-      assert(gen.mutate(() => keep) === gen);
-      assert(gen.mutate(() => () => keep()) === gen);
+      assert(gen.mutate(() => keep, log) === gen);
+      assert(gen.mutate(() => () => keep(), log) === gen);
     });
 
     it("returns itself when there are no edits, for a multi-step build", () => {
       const gen = Gen.mustBuild(multiStep, [0, 0]);
-      assert(gen.mutate(() => keep) === gen);
-      assert(gen.mutate(() => () => keep()) === gen);
+      assert(gen.mutate(() => keep, log) === gen);
+      assert(gen.mutate(() => () => keep(), log) === gen);
     });
 
     it("can edit a single-step build", () => {
       const seed = Gen.mustBuild(bit, [1]);
-      const gen = seed.mutate(() => snip);
+      const gen = seed.mutate(() => snip, log);
       assertEquals(propsFromGen(gen), {
         name: "bit",
         val: 0,
@@ -267,7 +278,7 @@ describe("Gen", () => {
 
     it("can edit the first step of a two-step build", () => {
       const original = Gen.mustBuild(multiStep, [1, 1]);
-      const gen = original.mutate((n) => (n === 0) ? snip : keep);
+      const gen = original.mutate((n) => (n === 0) ? snip : keep, log);
       assert(gen !== original);
       assertEquals(propsFromGen(gen), {
         name: "multi-step",
@@ -280,8 +291,9 @@ describe("Gen", () => {
     });
 
     it("can edit the last step of a two-step build", () => {
-      const gen = Gen.mustBuild(multiStep, [1, 1]).mutate((n) =>
-        (n === 1) ? snip : keep
+      const gen = Gen.mustBuild(multiStep, [1, 1]).mutate(
+        (n) => (n === 1) ? snip : keep,
+        log,
       );
       assert(gen !== filtered);
       assertEquals(gen.stepKeys, [0, 1]);
@@ -307,13 +319,13 @@ describe("Gen", () => {
 
     it("returns filtered if editing the first step fails", () => {
       const gen = Gen.mustBuild(evenDoubles, [2, 2]);
-      const after = gen.mutate((i) => (i === 0) ? () => replace(1) : keep);
+      const after = gen.mutate((i) => (i === 0) ? () => replace(1) : keep, log);
       assertEquals(propsFromGen(after), filtered);
     });
 
     it("returns filtered if editing the second step fails", () => {
       const gen = Gen.mustBuild(evenDoubles, [2, 2]);
-      const after = gen.mutate((i) => (i === 1) ? () => replace(1) : keep);
+      const after = gen.mutate((i) => (i === 1) ? () => replace(1) : keep, log);
       assertEquals(propsFromGen(after), filtered);
     });
 
@@ -321,7 +333,7 @@ describe("Gen", () => {
       const before = Gen.mustBuild(countOnesTo5, [1, 1, 1, 0]);
       assertEquals(before.val, 3);
 
-      const after = before.mutate((i) => (i === 1) ? snip : keep);
+      const after = before.mutate((i) => (i === 1) ? snip : keep, log);
       assertEquals(propsFromGen(after), {
         val: 1,
         name: "countOnes (to 5)",
@@ -334,7 +346,7 @@ describe("Gen", () => {
       const before = Gen.mustBuild(countOnesTo5, [1, 0]);
       assertEquals(before.val, 1);
 
-      const after = before.mutate(replacePick(1, 0, 1));
+      const after = before.mutate(replacePick(1, 0, 1), log);
       assertEquals(propsFromGen(after), {
         val: 2,
         name: "countOnes (to 5)",
@@ -348,7 +360,7 @@ describe("Gen", () => {
       assertEquals(before.val, 5);
       assertEquals(before.stepKeys, [0, 1, 2, 3, 4, 5]);
 
-      assertEquals(before.mutate(replacePick(5, 0, 1)), filtered);
+      assertEquals(before.mutate(replacePick(5, 0, 1), log), filtered);
     });
   });
 });

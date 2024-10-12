@@ -1,7 +1,7 @@
 import type { Failure, Success } from "./results.ts";
 import type { Pickable, PickFunction } from "./pickable.ts";
 import type { Done, Paused } from "./script_class.ts";
-import type { Range } from "./picks.ts";
+import type { PickLog, Range } from "./picks.ts";
 import type { StepEditor, StepKey, StreamEditor } from "./edits.ts";
 import type { GenerateOpts } from "./build.ts";
 import type { PlayoutSource } from "./backtracking.ts";
@@ -9,7 +9,7 @@ import type { PlayoutSource } from "./backtracking.ts";
 import { assert } from "@std/assert";
 import { failure, filtered } from "./results.ts";
 import { cacheOnce, Script } from "./script_class.ts";
-import { PickLog, PickView, PlaybackPicker } from "./picks.ts";
+import { PickView, PlaybackPicker } from "./picks.ts";
 import { EditedPickSource, keep } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
 import { makePickFunction, usePicks } from "./build.ts";
@@ -68,10 +68,13 @@ class PipeStep<T> {
     this.result = cache(output, regenerate);
   }
 
+  /**
+   * Appends picks to the end of the log and takes a view of the picks used.
+   */
   mutate(
     nextSource: PipeStart<T> | PipeStep<T>,
     editor: StreamEditor,
-    buffer: PickLog,
+    log: PickLog,
   ): PipeStep<T> | Done<T> | typeof filtered {
     if (editor === keep && nextSource === this.source) {
       return this; // no change
@@ -82,19 +85,21 @@ class PipeStep<T> {
       return paused; // finished early
     }
 
-    const picks = new EditedPickSource(this.picks.replies, editor, buffer);
+    const picks = new EditedPickSource(this.picks.replies, editor, log);
     const next = paused.step(makePickFunction(picks));
     if (next === filtered) {
+      log.cancelView();
       return filtered;
     }
 
     if (nextSource === this.source && !picks.edited) {
+      log.cancelView();
       return this; // no change
     }
 
     return new PipeStep(
       nextSource,
-      buffer.take(),
+      log.takeView(),
       next,
     );
   }
@@ -240,12 +245,15 @@ export class Gen<T> implements Success<T> {
    * Returns an edited value if the edit worked and it passes the test.
    *
    * If the edit had no effect, returns this.
+   *
+   * Picks from changed steps are allocated at the end of the log.
    */
   tryMutate(
     editor: StepEditor,
     test: (val: T) => boolean,
+    log: PickLog,
   ): Gen<T> | typeof filtered {
-    const next = this.mutate(editor);
+    const next = this.mutate(editor, log);
     if (next === filtered) {
       return filtered;
     }
@@ -262,15 +270,16 @@ export class Gen<T> implements Success<T> {
    * there is no change.
    *
    * If edit can't be applied, returns {@link filtered}.
+   *
+   * Picks from changed steps are allocated at the end of the log.
    */
-  mutate(editors: StepEditor): Gen<T> | typeof filtered {
+  mutate(editors: StepEditor, log: PickLog): Gen<T> | typeof filtered {
     const { first, rest } = splitPipeline(this.#end);
 
     let i = 0;
     let end: PipeStart<T> | PipeStep<T> = first;
     for (const step of rest) {
-      const buffer = new PickLog();
-      const next = step.mutate(end, editors(i++), buffer);
+      const next = step.mutate(end, editors(i++), log);
       if (next === filtered) {
         return filtered; // failed edit
       } else if (!(next instanceof PipeStep)) {
