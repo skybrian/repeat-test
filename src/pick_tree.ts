@@ -1,4 +1,4 @@
-import type { PickList, RandomSource, Range } from "./picks.ts";
+import type { PickView, RandomSource, Range } from "./picks.ts";
 
 import { assert } from "@std/assert";
 import { PickRequest } from "./picks.ts";
@@ -191,7 +191,7 @@ export class PickTree {
    *
    * Throws an error if a pick's range doesn't match a previous playout.
    */
-  prune(playout: PickList): boolean {
+  prune(playout: PickView): boolean {
     const walk = this.walk();
     if (!playout.pushTo(walk)) {
       return false; // already pruned

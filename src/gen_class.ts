@@ -9,8 +9,8 @@ import type { PlayoutSource } from "./backtracking.ts";
 import { assert } from "@std/assert";
 import { failure, filtered } from "./results.ts";
 import { cacheOnce, Script } from "./script_class.ts";
-import { PickList, PlaybackPicker } from "./picks.ts";
-import { EditedPickSource, EditLog, keep } from "./edits.ts";
+import { PickLog, PickView, PlaybackPicker } from "./picks.ts";
+import { EditedPickSource, keep } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
 import { makePickFunction, usePicks } from "./build.ts";
 import { minPlayout } from "./backtracking.ts";
@@ -48,7 +48,7 @@ class PipeStep<T> {
 
   constructor(
     readonly source: PipeStart<T> | PipeStep<T>,
-    readonly picks: PickList,
+    readonly picks: PickView,
     output: PipeResult<T>,
   ) {
     const paused = source.result;
@@ -71,7 +71,7 @@ class PipeStep<T> {
   mutate(
     nextSource: PipeStart<T> | PipeStep<T>,
     editor: StreamEditor,
-    buffer: EditLog,
+    buffer: PickLog,
   ): PipeStep<T> | Done<T> | typeof filtered {
     if (editor === keep && nextSource === this.source) {
       return this; // no change
@@ -120,7 +120,7 @@ class PipeStep<T> {
       }
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
-      const picks = new PickList(reqs, replies);
+      const picks = PickView.wrap(reqs, replies);
       return new PipeStep(source, picks, next);
     }
 
@@ -204,8 +204,8 @@ export class Gen<T> implements Success<T> {
     return this.#replies;
   }
 
-  get picks(): PickList {
-    return new PickList(this.reqs, this.replies);
+  get picks(): PickView {
+    return PickView.wrap(this.reqs, this.replies);
   }
 
   /**
@@ -218,10 +218,10 @@ export class Gen<T> implements Success<T> {
   }
 
   /** Returns the picks for the given step, or an empty PickList if not found. */
-  getPicks(key: StepKey): PickList {
+  getPicks(key: StepKey): PickView {
     const step = this.stepsWithPicks.get(key);
     if (step === undefined) {
-      return PickList.empty;
+      return PickView.empty;
     }
     return step.picks;
   }
@@ -269,7 +269,7 @@ export class Gen<T> implements Success<T> {
     let i = 0;
     let end: PipeStart<T> | PipeStep<T> = first;
     for (const step of rest) {
-      const buffer = new EditLog();
+      const buffer = new PickLog();
       const next = step.mutate(end, editors(i++), buffer);
       if (next === filtered) {
         return filtered; // failed edit

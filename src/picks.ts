@@ -198,49 +198,75 @@ export interface PickSink {
   push(req: Range, pick: number): boolean;
 }
 
-const frozenReqs = Object.freeze<Range[]>([]);
-const frozenReplies = Object.freeze<number[]>([]);
+export class PickLog {
+  reqs: Range[] = [];
+  replies: number[] = [];
+  start = 0;
 
-/** A list of pick requests with its replies. */
-export class PickList {
-  constructor(
-    readonly reqs: readonly Range[],
-    readonly replies: readonly number[],
-  ) {}
-
-  get length(): number {
+  get length() {
     return this.reqs.length;
   }
 
-  /**
-   * Returns the pick at the given index.
-   */
+  push(req: Range, reply: number) {
+    this.reqs.push(req);
+    this.replies.push(reply);
+  }
+
+  take(): PickView {
+    const result = new PickView(this, this.start, this.length);
+    this.start = this.length;
+    return result;
+  }
+}
+
+export class PickView {
+  constructor(
+    private readonly log: PickLog,
+    private readonly start: number,
+    private readonly end: number,
+  ) {}
+
+  get length() {
+    return this.end - this.start;
+  }
+
+  get reqs(): Range[] {
+    return this.log.reqs.slice(this.start, this.end);
+  }
+
+  get replies(): number[] {
+    return this.log.replies.slice(this.start, this.end);
+  }
+
   getPick(index: number): Pick {
-    return { req: this.reqs[index], reply: this.replies[index] };
+    return {
+      req: this.log.reqs[this.start + index],
+      reply: this.log.replies[this.start + index],
+    };
   }
 
   /**
    * If the request at the given index is for a bit, returns the reply.
    */
   getOption(index: number): number | undefined {
-    if (index >= this.reqs.length) {
+    if (index >= this.length) {
       return undefined;
     }
-    const req = this.reqs[index];
+    const req = this.log.reqs[this.start + index];
     if (req.min !== 0 || req.max !== 1) {
       return undefined;
     }
-    return this.replies[index];
+    return this.log.replies[this.start + index];
   }
 
   /**
    * Returns the length of the playout with default picks removed from the end.
    */
   get trimmedLength(): number {
-    const reqs = this.reqs;
-    const replies = this.replies;
-    let last = replies.length - 1;
-    while (last >= 0 && replies[last] === reqs[last].min) {
+    let last = this.end - 1;
+    while (
+      last >= this.start && this.log.replies[last] === this.log.reqs[last].min
+    ) {
       last--;
     }
     return last + 1;
@@ -249,11 +275,12 @@ export class PickList {
   /**
    * Returns the requests and replies with default picks removed from the end.
    */
-  trimmed(): PickList {
+  trimmed(): PickView {
     const len = this.trimmedLength;
-    return new PickList(
-      this.reqs.slice(0, len),
-      this.replies.slice(0, len),
+    return new PickView(
+      this.log,
+      this.start,
+      this.start + len,
     );
   }
 
@@ -261,9 +288,9 @@ export class PickList {
    * Writes each pick to a sink.
    */
   pushTo(sink: PickSink): boolean {
-    for (let i = 0; i < this.reqs.length; i++) {
-      const req = this.reqs[i];
-      const reply = this.replies[i];
+    for (let i = 0; i < this.length; i++) {
+      const req = this.log.reqs[this.start + i];
+      const reply = this.log.replies[this.start + i];
       if (!sink.push(req, reply)) {
         return false;
       }
@@ -271,20 +298,24 @@ export class PickList {
     return true;
   }
 
+  static wrap(reqs: Range[], replies: number[]): PickView {
+    const log = new PickLog();
+    log.reqs = reqs;
+    log.replies = replies;
+    return new PickView(log, 0, reqs.length);
+  }
+
   /**
    * Writes the picks to a console.
    */
   logTo(console: SystemConsole): void {
-    const reqs = this.reqs;
-    const replies = this.replies;
-    for (let i = 0; i < reqs.length; i++) {
-      const req = reqs[i];
-      const reply = replies[i];
+    for (let i = 0; i < this.length; i++) {
+      const { req, reply } = this.getPick(i);
       console.log(`${i}: ${req.min}..${req.max} =>`, reply);
     }
   }
 
-  static empty = new PickList(frozenReqs, frozenReplies);
+  static empty = PickView.wrap([], []);
 }
 
 /**

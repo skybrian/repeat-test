@@ -15,8 +15,8 @@ import { invalidIntRange } from "./lib/ranges.ts";
 import {
   alwaysPick,
   biasedBitRequest,
-  PickList,
   PickRequest,
+  PickView,
   PlaybackPicker,
 } from "../src/picks.ts";
 import { RecordingConsole } from "../src/console.ts";
@@ -266,26 +266,26 @@ describe("biasedBitRequest", () => {
   });
 });
 
-describe("PickList", () => {
+describe("PickView", () => {
   describe("equality", () => {
     const zero = new PickRequest(0, 0);
     const bit = PickRequest.bit;
 
     it("two empty lists are equal", () => {
-      const a = new PickList([], []);
-      const b = new PickList([], []);
+      const a = PickView.wrap([], []);
+      const b = PickView.empty;
       assertEquals(a, b);
     });
 
     it("compares differently with different requests", () => {
-      const a = new PickList([zero], [0]);
-      const b = new PickList([bit], [0]);
+      const a = PickView.wrap([zero], [0]);
+      const b = PickView.wrap([bit], [0]);
       assert(!equal(a, b));
     });
 
     it("compares differently with different replies", () => {
-      const a = new PickList([bit], [0]);
-      const b = new PickList([bit], [1]);
+      const a = PickView.wrap([bit], [0]);
+      const b = PickView.wrap([bit], [1]);
       assert(!equal(a, b));
     });
   });
@@ -293,7 +293,7 @@ describe("PickList", () => {
   describe("logTo", () => {
     it("logs to a console", () => {
       const con = new RecordingConsole();
-      const picks = new PickList([new PickRequest(1, 10)], [1]);
+      const picks = PickView.wrap([new PickRequest(1, 10)], [1]);
       picks.logTo(con);
       con.logged(["0: 1..10 =>", 1]);
       con.checkEmpty();

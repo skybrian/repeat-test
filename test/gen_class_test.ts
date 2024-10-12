@@ -5,7 +5,7 @@ import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { filtered } from "../src/results.ts";
 import { Filtered, type PickFunction } from "../src/pickable.ts";
-import { PickList, PickRequest, PlaybackPicker } from "../src/picks.ts";
+import { PickRequest, PickView, PlaybackPicker } from "../src/picks.ts";
 import { keep, replace, replacePick, snip } from "../src/edits.ts";
 import { done, resume, Script } from "../src/script_class.ts";
 import { Gen, generate } from "../src/gen_class.ts";
@@ -225,13 +225,13 @@ describe("Gen", () => {
     it("returns the picks for two build steps", () => {
       const gen = Gen.mustBuild(multiStep, [0, 1]);
       assertEquals(gen.val, "(0, 1)");
-      assertEquals(gen.getPicks(0), new PickList([bitReq], [0]));
-      assertEquals(gen.getPicks(1), new PickList([bitReq], [1]));
+      assertEquals(gen.getPicks(0), PickView.wrap([bitReq], [0]));
+      assertEquals(gen.getPicks(1), PickView.wrap([bitReq], [1]));
     });
 
     it("returns empty for an unknown key", () => {
       const gen = Gen.mustBuild(multiStep, [0, 1]);
-      assert(gen.getPicks(2) === PickList.empty);
+      assert(gen.getPicks(2) === PickView.empty);
     });
   });
 
