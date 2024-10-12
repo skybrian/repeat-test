@@ -1,5 +1,6 @@
 import type { Domain } from "@/domain.ts";
 import type { SystemConsole } from "@/runner.ts";
+import type { StepKey } from "../src/edits.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, fail } from "@std/assert";
@@ -11,15 +12,10 @@ import { minMaxVal } from "./lib/ranges.ts";
 
 import { PickRequest } from "../src/picks.ts";
 import { Script } from "../src/script_class.ts";
-import {
-  shrink,
-  shrinkAllOptions,
-  shrinkAllPicks,
-  shrinkOnePick,
-  shrinkTail,
-} from "../src/shrink.ts";
 import { Gen } from "@/arbitrary.ts";
 import { CountingTestConsole } from "../src/console.ts";
+
+import { shrink, Shrinker } from "../src/shrink.ts";
 
 function assertShrinks<T>(
   dom: Domain<T>,
@@ -280,178 +276,209 @@ describe("shrink", () => {
   });
 });
 
-describe("shrinkTail", () => {
-  it("can't shrink an empty seed", () => {
-    assertEquals(shrinkTail(emptySeed, acceptAll), undefined);
-  });
+describe("Shrinker", () => {
+  describe("shrinkTail", () => {
+    function shrinkTail<T>(seed: Gen<T>, test: (val: T) => boolean) {
+      const s = new Shrinker(seed, test);
+      return s.shrinkTail() ? s.seed : undefined;
+    }
 
-  it("shrinks a pipeline", () => {
-    const script = arb.string().buildScript.then(
-      "mapped string",
-      (a) => a.concat("!"),
-    );
+    it("can't shrink an empty seed", () => {
+      assertEquals(shrinkTail(emptySeed, acceptAll), undefined);
+    });
 
-    const seed = Gen.mustBuild(script, [1, 0, 0]);
-    assertEquals(seed.val, "a!");
+    it("shrinks a pipeline", () => {
+      const script = arb.string().buildScript.then(
+        "mapped string",
+        (a) => a.concat("!"),
+      );
 
-    const gen = shrinkTail(seed, acceptAll);
-    assert(gen !== undefined);
-    assertEquals(gen.val, "!");
-  });
-
-  const nonEmptySeeds = arb.array(minMaxVal({ minMin: 0 }), {
-    length: { max: 100 },
-  }).filter((recs) => recs.some((r) => r.val !== r.min));
-
-  it("shrinks random picks to nothing", () => {
-    repeatTest(nonEmptySeeds, (recs) => {
-      const reqs = recs.map((r) => new PickRequest(r.min, r.max));
-      const replies = recs.map((r) => r.val);
-      const seed = seedFrom(reqs, replies);
+      const seed = Gen.mustBuild(script, [1, 0, 0]);
+      assertEquals(seed.val, "a!");
 
       const gen = shrinkTail(seed, acceptAll);
-      assert(gen !== undefined, "expected a result from shrinkTail");
+      assert(gen !== undefined);
+      assertEquals(gen.val, "!");
+    });
+
+    const nonEmptySeeds = arb.array(minMaxVal({ minMin: 0 }), {
+      length: { max: 100 },
+    }).filter((recs) => recs.some((r) => r.val !== r.min));
+
+    it("shrinks random picks to nothing", () => {
+      repeatTest(nonEmptySeeds, (recs) => {
+        const reqs = recs.map((r) => new PickRequest(r.min, r.max));
+        const replies = recs.map((r) => r.val);
+        const seed = seedFrom(reqs, replies);
+
+        const gen = shrinkTail(seed, acceptAll);
+        assert(gen !== undefined, "expected a result from shrinkTail");
+        assertEquals(gen.picks.trimmed().replies, []);
+      });
+    });
+
+    it("shrinks a string to a smaller length", () => {
+      const example = arb.from((pick) => {
+        const s = pick(arb.string({ length: { min: 1, max: 100 } }));
+        const len = pick(arb.int(0, s.length - 1));
+        return { s, len };
+      });
+      repeatTest(example, ({ s, len }) => {
+        const seed = dom.string().regenerate(s);
+        assert(seed.ok);
+        const gen = shrinkTail(seed, (s) => s.length >= len);
+        assert(gen !== undefined, "expected a result from shrinkTail");
+        assertEquals(gen.val.length, len);
+      });
+    });
+  });
+
+  describe("shrinkAllOptions", () => {
+    function shrinkAllOptions<T>(seed: Gen<T>, test: (val: T) => boolean) {
+      const s = new Shrinker(seed, test);
+      return s.shrinkAllOptions() ? s.seed : undefined;
+    }
+
+    it("can't shrink an empty seed", () => {
+      assertEquals(shrinkAllOptions(emptySeed, acceptAll), undefined);
+    });
+
+    it("removes an option by with a value", () => {
+      const seed = seedFrom([bitReq, roll], [1, 6]);
+
+      const gen = shrinkAllOptions(seed, acceptAll);
+      assert(gen !== undefined);
       assertEquals(gen.picks.trimmed().replies, []);
     });
-  });
 
-  it("shrinks a string to a smaller length", () => {
-    const example = arb.from((pick) => {
-      const s = pick(arb.string({ length: { min: 1, max: 100 } }));
-      const len = pick(arb.int(0, s.length - 1));
-      return { s, len };
+    it("removes two options", () => {
+      const seed = seedFrom(
+        [roll, bitReq, roll, bitReq, roll, bitReq, roll],
+        [6, 1, 6, 1, 3, 1, 5],
+      );
+      const gen = shrinkAllOptions(seed, acceptAll);
+      assert(gen !== undefined);
+      assertEquals(gen.picks.trimmed().replies, [6]);
     });
-    repeatTest(example, ({ s, len }) => {
-      const seed = dom.string().regenerate(s);
+
+    it("removes unused leading characters", () => {
+      const seed = dom.string().regenerate("abc");
       assert(seed.ok);
-      const gen = shrinkTail(seed, (s) => s.length >= len);
-      assert(gen !== undefined, "expected a result from shrinkTail");
-      assertEquals(gen.val.length, len);
+      const gen = shrinkAllOptions(seed, (s) => s.includes("c"));
+      assert(gen !== undefined);
+      assertEquals(gen.val, "c");
     });
-  });
-});
 
-describe("shrinkOnePick", () => {
-  it("can't shrink an empty seed", () => {
-    assertEquals(shrinkOnePick(0, 0)(emptySeed, acceptAll), undefined);
-  });
-
-  const roll = new PickRequest(1, 6);
-  it("can't shrink a pick already at the minimum", () => {
-    const seed = seedFrom([roll], [1]);
-    assertEquals(shrinkOnePick(0, 0)(seed, acceptAll), undefined);
-  });
-
-  it("shrinks a pick to the minimum", () => {
-    const rolls = arb.array(arb.int(1, 6), { length: { max: 3 } });
-    const example = arb.record({
-      prefix: rolls,
-      value: arb.int(2, 6),
-      suffix: rolls,
-    });
-    repeatTest(example, ({ prefix, value, suffix }) => {
-      const replies = [...prefix, value, ...suffix];
-      const reqs = new Array(replies.length).fill(roll);
-      const seed = seedFrom(reqs, replies);
-      const gen = shrinkOnePick(0, prefix.length)(seed, acceptAll);
-      assertEquals(gen?.replies, [...prefix, 1, ...suffix]);
-    });
-  });
-
-  it("shrinks a pick to a given value", () => {
-    const example = arb.from((pick) => {
-      const want = pick(arb.int(1, 9));
-      const start = pick(arb.int(want + 1, 10));
-      return { start, want };
-    });
-    repeatTest(example, ({ start, want }) => {
-      const seed = dom.int(1, 10).regenerate(start);
+    it("removes trailing strings in an array", () => {
+      const seed = dom.array(dom.string()).regenerate(["a", "b", "c"]);
       assert(seed.ok);
-      const accept = (v: number) => v >= want;
-      const gen = shrinkOnePick(0, 0)(seed, accept);
-      assertEquals(gen?.replies, [want]);
+      const gen = shrinkAllOptions(seed, (s) => s.includes("a"));
+      assert(gen !== undefined, "didn't shrink");
+      assertEquals(gen.val, ["a"]);
+    });
+
+    it("removes leading strings in an array", () => {
+      const seed = dom.array(dom.string()).regenerate(["a", "b", "c"]);
+      assert(seed.ok);
+      const gen = shrinkAllOptions(seed, (s) => s.includes("c"));
+      assert(gen !== undefined, "didn't shrink");
+      assertEquals(gen.val, ["c"]);
+    });
+
+    it("shrinks strings in an array", () => {
+      const seed = dom.array(dom.string()).regenerate(["a", "b", "c"]);
+      assert(seed.ok);
+      const gen = shrinkAllOptions(seed, (s) => s.length === 3);
+      assert(gen !== undefined, "didn't shrink");
+      assertEquals(gen.val, ["", "", ""]);
     });
   });
-});
 
-describe("shrinkAllPicks", () => {
-  it("can't shrink an empty seed", () => {
-    assertEquals(shrinkAllPicks(emptySeed, acceptAll), undefined);
+  describe("shrinkAllPicks", () => {
+    function shrinkAllPicks<T>(
+      seed: Gen<T>,
+      test: (val: T) => boolean,
+      console?: SystemConsole,
+    ) {
+      const s = new Shrinker(seed, test, console);
+      return s.shrinkAllPicks() ? s.seed : undefined;
+    }
+
+    it("can't shrink an empty seed", () => {
+      assertEquals(shrinkAllPicks(emptySeed, acceptAll), undefined);
+    });
+
+    it("shrinks to default picks", () => {
+      const lo = new PickRequest(1, 2);
+      const hi = new PickRequest(3, 4);
+      const seed = seedFrom([lo, hi], [2, 4]);
+      const gen = shrinkAllPicks(seed, acceptAll);
+      assertEquals(gen?.replies, [1, 3]);
+    });
+
+    it("shrinks a pipeline", () => {
+      const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
+      const twoBits = bit.then(
+        "two bits",
+        (a, pick) => [a, pick(PickRequest.bit)],
+      );
+
+      const seed = Gen.mustBuild(twoBits, [1, 1]);
+      const gen = shrinkAllPicks(seed, acceptAll);
+      assertEquals(gen?.replies, [0, 0]);
+    });
   });
 
-  it("shrinks to default picks", () => {
-    const lo = new PickRequest(1, 2);
-    const hi = new PickRequest(3, 4);
-    const seed = seedFrom([lo, hi], [2, 4]);
-    const gen = shrinkAllPicks(seed, acceptAll);
-    assertEquals(gen?.replies, [1, 3]);
-  });
+  describe("shrinkOnePick", () => {
+    function shrinkOnePick<T>(
+      key: StepKey,
+      offset: number,
+      seed: Gen<T>,
+      test: (val: T) => boolean,
+    ) {
+      const s = new Shrinker(seed, test);
+      return s.shrinkOnePick(key, offset) ? s.seed : undefined;
+    }
 
-  it("shrinks a pipeline", () => {
-    const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
-    const twoBits = bit.then(
-      "two bits",
-      (a, pick) => [a, pick(PickRequest.bit)],
-    );
+    it("can't shrink an empty seed", () => {
+      assertEquals(shrinkOnePick(0, 0, emptySeed, acceptAll), undefined);
+    });
 
-    const seed = Gen.mustBuild(twoBits, [1, 1]);
-    const gen = shrinkAllPicks(seed, acceptAll);
-    assertEquals(gen?.replies, [0, 0]);
-  });
-});
+    const roll = new PickRequest(1, 6);
+    it("can't shrink a pick already at the minimum", () => {
+      const seed = seedFrom([roll], [1]);
+      assertEquals(shrinkOnePick(0, 0, seed, acceptAll), undefined);
+    });
 
-describe("shrinkAllOptions", () => {
-  it("can't shrink an empty seed", () => {
-    assertEquals(shrinkAllOptions(emptySeed, acceptAll), undefined);
-  });
+    it("shrinks a pick to the minimum", () => {
+      const rolls = arb.array(arb.int(1, 6), { length: { max: 3 } });
+      const example = arb.record({
+        prefix: rolls,
+        value: arb.int(2, 6),
+        suffix: rolls,
+      });
+      repeatTest(example, ({ prefix, value, suffix }) => {
+        const replies = [...prefix, value, ...suffix];
+        const reqs = new Array(replies.length).fill(roll);
+        const seed = seedFrom(reqs, replies);
+        const gen = shrinkOnePick(0, prefix.length, seed, acceptAll);
+        assertEquals(gen?.replies, [...prefix, 1, ...suffix]);
+      });
+    });
 
-  it("removes an option by with a value", () => {
-    const seed = seedFrom([bitReq, roll], [1, 6]);
-
-    const gen = shrinkAllOptions(seed, acceptAll);
-    assert(gen !== undefined);
-    assertEquals(gen.picks.trimmed().replies, []);
-  });
-
-  it("removes two options", () => {
-    const seed = seedFrom(
-      [roll, bitReq, roll, bitReq, roll, bitReq, roll],
-      [6, 1, 6, 1, 3, 1, 5],
-    );
-    const gen = shrinkAllOptions(seed, acceptAll);
-    assert(gen !== undefined);
-    assertEquals(gen.picks.trimmed().replies, [6]);
-  });
-
-  it("removes unused leading characters", () => {
-    const seed = dom.string().regenerate("abc");
-    assert(seed.ok);
-    const gen = shrinkAllOptions(seed, (s) => s.includes("c"));
-    assert(gen !== undefined);
-    assertEquals(gen.val, "c");
-  });
-
-  it("removes trailing strings in an array", () => {
-    const seed = dom.array(dom.string()).regenerate(["a", "b", "c"]);
-    assert(seed.ok);
-    const gen = shrinkAllOptions(seed, (s) => s.includes("a"));
-    assert(gen !== undefined, "didn't shrink");
-    assertEquals(gen.val, ["a"]);
-  });
-
-  it("removes leading strings in an array", () => {
-    const seed = dom.array(dom.string()).regenerate(["a", "b", "c"]);
-    assert(seed.ok);
-    const gen = shrinkAllOptions(seed, (s) => s.includes("c"));
-    assert(gen !== undefined, "didn't shrink");
-    assertEquals(gen.val, ["c"]);
-  });
-
-  it("shrinks strings in an array", () => {
-    const seed = dom.array(dom.string()).regenerate(["a", "b", "c"]);
-    assert(seed.ok);
-    const gen = shrinkAllOptions(seed, (s) => s.length === 3);
-    assert(gen !== undefined, "didn't shrink");
-    assertEquals(gen.val, ["", "", ""]);
+    it("shrinks a pick to a given value", () => {
+      const example = arb.from((pick) => {
+        const want = pick(arb.int(1, 9));
+        const start = pick(arb.int(want + 1, 10));
+        return { start, want };
+      });
+      repeatTest(example, ({ start, want }) => {
+        const seed = dom.int(1, 10).regenerate(start);
+        assert(seed.ok);
+        const accept = (v: number) => v >= want;
+        const gen = shrinkOnePick(0, 0, seed, accept);
+        assertEquals(gen?.replies, [want]);
+      });
+    });
   });
 });
