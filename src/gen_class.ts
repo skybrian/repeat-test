@@ -17,23 +17,6 @@ import { minPlayout } from "./backtracking.ts";
 
 type PipeResult<T> = Paused<T> | Done<T>;
 
-/**
- * Rebuilds a {@link PipeResult} when it's mutable according to Object.isFrozen.
- */
-function cache<T>(
-  result: PipeResult<T>,
-  build: () => PipeResult<T>,
-): PipeResult<T> {
-  if (!result.done || Object.isFrozen(result.val)) {
-    return result; // assumed immutable
-  }
-  return cacheOnce(result.val, () => {
-    const val = build();
-    assert(val.done);
-    return val.val;
-  });
-}
-
 class PipeStep<T> {
   readonly key: StepKey;
   readonly result: PipeResult<T>;
@@ -46,6 +29,11 @@ class PipeStep<T> {
     assert(!paused.done);
     this.key = paused.key;
 
+    if (!output.done || Object.isFrozen(output.val)) {
+      this.result = output;
+      return;
+    }
+
     const regenerate = (): PipeResult<T> => {
       const pick = usePicks(...this.picks.replies);
       const result = paused.step(pick);
@@ -56,7 +44,11 @@ class PipeStep<T> {
       return result;
     };
 
-    this.result = cache(output, regenerate);
+    this.result = cacheOnce(output.val, () => {
+      const val = regenerate();
+      assert(val.done);
+      return val.val;
+    });
   }
 
   static generateStep<T>(
