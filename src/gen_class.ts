@@ -47,11 +47,10 @@ class PipeStep<T> {
   readonly result: PipeResult<T>;
 
   constructor(
-    readonly source: PipeStart<T> | PipeStep<T>,
+    readonly paused: Paused<T>,
     readonly picks: PickView,
     output: PipeResult<T>,
   ) {
-    const paused = source.result;
     assert(!paused.done);
     this.key = paused.key;
 
@@ -72,11 +71,12 @@ class PipeStep<T> {
    * Appends picks to the end of the log and takes a view of the picks used.
    */
   mutate(
+    prevSource: PipeStart<T> | PipeStep<T>,
     nextSource: PipeStart<T> | PipeStep<T>,
     editor: StreamEditor,
     log: PickLog,
   ): PipeStep<T> | Done<T> | typeof filtered {
-    if (editor === keep && nextSource === this.source) {
+    if (editor === keep && nextSource === prevSource) {
       return this; // no change
     }
 
@@ -92,16 +92,12 @@ class PipeStep<T> {
       return filtered;
     }
 
-    if (nextSource === this.source && !picks.edited) {
+    if (nextSource === prevSource && !picks.edited) {
       log.cancelView();
       return this; // no change
     }
 
-    return new PipeStep(
-      nextSource,
-      log.takeView(),
-      next,
-    );
+    return new PipeStep(paused, log.takeView(), next);
   }
 
   static generateStep<T>(
@@ -126,7 +122,7 @@ class PipeStep<T> {
       const reqs = playouts.getRequests(depth);
       const replies = playouts.getReplies(depth);
       const picks = PickView.wrap(reqs, replies);
-      return new PipeStep(source, picks, next);
+      return new PipeStep(paused, picks, next);
     }
 
     return filtered; // no playouts matched at this depth
@@ -134,31 +130,14 @@ class PipeStep<T> {
 }
 
 /**
- * Given the end of a pipeline, returns all the components.
- */
-function splitPipeline<T>(
-  end: PipeStart<T> | PipeStep<T>,
-): { first: PipeStart<T>; rest: PipeStep<T>[] } {
-  let source: PipeStep<T> | PipeStart<T> = end;
-
-  const rest = [];
-  while (source instanceof PipeStep) {
-    rest.push(source);
-    source = source.source;
-  }
-  rest.reverse();
-  return { first: source, rest: rest };
-}
-
-/**
  * A generated value and the picks that were used to generate it.
  */
 export class Gen<T> implements Success<T> {
   readonly #script: Script<T>;
-  readonly #end: PipeStart<T> | PipeStep<T>;
   readonly #result: Done<T>;
 
-  #steps: Map<StepKey, PipeStep<T>> | undefined;
+  #steps: PipeStep<T>[];
+  #stepsByKey: Map<StepKey, PipeStep<T>> | undefined;
   #reqs: Range[] | undefined;
   #replies: number[] | undefined;
 
@@ -170,12 +149,12 @@ export class Gen<T> implements Success<T> {
    */
   constructor(
     script: Script<T>,
-    end: PipeStart<T> | PipeStep<T>,
+    steps: PipeStep<T>[],
+    result: Done<T>,
   ) {
     this.#script = script;
-    this.#end = end;
-    assert(end.result.done);
-    this.#result = end.result;
+    this.#steps = steps;
+    this.#result = result;
   }
 
   /** Satisfies the Success interface. */
@@ -274,25 +253,34 @@ export class Gen<T> implements Success<T> {
    * Picks from changed steps are allocated at the end of the log.
    */
   mutate(editors: StepEditor, log: PickLog): Gen<T> | typeof filtered {
-    const { first, rest } = splitPipeline(this.#end);
+    const first = new PipeStart(this.#script);
+    const rest = this.#steps;
+    if (rest.length === 0) {
+      return this; // no change
+    }
+
+    const newSteps: PipeStep<T>[] = [];
 
     let i = 0;
+    let prevEnd: PipeStart<T> | PipeStep<T> = first;
     let end: PipeStart<T> | PipeStep<T> = first;
     for (const step of rest) {
-      const next = step.mutate(end, editors(i++), log);
+      const next = step.mutate(prevEnd, end, editors(i++), log);
       if (next === filtered) {
         return filtered; // failed edit
       } else if (!(next instanceof PipeStep)) {
-        return new Gen(this.#script, end); // finished earlier than before
+        return new Gen(this.#script, newSteps, next); // finished earlier than before
       }
+      prevEnd = step;
       end = next;
+      newSteps.push(next);
     }
-    if (end === this.#end) {
+    if (end === rest[rest.length - 1]) {
       return this; // no change
     }
 
     if (end.result.done) {
-      return new Gen(this.#script, end); // finished in the same number of steps.
+      return new Gen(this.#script, newSteps, end.result); // finished in the same number of steps.
     }
 
     // Pipeline is longer. Keep building with default picks.
@@ -310,23 +298,23 @@ export class Gen<T> implements Success<T> {
       }
       assert(next instanceof PipeStep);
       end = next;
+      newSteps.push(next);
     }
 
-    return new Gen(this.#script, end);
+    return new Gen(this.#script, newSteps, end.result);
   }
 
   private get stepsWithPicks(): Map<StepKey, PipeStep<T>> {
-    if (this.#steps === undefined) {
-      const { rest } = splitPipeline(this.#end);
+    if (this.#stepsByKey === undefined) {
       const steps = new Map<StepKey, PipeStep<T>>();
-      for (const step of rest) {
+      for (const step of this.#steps) {
         if (step.picks.reqs.length > 0) {
           steps.set(step.key, step);
         }
       }
-      this.#steps = steps;
+      this.#stepsByKey = steps;
     }
-    return this.#steps;
+    return this.#stepsByKey;
   }
 
   static mustBuild<T>(arg: Pickable<T>, replies: number[]): Gen<T> {
@@ -362,6 +350,8 @@ export function generate<T>(
   const script = Script.from(arg, { caller: "generate" });
   const pick = makePickFunction(playouts, opts);
 
+  const steps: PipeStep<T>[] = [];
+
   nextPlayout: while (playouts.startAt(0)) {
     let source: PipeStart<T> | PipeStep<T> = new PipeStart(script);
     while (true) {
@@ -374,9 +364,10 @@ export function generate<T>(
       if (next === filtered) {
         continue nextPlayout;
       } else if (!(next instanceof PipeStep)) {
-        return new Gen(script, source); // finished
+        return new Gen(script, steps, next); // finished
       }
       source = next;
+      steps.push(next);
     }
   }
   return filtered;
