@@ -175,44 +175,33 @@ export class Gen<T> implements Success<T> {
       const before = this.#picks[i];
       const editor = editors(start.key);
 
-      if (editor === keep && !editedBefore) {
-        // no change
-        if (i === len - 1) {
-          return this;
-        }
-        newStarts.push(start);
-        newPicks.push(before);
-        state = this.#starts[i + 1];
-        continue;
-      }
-
       if (state.done) {
         return new Gen(this.#script, newStarts, newPicks, state); // finished earlier than before
       }
 
-      const picks = new EditedPickSource(before.replies, editor, log);
-      const next = state.step(makePickFunction(picks));
-      if (next === filtered) {
-        log.cancelView();
-        return filtered; // failed edit
-      }
-
-      if (!picks.edited && !editedBefore) {
-        // no change
-        if (i === len - 1) {
-          return this;
+      if (editor !== keep || editedBefore) {
+        const picks = new EditedPickSource(before.replies, editor, log);
+        const next = state.step(makePickFunction(picks));
+        if (next === filtered) {
+          log.cancelView();
+          return filtered; // failed edit
+        } else if (picks.edited || editedBefore) {
+          editedBefore = true;
+          newStarts.push(state);
+          newPicks.push(log.takeView());
+          state = next;
+          continue;
         }
         log.cancelView();
-        newStarts.push(start);
-        newPicks.push(before);
-        state = this.#starts[i + 1];
-        continue;
       }
 
-      editedBefore = true;
-      newStarts.push(state);
-      newPicks.push(log.takeView());
-      state = next;
+      // no change
+      if (i === len - 1) {
+        return this;
+      }
+      newStarts.push(start);
+      newPicks.push(before);
+      state = this.#starts[i + 1];
     }
 
     if (state.done) {
