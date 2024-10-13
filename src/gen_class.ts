@@ -208,16 +208,18 @@ export class Gen<T> implements Success<T> {
 
     let state = this.#script.paused;
 
+    let editedBefore = false;
     for (let i = 0; i < rest.length; i++) {
       const step = rest[i];
       const editor = editors(step.key);
-      const prevState = i == 0 ? this.#script.paused : rest[i - 1].result;
-      const mutatedBefore = state !== prevState;
 
-      if (editor === keep && !mutatedBefore) {
+      if (editor === keep && !editedBefore) {
         // no change
+        if (i === rest.length - 1) {
+          return this;
+        }
         newSteps.push(step);
-        state = step.result;
+        state = rest[i + 1].paused;
         continue;
       }
 
@@ -232,19 +234,23 @@ export class Gen<T> implements Success<T> {
         return filtered; // failed edit
       }
 
-      if (!picks.edited && !mutatedBefore) {
+      if (!picks.edited && !editedBefore) {
         // no change
+        if (i === rest.length - 1) {
+          return this;
+        }
         log.cancelView();
         newSteps.push(step);
-        state = step.result;
+        state = rest[i + 1].paused;
         continue;
       }
 
+      editedBefore = true;
       newSteps.push(new PipeStep(state, log.takeView(), next));
       state = next;
     }
 
-    if (state === rest[rest.length - 1].result) {
+    if (state === this.#result) {
       return this; // no change
     }
 
