@@ -15,8 +15,6 @@ import { onePlayout } from "./backtracking.ts";
 import { makePickFunction, usePicks } from "./build.ts";
 import { minPlayout } from "./backtracking.ts";
 
-type PipeResult<T> = Paused<T> | Done<T>;
-
 type PipeStep<T> = {
   readonly start: Paused<T>;
   readonly picks: PickView;
@@ -54,21 +52,17 @@ export class Gen<T> implements Success<T> {
     }
 
     const paused = steps[steps.length - 1].start;
-    const regenerate = (): PipeResult<T> => {
+    const regenerate = (): T => {
       const pick = usePicks(...this.picks.replies);
       const result = paused.step(pick);
       assert(
-        result !== filtered,
-        "nondeterministic step (wasn't filtered before)",
+        result !== filtered && result.done,
+        "can't regenerate value of nondeterministic step",
       );
-      return result;
+      return result.val;
     };
 
-    this.#result = cacheOnce(result.val, () => {
-      const val = regenerate();
-      assert(val.done);
-      return val.val;
-    });
+    this.#result = cacheOnce(result.val, regenerate);
   }
 
   /** Satisfies the Success interface. */
@@ -314,7 +308,7 @@ export function generate<T>(
   return filtered;
 }
 
-type GenStep<T> = { picks: PickView; result: PipeResult<T> };
+type GenStep<T> = { picks: PickView; result: Paused<T> | Done<T> };
 
 function generateStep<T>(
   start: Paused<T>,
