@@ -1,7 +1,7 @@
 import type { Failure, Success } from "./results.ts";
 import type { Pickable, PickFunction } from "./pickable.ts";
 import type { Done, Paused } from "./script_class.ts";
-import type { PickLog, Range } from "./picks.ts";
+import type { Range } from "./picks.ts";
 import type { StepEditor, StepKey } from "./edits.ts";
 import type { GenerateOpts } from "./build.ts";
 import type { PlayoutSource } from "./backtracking.ts";
@@ -9,7 +9,7 @@ import type { PlayoutSource } from "./backtracking.ts";
 import { assert } from "@std/assert";
 import { failure, filtered } from "./results.ts";
 import { cacheOnce, Script } from "./script_class.ts";
-import { PickView, PlaybackPicker } from "./picks.ts";
+import { PickLog, PickView, PlaybackPicker } from "./picks.ts";
 import { EditedPickSource, keep } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
 import { makePickFunction, usePicks } from "./build.ts";
@@ -21,6 +21,39 @@ type Props<T> = {
   readonly picks: PickView[];
   readonly result: Done<T>;
 };
+
+class Cache<T> implements Done<T> {
+  readonly #cache: Done<T>;
+
+  constructor(props: Props<T>) {
+    if (props.starts.length === 0 || Object.isFrozen(props.result.val)) {
+      this.#cache = props.result;
+      return;
+    }
+
+    const { starts, picks, result } = props;
+    const lastStart = starts[starts.length - 1];
+    const lastReplies = picks[picks.length - 1].replies;
+    const regenerate = (): T => {
+      const next = lastStart.step(usePicks(...lastReplies));
+      assert(
+        next !== filtered && next.done,
+        "can't regenerate value of nondeterministic step",
+      );
+      return next.val;
+    };
+
+    this.#cache = cacheOnce(result.val, regenerate);
+  }
+
+  get done(): true {
+    return true;
+  }
+
+  get val(): T {
+    return this.#cache.val;
+  }
+}
 
 function mutateImpl<T>(
   props: Props<T>,
@@ -113,6 +146,63 @@ function mutateImpl<T>(
   };
 }
 
+export class MutableGen<T> {
+  #props: Props<T>;
+  #log = new PickLog();
+  #gen: Gen<T>;
+
+  constructor(props: Props<T>, origin: Gen<T>) {
+    this.#props = props;
+    this.#gen = origin;
+  }
+
+  /**
+   * Returns true if the edits could be applied and the result passes the test.
+   */
+  tryMutate(
+    editor: StepEditor,
+    test: (val: T) => boolean,
+  ): boolean {
+    const next = mutateImpl(this.#props, editor, this.#log);
+    if (next === filtered) {
+      this.#log.reset();
+      return false; // edits didn't apply
+    }
+
+    if (next === this.#props) {
+      this.#log.reset();
+      return true; // edits applied, but had no effect
+    }
+
+    const cache = new Cache(next);
+    if (!test(cache.val)) {
+      this.#log.reset();
+      return false; // didn't pass the test
+    }
+
+    this.#props = next;
+    this.#log = new PickLog();
+    this.#gen = new Gen(next, cache);
+    return true;
+  }
+
+  get gen(): Gen<T> {
+    return this.#gen;
+  }
+
+  get stepKeys(): StepKey[] {
+    return this.#gen.stepKeys;
+  }
+
+  getPicks(key: StepKey): PickView {
+    return this.#gen.getPicks(key);
+  }
+
+  get val(): T {
+    return this.#gen.val;
+  }
+}
+
 /**
  * A generated value and the picks that were used to generate it.
  */
@@ -132,30 +222,14 @@ export class Gen<T> implements Success<T> {
    */
   constructor(
     props: Props<T>,
+    result?: Cache<T>,
   ) {
     assert(
       props.starts.length === props.picks.length,
       "starts and picks must have the same length",
     );
     this.#props = props;
-
-    if (props.starts.length === 0 || Object.isFrozen(props.result.val)) {
-      this.#result = props.result;
-      return;
-    }
-
-    const paused = props.starts[props.starts.length - 1];
-    const regenerate = (): T => {
-      const pick = usePicks(...this.picks.replies);
-      const result = paused.step(pick);
-      assert(
-        result !== filtered && result.done,
-        "can't regenerate value of nondeterministic step",
-      );
-      return result.val;
-    };
-
-    this.#result = cacheOnce(props.result.val, regenerate);
+    this.#result = result ?? new Cache(props);
   }
 
   /** Satisfies the Success interface. */
@@ -274,6 +348,10 @@ export class Gen<T> implements Success<T> {
       this.#picksByKey = byKey;
     }
     return this.#picksByKey;
+  }
+
+  toMutable(): MutableGen<T> {
+    return new MutableGen(this.#props, this);
   }
 
   static mustBuild<T>(arg: Pickable<T>, replies: number[]): Gen<T> {

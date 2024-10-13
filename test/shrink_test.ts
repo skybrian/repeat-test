@@ -278,9 +278,12 @@ describe("shrink", () => {
 
 describe("Shrinker", () => {
   describe("shrinkTail", () => {
-    function shrinkTail<T>(seed: Gen<T>, test: (val: T) => boolean) {
+    function shrinkTail<T>(
+      seed: Gen<T>,
+      test: (val: T) => boolean,
+    ): Gen<T> | undefined {
       const s = new Shrinker(seed, test);
-      return s.shrinkTail() ? s.seed : undefined;
+      return s.shrinkTail() ? s.seed.gen : undefined;
     }
 
     it("can't shrink an empty seed", () => {
@@ -336,7 +339,7 @@ describe("Shrinker", () => {
   describe("shrinkAllOptions", () => {
     function shrinkAllOptions<T>(seed: Gen<T>, test: (val: T) => boolean) {
       const s = new Shrinker(seed, test);
-      return s.shrinkAllOptions() ? s.seed : undefined;
+      return s.shrinkAllOptions() ? s.seed.gen : undefined;
     }
 
     it("can't shrink an empty seed", () => {
@@ -401,7 +404,7 @@ describe("Shrinker", () => {
       console?: SystemConsole,
     ) {
       const s = new Shrinker(seed, test, console);
-      return s.shrinkAllPicks() ? s.seed : undefined;
+      return s.shrinkAllPicks() ? s.seed.gen : undefined;
     }
 
     it("can't shrink an empty seed", () => {
@@ -437,7 +440,7 @@ describe("Shrinker", () => {
       test: (val: T) => boolean,
     ) {
       const s = new Shrinker(seed, test);
-      return s.shrinkOnePick(key, offset) ? s.seed : undefined;
+      return s.shrinkOnePick(key, offset) ? s.seed.gen : undefined;
     }
 
     it("can't shrink an empty seed", () => {

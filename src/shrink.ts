@@ -1,12 +1,10 @@
-import type { Gen } from "./gen_class.ts";
+import type { Gen, MutableGen } from "./gen_class.ts";
 import type { StepEditor, StepKey } from "./edits.ts";
 import type { SystemConsole } from "./console.ts";
 
 import { assert } from "@std/assert";
-import { filtered } from "./results.ts";
 import { removeRange, replacePick, trimStep } from "./edits.ts";
 import { nullConsole } from "./console.ts";
-import { PickLog } from "./picks.ts";
 
 /**
  * Given a generated value, returns a smaller one that satisfies a predicate.
@@ -22,14 +20,15 @@ export function shrink<T>(
 }
 
 export class Shrinker<T> {
-  private console: SystemConsole;
-  private log = new PickLog();
+  readonly seed: MutableGen<T>;
+  private readonly console: SystemConsole;
 
   constructor(
-    public seed: Gen<T>,
-    readonly test: (arg: T) => boolean,
+    seed: Gen<T>,
+    private readonly test: (arg: T) => boolean,
     console?: SystemConsole,
   ) {
+    this.seed = seed.toMutable();
     this.console = console ?? nullConsole;
   }
 
@@ -45,22 +44,15 @@ export class Shrinker<T> {
     this.shrinkAllPicks();
     this.console.log("after shrinkAllPicks:", this.seed.val);
 
-    return this.seed;
+    return this.seed.gen;
   }
 
   trimmedLength(key: StepKey): number {
-    return this.seed.getPicks(key).trimmedLength;
+    return this.seed.gen.getPicks(key).trimmedLength;
   }
 
   tryMutate(edit: StepEditor): boolean {
-    const next = this.seed.tryMutate(edit, this.test, this.log);
-    if (next === filtered) {
-      this.log.reset();
-      return false;
-    }
-    this.seed = next;
-    this.log = new PickLog();
-    return true;
+    return this.seed.tryMutate(edit, this.test);
   }
 
   /**
@@ -106,7 +98,7 @@ export class Shrinker<T> {
     // Binary search to trim a range of unneeded picks at the end of the playout.
     // It might, by luck, jump to an earlier length that works.
     let tooLow = -1;
-    let hi = this.seed.picks.trimmedLength;
+    let hi = this.trimmedLength(key);
     while (tooLow + 2 <= hi) {
       const mid = (tooLow + 1 + hi) >>> 1;
       assert(mid > tooLow && mid < hi);
