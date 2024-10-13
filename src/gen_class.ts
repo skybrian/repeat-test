@@ -15,20 +15,16 @@ import { onePlayout } from "./backtracking.ts";
 import { makePickFunction, usePicks } from "./build.ts";
 import { minPlayout } from "./backtracking.ts";
 
-type PipeStep<T> = {
-  readonly start: Paused<T>;
-  readonly picks: PickView;
-};
-
 /**
  * A generated value and the picks that were used to generate it.
  */
 export class Gen<T> implements Success<T> {
   readonly #script: Script<T>;
+  readonly #starts: Paused<T>[];
+  readonly #picks: PickView[];
   readonly #result: Done<T>;
 
-  #steps: PipeStep<T>[];
-  #stepsByKey: Map<StepKey, PipeStep<T>> | undefined;
+  #picksByKey: Map<StepKey, PickView> | undefined;
   #reqs: Range[] | undefined;
   #replies: number[] | undefined;
 
@@ -40,18 +36,24 @@ export class Gen<T> implements Success<T> {
    */
   constructor(
     script: Script<T>,
-    steps: PipeStep<T>[],
+    starts: Paused<T>[],
+    picks: PickView[],
     result: Done<T>,
   ) {
+    assert(
+      starts.length === picks.length,
+      "starts and picks must have the same length",
+    );
     this.#script = script;
-    this.#steps = steps;
+    this.#starts = starts;
+    this.#picks = picks;
 
-    if (steps.length === 0 || Object.isFrozen(result.val)) {
+    if (starts.length === 0 || Object.isFrozen(result.val)) {
       this.#result = result;
       return;
     }
 
-    const paused = steps[steps.length - 1].start;
+    const paused = starts[starts.length - 1];
     const regenerate = (): T => {
       const pick = usePicks(...this.picks.replies);
       const result = paused.step(pick);
@@ -77,8 +79,8 @@ export class Gen<T> implements Success<T> {
   get reqs(): Range[] {
     if (this.#reqs === undefined) {
       const reqs: Range[] = [];
-      for (const step of this.stepsWithPicks.values()) {
-        reqs.push(...step.picks.reqs);
+      for (const picks of this.picksByKey.values()) {
+        reqs.push(...picks.reqs);
       }
       this.#reqs = reqs;
     }
@@ -88,8 +90,8 @@ export class Gen<T> implements Success<T> {
   get replies(): number[] {
     if (this.#replies === undefined) {
       const replies: number[] = [];
-      for (const step of this.stepsWithPicks.values()) {
-        replies.push(...step.picks.replies);
+      for (const picks of this.picksByKey.values()) {
+        replies.push(...picks.replies);
       }
       this.#replies = replies;
     }
@@ -106,16 +108,12 @@ export class Gen<T> implements Success<T> {
    * (Some steps might use zero picks.)
    */
   get stepKeys(): StepKey[] {
-    return Array.from(this.stepsWithPicks.keys());
+    return Array.from(this.picksByKey.keys());
   }
 
   /** Returns the picks for the given step, or an empty PickList if not found. */
   getPicks(key: StepKey): PickView {
-    const step = this.stepsWithPicks.get(key);
-    if (step === undefined) {
-      return PickView.empty;
-    }
-    return step.picks;
+    return this.picksByKey.get(key) ?? PickView.empty;
   }
 
   /**
@@ -161,35 +159,38 @@ export class Gen<T> implements Success<T> {
    * Picks from changed steps are allocated at the end of the log.
    */
   mutate(editors: StepEditor, log: PickLog): Gen<T> | typeof filtered {
-    const rest = this.#steps;
-    if (rest.length === 0) {
+    if (this.#starts.length === 0) {
       return this; // no change
     }
 
-    const newSteps: PipeStep<T>[] = [];
+    const newStarts: Paused<T>[] = [];
+    const newPicks: PickView[] = [];
 
     let state = this.#script.paused;
 
     let editedBefore = false;
-    for (let i = 0; i < rest.length; i++) {
-      const step = rest[i];
-      const editor = editors(step.start.key);
+    const len = this.#starts.length;
+    for (let i = 0; i < len; i++) {
+      const start = this.#starts[i];
+      const before = this.#picks[i];
+      const editor = editors(start.key);
 
       if (editor === keep && !editedBefore) {
         // no change
-        if (i === rest.length - 1) {
+        if (i === len - 1) {
           return this;
         }
-        newSteps.push(step);
-        state = rest[i + 1].start;
+        newStarts.push(start);
+        newPicks.push(before);
+        state = this.#starts[i + 1];
         continue;
       }
 
       if (state.done) {
-        return new Gen(this.#script, newSteps, state); // finished earlier than before
+        return new Gen(this.#script, newStarts, newPicks, state); // finished earlier than before
       }
 
-      const picks = new EditedPickSource(step.picks.replies, editor, log);
+      const picks = new EditedPickSource(before.replies, editor, log);
       const next = state.step(makePickFunction(picks));
       if (next === filtered) {
         log.cancelView();
@@ -198,22 +199,24 @@ export class Gen<T> implements Success<T> {
 
       if (!picks.edited && !editedBefore) {
         // no change
-        if (i === rest.length - 1) {
+        if (i === len - 1) {
           return this;
         }
         log.cancelView();
-        newSteps.push(step);
-        state = rest[i + 1].start;
+        newStarts.push(start);
+        newPicks.push(before);
+        state = this.#starts[i + 1];
         continue;
       }
 
       editedBefore = true;
-      newSteps.push({ start: state, picks: log.takeView() });
+      newStarts.push(state);
+      newPicks.push(log.takeView());
       state = next;
     }
 
     if (state.done) {
-      return new Gen(this.#script, newSteps, state); // finished in the same number of steps.
+      return new Gen(this.#script, newStarts, newPicks, state); // finished in the same number of steps.
     }
 
     // Pipeline is longer. Keep building with default picks.
@@ -229,24 +232,27 @@ export class Gen<T> implements Success<T> {
       if (next === filtered) {
         return filtered; // failed edit
       }
-      newSteps.push({ start: state, picks: next.picks });
+      newStarts.push(state);
+      newPicks.push(next.picks);
       state = next.result;
     }
 
-    return new Gen(this.#script, newSteps, state);
+    return new Gen(this.#script, newStarts, newPicks, state);
   }
 
-  private get stepsWithPicks(): Map<StepKey, PipeStep<T>> {
-    if (this.#stepsByKey === undefined) {
-      const steps = new Map<StepKey, PipeStep<T>>();
-      for (const step of this.#steps) {
-        if (step.picks.reqs.length > 0) {
-          steps.set(step.start.key, step);
+  private get picksByKey(): Map<StepKey, PickView> {
+    if (this.#picksByKey === undefined) {
+      const byKey = new Map<StepKey, PickView>();
+      for (let i = 0; i < this.#starts.length; i++) {
+        const picks = this.#picks[i];
+        if (picks.length > 0) {
+          const key = this.#starts[i].key;
+          byKey.set(key, picks);
         }
       }
-      this.#stepsByKey = steps;
+      this.#picksByKey = byKey;
     }
-    return this.#stepsByKey;
+    return this.#picksByKey;
   }
 
   static mustBuild<T>(arg: Pickable<T>, replies: number[]): Gen<T> {
@@ -282,11 +288,12 @@ export function generate<T>(
   const script = Script.from(arg, { caller: "generate" });
   const pick = makePickFunction(playouts, opts);
 
-  const steps: PipeStep<T>[] = [];
+  const starts: Paused<T>[] = [];
+  const picks: PickView[] = [];
 
   nextPlayout: while (playouts.startAt(0)) {
     if (script.paused.done) {
-      return new Gen(script, steps, script.paused); // constant
+      return new Gen(script, starts, picks, script.paused); // constant
     }
     let state = script.paused;
     while (true) {
@@ -298,9 +305,10 @@ export function generate<T>(
       if (next === filtered) {
         continue nextPlayout;
       }
-      steps.push({ start: state, picks: next.picks });
+      starts.push(state);
+      picks.push(next.picks);
       if (next.result.done) {
-        return new Gen(script, steps, next.result); // finished
+        return new Gen(script, starts, picks, next.result); // finished
       }
       state = next.result;
     }
