@@ -22,6 +22,97 @@ type Props<T> = {
   readonly result: Done<T>;
 };
 
+function mutateImpl<T>(
+  props: Props<T>,
+  editors: StepEditor,
+  log: PickLog,
+): Props<T> | typeof filtered {
+  const { script, starts, picks } = props;
+  if (starts.length === 0) {
+    return props; // no change
+  }
+
+  const newStarts: Paused<T>[] = [];
+  const newPicks: PickView[] = [];
+
+  let state = script.paused;
+
+  let editedBefore = false;
+  const len = starts.length;
+  for (let i = 0; i < len; i++) {
+    const start = starts[i];
+    const before = picks[i];
+    const editor = editors(start.key);
+
+    if (state.done) {
+      return {
+        script,
+        starts: newStarts,
+        picks: newPicks,
+        result: state,
+      }; // finished earlier than before
+    }
+
+    if (editor !== keep || editedBefore) {
+      const picks = new EditedPickSource(before.replies, editor, log);
+      const next = state.step(makePickFunction(picks));
+      if (next === filtered) {
+        log.cancelView();
+        return filtered; // failed edit
+      } else if (picks.edited || editedBefore) {
+        editedBefore = true;
+        newStarts.push(state);
+        newPicks.push(log.takeView());
+        state = next;
+        continue;
+      }
+      log.cancelView();
+    }
+
+    // no change
+    if (i === len - 1) {
+      return props;
+    }
+    newStarts.push(start);
+    newPicks.push(before);
+    state = starts[i + 1];
+  }
+
+  if (state.done) {
+    return {
+      script,
+      starts: newStarts,
+      picks: newPicks,
+      result: state,
+    }; // finished in the same number of steps.
+  }
+
+  // Pipeline is longer. Keep building with default picks.
+  const playout = minPlayout();
+  const pick = makePickFunction(playout);
+
+  while (!state.done) {
+    const next: GenStep<T> | typeof filtered = generateStep(
+      state,
+      pick,
+      playout,
+    );
+    if (next === filtered) {
+      return filtered; // failed edit
+    }
+    newStarts.push(state);
+    newPicks.push(next.picks);
+    state = next.result;
+  }
+
+  return {
+    script,
+    starts: newStarts,
+    picks: newPicks,
+    result: state,
+  };
+}
+
 /**
  * A generated value and the picks that were used to generate it.
  */
@@ -159,90 +250,14 @@ export class Gen<T> implements Success<T> {
    * Picks from changed steps are allocated at the end of the log.
    */
   mutate(editors: StepEditor, log: PickLog): Gen<T> | typeof filtered {
-    const { script, starts, picks } = this.#props;
-    if (starts.length === 0) {
-      return this; // no change
+    const newProps = mutateImpl(this.#props, editors, log);
+    if (newProps === filtered) {
+      return filtered;
+    } else if (newProps === this.#props) {
+      return this;
+    } else {
+      return new Gen(newProps);
     }
-
-    const newStarts: Paused<T>[] = [];
-    const newPicks: PickView[] = [];
-
-    let state = script.paused;
-
-    let editedBefore = false;
-    const len = starts.length;
-    for (let i = 0; i < len; i++) {
-      const start = starts[i];
-      const before = picks[i];
-      const editor = editors(start.key);
-
-      if (state.done) {
-        return new Gen({
-          script,
-          starts: newStarts,
-          picks: newPicks,
-          result: state,
-        }); // finished earlier than before
-      }
-
-      if (editor !== keep || editedBefore) {
-        const picks = new EditedPickSource(before.replies, editor, log);
-        const next = state.step(makePickFunction(picks));
-        if (next === filtered) {
-          log.cancelView();
-          return filtered; // failed edit
-        } else if (picks.edited || editedBefore) {
-          editedBefore = true;
-          newStarts.push(state);
-          newPicks.push(log.takeView());
-          state = next;
-          continue;
-        }
-        log.cancelView();
-      }
-
-      // no change
-      if (i === len - 1) {
-        return this;
-      }
-      newStarts.push(start);
-      newPicks.push(before);
-      state = starts[i + 1];
-    }
-
-    if (state.done) {
-      return new Gen({
-        script,
-        starts: newStarts,
-        picks: newPicks,
-        result: state,
-      }); // finished in the same number of steps.
-    }
-
-    // Pipeline is longer. Keep building with default picks.
-    const playout = minPlayout();
-    const pick = makePickFunction(playout);
-
-    while (!state.done) {
-      const next: GenStep<T> | typeof filtered = generateStep(
-        state,
-        pick,
-        playout,
-      );
-      if (next === filtered) {
-        return filtered; // failed edit
-      }
-      newStarts.push(state);
-      newPicks.push(next.picks);
-      state = next.result;
-    }
-
-    return new Gen({
-      script,
-      starts: newStarts,
-      picks: newPicks,
-      result: state,
-    });
   }
 
   private get picksByKey(): Map<StepKey, PickView> {
