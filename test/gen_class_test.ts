@@ -253,6 +253,12 @@ describe("Gen", () => {
       assertEquals(gen.stepKeys, []);
       assert(gen.mutate(() => keep, log) === gen);
     });
+
+    it("returns the same value if there are no edits", () => {
+      const gen = Gen.mustBuild(bit, [1]);
+      assert(gen.mutate(() => keep, log) === gen);
+    });
+
     it("returns itself when there are no edits, for a single-step build", () => {
       const gen = Gen.mustBuild(bit, [0]);
       assert(gen.mutate(() => keep, log) === gen);

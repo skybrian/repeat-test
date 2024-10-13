@@ -17,63 +17,10 @@ import { minPlayout } from "./backtracking.ts";
 
 type PipeResult<T> = Paused<T> | Done<T>;
 
-class PipeStep<T> {
-  readonly key: StepKey;
-  readonly result: PipeResult<T>;
-
-  constructor(
-    readonly paused: Paused<T>,
-    readonly picks: PickView,
-    output: PipeResult<T>,
-  ) {
-    assert(!paused.done);
-    this.key = paused.key;
-
-    if (!output.done || Object.isFrozen(output.val)) {
-      this.result = output;
-      return;
-    }
-
-    const regenerate = (): PipeResult<T> => {
-      const pick = usePicks(...this.picks.replies);
-      const result = paused.step(pick);
-      assert(
-        result !== filtered,
-        "nondeterministic step (wasn't filtered before)",
-      );
-      return result;
-    };
-
-    this.result = cacheOnce(output.val, () => {
-      const val = regenerate();
-      assert(val.done);
-      return val.val;
-    });
-  }
-
-  static generateStep<T>(
-    paused: Paused<T>,
-    pick: PickFunction,
-    playouts: PlayoutSource,
-  ): PipeStep<T> | typeof filtered {
-    const depth = playouts.depth;
-    while (playouts.startValue(depth)) {
-      const next = paused.step(pick);
-      if (next === filtered) {
-        if (playouts.state === "picking") {
-          playouts.endPlayout();
-        }
-        continue;
-      }
-      const reqs = playouts.getRequests(depth);
-      const replies = playouts.getReplies(depth);
-      const picks = PickView.wrap(reqs, replies);
-      return new PipeStep(paused, picks, next);
-    }
-
-    return filtered; // no playouts matched at this depth
-  }
-}
+type PipeStep<T> = {
+  readonly start: Paused<T>;
+  readonly picks: PickView;
+};
 
 /**
  * A generated value and the picks that were used to generate it.
@@ -100,7 +47,28 @@ export class Gen<T> implements Success<T> {
   ) {
     this.#script = script;
     this.#steps = steps;
-    this.#result = result;
+
+    if (steps.length === 0 || Object.isFrozen(result.val)) {
+      this.#result = result;
+      return;
+    }
+
+    const paused = steps[steps.length - 1].start;
+    const regenerate = (): PipeResult<T> => {
+      const pick = usePicks(...this.picks.replies);
+      const result = paused.step(pick);
+      assert(
+        result !== filtered,
+        "nondeterministic step (wasn't filtered before)",
+      );
+      return result;
+    };
+
+    this.#result = cacheOnce(result.val, () => {
+      const val = regenerate();
+      assert(val.done);
+      return val.val;
+    });
   }
 
   /** Satisfies the Success interface. */
@@ -211,7 +179,7 @@ export class Gen<T> implements Success<T> {
     let editedBefore = false;
     for (let i = 0; i < rest.length; i++) {
       const step = rest[i];
-      const editor = editors(step.key);
+      const editor = editors(step.start.key);
 
       if (editor === keep && !editedBefore) {
         // no change
@@ -219,7 +187,7 @@ export class Gen<T> implements Success<T> {
           return this;
         }
         newSteps.push(step);
-        state = rest[i + 1].paused;
+        state = rest[i + 1].start;
         continue;
       }
 
@@ -241,17 +209,13 @@ export class Gen<T> implements Success<T> {
         }
         log.cancelView();
         newSteps.push(step);
-        state = rest[i + 1].paused;
+        state = rest[i + 1].start;
         continue;
       }
 
       editedBefore = true;
-      newSteps.push(new PipeStep(state, log.takeView(), next));
+      newSteps.push({ start: state, picks: log.takeView() });
       state = next;
-    }
-
-    if (state === this.#result) {
-      return this; // no change
     }
 
     if (state.done) {
@@ -263,7 +227,7 @@ export class Gen<T> implements Success<T> {
     const pick = makePickFunction(playout);
 
     while (!state.done) {
-      const next: PipeStep<T> | typeof filtered = PipeStep.generateStep(
+      const next: GenStep<T> | typeof filtered = generateStep(
         state,
         pick,
         playout,
@@ -271,8 +235,8 @@ export class Gen<T> implements Success<T> {
       if (next === filtered) {
         return filtered; // failed edit
       }
+      newSteps.push({ start: state, picks: next.picks });
       state = next.result;
-      newSteps.push(next);
     }
 
     return new Gen(this.#script, newSteps, state);
@@ -283,7 +247,7 @@ export class Gen<T> implements Success<T> {
       const steps = new Map<StepKey, PipeStep<T>>();
       for (const step of this.#steps) {
         if (step.picks.reqs.length > 0) {
-          steps.set(step.key, step);
+          steps.set(step.start.key, step);
         }
       }
       this.#stepsByKey = steps;
@@ -332,16 +296,15 @@ export function generate<T>(
     }
     let state = script.paused;
     while (true) {
-      const next: PipeStep<T> | Done<T> | typeof filtered = PipeStep
-        .generateStep(
-          state,
-          pick,
-          playouts,
-        );
+      const next = generateStep(
+        state,
+        pick,
+        playouts,
+      );
       if (next === filtered) {
         continue nextPlayout;
       }
-      steps.push(next);
+      steps.push({ start: state, picks: next.picks });
       if (next.result.done) {
         return new Gen(script, steps, next.result); // finished
       }
@@ -349,4 +312,31 @@ export function generate<T>(
     }
   }
   return filtered;
+}
+
+type GenStep<T> = { picks: PickView; result: PipeResult<T> };
+
+function generateStep<T>(
+  start: Paused<T>,
+  pick: PickFunction,
+  playouts: PlayoutSource,
+):
+  | GenStep<T>
+  | typeof filtered {
+  const depth = playouts.depth;
+  while (playouts.startValue(depth)) {
+    const result = start.step(pick);
+    if (result === filtered) {
+      if (playouts.state === "picking") {
+        playouts.endPlayout();
+      }
+      continue;
+    }
+    const reqs = playouts.getRequests(depth);
+    const replies = playouts.getReplies(depth);
+    const picks = PickView.wrap(reqs, replies);
+    return { picks, result };
+  }
+
+  return filtered; // no playouts matched at this depth
 }
