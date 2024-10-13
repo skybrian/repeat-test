@@ -22,7 +22,7 @@ type Props<T> = {
   readonly result: Done<T>;
 };
 
-class Cache<T> implements Done<T> {
+class Cache<T> {
   readonly #cache: Done<T>;
 
   constructor(props: Props<T>) {
@@ -44,10 +44,6 @@ class Cache<T> implements Done<T> {
     };
 
     this.#cache = cacheOnce(result.val, regenerate);
-  }
-
-  get done(): true {
-    return true;
   }
 
   get val(): T {
@@ -157,11 +153,12 @@ export class MutableGen<T> {
   }
 
   /**
-   * Returns true if the edits could be applied and the result passes the test.
+   * Returns true if the edits could be applied and the result passes the test
+   * (if provided).
    */
   tryMutate(
     editor: StepEditor,
-    test: (val: T) => boolean,
+    test?: (val: T) => boolean,
   ): boolean {
     const next = mutateImpl(this.#props, editor, this.#log);
     if (next === filtered) {
@@ -175,7 +172,7 @@ export class MutableGen<T> {
     }
 
     const cache = new Cache(next);
-    if (!test(cache.val)) {
+    if (test && !test(cache.val)) {
       this.#log.reset();
       return false; // didn't pass the test
     }
@@ -208,7 +205,7 @@ export class MutableGen<T> {
  */
 export class Gen<T> implements Success<T> {
   readonly #props: Props<T>;
-  readonly #result: Done<T>;
+  readonly #result: { readonly val: T };
 
   #picksByKey: Map<StepKey, PickView> | undefined;
   #reqs: Range[] | undefined;
@@ -289,49 +286,6 @@ export class Gen<T> implements Success<T> {
    */
   get val(): T {
     return this.#result.val;
-  }
-
-  /**
-   * Returns an edited value if the edit worked and it passes the test.
-   *
-   * If the edit had no effect, returns this.
-   *
-   * Picks from changed steps are allocated at the end of the log.
-   */
-  tryMutate(
-    editor: StepEditor,
-    test: (val: T) => boolean,
-    log: PickLog,
-  ): Gen<T> | typeof filtered {
-    const next = this.mutate(editor, log);
-    if (next === filtered) {
-      return filtered;
-    }
-    if (next !== this && !test(next.val)) {
-      return filtered;
-    }
-    return next;
-  }
-
-  /**
-   * Regenerates the value after editing its picks.
-   *
-   * Returns the new value, which might be the same one (according to ===) if
-   * there is no change.
-   *
-   * If edit can't be applied, returns {@link filtered}.
-   *
-   * Picks from changed steps are allocated at the end of the log.
-   */
-  mutate(editors: StepEditor, log: PickLog): Gen<T> | typeof filtered {
-    const newProps = mutateImpl(this.#props, editors, log);
-    if (newProps === filtered) {
-      return filtered;
-    } else if (newProps === this.#props) {
-      return this;
-    } else {
-      return new Gen(newProps);
-    }
   }
 
   private get picksByKey(): Map<StepKey, PickView> {
