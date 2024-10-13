@@ -214,71 +214,70 @@ export class Gen<T> implements Success<T> {
 
     const newSteps: PipeStep<T>[] = [];
 
-    let i = 0;
-    let prevEnd: PipeResult<T> = this.#script.paused;
-    let end: PipeResult<T> = prevEnd;
-    for (const step of rest) {
-      const editor = editors(i++);
+    let state = this.#script.paused;
 
-      if (editor === keep && end === prevEnd) {
+    for (let i = 0; i < rest.length; i++) {
+      const step = rest[i];
+      const editor = editors(step.key);
+      const prevState = i == 0 ? this.#script.paused : rest[i - 1].result;
+      const mutatedBefore = state !== prevState;
+
+      if (editor === keep && !mutatedBefore) {
         // no change
         newSteps.push(step);
-        prevEnd = step.result;
-        end = step.result;
+        state = step.result;
         continue;
       }
 
-      if (end.done) {
-        return new Gen(this.#script, newSteps, end); // finished earlier than before
+      if (state.done) {
+        return new Gen(this.#script, newSteps, state); // finished earlier than before
       }
 
       const picks = new EditedPickSource(step.picks.replies, editor, log);
-      const next = end.step(makePickFunction(picks));
+      const next = state.step(makePickFunction(picks));
       if (next === filtered) {
         log.cancelView();
         return filtered; // failed edit
       }
 
-      if (end === prevEnd && !picks.edited) {
+      if (!picks.edited && !mutatedBefore) {
         // no change
         log.cancelView();
         newSteps.push(step);
-        prevEnd = step.result;
-        end = step.result;
+        state = step.result;
         continue;
       }
 
-      const nextStep = new PipeStep(end, log.takeView(), next);
-      prevEnd = step.result;
-      end = nextStep.result;
-      newSteps.push(nextStep);
+      newSteps.push(new PipeStep(state, log.takeView(), next));
+      state = next;
     }
-    if (end === rest[rest.length - 1].result) {
+
+    if (state === rest[rest.length - 1].result) {
       return this; // no change
     }
 
-    if (end.done) {
-      return new Gen(this.#script, newSteps, end); // finished in the same number of steps.
+    if (state.done) {
+      return new Gen(this.#script, newSteps, state); // finished in the same number of steps.
     }
 
     // Pipeline is longer. Keep building with default picks.
     const playout = minPlayout();
     const pick = makePickFunction(playout);
 
-    while (!end.done) {
+    while (!state.done) {
       const next: PipeStep<T> | typeof filtered = PipeStep.generateStep(
-        end,
+        state,
         pick,
         playout,
       );
       if (next === filtered) {
         return filtered; // failed edit
       }
-      end = next.result;
+      state = next.result;
       newSteps.push(next);
     }
 
-    return new Gen(this.#script, newSteps, end);
+    return new Gen(this.#script, newSteps, state);
   }
 
   private get stepsWithPicks(): Map<StepKey, PipeStep<T>> {
