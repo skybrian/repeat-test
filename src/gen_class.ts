@@ -34,13 +34,9 @@ function cache<T>(
   });
 }
 
-class PipeStart<T> {
+type PipeStart<T> = {
   readonly result: PipeResult<T>;
-
-  constructor(script: Script<T>) {
-    this.result = script.paused;
-  }
-}
+};
 
 class PipeStep<T> {
   readonly key: StepKey;
@@ -101,15 +97,10 @@ class PipeStep<T> {
   }
 
   static generateStep<T>(
-    source: PipeStart<T> | PipeStep<T>,
+    paused: Paused<T>,
     pick: PickFunction,
     playouts: PlayoutSource,
-  ): PipeStep<T> | Done<T> | typeof filtered {
-    const paused = source.result;
-    if (paused.done) {
-      return paused;
-    }
-
+  ): PipeStep<T> | typeof filtered {
     const depth = playouts.depth;
     while (playouts.startValue(depth)) {
       const next = paused.step(pick);
@@ -253,7 +244,7 @@ export class Gen<T> implements Success<T> {
    * Picks from changed steps are allocated at the end of the log.
    */
   mutate(editors: StepEditor, log: PickLog): Gen<T> | typeof filtered {
-    const first = new PipeStart(this.#script);
+    const first = { result: this.#script.paused };
     const rest = this.#steps;
     if (rest.length === 0) {
       return this; // no change
@@ -289,14 +280,13 @@ export class Gen<T> implements Success<T> {
 
     while (!end.result.done) {
       const next = PipeStep.generateStep(
-        end,
+        end.result,
         pick,
         playout,
       );
       if (next === filtered) {
         return filtered; // failed edit
       }
-      assert(next instanceof PipeStep);
       end = next;
       newSteps.push(next);
     }
@@ -353,21 +343,25 @@ export function generate<T>(
   const steps: PipeStep<T>[] = [];
 
   nextPlayout: while (playouts.startAt(0)) {
-    let source: PipeStart<T> | PipeStep<T> = new PipeStart(script);
+    if (script.paused.done) {
+      return new Gen(script, steps, script.paused); // constant
+    }
+    let state = script.paused;
     while (true) {
       const next: PipeStep<T> | Done<T> | typeof filtered = PipeStep
         .generateStep(
-          source,
+          state,
           pick,
           playouts,
         );
       if (next === filtered) {
         continue nextPlayout;
-      } else if (!(next instanceof PipeStep)) {
-        return new Gen(script, steps, next); // finished
       }
-      source = next;
       steps.push(next);
+      if (next.result.done) {
+        return new Gen(script, steps, next.result); // finished
+      }
+      state = next.result;
     }
   }
   return filtered;
