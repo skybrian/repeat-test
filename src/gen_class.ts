@@ -2,7 +2,7 @@ import type { Failure, Success } from "./results.ts";
 import type { Pickable, PickFunction } from "./pickable.ts";
 import type { Done, Paused } from "./script_class.ts";
 import type { PickLog, Range } from "./picks.ts";
-import type { StepEditor, StepKey, StreamEditor } from "./edits.ts";
+import type { StepEditor, StepKey } from "./edits.ts";
 import type { GenerateOpts } from "./build.ts";
 import type { PlayoutSource } from "./backtracking.ts";
 
@@ -57,39 +57,6 @@ class PipeStep<T> {
     };
 
     this.result = cache(output, regenerate);
-  }
-
-  /**
-   * Appends picks to the end of the log and takes a view of the picks used.
-   */
-  mutate(
-    prevSource: PipeResult<T>,
-    nextSource: PipeResult<T>,
-    editor: StreamEditor,
-    log: PickLog,
-  ): PipeStep<T> | Done<T> | typeof filtered {
-    if (editor === keep && nextSource === prevSource) {
-      return this; // no change
-    }
-
-    const paused = nextSource;
-    if (paused.done) {
-      return paused; // finished early
-    }
-
-    const picks = new EditedPickSource(this.picks.replies, editor, log);
-    const next = paused.step(makePickFunction(picks));
-    if (next === filtered) {
-      log.cancelView();
-      return filtered;
-    }
-
-    if (nextSource === prevSource && !picks.edited) {
-      log.cancelView();
-      return this; // no change
-    }
-
-    return new PipeStep(paused, log.takeView(), next);
   }
 
   static generateStep<T>(
@@ -251,15 +218,40 @@ export class Gen<T> implements Success<T> {
     let prevEnd: PipeResult<T> = this.#script.paused;
     let end: PipeResult<T> = prevEnd;
     for (const step of rest) {
-      const next = step.mutate(prevEnd, end, editors(i++), log);
-      if (next === filtered) {
-        return filtered; // failed edit
-      } else if (!(next instanceof PipeStep)) {
-        return new Gen(this.#script, newSteps, next); // finished earlier than before
+      const editor = editors(i++);
+
+      if (editor === keep && end === prevEnd) {
+        // no change
+        newSteps.push(step);
+        prevEnd = step.result;
+        end = step.result;
+        continue;
       }
+
+      if (end.done) {
+        return new Gen(this.#script, newSteps, end); // finished earlier than before
+      }
+
+      const picks = new EditedPickSource(step.picks.replies, editor, log);
+      const next = end.step(makePickFunction(picks));
+      if (next === filtered) {
+        log.cancelView();
+        return filtered; // failed edit
+      }
+
+      if (end === prevEnd && !picks.edited) {
+        // no change
+        log.cancelView();
+        newSteps.push(step);
+        prevEnd = step.result;
+        end = step.result;
+        continue;
+      }
+
+      const nextStep = new PipeStep(end, log.takeView(), next);
       prevEnd = step.result;
-      end = next.result;
-      newSteps.push(next);
+      end = nextStep.result;
+      newSteps.push(nextStep);
     }
     if (end === rest[rest.length - 1].result) {
       return this; // no change
