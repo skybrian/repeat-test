@@ -1,7 +1,6 @@
-import type { PickView } from "../src/picks.ts";
 import type { PickFunction } from "@/arbitrary.ts";
-import type { CallSink } from "../src/build.ts";
 import type { GenProps } from "./lib/props.ts";
+import type { Call } from "../src/call_logs.ts";
 
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
@@ -9,7 +8,8 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { Arbitrary, Filtered, Script } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
 
-import { alwaysPick, PickLog, PickRequest } from "../src/picks.ts";
+import { alwaysPick, PickRequest } from "../src/picks.ts";
+import { CallLog } from "../src/call_logs.ts";
 import { minPlayout, PlayoutSource } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
 import { randomPlayouts } from "../src/random.ts";
@@ -35,12 +35,6 @@ describe("MiddlewareRequest", () => {
 
 const bitReq = PickRequest.bit;
 
-type Call<T> = {
-  readonly script: Script<T>;
-  readonly picks: PickView;
-  readonly val: T;
-};
-
 function propsFromCall<T>(c: Call<T>): GenProps<T> {
   return {
     val: c.val,
@@ -48,31 +42,6 @@ function propsFromCall<T>(c: Call<T>): GenProps<T> {
     reqs: c.picks.reqs,
     replies: c.picks.replies,
   };
-}
-
-/**
- * Records calls to a pick function.
- */
-export class CallLog implements CallSink {
-  readonly pickLog = new PickLog();
-  readonly calls: Call<unknown>[] = [];
-
-  get nextCallPicks() {
-    return this.pickLog.nextViewLength;
-  }
-
-  set nextCallPicks(newVal: number) {
-    this.pickLog.nextViewLength = newVal;
-  }
-
-  pushPick(req: PickRequest, reply: number): void {
-    this.pickLog.push(req, reply);
-  }
-
-  pushCall<T>(script: Script<T>, val: T): void {
-    const picks = this.pickLog.takeView();
-    this.calls.push({ script, picks, val });
-  }
 }
 
 describe("makePickFunction", () => {
