@@ -22,7 +22,9 @@ function checkRandomGenerate(script: Script<unknown>) {
   if (gen !== filtered) {
     return;
   }
-  throw new Error(`${script.name} couldn't generate a random value.`);
+  throw new Error(
+    `can't create Arbitrary for '${script.name}' because no randomly-generated values were accepted`,
+  );
 }
 
 /**
@@ -217,7 +219,7 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
     arg: Pickable<T> | BuildFunction<T>,
   ): Arbitrary<T> {
     if (typeof arg === "function") {
-      return new Arbitrary(Script.make("(unlabeled)", arg));
+      return new Arbitrary(Script.make("untitled", arg));
     } else if (arg instanceof PickRequest) {
       const name = `${arg.min}..${arg.max}`;
       const maxSize = arg.max - arg.min + 1;

@@ -53,7 +53,7 @@ describe("Arbitrary", () => {
         assertThrows(
           () => Arbitrary.from(build),
           Error,
-          "(unlabeled) couldn't generate a random value",
+          "can't create Arbitrary for 'untitled' because no randomly-generated values were accepted",
         );
       });
       it("throws an Error if given a callback that calls pick incorrectly", () => {
