@@ -10,7 +10,7 @@ import { assert } from "@std/assert";
 import { failure, filtered } from "./results.ts";
 import { Script } from "./script_class.ts";
 import { PickLog, PickView, PlaybackPicker } from "./picks.ts";
-import { EditedPickSource, keep } from "./edits.ts";
+import { keep, PickEditor } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
 import { makePickFunction, usePicks } from "./build.ts";
 import { minPlayout } from "./backtracking.ts";
@@ -95,7 +95,7 @@ function mutateImpl<T>(
     }
 
     if (editor !== keep || editedBefore) {
-      const picks = new EditedPickSource(before.replies, editor, log);
+      const picks = new PickEditor(before.replies, editor, log);
       const next = state.step(makePickFunction(picks));
       if (next === filtered) {
         log.cancelView();

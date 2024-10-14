@@ -56,7 +56,7 @@ export type GenerateOpts = {
   limit?: number;
 };
 
-export interface PickFunctionSource {
+export interface PickResponder {
   /** Attempts to start a new playout, continuing at the given depth. */
   startAt(depth: number): boolean;
 
@@ -67,7 +67,7 @@ export interface PickFunctionSource {
 }
 
 /** Creates a simple, non-backtracking pick source. */
-function pickSource(replies: number[]): PickFunctionSource {
+function playbackResponder(replies: number[]): PickResponder {
   let depth = 0;
 
   return {
@@ -96,11 +96,11 @@ function pickSource(replies: number[]): PickFunctionSource {
  * Creates a pick function that plays a single pick sequence.
  */
 export function usePicks(...replies: number[]): PickFunction {
-  return makePickFunction(pickSource(replies));
+  return makePickFunction(playbackResponder(replies));
 }
 
 export function makePickFunction<T>(
-  playouts: PickFunctionSource,
+  playouts: PickResponder,
   opts?: GenerateOpts,
 ): PickFunction {
   const limit = opts?.limit;

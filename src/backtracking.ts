@@ -1,5 +1,5 @@
 import type { IntPicker, PickRequest, Range } from "./picks.ts";
-import type { PickFunctionSource } from "./build.ts";
+import type { PickResponder } from "./build.ts";
 
 import { assert } from "@std/assert";
 import { alwaysPickMin } from "./picks.ts";
@@ -37,7 +37,7 @@ export interface Tracker {
  * A picker that can back up to a previous point in a playout and try a
  * different path.
  */
-export class PlayoutSource implements PickFunctionSource {
+export class PlayoutSource implements PickResponder {
   #state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
   #depth = 0;
   readonly #reqs: Range[] = [];

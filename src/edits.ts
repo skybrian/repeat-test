@@ -1,5 +1,5 @@
 import type { Range } from "./picks.ts";
-import type { PickFunctionSource } from "./build.ts";
+import type { PickResponder } from "./build.ts";
 
 import { assert } from "@std/assert";
 import { PickLog } from "./picks.ts";
@@ -37,7 +37,7 @@ export function replace(val: number): Edit {
 /**
  * Replays a stream of picks, applying the given editor to each pick.
  */
-export class EditedPickSource implements PickFunctionSource {
+export class PickEditor implements PickResponder {
   private readonly log: PickLog;
   private offset = 0;
 
