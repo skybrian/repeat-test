@@ -1,3 +1,4 @@
+import { assert } from "@std/assert";
 import type { SystemConsole } from "./console.ts";
 import type { BuildFunction, Pickable } from "./pickable.ts";
 
@@ -205,17 +206,28 @@ export class PickLog {
   /** The start of the next view. */
   viewStart = 0;
 
-  get length() {
+  get length(): number {
     return this.reqs.length;
   }
 
-  reset() {
+  get nextViewLength(): number {
+    return this.reqs.length - this.viewStart;
+  }
+
+  set nextViewLength(newVal: number) {
+    const newLen = this.viewStart + newVal;
+    assert(newLen >= this.viewStart && newLen <= this.length);
+    this.reqs.length = newLen;
+    this.replies.length = newLen;
+  }
+
+  reset(): void {
     this.reqs.length = 0;
     this.replies.length = 0;
     this.viewStart = 0;
   }
 
-  push(req: Range, reply: number) {
+  push(req: Range, reply: number): void {
     this.reqs.push(req);
     this.replies.push(reply);
   }

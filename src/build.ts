@@ -5,6 +5,8 @@ import type {
   PickFunctionOpts,
 } from "./pickable.ts";
 
+import type { Range } from "./picks.ts";
+
 import { Filtered } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
@@ -45,6 +47,25 @@ export class MiddlewareRequest<T> implements Pickable<T> {
   }
 }
 
+/**
+ * A destination for recording picks and top-level calls to the pick function.
+ */
+export interface CallSink {
+  /**
+   * The number of picks pushed since the last call to {@link pushCall}.
+   *
+   * May be set to a lower value that's >= 0.
+   */
+  nextCallPicks: number;
+
+  pushPick(req: Range, pick: number): void;
+
+  /**
+   * Logs a top-level call. It implicitly includes all picks since the previous call.
+   */
+  pushCall<T>(script: Script<T>, result: T): void;
+}
+
 export type GenerateOpts = {
   /**
    * A limit on the number of picks to generate normally during a playout. It
@@ -54,6 +75,11 @@ export type GenerateOpts = {
    * the default value for any sub-objects being generated.
    */
   limit?: number;
+
+  /**
+   * If set, top-level calls to pick() will be recorded to this log.
+   */
+  log?: CallSink;
 };
 
 export interface PickResponder {
@@ -67,7 +93,7 @@ export interface PickResponder {
 }
 
 /** Creates a simple, non-backtracking pick source. */
-function playbackResponder(replies: number[]): PickResponder {
+export function playbackResponder(replies: number[]): PickResponder {
   let depth = 0;
 
   return {
@@ -104,12 +130,14 @@ export function makePickFunction<T>(
   opts?: GenerateOpts,
 ): PickFunction {
   const limit = opts?.limit;
+
+  const log = opts?.log;
+  let level = 0;
+
   const dispatch = <T>(
     arg: Pickable<T>,
     opts?: PickFunctionOpts<T>,
   ): T => {
-    let startMiddle: (() => IntPickerMiddleware) | undefined;
-
     if (arg instanceof PickRequest) {
       let req: PickRequest = arg;
       if (limit !== undefined && playouts.depth >= limit) {
@@ -117,14 +145,19 @@ export function makePickFunction<T>(
       }
       const pick = playouts.nextPick(req);
       if (pick === undefined) throw new Filtered("cancelled in PlayoutSource");
+      if (log) {
+        log.pushPick(req, pick);
+        if (level === 0) {
+          log.pushCall(Script.from(req), pick);
+        }
+      }
       return pick as T;
-    } else if (arg instanceof MiddlewareRequest) {
-      startMiddle = arg.startMiddle;
-      arg = arg.script;
     }
 
-    if (arg === null || typeof arg !== "object") {
-      throw new Error("pick function called with an invalid argument");
+    let startMiddle: (() => IntPickerMiddleware) | undefined;
+    if (arg instanceof MiddlewareRequest) {
+      startMiddle = arg.startMiddle;
+      arg = arg.script;
     }
 
     const script = Script.from(arg, { caller: "pick function" });
@@ -132,6 +165,7 @@ export function makePickFunction<T>(
     const build = () => {
       while (true) {
         const depth = playouts.depth;
+        const saved = log?.nextCallPicks ?? 0;
         try {
           let innerPick: PickFunction = dispatch;
 
@@ -158,23 +192,43 @@ export function makePickFunction<T>(
           if (!playouts.startAt(depth)) {
             throw e; // can't recover
           }
+          if (log) {
+            log.nextCallPicks = saved;
+          }
         }
       }
     };
 
     const accept = opts?.accept;
     if (accept === undefined) {
-      return build();
+      level++;
+      const val = build();
+      level--;
+      if (level === 0) {
+        log?.pushCall(script, val);
+      }
+      return val;
     }
 
     // filtered pick
     const maxTries = opts?.maxTries ?? 1000;
     for (let i = 0; i < maxTries; i++) {
       const depth = playouts.depth;
+
+      const saved = log?.nextCallPicks ?? 0;
+      level++;
       const val = build();
+      level--;
       if (accept(val)) {
+        if (level === 0) {
+          log?.pushCall(script, val);
+        }
         return val;
       }
+      if (log) {
+        log.nextCallPicks = saved;
+      }
+
       if (!playouts.startAt(depth)) {
         throw new Filtered("accept() returned false for all possible values");
       }

@@ -1,15 +1,25 @@
+import type { PickView } from "../src/picks.ts";
+import type { PickFunction } from "@/arbitrary.ts";
+import type { CallSink } from "../src/build.ts";
+import type { GenProps } from "./lib/props.ts";
+
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
 
 import { Arbitrary, Filtered, Script } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
 
-import { alwaysPick, PickRequest } from "../src/picks.ts";
+import { alwaysPick, PickLog, PickRequest } from "../src/picks.ts";
 import { minPlayout, PlayoutSource } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
 import { randomPlayouts } from "../src/random.ts";
 
-import { makePickFunction, MiddlewareRequest, usePicks } from "../src/build.ts";
+import {
+  makePickFunction,
+  MiddlewareRequest,
+  playbackResponder,
+  usePicks,
+} from "../src/build.ts";
 
 describe("MiddlewareRequest", () => {
   it("throws an error if not intercepted", () => {
@@ -25,24 +35,83 @@ describe("MiddlewareRequest", () => {
 
 const bitReq = PickRequest.bit;
 
-function useRandomPicks() {
-  const playouts = randomPlayouts(123);
-  playouts.startAt(0);
-  return makePickFunction(playouts);
+type Call<T> = {
+  readonly script: Script<T>;
+  readonly picks: PickView;
+  readonly val: T;
+};
+
+function propsFromCall<T>(c: Call<T>): GenProps<T> {
+  return {
+    val: c.val,
+    name: c.script.name,
+    reqs: c.picks.reqs,
+    replies: c.picks.replies,
+  };
+}
+
+/**
+ * Records calls to a pick function.
+ */
+export class CallLog implements CallSink {
+  readonly pickLog = new PickLog();
+  readonly calls: Call<unknown>[] = [];
+
+  get nextCallPicks() {
+    return this.pickLog.nextViewLength;
+  }
+
+  set nextCallPicks(newVal: number) {
+    this.pickLog.nextViewLength = newVal;
+  }
+
+  pushPick(req: PickRequest, reply: number): void {
+    this.pickLog.push(req, reply);
+  }
+
+  pushCall<T>(script: Script<T>, val: T): void {
+    const picks = this.pickLog.takeView();
+    this.calls.push({ script, picks, val });
+  }
 }
 
 describe("makePickFunction", () => {
   let pick = usePicks();
+  let log = new CallLog();
 
   beforeEach(() => {
-    pick = usePicks();
+    pick = logPicks();
   });
 
+  function logPicks(...picks: number[]): PickFunction {
+    log = new CallLog();
+    const responder = playbackResponder([...picks]);
+    return makePickFunction(responder, { log });
+  }
+
+  function logRandomPicks() {
+    log = new CallLog();
+    const playouts = randomPlayouts(123);
+    playouts.startAt(0);
+    return makePickFunction(playouts, { log });
+  }
+
+  function checkLog(...expected: GenProps<unknown>[]) {
+    const actual: GenProps<unknown>[] = [];
+    for (const call of log.calls) {
+      actual.push(propsFromCall(call));
+    }
+    assertEquals(actual, expected);
+  }
+
   it("accepts a PickRequest", () => {
-    pick = usePicks(0);
+    pick = logPicks(0);
     assertEquals(pick(bitReq), 0);
-    pick = usePicks(1);
+    checkLog({ name: "0..1", val: 0, reqs: [bitReq], replies: [0] });
+
+    pick = logPicks(1);
     assertEquals(pick(bitReq), 1);
+    checkLog({ name: "0..1", val: 1, reqs: [bitReq], replies: [1] });
   });
 
   it("throws filtered for an invalid pick", () => {
@@ -50,32 +119,72 @@ describe("makePickFunction", () => {
     assertThrows(() => pick(bitReq), Filtered);
   });
 
-  it("accepts a Script", () => {
-    const script = Script.make("hi", () => "hi");
-    assertEquals(pick(script), "hi");
+  it("accepts a Script that makes no picks", () => {
+    const script = Script.make("hi", () => "hello");
+    assertEquals(pick(script), "hello");
+    checkLog({ name: "hi", val: "hello", reqs: [], replies: [] });
   });
 
   it("accepts a Pickable that's not a Script", () => {
     const hi = { buildFrom: () => "hi" };
     assertEquals(pick(hi), "hi");
+    checkLog({ name: "untitled", val: "hi", reqs: [], replies: [] });
   });
 
   it("accepts an Arbitrary", () => {
     const hi = Arbitrary.of("hi", "there");
     assertEquals(pick(hi), "hi");
+    checkLog({ name: "2 examples", val: "hi", reqs: [bitReq], replies: [0] });
+  });
+
+  it("accepts an Arbitrary that calls an Arbitrary", () => {
+    const hi = Arbitrary.of("hi", "there");
+    const wrapped = Arbitrary.from((pick) => pick(hi)).with({
+      name: "wrapped",
+    });
+    pick = logPicks(1);
+    assertEquals(pick(wrapped), "there");
+    checkLog({
+      name: "wrapped",
+      val: "there",
+      reqs: [bitReq],
+      replies: [1],
+    });
   });
 
   it("filters an Arbitrary", () => {
     const hi = Arbitrary.of("hi", "there");
     const accept = (x: string) => x !== "hi";
-    pick = useRandomPicks();
+    pick = logRandomPicks();
     assertEquals(pick(hi, { accept }), "there");
+    checkLog({
+      name: "2 examples",
+      val: "there",
+      reqs: [bitReq],
+      replies: [1],
+    });
+  });
+
+  it("accepts an Arbitrary that calls a filtered Arbitrary", () => {
+    const hi = Arbitrary.of("hi", "there");
+    const accept = (x: string) => x !== "hi";
+    const wrapped = Arbitrary.from((pick) => pick(hi, { accept })).with({
+      name: "wrapped",
+    });
+    pick = logRandomPicks();
+    assertEquals(pick(wrapped), "there");
+    checkLog({
+      name: "wrapped",
+      val: "there",
+      reqs: [bitReq],
+      replies: [1],
+    });
   });
 
   it("can filter out every value", () => {
     const hi = Arbitrary.of("hi", "there");
     const accept = () => false;
-    pick = useRandomPicks();
+    pick = logRandomPicks();
     assertThrows(() => pick(hi, { accept }), Filtered);
     pick = usePicks();
     assertThrows(() => pick(hi, { accept }), Filtered);
@@ -83,7 +192,7 @@ describe("makePickFunction", () => {
 
   it("gives up eventually", () => {
     const accept = () => false;
-    pick = useRandomPicks();
+    pick = logRandomPicks();
     assertThrows(
       () => pick(arb.string(), { accept }),
       Error,
@@ -104,9 +213,10 @@ describe("makePickFunction", () => {
     const tracker = new PartialTracker(alwaysPick(3));
     const playouts = new PlayoutSource(tracker);
     playouts.startAt(0);
-    pick = makePickFunction(playouts);
+    pick = makePickFunction(playouts, { log });
 
     assertEquals(pick(arb), 4);
+    checkLog({ name: "untitled", val: 4, reqs: [roll], replies: [4] });
   });
 
   it("throws an error when given an invalid argument", () => {

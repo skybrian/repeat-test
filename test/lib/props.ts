@@ -8,7 +8,10 @@ export type GenProps<T> = {
   reqs: readonly Range[];
   replies: readonly number[];
 };
-
+export function propsFromGen<T>(gen: Gen<T>): GenProps<T>;
+export function propsFromGen<T>(
+  gen: Gen<T> | typeof filtered,
+): GenProps<T> | typeof filtered;
 export function propsFromGen<T>(
   gen: Gen<T> | typeof filtered,
 ): GenProps<T> | typeof filtered {
