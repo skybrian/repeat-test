@@ -8,7 +8,7 @@ import type { PlayoutSource } from "./backtracking.ts";
 
 import { assert } from "@std/assert";
 import { failure, filtered } from "./results.ts";
-import { cacheOnce, Script } from "./script_class.ts";
+import { Script } from "./script_class.ts";
 import { PickLog, PickView, PlaybackPicker } from "./picks.ts";
 import { EditedPickSource, keep } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
@@ -22,33 +22,45 @@ type Props<T> = {
   readonly result: Done<T>;
 };
 
-class Cache<T> {
-  readonly #cache: Done<T>;
+const alwaysBuild = Symbol("alwaysBuild");
 
-  constructor(props: Props<T>) {
-    if (props.starts.length === 0 || Object.isFrozen(props.result.val)) {
-      this.#cache = props.result;
-      return;
+/**
+ * A Done result that rebuilds the value after its first access.
+ *
+ * (For returning mutable objects.)
+ */
+function cacheOnce<T>(val: T, build: () => T): () => T {
+  let cache: T | typeof alwaysBuild = val;
+
+  return () => {
+    if (cache === alwaysBuild) {
+      return build();
     }
+    const val = cache;
+    cache = alwaysBuild;
+    return val;
+  };
+}
 
-    const { starts, picks, result } = props;
-    const lastStart = starts[starts.length - 1];
-    const lastReplies = picks[picks.length - 1].replies;
-    const regenerate = (): T => {
-      const next = lastStart.step(usePicks(...lastReplies));
-      assert(
-        next !== filtered && next.done,
-        "can't regenerate value of nondeterministic step",
-      );
-      return next.val;
-    };
-
-    this.#cache = cacheOnce(result.val, regenerate);
+function cacheResult<T>(props: Props<T>): () => T {
+  if (props.starts.length === 0 || Object.isFrozen(props.result.val)) {
+    const val = props.result.val;
+    return () => val;
   }
 
-  get val(): T {
-    return this.#cache.val;
-  }
+  const { starts, picks, result } = props;
+  const lastStart = starts[starts.length - 1];
+  const lastReplies = picks[picks.length - 1].replies;
+  const regenerate = (): T => {
+    const next = lastStart.step(usePicks(...lastReplies));
+    assert(
+      next !== filtered && next.done,
+      "can't regenerate value of nondeterministic step",
+    );
+    return next.val;
+  };
+
+  return cacheOnce(result.val, regenerate);
 }
 
 function mutateImpl<T>(
@@ -171,8 +183,8 @@ export class MutableGen<T> {
       return true; // edits applied, but had no effect
     }
 
-    const cache = new Cache(next);
-    if (test && !test(cache.val)) {
+    const cache = cacheResult(next);
+    if (test && !test(cache())) {
       this.#log.reset();
       return false; // didn't pass the test
     }
@@ -205,7 +217,7 @@ export class MutableGen<T> {
  */
 export class Gen<T> implements Success<T> {
   readonly #props: Props<T>;
-  readonly #result: { readonly val: T };
+  readonly #result: () => T;
 
   #picksByKey: Map<StepKey, PickView> | undefined;
   #reqs: Range[] | undefined;
@@ -219,14 +231,14 @@ export class Gen<T> implements Success<T> {
    */
   constructor(
     props: Props<T>,
-    result?: Cache<T>,
+    result?: () => T,
   ) {
     assert(
       props.starts.length === props.picks.length,
       "starts and picks must have the same length",
     );
     this.#props = props;
-    this.#result = result ?? new Cache(props);
+    this.#result = result ?? cacheResult(props);
   }
 
   /** Satisfies the Success interface. */
@@ -285,7 +297,7 @@ export class Gen<T> implements Success<T> {
    * each time after the first access.
    */
   get val(): T {
-    return this.#result.val;
+    return this.#result();
   }
 
   private get picksByKey(): Map<StepKey, PickView> {

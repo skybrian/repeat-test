@@ -11,29 +11,6 @@ export function done<T>(val: T): Done<T> {
   return { done: true, val };
 }
 
-const alwaysBuild = Symbol("alwaysBuild");
-
-/**
- * A Done result that rebuilds the value after its first access.
- *
- * (For returning mutable objects.)
- */
-export function cacheOnce<T>(val: T, build: () => T): Done<T> {
-  let cache: T | typeof alwaysBuild = val;
-
-  return {
-    done: true,
-    get val() {
-      if (cache === alwaysBuild) {
-        return build();
-      }
-      const val = cache;
-      cache = alwaysBuild;
-      return val;
-    },
-  };
-}
-
 /**
  * Returned by a step function to indicate that there's another step.
  */
