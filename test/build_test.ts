@@ -36,11 +36,13 @@ describe("MiddlewareRequest", () => {
 const bitReq = PickRequest.bit;
 
 function propsFromCall<T>(c: Call<T>): GenProps<T> {
+  const { arg, picks, val } = c;
+  const name = (arg instanceof Script) ? arg.name : arg.toString();
   return {
-    val: c.val,
-    name: c.script.name,
-    reqs: c.picks.reqs,
-    replies: c.picks.replies,
+    val,
+    name,
+    reqs: picks.reqs,
+    replies: picks.replies,
   };
 }
 
@@ -67,7 +69,7 @@ describe("makePickFunction", () => {
 
   function checkLog(...expected: GenProps<unknown>[]) {
     const actual: GenProps<unknown>[] = [];
-    for (const call of log.calls) {
+    for (const call of log.topLevelCalls) {
       actual.push(propsFromCall(call));
     }
     assertEquals(actual, expected);
@@ -98,6 +100,24 @@ describe("makePickFunction", () => {
     const hi = { buildFrom: () => "hi" };
     assertEquals(pick(hi), "hi");
     checkLog({ name: "untitled", val: "hi", reqs: [], replies: [] });
+  });
+
+  it("accepts a PickRequest followed by a Script", () => {
+    const hi = Script.make("hi", () => "hello");
+    pick = logPicks(1, 0);
+    assertEquals(pick(bitReq), 1);
+    assertEquals(pick(hi), "hello");
+    checkLog({
+      name: "0..1",
+      val: 1,
+      reqs: [bitReq],
+      replies: [1],
+    }, {
+      name: "hi",
+      val: "hello",
+      reqs: [],
+      replies: [],
+    });
   });
 
   it("accepts an Arbitrary", () => {

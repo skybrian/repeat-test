@@ -254,8 +254,8 @@ export class PickLog {
 export class PickView {
   constructor(
     private readonly log: PickLog,
-    private readonly start: number,
-    private readonly end: number,
+    readonly start: number,
+    readonly end: number,
   ) {}
 
   get length() {

@@ -52,18 +52,17 @@ export class MiddlewareRequest<T> implements Pickable<T> {
  */
 export interface CallSink {
   /**
-   * The number of picks pushed since the last call to {@link pushCall}.
+   * The number of picks pushed since the last call to {@link pushScript}.
    *
    * May be set to a lower value that's >= 0.
    */
   nextCallPicks: number;
 
-  pushPick(req: Range, pick: number): void;
+  /** Logs a PickRequest call. */
+  pushPick(level: number, req: Range, pick: number): void;
 
-  /**
-   * Logs a top-level call. It implicitly includes all picks since the previous call.
-   */
-  pushCall<T>(script: Script<T>, result: T): void;
+  /** Logs a script call. */
+  pushScript<T>(level: number, arg: Script<T>, result: T): void;
 }
 
 export type GenerateOpts = {
@@ -145,12 +144,7 @@ export function makePickFunction<T>(
       }
       const pick = playouts.nextPick(req);
       if (pick === undefined) throw new Filtered("cancelled in PlayoutSource");
-      if (log) {
-        log.pushPick(req, pick);
-        if (level === 0) {
-          log.pushCall(Script.from(req), pick);
-        }
-      }
+      log?.pushPick(level, req, pick);
       return pick as T;
     }
 
@@ -204,9 +198,7 @@ export function makePickFunction<T>(
       level++;
       const val = build();
       level--;
-      if (level === 0) {
-        log?.pushCall(script, val);
-      }
+      log?.pushScript(level, script, val);
       return val;
     }
 
@@ -220,9 +212,7 @@ export function makePickFunction<T>(
       const val = build();
       level--;
       if (accept(val)) {
-        if (level === 0) {
-          log?.pushCall(script, val);
-        }
+        log?.pushScript(level, script, val);
         return val;
       }
       if (log) {
