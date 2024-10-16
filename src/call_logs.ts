@@ -1,6 +1,6 @@
 import type { CallSink } from "./build.ts";
 import type { Script } from "./script_class.ts";
-import type { PickRequest, Range } from "./picks.ts";
+import type { Range } from "./picks.ts";
 
 import { assert } from "@std/assert";
 import { PickLog, PickView } from "./picks.ts";
@@ -20,32 +20,32 @@ export class CallLog implements CallSink {
   readonly pickLog = new PickLog();
   readonly #calls: Call<unknown>[] = [];
 
-  get topLevelCalls(): Iterable<Call<unknown>> {
+  get calls(): Iterable<Call<unknown>> {
     return generateCalls(this.pickLog, this.#calls);
   }
 
-  get nextCallPicks() {
-    return this.pickLog.nextViewLength;
+  startCall<T>(): void {
+    assert(this.pickLog.nextViewLength === 0);
   }
 
-  set nextCallPicks(newVal: number) {
-    this.pickLog.nextViewLength = newVal;
-  }
-
-  pushPick(level: number, req: PickRequest, reply: number): void {
+  pushPick(req: Range, reply: number): void {
     this.pickLog.push(req, reply);
-    if (level === 0) {
-      assert(this.pickLog.nextViewLength === 1);
-      this.pickLog.viewStart++;
-    }
   }
 
-  pushScript<T>(level: number, arg: Script<T>, val: T): void {
-    if (level === 0) {
-      const picks = this.pickLog.takeView();
-      const shouldCache = arg.cachable && Object.isFrozen(val);
-      this.#calls.push({ arg, picks, val: shouldCache ? val : regen });
-    }
+  popPicks(count: number): void {
+    this.pickLog.nextViewLength -= count;
+  }
+
+  endPickCall(): void {
+    // Create call entry lazily.
+    assert(this.pickLog.nextViewLength === 1);
+    this.pickLog.viewStart++;
+  }
+
+  endScriptCall<T>(arg: Script<T>, val: T): void {
+    const picks = this.pickLog.takeView();
+    const shouldCache = arg.cachable && Object.isFrozen(val);
+    this.#calls.push({ arg, picks, val: shouldCache ? val : regen });
   }
 }
 

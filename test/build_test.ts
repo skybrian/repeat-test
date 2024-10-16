@@ -69,7 +69,7 @@ describe("makePickFunction", () => {
 
   function checkLog(...expected: GenProps<unknown>[]) {
     const actual: GenProps<unknown>[] = [];
-    for (const call of log.topLevelCalls) {
+    for (const call of log.calls) {
       actual.push(propsFromCall(call));
     }
     assertEquals(actual, expected);
