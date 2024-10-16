@@ -3,7 +3,6 @@ import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
 import { assert } from "@std/assert/assert";
 import { filtered } from "./results.ts";
 import { Filtered } from "./pickable.ts";
-import { PickRequest } from "./picks.ts";
 
 /** Distinguishes a finished result from one that's still in progress. */
 export type Done<T> = { readonly done: true; readonly val: T };
@@ -246,8 +245,6 @@ export class Script<T> implements Pickable<T> {
   ): Script<T> {
     if (arg instanceof Script) {
       return arg;
-    } else if (arg instanceof PickRequest) {
-      return Script.make(arg.toString(), arg.buildFrom) as Script<T>;
     }
 
     if (

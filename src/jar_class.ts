@@ -1,17 +1,48 @@
-import type { PickFunction } from "./pickable.ts";
-import type { PickRequest } from "./picks.ts";
-import type { Script } from "./script_class.ts";
+import type { Pickable, PickFunction, PickFunctionOpts } from "./pickable.ts";
 import type { PlayoutSource } from "./backtracking.ts";
-import type { IntPickerMiddleware } from "./build.ts";
 import type { Gen } from "./gen_class.ts";
 import type { Domain } from "./domain_class.ts";
 
 import { assert } from "@std/assert";
+import { PickRequest } from "./picks.ts";
 import { filtered } from "./results.ts";
-import { MiddlewareRequest } from "./build.ts";
+import { Script } from "./script_class.ts";
 import { generate } from "./gen_class.ts";
 import { PickTree } from "./pick_tree.ts";
 import { orderedPlayouts } from "./ordered.ts";
+
+/**
+ * Picks an integer in the given range.
+ *
+ * A minimum implementation will just call next(), but it can also substitute a
+ * different PickRequest, such as one with a narrower range.
+ */
+export type IntPickerMiddleware = (
+  req: PickRequest,
+  next: (req: PickRequest) => number,
+) => number;
+
+function makeMiddleware<T>(
+  name: string,
+  build: (pick: PickFunction) => T,
+  startMiddle: () => IntPickerMiddleware,
+): Script<T> {
+  const middleBuild = (pick: PickFunction) => {
+    const middle = startMiddle();
+    function middlePick<T>(
+      req: Pickable<T>,
+      opts?: PickFunctionOpts<T>,
+    ) {
+      if (req instanceof PickRequest) {
+        return middle(req, pick) as T;
+      } else {
+        return pick(req, opts);
+      }
+    }
+    return build(middlePick);
+  };
+  return Script.make(name, middleBuild, { cachable: false });
+}
 
 /**
  * Picks from the possible values in a Domain, without replacement.
@@ -19,8 +50,7 @@ import { orderedPlayouts } from "./ordered.ts";
  * A jar can be used to generate permutations or unique ids.
  */
 export class Jar<T> {
-  private readonly buildItem: Script<T>;
-
+  private readonly name;
   private readonly remaining = new PickTree();
 
   /**
@@ -45,8 +75,7 @@ export class Jar<T> {
    * (Conceptually; the values will be generated when needed.)
    */
   constructor(readonly dom: Domain<T>) {
-    const name = `take(${this.dom.name})`;
-    this.buildItem = this.dom.buildScript.with({ name });
+    this.name = `take(${this.dom.name})`;
     this.moreExamples = orderedPlayouts();
     this.example = this.#nextExample();
   }
@@ -85,8 +114,8 @@ export class Jar<T> {
     // filtering when there are few values left.)
     const maxTries = this.taken + 1000;
 
-    const req = MiddlewareRequest.wrap(this.buildItem, middle);
-    const val = pick(req, { accept: this.#accept, maxTries });
+    const script = makeMiddleware(this.name, this.dom.buildFrom, middle);
+    const val = pick(script, { accept: this.#accept, maxTries });
     this.#refreshExample();
     this.taken++;
     return val;

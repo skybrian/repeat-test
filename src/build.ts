@@ -1,51 +1,10 @@
-import type {
-  BuildFunction,
-  Pickable,
-  PickFunction,
-  PickFunctionOpts,
-} from "./pickable.ts";
+import type { Pickable, PickFunction, PickFunctionOpts } from "./pickable.ts";
 
 import type { Range } from "./picks.ts";
 
 import { Filtered } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
-
-/**
- * Picks an integer in the given range.
- *
- * A minimum implementation will just call next(), but it can also substitute a
- * different PickRequest, such as one with a narrower range.
- */
-export type IntPickerMiddleware = (
-  req: PickRequest,
-  next: (req: PickRequest) => number,
-) => number;
-
-/**
- * Creates a request that will be executed with Middleware.
- */
-export class MiddlewareRequest<T> implements Pickable<T> {
-  private constructor(
-    readonly script: Script<T>,
-    readonly startMiddle: () => IntPickerMiddleware,
-  ) {}
-
-  get buildFrom(): BuildFunction<T> {
-    return () => {
-      throw new Error(
-        "MiddlewareRequest.buildFrom() called; should have been intercepted",
-      );
-    };
-  }
-
-  static wrap<T>(
-    pickable: Pickable<T>,
-    startMiddle: () => IntPickerMiddleware,
-  ): MiddlewareRequest<T> {
-    return new MiddlewareRequest(Script.from(pickable), startMiddle);
-  }
-}
 
 /**
  * A destination for recording picks and top-level calls to the pick function.
@@ -155,12 +114,6 @@ export function makePickFunction<T>(
       return pick as T;
     }
 
-    let startMiddle: (() => IntPickerMiddleware) | undefined;
-    if (arg instanceof MiddlewareRequest) {
-      startMiddle = arg.startMiddle;
-      arg = arg.script;
-    }
-
     const script = Script.from(arg, { caller: "pick function" });
 
     const build = () => {
@@ -169,24 +122,6 @@ export function makePickFunction<T>(
         const before = pickCount;
         level++;
         try {
-          if (startMiddle !== undefined) {
-            const middle = startMiddle();
-            const middleScript = Script.make("middleware", (pick) => {
-              function middlePick<T>(
-                req: Pickable<T>,
-                opts?: PickFunctionOpts<T>,
-              ) {
-                if (req instanceof PickRequest) {
-                  return middle(req, pick) as T;
-                } else {
-                  return pick(req, opts);
-                }
-              }
-              return script.buildFrom(middlePick);
-            });
-            return middleScript.buildFrom(dispatch);
-          }
-
           return script.buildFrom(dispatch);
         } catch (e) {
           log?.popPicks(pickCount - before);

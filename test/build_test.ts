@@ -10,28 +10,10 @@ import * as arb from "@/arbs.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
 import { CallLog, regen } from "../src/call_logs.ts";
-import { minPlayout, PlayoutSource } from "../src/backtracking.ts";
+import { PlayoutSource } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
 import { randomPlayouts } from "../src/random.ts";
-
-import {
-  makePickFunction,
-  MiddlewareRequest,
-  playbackResponder,
-  usePicks,
-} from "../src/build.ts";
-
-describe("MiddlewareRequest", () => {
-  it("throws an error if not intercepted", () => {
-    const req = MiddlewareRequest.wrap(PickRequest.bit, () => () => 0);
-    const pick = makePickFunction(minPlayout());
-    assertThrows(
-      () => req.buildFrom(pick),
-      Error,
-      "should have been intercepted",
-    );
-  });
-});
+import { makePickFunction, playbackResponder, usePicks } from "../src/build.ts";
 
 const bitReq = PickRequest.bit;
 
