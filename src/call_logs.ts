@@ -24,10 +24,6 @@ export class CallLog implements CallSink {
     return generateCalls(this.pickLog, this.#calls);
   }
 
-  startCall<T>(): void {
-    assert(this.pickLog.nextViewLength === 0);
-  }
-
   pushPick(req: Range, reply: number): void {
     this.pickLog.push(req, reply);
   }

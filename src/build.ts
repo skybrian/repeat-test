@@ -51,9 +51,6 @@ export class MiddlewareRequest<T> implements Pickable<T> {
  * A destination for recording picks and top-level calls to the pick function.
  */
 export interface CallSink {
-  /** Logs that a top-level pick call started. */
-  startCall<T>(arg: Pickable<T>): void;
-
   /**
    * Pushes an uncommited pick to the buffer. It might be removed later
    * using {@link popPicks}.
@@ -172,24 +169,25 @@ export function makePickFunction<T>(
         const before = pickCount;
         level++;
         try {
-          let innerPick: PickFunction = dispatch;
-
           if (startMiddle !== undefined) {
             const middle = startMiddle();
-            innerPick = function dispatchWithMiddleware<T>(
-              req: Pickable<T>,
-              opts?: PickFunctionOpts<T>,
-            ) {
-              if (req instanceof PickRequest) {
-                return middle(req, dispatch) as T;
-              } else {
-                return dispatch(req, opts);
+            const middleScript = Script.make("middleware", (pick) => {
+              function middlePick<T>(
+                req: Pickable<T>,
+                opts?: PickFunctionOpts<T>,
+              ) {
+                if (req instanceof PickRequest) {
+                  return middle(req, pick) as T;
+                } else {
+                  return pick(req, opts);
+                }
               }
-            };
+              return script.buildFrom(middlePick);
+            });
+            return middleScript.buildFrom(dispatch);
           }
 
-          const val = script.buildFrom(innerPick);
-          return val;
+          return script.buildFrom(dispatch);
         } catch (e) {
           log?.popPicks(pickCount - before);
           pickCount = before;
