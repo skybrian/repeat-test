@@ -5,10 +5,12 @@ import type { PickRequest, Range } from "./picks.ts";
 import { assert } from "@std/assert";
 import { PickLog, PickView } from "./picks.ts";
 
+export const regen = Symbol("regen");
+
 export type Call<T> = {
   readonly arg: Range | Script<T>;
   readonly picks: PickView;
-  readonly val: T;
+  readonly val: T | typeof regen;
 };
 
 /**
@@ -41,7 +43,8 @@ export class CallLog implements CallSink {
   pushScript<T>(level: number, arg: Script<T>, val: T): void {
     if (level === 0) {
       const picks = this.pickLog.takeView();
-      this.#calls.push({ arg, picks, val });
+      const shouldCache = arg.cachable && Object.isFrozen(val);
+      this.#calls.push({ arg, picks, val: shouldCache ? val : regen });
     }
   }
 }

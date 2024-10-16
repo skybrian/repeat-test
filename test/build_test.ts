@@ -9,7 +9,7 @@ import { Arbitrary, Filtered, Script } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
-import { CallLog } from "../src/call_logs.ts";
+import { CallLog, regen } from "../src/call_logs.ts";
 import { minPlayout, PlayoutSource } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
 import { randomPlayouts } from "../src/random.ts";
@@ -35,7 +35,7 @@ describe("MiddlewareRequest", () => {
 
 const bitReq = PickRequest.bit;
 
-function propsFromCall<T>(c: Call<T>): GenProps<T> {
+function propsFromCall<T>(c: Call<T>): GenProps<T | typeof regen> {
   const { arg, picks, val } = c;
   const name = (arg instanceof Script) ? arg.name : arg.toString();
   return {
@@ -93,13 +93,24 @@ describe("makePickFunction", () => {
   it("accepts a Script that makes no picks", () => {
     const script = Script.make("hi", () => "hello");
     assertEquals(pick(script), "hello");
-    checkLog({ name: "hi", val: "hello", reqs: [], replies: [] });
+    checkLog({ name: "hi", val: regen, reqs: [], replies: [] });
+  });
+
+  it("caches the value of a Script where cachable is true", () => {
+    const script = Script.make("hi", () => "hello", { cachable: true });
+    assertEquals(pick(script), "hello");
+    checkLog({
+      name: "hi",
+      val: "hello",
+      reqs: [],
+      replies: [],
+    });
   });
 
   it("accepts a Pickable that's not a Script", () => {
     const hi = { buildFrom: () => "hi" };
     assertEquals(pick(hi), "hi");
-    checkLog({ name: "untitled", val: "hi", reqs: [], replies: [] });
+    checkLog({ name: "untitled", val: regen, reqs: [], replies: [] });
   });
 
   it("accepts a PickRequest followed by a Script", () => {
@@ -114,7 +125,7 @@ describe("makePickFunction", () => {
       replies: [1],
     }, {
       name: "hi",
-      val: "hello",
+      val: regen,
       reqs: [],
       replies: [],
     });
@@ -123,7 +134,7 @@ describe("makePickFunction", () => {
   it("accepts an Arbitrary", () => {
     const hi = Arbitrary.of("hi", "there");
     assertEquals(pick(hi), "hi");
-    checkLog({ name: "2 examples", val: "hi", reqs: [bitReq], replies: [0] });
+    checkLog({ name: "2 examples", val: regen, reqs: [bitReq], replies: [0] });
   });
 
   it("accepts an Arbitrary that calls an Arbitrary", () => {
@@ -135,7 +146,7 @@ describe("makePickFunction", () => {
     assertEquals(pick(wrapped), "there");
     checkLog({
       name: "wrapped",
-      val: "there",
+      val: regen,
       reqs: [bitReq],
       replies: [1],
     });
@@ -148,7 +159,7 @@ describe("makePickFunction", () => {
     assertEquals(pick(hi, { accept }), "there");
     checkLog({
       name: "2 examples",
-      val: "there",
+      val: regen,
       reqs: [bitReq],
       replies: [1],
     });
@@ -164,7 +175,7 @@ describe("makePickFunction", () => {
     assertEquals(pick(wrapped), "there");
     checkLog({
       name: "wrapped",
-      val: "there",
+      val: regen,
       reqs: [bitReq],
       replies: [1],
     });
@@ -205,7 +216,7 @@ describe("makePickFunction", () => {
     pick = makePickFunction(playouts, { log });
 
     assertEquals(pick(arb), 4);
-    checkLog({ name: "untitled", val: 4, reqs: [roll], replies: [4] });
+    checkLog({ name: "untitled", val: regen, reqs: [roll], replies: [4] });
   });
 
   it("throws an error when given an invalid argument", () => {

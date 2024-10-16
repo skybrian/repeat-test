@@ -143,6 +143,10 @@ export class Paused<T> implements Pickable<T> {
   }
 }
 
+export type ScriptOpts = {
+  readonly cachable: boolean;
+};
+
 /**
  * A Pickable that can pause.
  */
@@ -150,19 +154,26 @@ export class Script<T> implements Pickable<T> {
   readonly #name: string;
   readonly #build: BuildFunction<T>;
   readonly #start: Done<T> | Paused<T>;
+  readonly #opts: ScriptOpts;
 
   private constructor(
     name: string,
     build: BuildFunction<T>,
     start: Done<T> | Paused<T>,
+    opts: ScriptOpts,
   ) {
     this.#name = name;
     this.#build = build;
     this.#start = start;
+    this.#opts = opts;
   }
 
   get name(): string {
     return this.#name;
+  }
+
+  get cachable(): boolean {
+    return this.#opts.cachable;
   }
 
   get buildFrom(): BuildFunction<T> {
@@ -179,22 +190,30 @@ export class Script<T> implements Pickable<T> {
   }
 
   with(opts: { name: string }): Script<T> {
-    return new Script(opts.name, this.#build, this.#start);
+    return new Script(opts.name, this.#build, this.#start, this.#opts);
   }
 
-  then<Out>(name: string, then: ThenFunction<T, Out>): Script<Out> {
+  then<Out>(
+    name: string,
+    then: ThenFunction<T, Out>,
+    opts?: ScriptOpts,
+  ): Script<Out> {
+    opts = opts ?? { cachable: false };
+
     const build = (pick: PickFunction): Out => {
       const val = this.buildFrom(pick);
       return then(val, pick);
     };
 
     if (this.#start.done) {
+      // The script represents a constant value.
       const val = this.#start.val;
+      const build = (pick: PickFunction) => then(val, pick);
       const step = (pick: PickFunction) => done(then(val, pick));
-      return new Script(name, build, Paused.atStart(step));
+      return new Script(name, build, Paused.atStart(step), opts);
     }
 
-    return new Script(name, build, this.#start.then(then));
+    return new Script(name, build, this.#start.then(then), opts);
   }
 
   /**
@@ -202,20 +221,23 @@ export class Script<T> implements Pickable<T> {
    */
   static constant<T>(name: string, val: T): Script<T> {
     assert(Object.isFrozen(val));
-    return new Script(name, () => val, done(val));
+    const opts = { cachable: false }; // no point since evaluating a constant is cheap.
+    return new Script(name, () => val, done(val), opts);
   }
 
   static make<T>(
     name: string,
     build: BuildFunction<T>,
+    opts?: ScriptOpts,
   ): Script<T> {
+    opts = opts ?? { cachable: false };
     const step = (pick: PickFunction) => done(build(pick));
-    return new Script(name, build, Paused.atStart(step));
+    return new Script(name, build, Paused.atStart(step), opts);
   }
 
   static fromStep<T>(name: string, step: StepFunction<T>): Script<T> {
     const paused = Paused.atStart(step);
-    return new Script(name, paused.buildFrom, paused);
+    return new Script(name, paused.buildFrom, paused, { cachable: false });
   }
 
   static from<T>(
