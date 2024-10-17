@@ -95,10 +95,31 @@ export function makePickFunction<T>(
   let level = 0;
   let pickCount = 0;
 
-  const dispatch = <T>(
-    arg: Pickable<T>,
-    opts?: PickFunctionOpts<T>,
-  ): T => {
+  /** Builds a script, retrying if it throws Filtered. */
+  function retryScript<T>(script: Script<T>, pick: PickFunction): T {
+    while (true) {
+      const depth = playouts.depth;
+      const before = pickCount;
+      level++;
+      try {
+        return script.buildFrom(pick);
+      } catch (e) {
+        log?.popPicks(pickCount - before);
+        pickCount = before;
+
+        if (!(e instanceof Filtered)) {
+          throw e;
+        }
+        if (!playouts.startAt(depth)) {
+          throw e; // can't recover
+        }
+      } finally {
+        level--;
+      }
+    }
+  }
+
+  function dispatch<T>(arg: Pickable<T>, opts?: PickFunctionOpts<T>): T {
     if (arg instanceof PickRequest) {
       let req: PickRequest = arg;
       if (limit !== undefined && playouts.depth >= limit) {
@@ -116,32 +137,9 @@ export function makePickFunction<T>(
 
     const script = Script.from(arg, { caller: "pick function" });
 
-    const build = () => {
-      while (true) {
-        const depth = playouts.depth;
-        const before = pickCount;
-        level++;
-        try {
-          return script.buildFrom(dispatch);
-        } catch (e) {
-          log?.popPicks(pickCount - before);
-          pickCount = before;
-
-          if (!(e instanceof Filtered)) {
-            throw e;
-          }
-          if (!playouts.startAt(depth)) {
-            throw e; // can't recover
-          }
-        } finally {
-          level--;
-        }
-      }
-    };
-
     const accept = opts?.accept;
     if (accept === undefined) {
-      const val = build();
+      const val = retryScript(script, dispatch);
       if (level == 0) {
         log?.endScriptCall(script, val);
       }
@@ -154,7 +152,7 @@ export function makePickFunction<T>(
       const depth = playouts.depth;
 
       const before = pickCount;
-      const val = build();
+      const val = retryScript(script, dispatch);
       if (accept(val)) {
         if (level == 0) {
           log?.endScriptCall(script, val);
@@ -171,7 +169,7 @@ export function makePickFunction<T>(
     throw new Error(
       `accept() returned false ${maxTries} times for ${script.name}; giving up`,
     );
-  };
+  }
 
   return dispatch;
 }
