@@ -1,6 +1,6 @@
 import type { PickFunction } from "@/arbitrary.ts";
 import type { GenProps } from "./lib/props.ts";
-import type { Call } from "../src/call_logs.ts";
+import type { Call } from "../src/calls.ts";
 
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
@@ -9,7 +9,7 @@ import { Arbitrary, Filtered, Script } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
-import { CallLog, regen } from "../src/call_logs.ts";
+import { CallLog, regen } from "../src/calls.ts";
 import { PlayoutSource } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
 import { randomPlayouts } from "../src/random.ts";

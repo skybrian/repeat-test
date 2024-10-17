@@ -3,7 +3,7 @@ import { assertEquals, assertThrows } from "@std/assert";
 
 import { Filtered, PickRequest, Script } from "@/arbitrary.ts";
 import { filtered } from "../src/results.ts";
-import { CallLog } from "../src/call_logs.ts";
+import { CallLog } from "../src/calls.ts";
 
 const roll = Script.make("roll", (pick) => {
   return pick(new PickRequest(1, 6));
