@@ -21,7 +21,9 @@ export type Call<T> = {
  */
 export class CallLog implements CallSink {
   readonly pickLog = new PickLog();
-  readonly #calls: Call<unknown>[] = [];
+  readonly starts: number[] = [];
+  readonly callReqs: (Range | Script<unknown>)[] = [];
+  readonly vals: unknown[] = [];
 
   pushPick(req: Range, reply: number): void {
     this.pickLog.push(req, reply);
@@ -32,19 +34,58 @@ export class CallLog implements CallSink {
   }
 
   endPickCall(): void {
-    // Create call entry lazily.
-    assert(this.pickLog.nextViewLength === 1);
-    this.pickLog.viewStart++;
+    const start = this.pickLog.viewStart++;
+    assert(start + 1 === this.pickLog.length);
+
+    this.starts.push(start);
+    this.callReqs.push(this.pickLog.reqs[start]);
+    this.vals.push(this.pickLog.replies[start]);
   }
 
   endScriptCall<T>(arg: Script<T>, val: T): void {
-    const picks = this.pickLog.takeView();
+    // record the start of this call's picks
+    this.starts.push(this.pickLog.viewStart);
+    this.pickLog.viewStart = this.pickLog.length;
+
+    // record the call
+    this.callReqs.push(arg);
     const shouldCache = arg.cachable && Object.isFrozen(val);
-    this.#calls.push({ arg, picks, val: shouldCache ? val : regen });
+    this.vals.push(shouldCache ? val : regen);
+  }
+
+  picksAt(index: number): PickView {
+    const end = (index + 1 < this.starts.length)
+      ? this.starts[index + 1]
+      : this.pickLog.length;
+    return new PickView(this.pickLog, this.starts[index], end);
+  }
+
+  callAt(index: number): Call<unknown> {
+    return {
+      arg: this.callReqs[index],
+      picks: this.picksAt(index),
+      val: this.vals[index],
+    };
   }
 
   get calls(): IterableIterator<Call<unknown>> {
-    return generateCalls(this.pickLog, this.#calls);
+    function* generateCalls(log: CallLog): IterableIterator<Call<unknown>> {
+      const len = log.callReqs.length;
+      for (let i = 0; i < len; i++) {
+        yield log.callAt(i);
+      }
+    }
+    return generateCalls(this);
+  }
+
+  buildAt<T>(req: Pickable<T>, index: number): T {
+    const call = this.callAt(index);
+    if (call.val !== regen && call.arg === req) {
+      // Skip the script call and return the cached value.
+      return call.val as T;
+    }
+    const picks = usePicks(...call.picks.replies);
+    return req.buildFrom(picks);
   }
 
   /**
@@ -62,53 +103,22 @@ export class CallLog implements CallSink {
   }
 
   private makePlaybackPickFunction() {
-    const pickLog = this.pickLog;
-    let pickIdx = 0;
-    const calls = this.#calls;
-    let callIdx = 0;
+    let index = 0;
 
-    function handleCall<T>(
+    const pick_function = <T>(
       req: Pickable<T>,
-      nextCall: Call<unknown> | undefined,
-    ): T {
-      if (nextCall === undefined) {
-        if (pickIdx < pickLog.length) {
-          // Use the next pick as input to the script.
-          const picks = usePicks(pickLog.replies[pickIdx++]);
-          return req.buildFrom(picks);
-        }
-        return req.buildFrom(usePicks());
-      }
-
-      callIdx++;
-      pickIdx = nextCall.picks.end;
-
-      if (nextCall.val !== regen && req === nextCall.arg) {
-        // Skip the script call and return the cached value.
-        return nextCall.val as T;
-      }
-
-      const picks = usePicks(...nextCall.picks.replies);
-      return req.buildFrom(picks);
-    }
-
-    function pick_function<T>(req: Pickable<T>, opts?: PickFunctionOpts<T>): T {
-      const nextCall = callIdx < calls.length ? calls[callIdx] : undefined;
-
+      opts?: PickFunctionOpts<T>,
+    ): T => {
       if (req instanceof PickRequest) {
-        const reply = (pickIdx < pickLog.length)
-          ? pickLog.replies[pickIdx++]
-          : req.min;
-        if (nextCall?.picks.start === pickIdx - 1) {
-          // Skip remaining picks from the call.
-          callIdx++;
-          pickIdx = nextCall.picks.end;
+        if (index >= this.starts.length) {
+          return req.min as T;
         }
+        const reply = this.pickLog.replies[this.starts[index++]];
         return (req.inRange(reply) ? reply : req.min) as T;
       }
 
       // handle a script call
-      const val = handleCall(req, nextCall);
+      const val = this.buildAt(req, index++);
 
       const accept = opts?.accept;
       if (accept !== undefined && !accept(val)) {
@@ -116,37 +126,8 @@ export class CallLog implements CallSink {
       }
 
       return val;
-    }
+    };
 
     return pick_function;
-  }
-}
-
-function callFromPick(log: PickLog, idx: number): Call<unknown> {
-  const arg = log.reqs[idx];
-  const val = log.replies[idx];
-  const picks = new PickView(log, idx, idx + 1);
-  return { arg, picks, val };
-}
-
-function* generateCalls(
-  log: PickLog,
-  calls: Call<unknown>[],
-): IterableIterator<Call<unknown>> {
-  let pick = 0;
-  let call = 0;
-  while (call < calls.length) {
-    const next = calls[call];
-    while (pick < next.picks.start) {
-      yield callFromPick(log, pick);
-      pick++;
-    }
-    yield next;
-    pick = next.picks.end;
-    call++;
-  }
-  while (pick < log.length) {
-    yield callFromPick(log, pick);
-    pick++;
   }
 }
