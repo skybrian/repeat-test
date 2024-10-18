@@ -6,7 +6,7 @@ import { assert } from "@std/assert";
 import { PickLog, PickRequest, PickView } from "./picks.ts";
 import { filtered } from "./results.ts";
 import type { Pickable } from "./pickable.ts";
-import { Filtered } from "@/arbitrary.ts";
+import { Filtered, type PickFunctionOpts } from "@/arbitrary.ts";
 
 export const regen = Symbol("regen");
 
@@ -67,23 +67,10 @@ export class CallLog implements CallSink {
     const calls = this.#calls;
     let callIdx = 0;
 
-    function pick_function<T>(req: Pickable<T>): T {
-      const nextCall = callIdx < calls.length ? calls[callIdx] : undefined;
-
-      if (req instanceof PickRequest) {
-        const reply = (pickIdx < pickLog.length)
-          ? pickLog.replies[pickIdx++]
-          : req.min;
-        if (nextCall?.picks.start === pickIdx - 1) {
-          // Skip remaining picks from the call.
-          callIdx++;
-          pickIdx = nextCall.picks.end;
-        }
-        return (req.inRange(reply) ? reply : req.min) as T;
-      }
-
-      // handle a script call
-
+    function handleCall<T>(
+      req: Pickable<T>,
+      nextCall: Call<unknown> | undefined,
+    ): T {
       if (nextCall === undefined) {
         if (pickIdx < pickLog.length) {
           // Use the next pick as input to the script.
@@ -103,6 +90,32 @@ export class CallLog implements CallSink {
 
       const picks = usePicks(...nextCall.picks.replies);
       return req.buildFrom(picks);
+    }
+
+    function pick_function<T>(req: Pickable<T>, opts?: PickFunctionOpts<T>): T {
+      const nextCall = callIdx < calls.length ? calls[callIdx] : undefined;
+
+      if (req instanceof PickRequest) {
+        const reply = (pickIdx < pickLog.length)
+          ? pickLog.replies[pickIdx++]
+          : req.min;
+        if (nextCall?.picks.start === pickIdx - 1) {
+          // Skip remaining picks from the call.
+          callIdx++;
+          pickIdx = nextCall.picks.end;
+        }
+        return (req.inRange(reply) ? reply : req.min) as T;
+      }
+
+      // handle a script call
+      const val = handleCall(req, nextCall);
+
+      const accept = opts?.accept;
+      if (accept !== undefined && !accept(val)) {
+        throw new Filtered("not accepted");
+      }
+
+      return val;
     }
 
     return pick_function;

@@ -1,7 +1,7 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
 
-import { Filtered, PickRequest, Script } from "@/arbitrary.ts";
+import { Filtered, type Pickable, PickRequest, Script } from "@/arbitrary.ts";
 import { filtered } from "../src/results.ts";
 import { CallLog } from "../src/calls.ts";
 
@@ -159,6 +159,38 @@ describe("CallLog", () => {
         log.pushPick({ min: 1, max: 6 }, 4);
         log.endScriptCall(differentRoll, "world");
         assertEquals(log.build(script), "hello, rolled 4");
+      });
+    });
+
+    describe("for a script call with an accept function", () => {
+      const even = Script.make("even", (pick) => {
+        return pick(roll, { accept: (val) => (val % 2) === 0 });
+      });
+
+      it("returns the value if accepted", () => {
+        log.pushPick({ min: 1, max: 6 }, 2);
+        log.endScriptCall(roll, 2);
+        assertEquals(log.build(even), 2);
+      });
+
+      it("returns filtered if rejected", () => {
+        log.pushPick({ min: 1, max: 6 }, 3);
+        log.endScriptCall(roll, 3);
+        assertEquals(log.build(even), filtered);
+      });
+    });
+
+    describe("for a pickable that's not a script", () => {
+      const pickable: Pickable<number> = {
+        buildFrom: (pick) => {
+          return pick(roll);
+        },
+      };
+
+      it("doesn't use a cached result", () => {
+        log.pushPick({ min: 1, max: 6 }, 2);
+        log.endScriptCall(roll, 3);
+        assertEquals(log.build(pickable), 2);
       });
     });
 
