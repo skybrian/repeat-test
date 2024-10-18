@@ -3,29 +3,6 @@ import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
 import { filtered } from "./results.ts";
 import { Filtered } from "./pickable.ts";
 
-/** Distinguishes a finished result from one that's still in progress. */
-export type Done<T> = { readonly done: true; readonly val: T };
-
-export function done<T>(val: T): Done<T> {
-  return { done: true, val };
-}
-
-/**
- * Returned by a step function to indicate that there's another step.
- */
-export type Resume<T> = {
-  readonly done: false;
-  readonly step: StepFunction<T>;
-  readonly label?: string;
-};
-
-/**
- * Like a {@link BuildFunction}, except that it can pause.
- *
- * (May throw {@link Filtered}.)
- */
-export type StepFunction<T> = (pick: PickFunction) => Done<T>;
-
 /**
  * A function that transforms a value, given some picks.
  *
@@ -44,45 +21,6 @@ export interface HasScript<T> extends Pickable<T> {
   readonly buildScript: Script<T>;
 }
 
-/**
- * A paused script. It may resume more than once.
- */
-export class Paused<T> {
-  readonly #step: StepFunction<T>;
-  readonly key = 0;
-
-  private constructor(
-    step: StepFunction<T>,
-  ) {
-    this.#step = step;
-  }
-
-  get done(): false {
-    return false;
-  }
-
-  /**
-   * Reads picks and calculates the next step, or the final result.
-   *
-   * Returns {@link filtered} if the picks can't be used to build the value.
-   */
-  step(pick: PickFunction): Done<T> | typeof filtered {
-    try {
-      return this.#step(pick);
-    } catch (e) {
-      if ((e instanceof Filtered)) {
-        return filtered;
-      }
-      throw e;
-    }
-  }
-
-  /** Pauses at the start of a script.  */
-  static atStart<T>(step: StepFunction<T>): Paused<T> {
-    return new Paused(step);
-  }
-}
-
 export type ScriptOpts = {
   readonly cachable: boolean;
 };
@@ -93,18 +31,15 @@ export type ScriptOpts = {
 export class Script<T> implements Pickable<T> {
   readonly #name: string;
   readonly #build: BuildFunction<T>;
-  readonly #start: Paused<T>;
-  readonly #opts: ScriptOpts;
+  readonly #opts?: ScriptOpts;
 
   private constructor(
     name: string,
     build: BuildFunction<T>,
-    start: Paused<T>,
-    opts: ScriptOpts,
+    opts?: ScriptOpts,
   ) {
     this.#name = name;
     this.#build = build;
-    this.#start = start;
     this.#opts = opts;
   }
 
@@ -113,22 +48,26 @@ export class Script<T> implements Pickable<T> {
   }
 
   get cachable(): boolean {
-    return this.#opts.cachable;
+    return this.#opts?.cachable === true;
   }
 
   get buildFrom(): BuildFunction<T> {
     return this.#build;
   }
 
-  /**
-   * Pauses at the beginning of the script.
-   */
-  get paused(): Paused<T> {
-    return this.#start;
+  build(pick: PickFunction): T | typeof filtered {
+    try {
+      return this.#build(pick);
+    } catch (e) {
+      if (e instanceof Filtered) {
+        return filtered;
+      }
+      throw e;
+    }
   }
 
   with(opts: { name: string }): Script<T> {
-    return new Script(opts.name, this.#build, this.#start, this.#opts);
+    return new Script(opts.name, this.#build, this.#opts);
   }
 
   then<Out>(
@@ -151,9 +90,7 @@ export class Script<T> implements Pickable<T> {
     build: BuildFunction<T>,
     opts?: ScriptOpts,
   ): Script<T> {
-    opts = opts ?? { cachable: false };
-    const step = (pick: PickFunction) => done(build(pick));
-    return new Script(name, build, Paused.atStart(step), opts);
+    return new Script(name, build, opts);
   }
 
   static from<T>(

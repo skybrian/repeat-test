@@ -1,6 +1,5 @@
 import type { Failure, Success } from "./results.ts";
 import type { Pickable, PickFunction } from "./pickable.ts";
-import type { Done, Paused } from "./script_class.ts";
 import type { Range } from "./picks.ts";
 import type { StepEditor, StepKey } from "./edits.ts";
 import type { GenerateOpts } from "./build.ts";
@@ -13,13 +12,11 @@ import { PickLog, PickView, PlaybackPicker } from "./picks.ts";
 import { keep, PickEditor } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
 import { makePickFunction, usePicks } from "./build.ts";
-import { minPlayout } from "./backtracking.ts";
 
 type Props<T> = {
   readonly script: Script<T>;
-  readonly starts: Paused<T>[];
-  readonly picks: PickView[];
-  readonly result: Done<T>;
+  readonly picks: PickView;
+  readonly val: T;
 };
 
 const alwaysBuild = Symbol("alwaysBuild");
@@ -43,24 +40,22 @@ function cacheOnce<T>(val: T, build: () => T): () => T {
 }
 
 function cacheResult<T>(props: Props<T>): () => T {
-  if (props.starts.length === 0 || Object.isFrozen(props.result.val)) {
-    const val = props.result.val;
+  const { script, picks, val } = props;
+  if (Object.isFrozen(props.val)) {
     return () => val;
   }
 
-  const { starts, picks, result } = props;
-  const lastStart = starts[starts.length - 1];
-  const lastReplies = picks[picks.length - 1].replies;
+  const lastReplies = picks.replies;
   const regenerate = (): T => {
-    const next = lastStart.step(usePicks(...lastReplies));
+    const next = script.build(usePicks(...lastReplies));
     assert(
-      next !== filtered && next.done,
+      next !== filtered,
       "can't regenerate value of nondeterministic step",
     );
-    return next.val;
+    return next;
   };
 
-  return cacheOnce(result.val, regenerate);
+  return cacheOnce(val, regenerate);
 }
 
 function mutateImpl<T>(
@@ -68,90 +63,29 @@ function mutateImpl<T>(
   editors: StepEditor,
   log: PickLog,
 ): Props<T> | typeof filtered {
-  const { script, starts, picks } = props;
-  if (starts.length === 0) {
-    return props; // no change
-  }
+  const { script, picks } = props;
 
-  const newStarts: Paused<T>[] = [];
-  const newPicks: PickView[] = [];
+  const before = picks;
+  const editor = editors(0);
 
-  let state: Paused<T> | Done<T> = script.paused;
-
-  let editedBefore = false;
-  const len = starts.length;
-  for (let i = 0; i < len; i++) {
-    const start = starts[i];
-    const before = picks[i];
-    const editor = editors(start.key);
-
-    if (state.done) {
+  if (editor !== keep) {
+    const picks = new PickEditor(before.replies, editor, log);
+    const next = script.build(makePickFunction(picks));
+    if (next === filtered) {
+      log.cancelView();
+      return filtered; // failed edit
+    } else if (picks.edited) {
       return {
         script,
-        starts: newStarts,
-        picks: newPicks,
-        result: state,
-      }; // finished earlier than before
+        picks: log.takeView(),
+        val: next,
+      };
     }
-
-    if (editor !== keep || editedBefore) {
-      const picks = new PickEditor(before.replies, editor, log);
-      const next = state.step(makePickFunction(picks));
-      if (next === filtered) {
-        log.cancelView();
-        return filtered; // failed edit
-      } else if (picks.edited || editedBefore) {
-        editedBefore = true;
-        newStarts.push(state);
-        newPicks.push(log.takeView());
-        state = next;
-        continue;
-      }
-      log.cancelView();
-    }
-
-    // no change
-    if (i === len - 1) {
-      return props;
-    }
-    newStarts.push(start);
-    newPicks.push(before);
-    state = starts[i + 1];
+    log.cancelView();
   }
 
-  if (state.done) {
-    return {
-      script,
-      starts: newStarts,
-      picks: newPicks,
-      result: state,
-    }; // finished in the same number of steps.
-  }
-
-  // Pipeline is longer. Keep building with default picks.
-  const playout = minPlayout();
-  const pick = makePickFunction(playout);
-
-  while (!state.done) {
-    const next: GenStep<T> | typeof filtered = generateStep(
-      state,
-      pick,
-      playout,
-    );
-    if (next === filtered) {
-      return filtered; // failed edit
-    }
-    newStarts.push(state);
-    newPicks.push(next.picks);
-    state = next.result;
-  }
-
-  return {
-    script,
-    starts: newStarts,
-    picks: newPicks,
-    result: state,
-  };
+  // no change
+  return props;
 }
 
 export class MutableGen<T> {
@@ -219,7 +153,7 @@ export class Gen<T> implements Success<T> {
   readonly #props: Props<T>;
   readonly #result: () => T;
 
-  #picksByKey: Map<StepKey, PickView> | undefined;
+  #picksByKey: Map<StepKey, PickView>;
   #reqs: Range[] | undefined;
   #replies: number[] | undefined;
 
@@ -233,12 +167,10 @@ export class Gen<T> implements Success<T> {
     props: Props<T>,
     result?: () => T,
   ) {
-    assert(
-      props.starts.length === props.picks.length,
-      "starts and picks must have the same length",
-    );
     this.#props = props;
     this.#result = result ?? cacheResult(props);
+    this.#picksByKey = new Map();
+    this.#picksByKey.set(0, props.picks);
   }
 
   /** Satisfies the Success interface. */
@@ -253,7 +185,7 @@ export class Gen<T> implements Success<T> {
   get reqs(): Range[] {
     if (this.#reqs === undefined) {
       const reqs: Range[] = [];
-      for (const picks of this.picksByKey.values()) {
+      for (const picks of this.#picksByKey.values()) {
         reqs.push(...picks.reqs);
       }
       this.#reqs = reqs;
@@ -264,7 +196,7 @@ export class Gen<T> implements Success<T> {
   get replies(): number[] {
     if (this.#replies === undefined) {
       const replies: number[] = [];
-      for (const picks of this.picksByKey.values()) {
+      for (const picks of this.#picksByKey.values()) {
         replies.push(...picks.replies);
       }
       this.#replies = replies;
@@ -282,12 +214,12 @@ export class Gen<T> implements Success<T> {
    * (Some steps might use zero picks.)
    */
   get stepKeys(): StepKey[] {
-    return Array.from(this.picksByKey.keys());
+    return Array.from(this.#picksByKey.keys());
   }
 
   /** Returns the picks for the given step, or an empty PickList if not found. */
   getPicks(key: StepKey): PickView {
-    return this.picksByKey.get(key) ?? PickView.empty;
+    return this.#picksByKey.get(key) ?? PickView.empty;
   }
 
   /**
@@ -298,22 +230,6 @@ export class Gen<T> implements Success<T> {
    */
   get val(): T {
     return this.#result();
-  }
-
-  private get picksByKey(): Map<StepKey, PickView> {
-    if (this.#picksByKey === undefined) {
-      const byKey = new Map<StepKey, PickView>();
-      const { starts, picks } = this.#props;
-      for (let i = 0; i < starts.length; i++) {
-        const view = picks[i];
-        if (view.length > 0) {
-          const key = starts[i].key;
-          byKey.set(key, view);
-        }
-      }
-      this.#picksByKey = byKey;
-    }
-    return this.#picksByKey;
   }
 
   toMutable(): MutableGen<T> {
@@ -353,35 +269,28 @@ export function generate<T>(
   const script = Script.from(arg, { caller: "generate" });
   const pick = makePickFunction(playouts, opts);
 
-  const starts: Paused<T>[] = [];
-  const picks: PickView[] = [];
-
-  nextPlayout: while (playouts.startAt(0)) {
-    let state = script.paused;
-    while (true) {
-      const next = generateStep(
-        state,
-        pick,
-        playouts,
-      );
-      if (next === filtered) {
-        continue nextPlayout;
-      }
-      starts.push(state);
-      picks.push(next.picks);
-      if (next.result.done) {
-        return new Gen({ script, starts, picks, result: next.result }); // finished
-      }
-      state = next.result;
+  while (playouts.startAt(0)) {
+    const next = generateStep(
+      script,
+      pick,
+      playouts,
+    );
+    if (next === filtered) {
+      continue;
     }
+    return new Gen({
+      script,
+      picks: next.picks,
+      val: next.val,
+    }); // finished
   }
   return filtered;
 }
 
-type GenStep<T> = { picks: PickView; result: Paused<T> | Done<T> };
+type GenStep<T> = { picks: PickView; val: T };
 
 function generateStep<T>(
-  start: Paused<T>,
+  start: Script<T>,
   pick: PickFunction,
   playouts: PlayoutSource,
 ):
@@ -389,8 +298,8 @@ function generateStep<T>(
   | typeof filtered {
   const depth = playouts.depth;
   while (playouts.startValue(depth)) {
-    const result = start.step(pick);
-    if (result === filtered) {
+    const val = start.build(pick);
+    if (val === filtered) {
       if (playouts.state === "picking") {
         playouts.endPlayout();
       }
@@ -399,7 +308,7 @@ function generateStep<T>(
     const reqs = playouts.getRequests(depth);
     const replies = playouts.getReplies(depth);
     const picks = PickView.wrap(reqs, replies);
-    return { picks, result };
+    return { picks, val };
   }
 
   return filtered; // no playouts matched at this depth
