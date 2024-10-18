@@ -1,4 +1,4 @@
-import { type CallSink, usePicks } from "./build.ts";
+import { type PickLogger, usePicks } from "./build.ts";
 import type { Script } from "./script_class.ts";
 import type { Range } from "./picks.ts";
 
@@ -16,61 +16,96 @@ export type Call<T> = {
   readonly val: T | typeof regen;
 };
 
-/**
- * Records calls to a pick function.
- */
-export class CallLog implements CallSink {
-  readonly pickLog = new PickLog();
-  readonly starts: number[] = [];
-  readonly callReqs: (Range | Script<unknown>)[] = [];
-  readonly vals: unknown[] = [];
+type Props = {
+  readonly pickLog: PickLog;
+  readonly starts: number[];
+  readonly callReqs: (Range | Script<unknown>)[];
+  readonly vals: unknown[];
+};
 
-  pushPick(req: Range, reply: number): void {
-    this.pickLog.push(req, reply);
+export class CallBuffer implements PickLogger {
+  private props: Props = {
+    pickLog: new PickLog(),
+    starts: [],
+    callReqs: [],
+    vals: [],
+  };
+
+  push(req: Range, reply: number): void {
+    this.props.pickLog.push(req, reply);
   }
 
-  popPicks(count: number): void {
-    this.pickLog.nextViewLength -= count;
+  undoPushes(count: number): void {
+    this.props.pickLog.nextViewLength -= count;
   }
 
-  endPickCall(): void {
-    const start = this.pickLog.viewStart++;
-    assert(start + 1 === this.pickLog.length);
+  endPick(): void {
+    const { pickLog, starts, callReqs, vals } = this.props;
 
-    this.starts.push(start);
-    this.callReqs.push(this.pickLog.reqs[start]);
-    this.vals.push(this.pickLog.replies[start]);
+    const start = pickLog.viewStart++;
+    assert(start + 1 === pickLog.length);
+
+    starts.push(start);
+    callReqs.push(pickLog.reqs[start]);
+    vals.push(pickLog.replies[start]);
   }
 
-  endScriptCall<T>(arg: Script<T>, val: T): void {
+  endScript<T>(arg: Script<T>, val: T): void {
+    const { pickLog, starts, callReqs, vals } = this.props;
+
     // record the start of this call's picks
-    this.starts.push(this.pickLog.viewStart);
-    this.pickLog.viewStart = this.pickLog.length;
+    starts.push(pickLog.viewStart);
+    pickLog.viewStart = pickLog.length;
 
     // record the call
-    this.callReqs.push(arg);
+    callReqs.push(arg);
     const shouldCache = arg.cachable && Object.isFrozen(val);
-    this.vals.push(shouldCache ? val : regen);
+    vals.push(shouldCache ? val : regen);
+  }
+
+  takeLog(): CallLog {
+    const log = new CallLog(this.props);
+    this.props = {
+      pickLog: new PickLog(),
+      starts: [],
+      callReqs: [],
+      vals: [],
+    };
+    return log;
+  }
+}
+
+/**
+ * The calls that were made to a pick function.
+ */
+export class CallLog {
+  constructor(readonly props: Props) {}
+
+  get length(): number {
+    return this.props.starts.length;
   }
 
   picksAt(index: number): PickView {
-    const end = (index + 1 < this.starts.length)
-      ? this.starts[index + 1]
-      : this.pickLog.length;
-    return new PickView(this.pickLog, this.starts[index], end);
+    const { starts, pickLog } = this.props;
+
+    const end = (index + 1 < starts.length)
+      ? starts[index + 1]
+      : pickLog.length;
+    return new PickView(pickLog, starts[index], end);
   }
 
   callAt(index: number): Call<unknown> {
+    const { callReqs, vals } = this.props;
     return {
-      arg: this.callReqs[index],
+      arg: callReqs[index],
       picks: this.picksAt(index),
-      val: this.vals[index],
+      val: vals[index],
     };
   }
 
   get calls(): IterableIterator<Call<unknown>> {
     function* generateCalls(log: CallLog): IterableIterator<Call<unknown>> {
-      const len = log.callReqs.length;
+      const len = log.props.callReqs.length;
       for (let i = 0; i < len; i++) {
         yield log.callAt(i);
       }
@@ -103,6 +138,7 @@ export class CallLog implements CallSink {
   }
 
   private makePlaybackPickFunction() {
+    const { pickLog, starts } = this.props;
     let index = 0;
 
     const pick_function = <T>(
@@ -110,10 +146,10 @@ export class CallLog implements CallSink {
       opts?: PickFunctionOpts<T>,
     ): T => {
       if (req instanceof PickRequest) {
-        if (index >= this.starts.length) {
+        if (index >= starts.length) {
           return req.min as T;
         }
-        const reply = this.pickLog.replies[this.starts[index++]];
+        const reply = pickLog.replies[starts[index++]];
         return (req.inRange(reply) ? reply : req.min) as T;
       }
 

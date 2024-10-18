@@ -7,23 +7,23 @@ import { PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
 
 /**
- * A destination for recording picks and top-level calls to the pick function.
+ * A destination for recording picks and top-level calls to a pick function.
  */
-export interface CallSink {
+export interface PickLogger {
   /**
-   * Pushes an uncommited pick to the buffer. It might be removed later
-   * using {@link popPicks}.
+   * Pushes a pick to the buffer. It might be removed later
+   * using {@link undoPushes}.
    */
-  pushPick(req: Range, pick: number): void;
+  push(req: Range, pick: number): void;
 
   /** Pops the given number of picks from the buffer. */
-  popPicks(count: number): void;
+  undoPushes(count: number): void;
 
   /** Ends a top-level pick request. */
-  endPickCall(): void;
+  endPick(): void;
 
-  /** Logs the result of a top-level call that's not a pick request. */
-  endScriptCall<T>(arg: Script<T>, result: T): void;
+  /** Ends a top-level call that's not a pick request. */
+  endScript<T>(arg: Script<T>, result: T): void;
 }
 
 export type GenerateOpts = {
@@ -39,7 +39,7 @@ export type GenerateOpts = {
   /**
    * If set, top-level calls to pick() will be recorded to this log.
    */
-  log?: CallSink;
+  log?: PickLogger;
 };
 
 export interface PickResponder {
@@ -99,13 +99,13 @@ export function makePickFunction<T>(
   function retryScript<T>(script: Script<T>, pick: PickFunction): T {
     while (true) {
       const depth = playouts.depth;
-      const before = pickCount;
+      const start = pickCount;
       level++;
       try {
         return script.buildFrom(pick);
       } catch (e) {
-        log?.popPicks(pickCount - before);
-        pickCount = before;
+        log?.undoPushes(pickCount - start);
+        pickCount = start;
 
         if (!(e instanceof Filtered)) {
           throw e;
@@ -127,10 +127,10 @@ export function makePickFunction<T>(
       }
       const pick = playouts.nextPick(req);
       if (pick === undefined) throw new Filtered("cancelled in PlayoutSource");
-      log?.pushPick(req, pick);
+      log?.push(req, pick);
       pickCount++;
       if (level === 0) {
-        log?.endPickCall();
+        log?.endPick();
       }
       return pick as T;
     }
@@ -141,7 +141,7 @@ export function makePickFunction<T>(
     if (accept === undefined) {
       const val = retryScript(script, dispatch);
       if (level == 0) {
-        log?.endScriptCall(script, val);
+        log?.endScript(script, val);
       }
       return val;
     }
@@ -151,16 +151,16 @@ export function makePickFunction<T>(
     for (let i = 0; i < maxTries; i++) {
       const depth = playouts.depth;
 
-      const before = pickCount;
+      const start = pickCount;
       const val = retryScript(script, dispatch);
       if (accept(val)) {
         if (level == 0) {
-          log?.endScriptCall(script, val);
+          log?.endScript(script, val);
         }
         return val;
       }
-      log?.popPicks(pickCount - before);
-      pickCount = before;
+      log?.undoPushes(pickCount - start);
+      pickCount = start;
 
       if (!playouts.startAt(depth)) {
         throw new Filtered("accept() returned false for all possible values");

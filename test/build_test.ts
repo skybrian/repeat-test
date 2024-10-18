@@ -9,7 +9,7 @@ import { Arbitrary, Filtered, Script } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
-import { CallLog, regen } from "../src/calls.ts";
+import { CallBuffer, regen } from "../src/calls.ts";
 import { PlayoutSource } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
 import { randomPlayouts } from "../src/random.ts";
@@ -30,28 +30,28 @@ function propsFromCall<T>(c: Call<T>): GenProps<T | typeof regen> {
 
 describe("makePickFunction", () => {
   let pick = usePicks();
-  let log = new CallLog();
+  let buf = new CallBuffer();
 
   beforeEach(() => {
     pick = logPicks();
   });
 
   function logPicks(...picks: number[]): PickFunction {
-    log = new CallLog();
+    buf = new CallBuffer();
     const responder = playbackResponder([...picks]);
-    return makePickFunction(responder, { log });
+    return makePickFunction(responder, { log: buf });
   }
 
   function logRandomPicks() {
-    log = new CallLog();
+    buf = new CallBuffer();
     const playouts = randomPlayouts(123);
     playouts.startAt(0);
-    return makePickFunction(playouts, { log });
+    return makePickFunction(playouts, { log: buf });
   }
 
   function checkLog(...expected: GenProps<unknown>[]) {
     const actual: GenProps<unknown>[] = [];
-    for (const call of log.calls) {
+    for (const call of buf.takeLog().calls) {
       actual.push(propsFromCall(call));
     }
     assertEquals(actual, expected);
@@ -195,7 +195,7 @@ describe("makePickFunction", () => {
     const tracker = new PartialTracker(alwaysPick(3));
     const playouts = new PlayoutSource(tracker);
     playouts.startAt(0);
-    pick = makePickFunction(playouts, { log });
+    pick = makePickFunction(playouts, { log: buf });
 
     assertEquals(pick(arb), 4);
     checkLog({ name: "untitled", val: regen, reqs: [roll], replies: [4] });
