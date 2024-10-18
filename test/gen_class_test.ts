@@ -1,13 +1,11 @@
-import type { Done, Resume, StepFunction } from "../src/script_class.ts";
-
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { filtered } from "../src/results.ts";
-import { Filtered, type PickFunction } from "../src/pickable.ts";
+import { Filtered } from "../src/pickable.ts";
 import { PickRequest, PickView, PlaybackPicker } from "../src/picks.ts";
-import { keep, replace, replacePick, snip } from "../src/edits.ts";
-import { done, resume, Script } from "../src/script_class.ts";
+import { keep, replace, snip } from "../src/edits.ts";
+import { Script } from "../src/script_class.ts";
 import { Gen, generate } from "../src/gen_class.ts";
 import { propsFromGen } from "./lib/props.ts";
 import { minPlayout, onePlayout } from "../src/backtracking.ts";
@@ -23,11 +21,6 @@ const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
 const rollReq = new PickRequest(1, 6);
 
 const roll = Script.make("roll", (pick) => pick(rollReq));
-
-const twoRolls = roll.then("twoRolls", (a, pick) => {
-  const b = pick(rollReq);
-  return [a, b];
-});
 
 const fails = Script.make("fails", () => {
   throw new Error("oops!");
@@ -46,10 +39,6 @@ const multiStep = bit.then("multi-step", (a, pick) => {
   return `(${a}, ${b})`;
 });
 
-const frozenFirstStep = frozen.then("frozen-first-step", (a) => {
-  return [a];
-});
-
 const multiStepMutable = mutable.then(
   "multi-step mutable",
   (a) => {
@@ -65,34 +54,8 @@ const firstStepPruned = pruned.then(
   },
 );
 
-function countOnesAt(n: number): StepFunction<number> {
-  return (pick: PickFunction): Done<number> | Resume<number> => {
-    if (n > 5) {
-      throw new Filtered("too many ones");
-    }
-    if (pick(PickRequest.bit) === 0) {
-      return done(n);
-    }
-    return resume(countOnesAt(n + 1));
-  };
-}
-
-const countOnesTo5 = Script.fromStep("countOnes (to 5)", countOnesAt(0));
-
-const pi = Script.constant("pi", Math.PI);
-
 describe("Gen", () => {
   describe("build", () => {
-    it("works for a constant", () => {
-      const gen = Gen.build(pi, []);
-      assert(gen.ok);
-      assertEquals(propsFromGen(gen), {
-        name: "pi",
-        val: Math.PI,
-        reqs: [],
-        replies: [],
-      });
-    });
     it("fails when there aren't enough picks", () => {
       assertEquals(
         Gen.build(bit, []),
@@ -133,15 +96,6 @@ describe("Gen", () => {
   });
 
   describe("mustBuild", () => {
-    it("works for a constant", () => {
-      const gen = Gen.mustBuild(pi, []);
-      assertEquals(propsFromGen(gen), {
-        name: "pi",
-        val: Math.PI,
-        reqs: [],
-        replies: [],
-      });
-    });
     it("fails when there aren't enough picks", () => {
       assertThrows(
         () => Gen.mustBuild(bit, []),
@@ -177,15 +131,6 @@ describe("Gen", () => {
       assert(gen.val === first);
     });
 
-    it("doesn't regenerate a frozen previous step", () => {
-      const gen = Gen.mustBuild(frozenFirstStep, []);
-      const first = gen.val;
-      assertEquals(first, [["frozen"]]);
-      const second = gen.val;
-      assertFalse(second === first);
-      assert(second[0] === first[0]);
-    });
-
     it("regenerates a mutable object", () => {
       const gen = Gen.mustBuild(mutable, []);
       const first = gen.val;
@@ -202,33 +147,13 @@ describe("Gen", () => {
   });
 
   describe("stepKeys", () => {
-    it("returns no keys for a constant", () => {
-      const gen = Gen.mustBuild(pi, []);
-      assertEquals(gen.stepKeys, []);
-    });
     it("returns a single key for a non-piped script", () => {
       const gen = Gen.mustBuild(bit, [0]);
       assertEquals(gen.stepKeys, [0]);
     });
-    it("returns two keys for a two-stage pipeline", () => {
-      const gen = Gen.mustBuild(twoRolls, [5, 4]);
-      assertEquals(gen.stepKeys, [0, 1]);
-    });
-    it("skips steps that have no picks", () => {
-      const tau = pi.then("tau", (v) => v * 2);
-      const gen = Gen.mustBuild(tau, []);
-      assertEquals(gen.stepKeys, []);
-    });
   });
 
   describe("getPicks", () => {
-    it("returns the picks for two build steps", () => {
-      const gen = Gen.mustBuild(multiStep, [0, 1]);
-      assertEquals(gen.val, "(0, 1)");
-      assertEquals(gen.getPicks(0), PickView.wrap([bitReq], [0]));
-      assertEquals(gen.getPicks(1), PickView.wrap([bitReq], [1]));
-    });
-
     it("returns empty for an unknown key", () => {
       const gen = Gen.mustBuild(multiStep, [0, 1]);
       assert(gen.getPicks(2) === PickView.empty);
@@ -246,14 +171,6 @@ describe("Gen", () => {
 
 describe("MutableGen", () => {
   describe("tryMutate", () => {
-    it("keeps the same gen for a constant", () => {
-      const original = Gen.mustBuild(pi, []);
-      const mut = original.toMutable();
-
-      assert(mut.tryMutate(() => keep));
-      assert(mut.gen === original);
-    });
-
     it("keeps the same gen when there are no edits, for a single-step build", () => {
       const original = Gen.mustBuild(bit, [1]);
       const mut = original.toMutable();
@@ -288,30 +205,6 @@ describe("MutableGen", () => {
       });
     });
 
-    it("can edit the first step of a two-step build", () => {
-      const original = Gen.mustBuild(multiStep, [1, 1]);
-      const mut = original.toMutable();
-      assert(mut.tryMutate((n) => (n === 0) ? snip : keep));
-      assert(mut.gen !== original);
-      assertEquals(propsFromGen(mut.gen), {
-        name: "multi-step",
-        val: "(0, 1)",
-        reqs: [PickRequest.bit, PickRequest.bit],
-        replies: [0, 1],
-      });
-      assertEquals(mut.stepKeys, [0, 1]);
-    });
-
-    it("can edit the last step of a two-step build", () => {
-      const original = Gen.mustBuild(multiStep, [1, 1]);
-      const mut = original.toMutable();
-
-      assert(mut.tryMutate((n) => (n === 1) ? snip : keep));
-      assertEquals(mut.stepKeys, [0, 1]);
-      assertEquals(mut.val, "(1, 0)");
-      assertEquals(mut.gen.replies, [1, 0]);
-    });
-
     const evenRoll = Script.make("evenRoll", (pick) => {
       const roll = pick(new PickRequest(1, 6));
       if (roll % 2 !== 0) {
@@ -333,52 +226,6 @@ describe("MutableGen", () => {
       const mut = original.toMutable();
       assertFalse(mut.tryMutate((i) => (i === 0) ? () => replace(1) : keep));
       assert(mut.gen === original);
-    });
-
-    it("fails if editing the second step fails", () => {
-      const original = Gen.mustBuild(evenDoubles, [2, 2]);
-      const mut = original.toMutable();
-      assertFalse(mut.tryMutate((i) => (i === 1) ? () => replace(1) : keep));
-      assert(mut.gen === original);
-    });
-
-    it("mutates a multi-step build to have fewer steps", () => {
-      const original = Gen.mustBuild(countOnesTo5, [1, 1, 1, 0]);
-      assertEquals(original.val, 3);
-
-      const mut = original.toMutable();
-
-      assert(mut.tryMutate((i) => (i === 1) ? snip : keep));
-      assertEquals(propsFromGen(mut.gen), {
-        val: 1,
-        name: "countOnes (to 5)",
-        reqs: [PickRequest.bit, PickRequest.bit],
-        replies: [1, 0],
-      });
-    });
-
-    it("mutates a multi-step build to have more steps", () => {
-      const original = Gen.mustBuild(countOnesTo5, [1, 0]);
-      assertEquals(original.val, 1);
-
-      const mut = original.toMutable();
-
-      assert(mut.tryMutate(replacePick(1, 0, 1)));
-      assertEquals(propsFromGen(mut.gen), {
-        val: 2,
-        name: "countOnes (to 5)",
-        reqs: [PickRequest.bit, PickRequest.bit, PickRequest.bit],
-        replies: [1, 1, 0],
-      });
-    });
-
-    it("returns filtered if the picks for a new step are rejected", () => {
-      const original = Gen.mustBuild(countOnesTo5, [1, 1, 1, 1, 1, 0]);
-      assertEquals(original.val, 5);
-      assertEquals(original.stepKeys, [0, 1, 2, 3, 4, 5]);
-
-      const mut = original.toMutable();
-      assertFalse(mut.tryMutate(replacePick(5, 0, 1)));
     });
   });
 });
@@ -538,22 +385,6 @@ describe("generate", () => {
         onePlayout(new PlaybackPicker([])),
       );
       assertEquals(gen, filtered);
-    });
-  });
-
-  describe("for Script.fromPaused", () => {
-    it("generates values with increasing depth", () => {
-      const script = countOnesTo5;
-      const playouts = orderedPlayouts();
-      for (let i = 0; i < 5; i++) {
-        const gen = generate(script, playouts);
-        assertEquals(propsFromGen(gen), {
-          val: i,
-          name: `countOnes (to 5)`,
-          reqs: new Array(i + 1).fill(bitReq),
-          replies: new Array(i).fill(1).concat([0]),
-        });
-      }
     });
   });
 });

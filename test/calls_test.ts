@@ -25,11 +25,6 @@ describe("CallLog", () => {
   });
 
   describe("build", () => {
-    it("builds a constant", () => {
-      const log = buf.takeLog();
-      assertEquals(log.build(Script.constant("one", 1)), 1);
-    });
-
     describe("for one pick call", () => {
       it("returns the minimum for an empty log", () => {
         const log = buf.takeLog();

@@ -76,7 +76,7 @@ function mutateImpl<T>(
   const newStarts: Paused<T>[] = [];
   const newPicks: PickView[] = [];
 
-  let state = script.paused;
+  let state: Paused<T> | Done<T> = script.paused;
 
   let editedBefore = false;
   const len = starts.length;
@@ -357,9 +357,6 @@ export function generate<T>(
   const picks: PickView[] = [];
 
   nextPlayout: while (playouts.startAt(0)) {
-    if (script.paused.done) {
-      return new Gen({ script, starts, picks, result: script.paused }); // constant
-    }
     let state = script.paused;
     while (true) {
       const next = generateStep(

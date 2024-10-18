@@ -1,6 +1,5 @@
 import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
 
-import { assert } from "@std/assert/assert";
 import { filtered } from "./results.ts";
 import { Filtered } from "./pickable.ts";
 
@@ -25,19 +24,7 @@ export type Resume<T> = {
  *
  * (May throw {@link Filtered}.)
  */
-export type StepFunction<T> = (pick: PickFunction) => Done<T> | Resume<T>;
-
-/**
- * Returns a {@link Paused} value that will call the given function to take the
- * next step.
- */
-export function resume<T>(step: StepFunction<T>): Resume<T> {
-  return { done: false, step };
-}
-
-export function resumeAt<T>(label: string, step: StepFunction<T>): Resume<T> {
-  return { done: false, step, label };
-}
+export type StepFunction<T> = (pick: PickFunction) => Done<T>;
 
 /**
  * A function that transforms a value, given some picks.
@@ -60,24 +47,13 @@ export interface HasScript<T> extends Pickable<T> {
 /**
  * A paused script. It may resume more than once.
  */
-export class Paused<T> implements Pickable<T> {
-  readonly buildFrom: BuildFunction<T>;
+export class Paused<T> {
   readonly #step: StepFunction<T>;
-  readonly key: string | number;
+  readonly key = 0;
 
   private constructor(
     step: StepFunction<T>,
-    private readonly index: number,
-    private readonly label: string | undefined,
   ) {
-    this.key = label ? `${this.index}.${label}` : this.index;
-    this.buildFrom = (pick: PickFunction): T => {
-      let next = step(pick);
-      while (!next.done) {
-        next = next.step(pick);
-      }
-      return next.val;
-    };
     this.#step = step;
   }
 
@@ -90,17 +66,9 @@ export class Paused<T> implements Pickable<T> {
    *
    * Returns {@link filtered} if the picks can't be used to build the value.
    */
-  step(pick: PickFunction): Paused<T> | Done<T> | typeof filtered {
+  step(pick: PickFunction): Done<T> | typeof filtered {
     try {
-      const result = this.#step(pick);
-      if (result.done) {
-        return result;
-      }
-      if (result.label !== undefined) {
-        return new Paused(result.step, this.index, result.label);
-      } else {
-        return new Paused(result.step, this.index + 1, undefined);
-      }
+      return this.#step(pick);
     } catch (e) {
       if ((e instanceof Filtered)) {
         return filtered;
@@ -109,36 +77,9 @@ export class Paused<T> implements Pickable<T> {
     }
   }
 
-  /**
-   * Returns a new Paused value that will take an additional step at the end,
-   * calling the given function.
-   */
-  then<Out>(then: ThenFunction<T, Out>): Paused<Out> {
-    // Adding a step to the end doesn't change the current key.
-    return new Paused(
-      Paused.addToEnd(this.#step, then),
-      this.index,
-      this.label,
-    );
-  }
-
   /** Pauses at the start of a script.  */
   static atStart<T>(step: StepFunction<T>): Paused<T> {
-    return new Paused(step, 0, undefined);
-  }
-
-  private static addToEnd<T, Out>(
-    first: StepFunction<T>,
-    then: ThenFunction<T, Out>,
-  ): StepFunction<Out> {
-    return (pick: PickFunction): Done<Out> | Resume<Out> => {
-      const next = first(pick);
-      if (next.done) {
-        const val = next.val;
-        return resume((pick) => done(then(val, pick)));
-      }
-      return resume(Paused.addToEnd(next.step, then));
-    };
+    return new Paused(step);
   }
 }
 
@@ -152,13 +93,13 @@ export type ScriptOpts = {
 export class Script<T> implements Pickable<T> {
   readonly #name: string;
   readonly #build: BuildFunction<T>;
-  readonly #start: Done<T> | Paused<T>;
+  readonly #start: Paused<T>;
   readonly #opts: ScriptOpts;
 
   private constructor(
     name: string,
     build: BuildFunction<T>,
-    start: Done<T> | Paused<T>,
+    start: Paused<T>,
     opts: ScriptOpts,
   ) {
     this.#name = name;
@@ -181,10 +122,8 @@ export class Script<T> implements Pickable<T> {
 
   /**
    * Pauses at the beginning of the script.
-   *
-   * In the case of a constant, this will be a Done result.
    */
-  get paused(): Paused<T> | Done<T> {
+  get paused(): Paused<T> {
     return this.#start;
   }
 
@@ -204,24 +143,7 @@ export class Script<T> implements Pickable<T> {
       return then(val, pick);
     };
 
-    if (this.#start.done) {
-      // The script represents a constant value.
-      const val = this.#start.val;
-      const build = (pick: PickFunction) => then(val, pick);
-      const step = (pick: PickFunction) => done(then(val, pick));
-      return new Script(name, build, Paused.atStart(step), opts);
-    }
-
-    return new Script(name, build, this.#start.then(then), opts);
-  }
-
-  /**
-   * Returns a script that's already finished, with the given value.
-   */
-  static constant<T>(name: string, val: T): Script<T> {
-    assert(Object.isFrozen(val));
-    const opts = { cachable: false }; // no point since evaluating a constant is cheap.
-    return new Script(name, () => val, done(val), opts);
+    return Script.make(name, build);
   }
 
   static make<T>(
@@ -232,11 +154,6 @@ export class Script<T> implements Pickable<T> {
     opts = opts ?? { cachable: false };
     const step = (pick: PickFunction) => done(build(pick));
     return new Script(name, build, Paused.atStart(step), opts);
-  }
-
-  static fromStep<T>(name: string, step: StepFunction<T>): Script<T> {
-    const paused = Paused.atStart(step);
-    return new Script(name, paused.buildFrom, paused, { cachable: false });
   }
 
   static from<T>(

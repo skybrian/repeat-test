@@ -105,7 +105,7 @@ export class CallLog {
 
   get calls(): IterableIterator<Call<unknown>> {
     function* generateCalls(log: CallLog): IterableIterator<Call<unknown>> {
-      const len = log.props.callReqs.length;
+      const len = log.length;
       for (let i = 0; i < len; i++) {
         yield log.callAt(i);
       }
