@@ -246,6 +246,12 @@ export class PickView {
     return this.log.replies.slice(this.start, this.end);
   }
 
+  diffAt(index: number): number {
+    const req = this.log.reqs[this.start + index];
+    const reply = this.log.replies[this.start + index];
+    return reply - req.min;
+  }
+
   getPick(index: number): Pick {
     return {
       req: this.log.reqs[this.start + index],

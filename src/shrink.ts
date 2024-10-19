@@ -3,7 +3,7 @@ import type { StepEditor, StepKey } from "./edits.ts";
 import type { SystemConsole } from "./console.ts";
 
 import { assert } from "@std/assert";
-import { removeRange, replacePick, trimStep } from "./edits.ts";
+import { removeRange, replaceOnce, trimStep } from "./edits.ts";
 import { nullConsole } from "./console.ts";
 
 /**
@@ -210,33 +210,28 @@ export class Shrinker<T> {
       return false; // No change; nothing to shrink
     }
 
-    const { req, reply } = picks.getPick(offset);
-    if (reply === req.min) {
+    const diff = picks.diffAt(offset);
+    if (diff === 0) {
       return false; // No change; already at the minimum
     }
 
     // See if the test fails if we subtract one.
-    if (!this.tryMutate(replacePick(stepKey, offset, reply - 1))) {
+    if (!this.tryMutate(replaceOnce(stepKey, offset, diff - 1))) {
       return false; // No change; the postcondition already holds
     }
 
-    let replies = this.seed.getPicks(stepKey).replies;
-    assert(offset < replies.length, "picks shrank unexpectedly");
-
     // Binary search to find the smallest pick that succeeds.
-    let tooLow = req.min - 1;
-    let hi = replies[offset];
+    let tooLow = -1;
+    let hi = this.seed.getPicks(stepKey).diffAt(offset);
     while (tooLow + 2 <= hi) {
       const mid = (tooLow + 1 + hi) >>> 1;
       assert(mid > tooLow && mid < hi);
-      if (!this.tryMutate(replacePick(stepKey, offset, mid))) {
+      if (!this.tryMutate(replaceOnce(stepKey, offset, mid))) {
         // failed; retry with a higher pick
         tooLow = mid;
         continue;
       }
-      replies = this.seed.getPicks(stepKey).replies;
-      assert(offset < replies.length, "picks shrank unexpectedly");
-      hi = replies[offset];
+      hi = this.seed.getPicks(stepKey).diffAt(offset);
     }
     return true;
   }

@@ -6,7 +6,8 @@ import { describe, it } from "@std/testing/bdd";
 import { PickRequest } from "../src/picks.ts";
 import { keep, PickEditor, replace, snip } from "../src/edits.ts";
 
-const addOne: StreamEditor = (_, before) => replace(before + 1);
+const setMin: StreamEditor = (_) => replace(0);
+const setBad: StreamEditor = (_) => replace(-1);
 
 describe("PickEditor", () => {
   it("throws if a previous pick isn't an integer", () => {
@@ -35,17 +36,18 @@ describe("PickEditor", () => {
     assertEquals(picker.nextPick(new PickRequest(2, 4)), 2);
     assertEquals(picker.edits, 0);
   });
-  it("returns the new pick if the editor changes it", () => {
-    const picker = new PickEditor([0, 1], addOne);
-    assertEquals(picker.nextPick(new PickRequest(0, 3)), 1);
-    assertEquals(picker.nextPick(new PickRequest(0, 3)), 2);
-    assertEquals(picker.edits, 2);
+  it("returns the minimum pick if the editor sets it to min", () => {
+    const picker = new PickEditor([0, 2], setMin);
+    assertEquals(picker.nextPick(new PickRequest(0, 0)), 0);
+    assertEquals(picker.nextPick(new PickRequest(1, 3)), 1);
+    assertEquals(picker.nextPick(new PickRequest(2, 5)), 2);
+    assertEquals(picker.edits, 1);
   });
   it("returns the minumum pick if the editor changes it to be out of range", () => {
-    const picker = new PickEditor([0, 1, 2], addOne);
+    const picker = new PickEditor([0, 1, 2], setBad);
     assertEquals(picker.nextPick(new PickRequest(0, 0)), 0);
     assertEquals(picker.nextPick(new PickRequest(0, 1)), 0);
-    assertEquals(picker.nextPick(new PickRequest(0, 3)), 3);
+    assertEquals(picker.nextPick(new PickRequest(0, 3)), 0);
     assertEquals(picker.edits, 2);
     assertEquals(picker.deletes, 0);
   });

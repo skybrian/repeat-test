@@ -224,7 +224,9 @@ describe("MutableGen", () => {
     it("fails if editing the first step fails", () => {
       const original = Gen.mustBuild(evenDoubles, [2, 2]);
       const mut = original.toMutable();
-      assertFalse(mut.tryMutate((i) => (i === 0) ? () => replace(1) : keep));
+      assertFalse(
+        mut.tryMutate((i) => (i === 0) ? () => replace(0) : keep),
+      );
       assert(mut.gen === original);
     });
   });

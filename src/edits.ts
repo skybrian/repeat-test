@@ -5,7 +5,7 @@ import { assert } from "@std/assert";
 
 export type Edit =
   | { type: "keep" }
-  | { type: "replace"; val: number }
+  | { type: "replace"; diff: number }
   | { type: "snip" };
 
 /**
@@ -28,9 +28,12 @@ export function snip(): Edit {
   return { type: "snip" };
 }
 
-/** Makes an edit that unconditionally replaces a pick. */
-export function replace(val: number): Edit {
-  return { type: "replace", val };
+/**
+ * Makes an edit that changes each pick to a value relative to its minimum.
+ * (That is, if diff is 0, the pick is set to its minimum value.)
+ */
+export function replace(diff: number): Edit {
+  return { type: "replace", diff };
 }
 
 /**
@@ -84,10 +87,9 @@ export class PickEditor implements PickResponder {
       switch (edit.type) {
         case "keep":
           break;
-        case "replace": {
-          val = edit.val;
+        case "replace":
+          val = req.min + edit.diff;
           break;
-        }
         case "snip":
           this.#deletes++;
           continue;
@@ -153,16 +155,15 @@ export function removeRange(
 
 function replaceAt(
   at: number,
-  replacement: number,
+  diff: number,
 ): StreamEditor {
-  return (offset) => offset === at ? replace(replacement) : keep();
+  return (offset) => offset === at ? replace(diff) : keep();
 }
 
-/** Replaces one pick in one step. */
-export function replacePick(
+export function replaceOnce(
   stepKey: StepKey,
-  offset: number,
-  newVal: number,
+  at: number,
+  diff: number,
 ): StepEditor {
-  return (key) => key === stepKey ? replaceAt(offset, newVal) : keep;
+  return (key) => key === stepKey ? replaceAt(at, diff) : keep;
 }
