@@ -9,8 +9,7 @@ import * as arb from "@/arbs.ts";
 import * as dom from "@/doms.ts";
 
 import { Filtered } from "../src/pickable.ts";
-import { onePlayout } from "../src/backtracking.ts";
-import { makePickFunction } from "../src/build.ts";
+import { makePickFunction, usePicker } from "../src/build.ts";
 import { alwaysPickMin } from "../src/picks.ts";
 import { depthFirstPlayouts } from "../src/partial_tracker.ts";
 import { orderedPlayouts } from "../src/ordered.ts";
@@ -76,9 +75,7 @@ describe("Jar", () => {
 
     it("takes values given a minimum playout", () => {
       const jar = new Jar(dom.int32());
-      const search = onePlayout(alwaysPickMin);
-      assert(search.startAt(0));
-      const pick = makePickFunction(search);
+      const pick = usePicker(alwaysPickMin);
       assertEquals(jar.take(pick), 0);
       assertEquals(jar.take(pick), 1);
       assertEquals(jar.take(pick), 2);

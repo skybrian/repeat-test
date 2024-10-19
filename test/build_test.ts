@@ -13,7 +13,12 @@ import { CallBuffer, regen } from "../src/calls.ts";
 import { Backtracker } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
 import { randomPlayouts } from "../src/random.ts";
-import { makePickFunction, playbackResponder, usePicks } from "../src/build.ts";
+import {
+  makePickFunction,
+  responderFromPicker,
+  responderFromReplies,
+  usePicks,
+} from "../src/build.ts";
 
 const bitReq = PickRequest.bit;
 
@@ -29,8 +34,8 @@ function propsFromCall<T>(c: Call<T>): GenProps<T | typeof regen> {
 }
 
 describe("makePickFunction", () => {
-  let pick = usePicks();
   let buf = new CallBuffer();
+  let pick = logPicks();
 
   beforeEach(() => {
     pick = logPicks();
@@ -38,7 +43,7 @@ describe("makePickFunction", () => {
 
   function logPicks(...picks: number[]): PickFunction {
     buf = new CallBuffer();
-    const responder = playbackResponder([...picks]);
+    const responder = responderFromReplies([...picks]);
     return makePickFunction(responder, { log: buf });
   }
 
@@ -132,6 +137,14 @@ describe("makePickFunction", () => {
       reqs: [bitReq],
       replies: [1],
     });
+  });
+
+  it("throws wheen accept fails and the responder can't backtrack", () => {
+    const hi = Arbitrary.of("hi", "there");
+    const accept = (x: string) => x !== "hi";
+    const responder = responderFromPicker(alwaysPick(0));
+    const pick = makePickFunction(responder);
+    assertThrows(() => pick(hi, { accept }), Filtered);
   });
 
   it("filters an Arbitrary", () => {

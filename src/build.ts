@@ -1,46 +1,10 @@
 import type { Pickable, PickFunction, PickFunctionOpts } from "./pickable.ts";
 
-import type { Range } from "./picks.ts";
+import type { IntPicker, Range } from "./picks.ts";
 
 import { Filtered } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
-
-/**
- * A destination for recording picks and top-level calls to a pick function.
- */
-export interface PickLogger {
-  /**
-   * Pushes a pick to the buffer. It might be removed later
-   * using {@link undoPushes}.
-   */
-  push(req: Range, pick: number): void;
-
-  /** Pops the given number of picks from the buffer. */
-  undoPushes(count: number): void;
-
-  /** Ends a top-level pick request. */
-  endPick(): void;
-
-  /** Ends a top-level call that's not a pick request. */
-  endScript<T>(arg: Script<T>, result: T): void;
-}
-
-export type GenerateOpts = {
-  /**
-   * A limit on the number of picks to generate normally during a playout. It
-   * can be used to limit the size of generated objects.
-   *
-   * Once the limit is reached, the {@link PickFunction} will always generate
-   * the default value for any sub-objects being generated.
-   */
-  limit?: number;
-
-  /**
-   * If set, top-level calls to pick() will be recorded to this log.
-   */
-  log?: PickLogger;
-};
 
 export interface PickResponder {
   /** Attempts to start a new playout, continuing at the given depth. */
@@ -52,8 +16,32 @@ export interface PickResponder {
   get depth(): number;
 }
 
+/** A non-backtracking responder that takes picks from an IntPicker. */
+export function responderFromPicker(wrapped: IntPicker): PickResponder {
+  let depth = 0;
+
+  return {
+    startAt(newDepth: number): boolean {
+      // can't backtrack; no alternative picks available
+      return newDepth === depth;
+    },
+    nextPick(req: PickRequest): number {
+      const reply = wrapped.pick(req);
+      depth++;
+      return reply;
+    },
+    get depth(): number {
+      return depth;
+    },
+  };
+}
+
+export function usePicker(picker: IntPicker): PickFunction {
+  return makePickFunction(responderFromPicker(picker));
+}
+
 /** Creates a simple, non-backtracking pick source. */
-export function playbackResponder(replies: number[]): PickResponder {
+export function responderFromReplies(replies: number[]): PickResponder {
   let depth = 0;
 
   return {
@@ -82,12 +70,48 @@ export function playbackResponder(replies: number[]): PickResponder {
  * Creates a pick function that plays a single pick sequence.
  */
 export function usePicks(...replies: number[]): PickFunction {
-  return makePickFunction(playbackResponder(replies));
+  return makePickFunction(responderFromReplies(replies));
 }
+
+/**
+ * A destination for recording picks and top-level calls to a pick function.
+ */
+export interface PickLogger {
+  /**
+   * Pushes a pick to the buffer. It might be removed later
+   * using {@link undoPushes}.
+   */
+  push(req: Range, pick: number): void;
+
+  /** Pops the given number of picks from the buffer. */
+  undoPushes(count: number): void;
+
+  /** Ends a top-level pick request. */
+  endPick(): void;
+
+  /** Ends a top-level call that's not a pick request. */
+  endScript<T>(arg: Script<T>, result: T): void;
+}
+
+export type MakePickFunctionOpts = {
+  /**
+   * A limit on the number of picks to generate normally during a playout. It
+   * can be used to limit the size of generated objects.
+   *
+   * Once the limit is reached, the {@link PickFunction} will always generate
+   * the default value for any sub-objects being generated.
+   */
+  limit?: number;
+
+  /**
+   * If set, top-level calls to pick() will be recorded to this log.
+   */
+  log?: PickLogger;
+};
 
 export function makePickFunction<T>(
   playouts: PickResponder,
-  opts?: GenerateOpts,
+  opts?: MakePickFunctionOpts,
 ): PickFunction {
   const limit = opts?.limit;
 
