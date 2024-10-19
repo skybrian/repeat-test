@@ -61,7 +61,7 @@ function cacheResult<T>(props: Props<T>): () => T {
 function mutateImpl<T>(
   props: Props<T>,
   editors: StepEditor,
-  log: CallBuffer,
+  buf: CallBuffer,
 ): Props<T> | typeof filtered {
   const { script, calls } = props;
 
@@ -69,18 +69,18 @@ function mutateImpl<T>(
 
   if (editor !== keep) {
     const picks = new PickEditor(calls.replies, editor);
-    const next = script.build(makePickFunction(picks, { log }));
+    const next = script.build(makePickFunction(picks, { log: buf }));
     if (next === filtered) {
-      log.reset();
+      buf.reset();
       return filtered; // failed edit
     } else if (picks.edited) {
       return {
         script,
-        calls: log.takeLog(),
+        calls: buf.takeLog(),
         val: next,
       };
     }
-    log.reset();
+    buf.reset();
   }
 
   // no change
@@ -89,7 +89,7 @@ function mutateImpl<T>(
 
 export class MutableGen<T> {
   #props: Props<T>;
-  #log = new CallBuffer();
+  #buf = new CallBuffer();
   #gen: Gen<T>;
 
   constructor(props: Props<T>, origin: Gen<T>) {
@@ -105,25 +105,25 @@ export class MutableGen<T> {
     editor: StepEditor,
     test?: (val: T) => boolean,
   ): boolean {
-    const next = mutateImpl(this.#props, editor, this.#log);
+    const next = mutateImpl(this.#props, editor, this.#buf);
     if (next === filtered) {
-      this.#log.reset();
+      this.#buf.reset();
       return false; // edits didn't apply
     }
 
     if (next === this.#props) {
-      this.#log.reset();
+      this.#buf.reset();
       return true; // edits applied, but had no effect
     }
 
     const cache = cacheResult(next);
     if (test && !test(cache())) {
-      this.#log.reset();
+      this.#buf.reset();
       return false; // didn't pass the test
     }
 
     this.#props = next;
-    this.#log = new CallBuffer();
+    this.#buf = new CallBuffer();
     this.#gen = new Gen(next, cache);
     return true;
   }

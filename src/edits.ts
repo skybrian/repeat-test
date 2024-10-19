@@ -2,7 +2,6 @@ import type { Range } from "./picks.ts";
 import type { PickResponder } from "./build.ts";
 
 import { assert } from "@std/assert";
-import { PickLog } from "./picks.ts";
 
 export type Edit =
   | { type: "keep" }
@@ -38,7 +37,6 @@ export function replace(val: number): Edit {
  * Replays a stream of picks, applying the given editor to each pick.
  */
 export class PickEditor implements PickResponder {
-  private readonly log: PickLog;
   private offset = 0;
 
   #edits = 0;
@@ -47,9 +45,7 @@ export class PickEditor implements PickResponder {
   constructor(
     private readonly before: readonly number[],
     private readonly editor: StreamEditor,
-    log?: PickLog,
   ) {
-    this.log = log ?? new PickLog();
     assert(this.depth === 0);
 
     for (let i = 0; i < before.length; i++) {
@@ -69,12 +65,11 @@ export class PickEditor implements PickResponder {
 
   nextPick(req: Range): number {
     const pick = this.edit(req);
-    this.log.push(req, pick);
     return pick;
   }
 
   get depth(): number {
-    return this.log.length - this.log.viewStart;
+    return this.offset;
   }
 
   private edit(req: Range): number {
