@@ -74,10 +74,6 @@ export class OrderedTracker implements Tracker {
     return pick;
   }
 
-  getReplies(start?: number): number[] {
-    return this.#pass.getReplies(start);
-  }
-
   nextPlayout(): number | undefined {
     this.#shared.prune();
     this.#pass.prune();

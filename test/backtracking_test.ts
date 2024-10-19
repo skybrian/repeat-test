@@ -16,7 +16,6 @@ describe("SinglePlayoutPicker", () => {
     const second = playouts.nextPick(bit);
     assert(second !== undefined);
     assertEquals(playouts.getRequests(), [bit, bit]);
-    assertEquals(playouts.getReplies(), [first, second]);
     assertEquals(playouts.depth, 2);
     assertEquals(playouts.startAt(0), false);
   });

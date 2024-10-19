@@ -22,11 +22,6 @@ export interface Tracker {
   maybePick(req: PickRequest): number | undefined;
 
   /**
-   * Returns the current pick sequence.
-   */
-  getReplies(start?: number): number[];
-
-  /**
    * Finishes the current pick sequence and moves to the next one.
    * Returns the new depth or undefined if there are no more playouts.
    */
@@ -68,24 +63,6 @@ export class PlayoutSource implements PickResponder {
     // console.log("startAt", depth);
     if (this.#state === "picking") {
       this.nextPlayout();
-    }
-    return this.startPlayout(depth);
-  }
-
-  /**
-   * Starts a new value at the given depth.
-   *
-   * The depth must be between 0 and the current depth.
-   *
-   * If currently picking and the depth matches the current depth, does nothing
-   * (continuing the current playout). Otherwise, starts a new playout.
-   *
-   * Returns false if there are no more playouts at the given depth.
-   */
-  startValue(depth: number): boolean {
-    if (this.#state === "picking") {
-      assert(depth === this.#depth);
-      return true;
     }
     return this.startPlayout(depth);
   }
@@ -147,11 +124,6 @@ export class PlayoutSource implements PickResponder {
     return this.#reqs.slice(start, this.#depth); // trailing reqs are garbage
   }
 
-  getReplies(start?: number): number[] {
-    start = start ?? 0;
-    return this.tracker.getReplies(start);
-  }
-
   private startPlayout(depth: number): boolean {
     if (this.#state === "searchDone" || depth > this.depth) {
       return false;
@@ -179,13 +151,8 @@ export class PlayoutSource implements PickResponder {
  */
 class SinglePlayoutTracker implements Tracker {
   private started = false;
-  private replies: number[] = [];
 
   constructor(private picker: IntPicker) {}
-
-  getReplies(start?: number): number[] {
-    return this.replies.slice(start);
-  }
 
   startPlayout(depth: number): void {
     assert(depth === 0, "SinglePlayoutTracker only supports depth 0");
@@ -194,9 +161,7 @@ class SinglePlayoutTracker implements Tracker {
   }
 
   maybePick(req: PickRequest): number {
-    const pick = this.picker.pick(req);
-    this.replies.push(pick);
-    return pick;
+    return this.picker.pick(req);
   }
 
   nextPlayout() {

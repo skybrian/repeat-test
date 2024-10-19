@@ -221,33 +221,9 @@ export class PickLog {
     this.replies.length = newLen;
   }
 
-  reset(): void {
-    this.reqs.length = 0;
-    this.replies.length = 0;
-    this.viewStart = 0;
-  }
-
   push(req: Range, reply: number): void {
     this.reqs.push(req);
     this.replies.push(reply);
-  }
-
-  /**
-   * Returns a view from {@link viewStart} to the end of the log.
-   * Also sets viewStart to the end of the log.
-   */
-  takeView(): PickView {
-    const result = new PickView(this, this.viewStart, this.length);
-    this.viewStart = this.length;
-    return result;
-  }
-
-  /**
-   * Removes all picks after {@link viewStart}.
-   */
-  cancelView() {
-    this.reqs.length = this.viewStart;
-    this.replies.length = this.viewStart;
   }
 }
 

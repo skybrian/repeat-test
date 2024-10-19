@@ -42,7 +42,6 @@ describe("PartialTracker", () => {
       assertEquals(pick, 0);
       assertEquals(stream.depth, 1);
       assertEquals(stream.getRequests(), [bit]);
-      assertEquals(stream.getReplies(), [0]);
       stream.endPlayout();
       assert(pick !== undefined);
       assertFalse(tracker.tree.available([pick]));
@@ -101,7 +100,6 @@ describe("PartialTracker", () => {
       assert(stream.startAt(0));
       assertEquals(stream.nextPick(bit), 0);
       assertEquals(stream.nextPick(new PickRequest(0, 0)), 0);
-      assertEquals(stream.getReplies(), [0, 0]);
       stream.endPlayout();
       assertThrows(() => stream.getRequests(), Error);
     });
@@ -127,7 +125,6 @@ describe("PartialTracker", () => {
       assert(stream.startAt(0));
       assertEquals(stream.depth, 0);
       assertEquals(stream.getRequests(), []);
-      assertEquals(stream.getReplies(), []);
     });
 
     it("goes to a different child after a fork", () => {
@@ -165,14 +162,6 @@ describe("PartialTracker", () => {
         "should fail because picks are exhausted",
       );
       assert(stream.startAt(0));
-    });
-  });
-
-  describe("getReplies", () => {
-    it("returns all the picks when called with no arguments", () => {
-      assert(stream.startAt(0));
-      stream.nextPick(bit);
-      assertEquals(stream.getReplies(), [0]);
     });
   });
 

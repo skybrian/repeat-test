@@ -28,10 +28,6 @@ export class PartialTracker implements Tracker {
     this.pickSource = picker;
   }
 
-  getReplies(start?: number): number[] {
-    return this.walk.getReplies(start);
-  }
-
   startPlayout(depth: number): void {
     this.walk.trim(depth);
     this.odds.length = depth;

@@ -31,6 +31,15 @@ export class CallBuffer implements PickLogger {
     vals: [],
   };
 
+  reset() {
+    this.props = {
+      pickLog: new PickLog(),
+      starts: [],
+      callReqs: [],
+      vals: [],
+    };
+  }
+
   push(req: Range, reply: number): void {
     this.props.pickLog.push(req, reply);
   }
@@ -65,12 +74,7 @@ export class CallBuffer implements PickLogger {
 
   takeLog(): CallLog {
     const log = new CallLog(this.props);
-    this.props = {
-      pickLog: new PickLog(),
-      starts: [],
-      callReqs: [],
-      vals: [],
-    };
+    this.reset();
     return log;
   }
 }
@@ -83,6 +87,14 @@ export class CallLog {
 
   get length(): number {
     return this.props.starts.length;
+  }
+
+  get replies(): number[] {
+    return this.props.pickLog.replies;
+  }
+
+  get pickView(): PickView {
+    return new PickView(this.props.pickLog, 0, this.props.pickLog.length);
   }
 
   picksAt(index: number): PickView {
