@@ -41,7 +41,6 @@ describe("PartialTracker", () => {
       const pick = stream.nextPick(bit);
       assertEquals(pick, 0);
       assertEquals(stream.depth, 1);
-      assertEquals(stream.getRequests(), [bit]);
       stream.endPlayout();
       assert(pick !== undefined);
       assertFalse(tracker.tree.available([pick]));
@@ -95,16 +94,6 @@ describe("PartialTracker", () => {
     });
   });
 
-  describe("endPlayout", () => {
-    it("disallows calling getRequests() afterwards", () => {
-      assert(stream.startAt(0));
-      assertEquals(stream.nextPick(bit), 0);
-      assertEquals(stream.nextPick(new PickRequest(0, 0)), 0);
-      stream.endPlayout();
-      assertThrows(() => stream.getRequests(), Error);
-    });
-  });
-
   describe("startAt", () => {
     it("ends the search if no root was created (for a constant)", () => {
       assert(stream.startAt(0));
@@ -124,7 +113,6 @@ describe("PartialTracker", () => {
       stream.nextPick(bit);
       assert(stream.startAt(0));
       assertEquals(stream.depth, 0);
-      assertEquals(stream.getRequests(), []);
     });
 
     it("goes to a different child after a fork", () => {

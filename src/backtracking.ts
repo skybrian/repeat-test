@@ -1,4 +1,4 @@
-import type { IntPicker, PickRequest, Range } from "./picks.ts";
+import type { IntPicker, PickRequest } from "./picks.ts";
 import type { PickResponder } from "./build.ts";
 
 import { assert } from "@std/assert";
@@ -35,7 +35,6 @@ export interface Tracker {
 export class PlayoutSource implements PickResponder {
   #state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
   #depth = 0;
-  readonly #reqs: Range[] = [];
 
   constructor(private readonly tracker: Tracker) {}
 
@@ -83,8 +82,7 @@ export class PlayoutSource implements PickResponder {
       return undefined;
     }
 
-    const last = this.#depth++;
-    this.#reqs[last] = req;
+    this.#depth++;
     return result;
   }
 
@@ -107,21 +105,6 @@ export class PlayoutSource implements PickResponder {
    */
   get depth(): number {
     return this.#depth;
-  }
-
-  /**
-   * Returns a slice of the pick requests made so far.
-   *
-   * Available only between {@link startAt} and {@link endPlayout}.
-   */
-  getRequests(start?: number): Range[] {
-    start = start ?? 0;
-    if (this.state !== "picking") {
-      throw new Error(
-        `getPicks called in the wrong state. Wanted "picking"; got "${this.state}"`,
-      );
-    }
-    return this.#reqs.slice(start, this.#depth); // trailing reqs are garbage
   }
 
   private startPlayout(depth: number): boolean {
