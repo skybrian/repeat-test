@@ -67,24 +67,27 @@ function mutateImpl<T>(
 
   const editor = editors(0);
 
-  if (editor !== keep) {
-    const picks = new PickEditor(calls.replies, editor);
-    const next = script.build(makePickFunction(picks, { log: buf }));
-    if (next === filtered) {
-      buf.reset();
-      return filtered; // failed edit
-    } else if (picks.edited) {
-      return {
-        script,
-        calls: buf.takeLog(),
-        val: next,
-      };
-    }
-    buf.reset();
+  if (editor === keep) {
+    // no change
+    return props;
   }
 
-  // no change
-  return props;
+  const picks = new PickEditor(calls.replies, editor);
+  const next = script.build(makePickFunction(picks, { log: buf }));
+  if (next === filtered) {
+    buf.reset();
+    return filtered; // failed edit
+  } else if (!picks.edited) {
+    // no change
+    buf.reset();
+    return props;
+  }
+
+  return {
+    script,
+    calls: buf.takeLog(),
+    val: next,
+  };
 }
 
 export class MutableGen<T> {
