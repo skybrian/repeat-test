@@ -10,7 +10,7 @@ import * as arb from "@/arbs.ts";
 
 import { alwaysPick, PickRequest } from "../src/picks.ts";
 import { CallBuffer, regen } from "../src/calls.ts";
-import { PlayoutSource } from "../src/backtracking.ts";
+import { Backtracker } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
 import { randomPlayouts } from "../src/random.ts";
 import { makePickFunction, playbackResponder, usePicks } from "../src/build.ts";
@@ -193,7 +193,7 @@ describe("makePickFunction", () => {
     });
 
     const tracker = new PartialTracker(alwaysPick(3));
-    const playouts = new PlayoutSource(tracker);
+    const playouts = new Backtracker(tracker);
     playouts.startAt(0);
     pick = makePickFunction(playouts, { log: buf });
 

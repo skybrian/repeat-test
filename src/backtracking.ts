@@ -29,10 +29,10 @@ export interface Tracker {
 }
 
 /**
- * A picker that can back up to a previous point in a playout and try a
+ * A pick source that can back up to a previous point in a playout and try a
  * different path.
  */
-export class PlayoutSource implements PickResponder {
+export class Backtracker implements PickResponder {
   #state: "ready" | "picking" | "playoutDone" | "searchDone" = "ready";
   #depth = 0;
 
@@ -155,11 +155,11 @@ class SinglePlayoutTracker implements Tracker {
 /**
  * A source that only generates one playout.
  */
-export function onePlayout(picker: IntPicker): PlayoutSource {
-  return new PlayoutSource(new SinglePlayoutTracker(picker));
+export function onePlayout(picker: IntPicker): Backtracker {
+  return new Backtracker(new SinglePlayoutTracker(picker));
 }
 
 /** A source of a single playout that always picks the minimum */
-export function minPlayout(): PlayoutSource {
-  return new PlayoutSource(new SinglePlayoutTracker(alwaysPickMin));
+export function minPlayout(): Backtracker {
+  return new Backtracker(new SinglePlayoutTracker(alwaysPickMin));
 }

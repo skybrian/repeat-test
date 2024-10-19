@@ -2,7 +2,7 @@ import type { Failure, Success } from "./results.ts";
 import type { Pickable } from "./pickable.ts";
 import type { Range } from "./picks.ts";
 import type { StepEditor, StepKey } from "./edits.ts";
-import type { PlayoutSource } from "./backtracking.ts";
+import type { Backtracker } from "./backtracking.ts";
 
 import { assert } from "@std/assert";
 import { failure, filtered } from "./results.ts";
@@ -276,7 +276,7 @@ export type GenerateOpts = {
  */
 export function generate<T>(
   arg: Pickable<T>,
-  playouts: PlayoutSource,
+  playouts: Backtracker,
   opts?: GenerateOpts,
 ): Gen<T> | typeof filtered {
   const script = Script.from(arg, { caller: "generate" });

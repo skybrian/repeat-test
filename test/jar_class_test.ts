@@ -1,4 +1,4 @@
-import type { PlayoutSource } from "../src/backtracking.ts";
+import type { Backtracker } from "../src/backtracking.ts";
 
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
@@ -27,7 +27,7 @@ describe("Jar", () => {
 
   const overlap = dom.oneOf(dom.of(1, 2), dom.of(2, 3));
 
-  function checkPicksFromOverlap(stream: PlayoutSource) {
+  function checkPicksFromOverlap(stream: Backtracker) {
     pick = makePickFunction(stream);
 
     let jar = new Jar(overlap);

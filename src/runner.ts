@@ -19,7 +19,7 @@ import {
   systemConsole,
 } from "./console.ts";
 import { shrink } from "./shrink.ts";
-import { PlayoutSource } from "./backtracking.ts";
+import { Backtracker } from "./backtracking.ts";
 
 /**
  * A function that runs a test, using generated input.
@@ -94,7 +94,7 @@ export type RepFailure<T> = {
 
 export class RepSource<T> {
   readonly tracker = new PartialTracker(alwaysPickMin);
-  readonly stream = new PlayoutSource(this.tracker);
+  readonly stream = new Backtracker(this.tracker);
   readonly pickers: Iterator<IntPicker>;
   randomReps = 0;
 

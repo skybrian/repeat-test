@@ -2,7 +2,7 @@ import type { IntPicker, PickRequest } from "./picks.ts";
 
 import { assert } from "@std/assert";
 import prand from "pure-rand";
-import { PlayoutSource } from "./backtracking.ts";
+import { Backtracker } from "./backtracking.ts";
 import { PartialTracker } from "./partial_tracker.ts";
 
 export function pickRandomSeed(): number {
@@ -48,6 +48,6 @@ export function* randomPickers(seed: number): IterableIterator<IntPicker> {
   }
 }
 
-export function randomPlayouts(seed: number): PlayoutSource {
-  return new PlayoutSource(new PartialTracker(randomPicker(seed)));
+export function randomPlayouts(seed: number): Backtracker {
+  return new Backtracker(new PartialTracker(randomPicker(seed)));
 }

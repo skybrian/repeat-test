@@ -1,5 +1,5 @@
 import type { Pickable, PickFunction, PickFunctionOpts } from "./pickable.ts";
-import type { PlayoutSource } from "./backtracking.ts";
+import type { Backtracker } from "./backtracking.ts";
 import type { Gen } from "./gen_class.ts";
 import type { Domain } from "./domain_class.ts";
 
@@ -65,7 +65,7 @@ export class Jar<T> {
    * A source of additional examples to test. It won't run out until the jar is
    * empty.
    */
-  private readonly moreExamples: PlayoutSource;
+  private readonly moreExamples: Backtracker;
 
   private taken = 0;
 

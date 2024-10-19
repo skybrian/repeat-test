@@ -6,7 +6,7 @@ import { assert } from "@std/assert";
 import { filtered } from "./results.ts";
 import { Filtered } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
-import { PlayoutSource } from "./backtracking.ts";
+import { Backtracker } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
 import { makePickFunction } from "./build.ts";
 import { Script } from "@/arbitrary.ts";
@@ -99,8 +99,8 @@ export class OrderedTracker implements Tracker {
  *
  * (This order determines how default values are generated.)
  */
-export function orderedPlayouts(): PlayoutSource {
-  return new PlayoutSource(new OrderedTracker());
+export function orderedPlayouts(): Backtracker {
+  return new Backtracker(new OrderedTracker());
 }
 
 /**

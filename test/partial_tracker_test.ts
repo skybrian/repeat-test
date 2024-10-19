@@ -15,17 +15,17 @@ import { alwaysPick, alwaysPickMin, PickRequest } from "../src/picks.ts";
 import { randomPicker, randomPlayouts } from "../src/random.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
 import { generate } from "../src/gen_class.ts";
-import { PlayoutSource } from "../src/backtracking.ts";
+import { Backtracker } from "../src/backtracking.ts";
 
 const bit = new PickRequest(0, 1);
 
 describe("PartialTracker", () => {
   let tracker = new PartialTracker(alwaysPickMin);
-  let stream = new PlayoutSource(tracker);
+  let stream = new Backtracker(tracker);
 
   beforeEach(() => {
     tracker = new PartialTracker(alwaysPickMin);
-    stream = new PlayoutSource(tracker);
+    stream = new Backtracker(tracker);
   });
 
   describe("constructor", () => {
@@ -165,7 +165,7 @@ describe("PartialTracker", () => {
 
     repeatTest(underlyingPickers, (underlying) => {
       const tracker = new PartialTracker(underlying);
-      const stream = new PlayoutSource(tracker);
+      const stream = new Backtracker(tracker);
       const seen = new Set<string>();
       for (let i = 0; i < 1000; i++) {
         assert(stream.startAt(0));
