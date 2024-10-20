@@ -58,27 +58,6 @@ function cacheResult<T>(props: Props<T>): () => T {
   return cacheOnce(val, regenerate);
 }
 
-function mutateImpl<T>(
-  props: Props<T>,
-  editors: StepEditor,
-): Props<T> | typeof filtered {
-  const { script, calls } = props;
-
-  const buf = new CallBuffer(calls);
-  const next = calls.tryEdit(script, editors, buf);
-  if (next === filtered) {
-    return filtered;
-  } else if (!buf.changed) {
-    return props;
-  }
-
-  return {
-    script,
-    calls: buf.takeLog(),
-    val: next,
-  };
-}
-
 export class MutableGen<T> {
   #props: Props<T>;
   #gen: Gen<T>;
@@ -96,14 +75,21 @@ export class MutableGen<T> {
     editor: StepEditor,
     test?: (val: T) => boolean,
   ): boolean {
-    const next = mutateImpl(this.#props, editor);
-    if (next === filtered) {
-      return false; // edits didn't apply
-    }
+    const { script, calls } = this.#props;
 
-    if (next === this.#props) {
+    const buf = new CallBuffer(calls);
+    const nextVal = calls.tryEdit(script, editor, buf);
+    if (nextVal === filtered) {
+      return false; // edits didn't apply
+    } else if (!buf.changed) {
       return true; // edits applied, but had no effect
     }
+
+    const next = {
+      script,
+      calls: buf.takeLog(),
+      val: nextVal,
+    };
 
     const cache = cacheResult(next);
     if (test && !test(cache())) {
