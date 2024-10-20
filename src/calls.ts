@@ -34,14 +34,26 @@ export class CallBuffer implements PickLogger {
     vals: [],
   };
 
-  private before: Iterator<Call<unknown>>;
+  #before: Iterator<Call<unknown>>;
+  #changed = false;
 
-  constructor(origin?: CallLog) {
-    this.before = origin?.calls ?? [][Symbol.iterator]();
+  constructor(readonly origin?: CallLog) {
+    this.#before = origin?.calls ?? [][Symbol.iterator]();
   }
 
   get complete(): boolean {
     return this.props.pickLog.nextViewLength === 0;
+  }
+
+  /** Returns the number of calls recorded. */
+  get length(): number {
+    return this.props.starts.length;
+  }
+
+  /** Returns true if the recorded log is different from the origin. */
+  get changed(): boolean {
+    return this.#changed || !this.complete ||
+      this.length !== this.origin?.length;
   }
 
   reset() {
@@ -53,6 +65,11 @@ export class CallBuffer implements PickLogger {
     };
   }
 
+  setChanged() {
+    // TODO: compare picks as they're added?
+    this.#changed = true;
+  }
+
   push(req: Range, reply: number): void {
     this.props.pickLog.push(req, reply);
   }
@@ -62,18 +79,50 @@ export class CallBuffer implements PickLogger {
   }
 
   endPick(): void {
-    const { pickLog, starts, callReqs, vals } = this.props;
+    const { pickLog } = this.props;
+    assert(pickLog.nextViewLength === 1);
 
-    const start = pickLog.viewStart++;
-    assert(start + 1 === pickLog.length);
+    const req = pickLog.reqs[pickLog.viewStart];
+    const reply = pickLog.replies[pickLog.viewStart];
+    this.endCall(req, reply);
 
-    starts.push(start);
-    callReqs.push(pickLog.reqs[start]);
-    vals.push(pickLog.replies[start]);
-    this.before.next();
+    const next = this.#before.next();
+    if (next.done || next.value.arg !== req || next.value.val !== reply) {
+      this.#changed = true;
+    }
   }
 
   endScript<T>(arg: Script<T>, val: T): void {
+    const shouldCache = arg.cachable && Object.isFrozen(val);
+    const storedVal = shouldCache ? val : regen;
+    this.endCall(arg, storedVal);
+
+    const next = this.#before.next();
+    if (next.done || next.value.arg !== arg || next.value.val !== storedVal) {
+      this.#changed = true;
+    }
+  }
+
+  /** Preserves a call from the original log. */
+  keep(): void {
+    assert(this.complete);
+
+    const next = this.#before.next();
+    assert(!next.done);
+    const { arg, picks, val } = next.value;
+
+    this.props.pickLog.pushAll(picks.reqs, picks.replies);
+    this.endCall(arg, val);
+  }
+
+  takeLog(): CallLog {
+    assert(this.complete);
+    const log = new CallLog(this.props);
+    this.reset();
+    return log;
+  }
+
+  private endCall<T>(arg: Range | Script<T>, val: T | typeof regen): void {
     const { pickLog, starts, callReqs, vals } = this.props;
 
     // record the start of this call's picks
@@ -82,30 +131,7 @@ export class CallBuffer implements PickLogger {
 
     // record the call
     callReqs.push(arg);
-    const shouldCache = arg.cachable && Object.isFrozen(val);
-    vals.push(shouldCache ? val : regen);
-    this.before.next();
-  }
-
-  /** Preserves a call from the original log. */
-  keep(): void {
-    assert(this.complete);
-    const next = this.before.next();
-    assert(!next.done);
-    const { arg, picks, val } = next.value;
-    this.props.pickLog.pushAll(picks.reqs, picks.replies);
-    if (arg instanceof Script) {
-      this.endScript(arg, val);
-    } else {
-      this.endPick();
-    }
-  }
-
-  takeLog(): CallLog {
-    assert(this.complete);
-    const log = new CallLog(this.props);
-    this.reset();
-    return log;
+    vals.push(val);
   }
 }
 
@@ -280,10 +306,13 @@ function buildScriptWithEdits<T>(
     return before.val as T;
   }
   const responder = new PickEditor(before.picks.replies, editor);
-  const pick = makePickFunction(responder, opts);
+  const pick = makePickFunction(responder, { log: opts.log }); // log picks only
   const val = script.buildFrom(pick);
   if (opts.logCalls) {
     opts.log?.endScript(script, val);
+  }
+  if (responder.edited) {
+    opts.log?.setChanged();
   }
   return val;
 }
