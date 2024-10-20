@@ -39,8 +39,9 @@ function assertNoChange<T>(
   dom: Domain<T>,
   interesting: (arg: T) => boolean,
   start: T,
+  console?: SystemConsole,
 ) {
-  assertShrinks(dom, interesting, start, start);
+  assertShrinks(dom, interesting, start, start, console);
 }
 
 function seedFrom(reqs: PickRequest[], replies: number[]): Gen<number[]> {
@@ -255,7 +256,11 @@ describe("shrink", () => {
     const pair = dom.record({ a: dom.int32(), b: dom.string() });
     it("can't shrink when there's no alternative", () => {
       repeatTest(pair, ({ a, b }) => {
-        assertNoChange(pair, (r) => r.a === a && r.b === b, { a, b });
+        assertNoChange(
+          pair,
+          (r) => r.a === a && r.b === b,
+          { a, b },
+        );
       }, { reps: 10 });
     });
     it("shrinks all fields to their minimums", () => {

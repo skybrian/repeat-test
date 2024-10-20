@@ -353,7 +353,7 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
         result[key] = pick(shape[key]);
       }
       return result as T;
-    });
+    }, { splitCalls: keys.length > 1 });
 
     return new Arbitrary(build, { maxSize, dryRun: false });
   }
