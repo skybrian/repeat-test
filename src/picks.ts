@@ -225,6 +225,11 @@ export class PickLog {
     this.reqs.push(req);
     this.replies.push(reply);
   }
+
+  pushAll(reqs: Range[], replies: number[]): void {
+    this.reqs.push(...reqs);
+    this.replies.push(...replies);
+  }
 }
 
 export class PickView {

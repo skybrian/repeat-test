@@ -13,9 +13,47 @@ const cachableRoll = Script.make("rollStr", (pick) => {
   return `rolled ${pick(roll)}`;
 }, { cachable: true });
 
+const readsCachedRoll = Script.make("readsCache", (pick) => {
+  return pick(cachableRoll);
+});
+
 const differentRoll = Script.make("rollStr", (pick) => {
   return `rolled ${pick(roll)}`;
 }, { cachable: true });
+
+describe("CallBuffer", () => {
+  let buf = new CallBuffer();
+
+  beforeEach(() => {
+    buf = new CallBuffer();
+  });
+
+  describe("keep", () => {
+    it("preserves a pick call from a previous log", () => {
+      buf.push({ min: 1, max: 6 }, 3);
+      buf.endPick();
+      const log = buf.takeLog();
+      assertEquals(log.build(roll), 3);
+
+      const buf2 = new CallBuffer(log);
+      buf2.keep();
+      const log2 = buf2.takeLog();
+      assertEquals(log2.build(roll), 3);
+    });
+
+    it("preserves a cached script call from a previous log", () => {
+      buf.push({ min: 1, max: 6 }, 3);
+      buf.endScript(cachableRoll, "cached");
+      const log = buf.takeLog();
+      assertEquals(log.build(readsCachedRoll), "cached");
+
+      const buf2 = new CallBuffer(log);
+      buf2.keep();
+      const log2 = buf2.takeLog();
+      assertEquals(log2.build(readsCachedRoll), "cached");
+    });
+  });
+});
 
 describe("CallLog", () => {
   let buf = new CallBuffer();

@@ -1,12 +1,12 @@
 import { type PickLogger, usePicks } from "./build.ts";
-import type { Script } from "./script_class.ts";
 import type { Range } from "./picks.ts";
+import type { Pickable } from "./pickable.ts";
 
 import { assert } from "@std/assert";
 import { PickLog, PickRequest, PickView } from "./picks.ts";
 import { filtered } from "./results.ts";
-import type { Pickable } from "./pickable.ts";
 import { Filtered, type PickFunctionOpts } from "@/arbitrary.ts";
+import { Script } from "./script_class.ts";
 
 export const regen = Symbol("regen");
 
@@ -30,6 +30,16 @@ export class CallBuffer implements PickLogger {
     callReqs: [],
     vals: [],
   };
+
+  private before: Iterator<Call<unknown>>;
+
+  constructor(origin?: CallLog) {
+    this.before = origin?.calls ?? [][Symbol.iterator]();
+  }
+
+  get complete(): boolean {
+    return this.props.pickLog.nextViewLength === 0;
+  }
 
   reset() {
     this.props = {
@@ -57,6 +67,7 @@ export class CallBuffer implements PickLogger {
     starts.push(start);
     callReqs.push(pickLog.reqs[start]);
     vals.push(pickLog.replies[start]);
+    this.before.next();
   }
 
   endScript<T>(arg: Script<T>, val: T): void {
@@ -70,9 +81,25 @@ export class CallBuffer implements PickLogger {
     callReqs.push(arg);
     const shouldCache = arg.cachable && Object.isFrozen(val);
     vals.push(shouldCache ? val : regen);
+    this.before.next();
+  }
+
+  /** Preserves a call from the original log. */
+  keep(): void {
+    assert(this.complete);
+    const next = this.before.next();
+    assert(!next.done);
+    const { arg, picks, val } = next.value;
+    this.props.pickLog.pushAll(picks.reqs, picks.replies);
+    if (arg instanceof Script) {
+      this.endScript(arg, val);
+    } else {
+      this.endPick();
+    }
   }
 
   takeLog(): CallLog {
+    assert(this.complete);
     const log = new CallLog(this.props);
     this.reset();
     return log;
