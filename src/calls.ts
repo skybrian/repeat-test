@@ -1,12 +1,15 @@
-import { type PickLogger, usePicks } from "./build.ts";
+import type { PickLogger } from "./build.ts";
 import type { Range } from "./picks.ts";
 import type { Pickable } from "./pickable.ts";
+import type { Edit, StepEditor, StreamEditor } from "./edits.ts";
 
 import { assert } from "@std/assert";
-import { PickLog, PickRequest, PickView } from "./picks.ts";
-import { filtered } from "./results.ts";
 import { Filtered, type PickFunctionOpts } from "@/arbitrary.ts";
+import { filtered } from "./results.ts";
+import { PickLog, PickRequest, PickView } from "./picks.ts";
 import { Script } from "./script_class.ts";
+import { makePickFunction } from "./build.ts";
+import { keep, PickEditor } from "./edits.ts";
 
 export const regen = Symbol("regen");
 
@@ -116,10 +119,6 @@ export class CallLog {
     return this.props.starts.length;
   }
 
-  get reqs(): Range[] {
-    return this.props.pickLog.reqs;
-  }
-
   get replies(): number[] {
     return this.props.pickLog.replies;
   }
@@ -140,7 +139,12 @@ export class CallLog {
   }
 
   repliesAt(index: number): number[] {
-    assert(index >= 0 && index < this.length);
+    assert(index >= 0);
+
+    if (index >= this.length) {
+      return [];
+    }
+
     const { start, end } = this.rangeAt(index);
     return this.props.pickLog.replies.slice(start, end);
   }
@@ -164,28 +168,40 @@ export class CallLog {
     return generateCalls(this);
   }
 
-  buildAt<T>(req: Pickable<T>, index: number): T {
-    const call = this.callAt(index);
-    if (call.val !== regen && call.arg === req) {
-      // Skip the script call and return the cached value.
-      return call.val as T;
-    }
-    const picks = usePicks(...call.picks.replies);
-    return req.buildFrom(picks);
-  }
-
   /**
    * Builds a pickable using this log.
    */
   build<T>(target: Pickable<T>): T | typeof filtered {
     try {
-      return target.buildFrom(this.makePlaybackPickFunction());
+      return target.buildFrom(makePickFunctionWithEdits(this, () => keep, {}));
     } catch (e) {
       if (e instanceof Filtered) {
         return filtered;
       }
       throw e;
     }
+  }
+
+  /**
+   * Builds a script using this log after applying the given edits.
+   */
+  tryEdit<T>(
+    target: Script<T>,
+    edits: StepEditor,
+    opts?: { log?: CallBuffer },
+  ): T | typeof filtered {
+    const log = opts?.log;
+    const pick = makePickFunctionWithEdits(this, edits, {
+      log,
+      logCalls: target.splitCalls,
+    });
+
+    const val = target.build(pick);
+
+    if (val !== filtered && !target.splitCalls) {
+      log?.endScript(target, val);
+    }
+    return val;
   }
 
   private rangeAt(index: number): { start: number; end: number } {
@@ -197,34 +213,77 @@ export class CallLog {
       : pickLog.length;
     return { start, end };
   }
+}
 
-  private makePlaybackPickFunction() {
-    const { pickLog, starts } = this.props;
-    let index = 0;
+function makePickFunctionWithEdits(
+  origin: CallLog,
+  edits: StepEditor,
+  outerOpts: { log?: CallBuffer; logCalls?: boolean },
+) {
+  let index = 0;
 
-    const pick_function = <T>(
-      req: Pickable<T>,
-      opts?: PickFunctionOpts<T>,
-    ): T => {
-      if (req instanceof PickRequest) {
-        if (index >= starts.length) {
-          return req.min as T;
-        }
-        const reply = pickLog.replies[starts[index++]];
-        return (req.inRange(reply) ? reply : req.min) as T;
-      }
+  const pick_function = <T>(
+    req: Pickable<T>,
+    opts?: PickFunctionOpts<T>,
+  ): T => {
+    if (req instanceof PickRequest) {
+      const before = origin.repliesAt(index);
+      const edit = edits(index)(0, before[0], req);
+      index++;
+      return buildPickWithEdits(req, before, edit, outerOpts);
+    }
 
-      // handle a script call
-      const val = this.buildAt(req, index++);
+    // handle a script call
+    const script = Script.from(req);
+    const before = origin.callAt(index);
 
-      const accept = opts?.accept;
-      if (accept !== undefined && !accept(val)) {
-        throw new Filtered("not accepted");
-      }
+    const val = buildScriptWithEdits(script, before, edits(index), outerOpts);
 
-      return val;
-    };
+    const accept = opts?.accept;
+    if (accept !== undefined && !accept(val)) {
+      throw new Filtered("not accepted");
+    }
 
-    return pick_function;
+    index++;
+    return val;
+  };
+
+  return pick_function;
+}
+
+function buildPickWithEdits<T>(
+  req: PickRequest,
+  before: number[],
+  edit: Edit,
+  opts: { log?: CallBuffer; logCalls?: boolean },
+): T {
+  const responder = new PickEditor(before, () => edit);
+  const reply = responder.nextPick(req);
+
+  opts.log?.push(req, reply);
+  if (opts.logCalls) {
+    opts.log?.endPick();
   }
+
+  return reply as T;
+}
+
+function buildScriptWithEdits<T>(
+  script: Script<T>,
+  before: Call<unknown>,
+  editor: StreamEditor,
+  opts: { log?: CallBuffer; logCalls?: boolean },
+): T {
+  if (editor === keep && before.val !== regen && before.arg === script) {
+    // Skip the script call and return the cached value.
+    opts.log?.keep();
+    return before.val as T;
+  }
+  const responder = new PickEditor(before.picks.replies, editor);
+  const pick = makePickFunction(responder, opts);
+  const val = script.buildFrom(pick);
+  if (opts.logCalls) {
+    opts.log?.endScript(script, val);
+  }
+  return val;
 }

@@ -25,9 +25,9 @@ export type ScriptOpts = {
   readonly cachable?: boolean;
 
   /**
-   * If true, when recording the picks that the script makes, they will be grouped by call.
+   * Turns on individual call logging for this script.
    */
-  readonly logCalls?: boolean;
+  readonly splitCalls?: boolean;
 };
 
 /**
@@ -56,8 +56,8 @@ export class Script<T> implements Pickable<T> {
     return this.#opts?.cachable === true;
   }
 
-  get logCalls(): boolean {
-    return this.#opts?.logCalls === true;
+  get splitCalls(): boolean {
+    return this.#opts?.splitCalls === true;
   }
 
   get buildFrom(): BuildFunction<T> {

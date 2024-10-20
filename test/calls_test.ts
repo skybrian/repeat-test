@@ -4,10 +4,15 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { Filtered, type Pickable, PickRequest, Script } from "@/arbitrary.ts";
 import { filtered } from "../src/results.ts";
 import { CallBuffer } from "../src/calls.ts";
+import { keep, replaceOnce } from "../src/edits.ts";
 
 const roll = Script.make("roll", (pick) => {
   return pick(new PickRequest(1, 6));
 });
+
+const rollStr = Script.make("rollStr", (pick) => {
+  return `rolled ${pick(roll)}`;
+}, { splitCalls: true });
 
 const cachableRoll = Script.make("rollStr", (pick) => {
   return `rolled ${pick(roll)}`;
@@ -15,7 +20,7 @@ const cachableRoll = Script.make("rollStr", (pick) => {
 
 const readsCachedRoll = Script.make("readsCache", (pick) => {
   return pick(cachableRoll);
-});
+}, { splitCalls: true });
 
 const differentRoll = Script.make("rollStr", (pick) => {
   return `rolled ${pick(roll)}`;
@@ -276,6 +281,96 @@ describe("CallLog", () => {
         throw new Error("oops");
       });
       assertThrows(() => log.build(throws), Error, "oops");
+    });
+  });
+
+  describe("tryEdit", () => {
+    describe("for a script that makes one pick (unsplit)", () => {
+      it("makes no change if there is no edit", () => {
+        buf.push({ min: 1, max: 6 }, 2);
+        buf.endPick();
+        const log = buf.takeLog();
+
+        buf = new CallBuffer(log);
+        const val = log.tryEdit(roll, () => keep, { log: buf });
+        assertEquals(val, 2);
+        assertEquals(buf.takeLog().build(roll), 2);
+      });
+
+      it("edits the pick", () => {
+        buf.push({ min: 1, max: 6 }, 2);
+        buf.endPick();
+        const log = buf.takeLog();
+
+        buf = new CallBuffer(log);
+        const val = log.tryEdit(roll, replaceOnce(0, 0, 0), { log: buf });
+        assertEquals(val, 1);
+        assertEquals(buf.takeLog().build(roll), 1);
+      });
+    });
+
+    describe("for a script that makes one pick (split)", () => {
+      const roll = Script.make("roll", (pick) => {
+        return pick(new PickRequest(1, 6));
+      }, { splitCalls: true });
+      it("edits the pick", () => {
+        buf.push({ min: 1, max: 6 }, 2);
+        buf.endPick();
+        const log = buf.takeLog();
+
+        buf = new CallBuffer(log);
+        const val = log.tryEdit(roll, replaceOnce(0, 0, 0), { log: buf });
+        assertEquals(val, 1);
+        assertEquals(buf.takeLog().build(roll), 1);
+      });
+    });
+
+    describe("for a script that calls a script (split)", () => {
+      it("makes no change if there is no edit (uncached)", () => {
+        buf.push({ min: 1, max: 6 }, 2);
+        buf.endScript(roll, -1);
+        const log = buf.takeLog();
+
+        buf = new CallBuffer(log);
+        const val = log.tryEdit(rollStr, () => keep, { log: buf });
+        assertEquals(val, "rolled 2"); // ignored cached value
+        assertEquals(buf.takeLog().build(rollStr), "rolled 2");
+      });
+
+      it("uses a cached value when there is no change)", () => {
+        buf.push({ min: 1, max: 6 }, 2);
+        buf.endScript(cachableRoll, "cached");
+        const log = buf.takeLog();
+
+        buf = new CallBuffer(log);
+        const val = log.tryEdit(readsCachedRoll, () => keep, { log: buf });
+        assertEquals(val, "cached");
+        assertEquals(buf.takeLog().build(readsCachedRoll), "cached");
+      });
+
+      it("edits a pick (uncached)", () => {
+        buf.push({ min: 1, max: 6 }, 2);
+        buf.endScript(roll, -1);
+        const log = buf.takeLog();
+
+        buf = new CallBuffer(log);
+        const val = log.tryEdit(rollStr, replaceOnce(0, 0, 0), { log: buf });
+        assertEquals(val, "rolled 1");
+        assertEquals(buf.takeLog().build(rollStr), "rolled 1");
+      });
+
+      it("doesn't use the cached value when a pick is edited", () => {
+        buf.push({ min: 1, max: 6 }, 2);
+        buf.endScript(cachableRoll, "cached");
+        const log = buf.takeLog();
+
+        buf = new CallBuffer(log);
+        const val = log.tryEdit(readsCachedRoll, replaceOnce(0, 0, 5), {
+          log: buf,
+        });
+        assertEquals(val, "rolled 6");
+        assertEquals(buf.takeLog().build(readsCachedRoll), "rolled 6");
+      });
     });
   });
 });

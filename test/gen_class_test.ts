@@ -37,7 +37,7 @@ const pruned = Script.make("never", () => {
 const multiStep = bit.then("multi-step", (a, pick) => {
   const b = pick(PickRequest.bit);
   return `(${a}, ${b})`;
-}, { logCalls: true });
+}, { splitCalls: true });
 
 const multiStepMutable = mutable.then(
   "multi-step mutable",

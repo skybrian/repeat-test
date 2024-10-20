@@ -182,10 +182,6 @@ export class Gen<T> implements Success<T> {
     return this.#props.script.name;
   }
 
-  get reqs(): Range[] {
-    return this.#props.calls.reqs;
-  }
-
   get replies(): number[] {
     return this.#props.calls.replies;
   }
@@ -272,14 +268,14 @@ export function generate<T>(
     const pick = makePickFunction(playouts, {
       ...opts,
       log,
-      logCalls: script.logCalls,
+      logCalls: script.splitCalls,
     });
 
     const next = script.build(pick);
     if (next === filtered) {
       continue;
     }
-    if (!script.logCalls) {
+    if (!script.splitCalls) {
       // Treat it as a single call.
       log.endScript(script, next);
     }
