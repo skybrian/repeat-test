@@ -205,35 +205,33 @@ describe("MutableGen", () => {
       });
     });
 
-    // TODO
-    //
-    // it("can edit the first step of a multi-step build", () => {
-    //   const original = Gen.mustBuild(multiStep, [1, 1]);
-    //   assertEquals(original.val, `(1, 1)`);
+    it("can edit the first step of a multi-step build", () => {
+      const original = Gen.mustBuild(multiStep, [1, 1]);
+      assertEquals(original.val, `(1, 1)`);
 
-    //   const mut = original.toMutable();
-    //   assert(mut.tryMutate((i) => i === 0 ? snip : keep));
-    //   assertEquals(propsFromGen(mut.gen), {
-    //     name: "multi-step",
-    //     val: `(0, 1)`,
-    //     reqs: [PickRequest.bit, PickRequest.bit],
-    //     replies: [0, 1],
-    //   });
-    // });
+      const mut = original.toMutable();
+      assert(mut.tryMutate((i) => i === 0 ? snip : keep));
+      assertEquals(propsFromGen(mut.gen), {
+        name: "multi-step",
+        val: `(0, 1)`,
+        reqs: [PickRequest.bit, PickRequest.bit],
+        replies: [0, 1],
+      });
+    });
 
-    // it("can edit the second step of a multi-step build", () => {
-    //   const original = Gen.mustBuild(multiStep, [1, 1]);
-    //   assertEquals(original.val, `(1, 1)`);
+    it("can edit the second step of a multi-step build", () => {
+      const original = Gen.mustBuild(multiStep, [1, 1]);
+      assertEquals(original.val, `(1, 1)`);
 
-    //   const mut = original.toMutable();
-    //   assert(mut.tryMutate((i) => i === 1 ? snip : keep));
-    //   assertEquals(propsFromGen(mut.gen), {
-    //     name: "multi-step",
-    //     val: `(1, 0)`,
-    //     reqs: [PickRequest.bit, PickRequest.bit],
-    //     replies: [1, 0],
-    //   });
-    // });
+      const mut = original.toMutable();
+      assert(mut.tryMutate((i) => i === 1 ? snip : keep));
+      assertEquals(propsFromGen(mut.gen), {
+        name: "multi-step",
+        val: `(1, 0)`,
+        reqs: [PickRequest.bit, PickRequest.bit],
+        replies: [1, 0],
+      });
+    });
 
     const evenRoll = Script.make("evenRoll", (pick) => {
       const roll = pick(new PickRequest(1, 6));

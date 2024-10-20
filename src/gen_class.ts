@@ -3,15 +3,15 @@ import type { Pickable } from "./pickable.ts";
 import type { PickView, Range } from "./picks.ts";
 import type { StepEditor, StepKey } from "./edits.ts";
 import type { Backtracker } from "./backtracking.ts";
+import type { CallLog } from "./calls.ts";
 
 import { assert } from "@std/assert";
 import { failure, filtered } from "./results.ts";
 import { Script } from "./script_class.ts";
 import { PlaybackPicker } from "./picks.ts";
-import { keep, PickEditor } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
 import { makePickFunction, usePicks } from "./build.ts";
-import { CallBuffer, type CallLog } from "./calls.ts";
+import { CallBuffer } from "./calls.ts";
 
 type Props<T> = {
   readonly script: Script<T>;
@@ -64,23 +64,14 @@ function mutateImpl<T>(
 ): Props<T> | typeof filtered {
   const { script, calls } = props;
 
-  const editor = editors(0);
-
-  if (editor === keep) {
-    // no change
-    return props;
-  }
-
-  const picks = new PickEditor(calls.replies, editor);
-  const buf = new CallBuffer();
-  const next = script.build(makePickFunction(picks, { log: buf }));
+  const buf = new CallBuffer(calls);
+  const next = calls.tryEdit(script, editors, { log: buf });
   if (next === filtered) {
-    return filtered; // failed edit
-  } else if (!picks.edited) {
+    return filtered;
+  } else if (!buf.changed) {
     return props;
   }
 
-  buf.endScript(script, next);
   return {
     script,
     calls: buf.takeLog(),

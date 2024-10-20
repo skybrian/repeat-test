@@ -216,18 +216,25 @@ export class CallLog {
     edits: StepEditor,
     opts?: { log?: CallBuffer },
   ): T | typeof filtered {
+    if (!target.splitCalls) {
+      // only record the top-level call.
+      const log = opts?.log;
+      const picks = new PickEditor(this.replies, edits(0));
+      const pick = makePickFunction(picks, { log });
+      const val = target.build(pick);
+      log?.endScript(target, val);
+      if (picks.edited) {
+        log?.setChanged();
+      }
+      return val;
+    }
+
     const log = opts?.log;
     const pick = makePickFunctionWithEdits(this, edits, {
       log,
-      logCalls: target.splitCalls,
+      logCalls: true,
     });
-
-    const val = target.build(pick);
-
-    if (val !== filtered && !target.splitCalls) {
-      log?.endScript(target, val);
-    }
-    return val;
+    return target.build(pick);
   }
 
   private rangeAt(index: number): { start: number; end: number } {
@@ -300,7 +307,10 @@ function buildScriptWithEdits<T>(
   editor: StreamEditor,
   opts: { log?: CallBuffer; logCalls?: boolean },
 ): T {
-  if (editor === keep && before.val !== regen && before.arg === script) {
+  if (
+    editor === keep && before.val !== regen &&
+    before.arg === script
+  ) {
     // Skip the script call and return the cached value.
     opts.log?.keep();
     return before.val as T;
