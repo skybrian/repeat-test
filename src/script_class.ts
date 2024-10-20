@@ -22,7 +22,12 @@ export interface HasScript<T> extends Pickable<T> {
 }
 
 export type ScriptOpts = {
-  readonly cachable: boolean;
+  readonly cachable?: boolean;
+
+  /**
+   * If true, when recording the picks that the script makes, they will be grouped by call.
+   */
+  readonly logCalls?: boolean;
 };
 
 /**
@@ -51,6 +56,10 @@ export class Script<T> implements Pickable<T> {
     return this.#opts?.cachable === true;
   }
 
+  get logCalls(): boolean {
+    return this.#opts?.logCalls === true;
+  }
+
   get buildFrom(): BuildFunction<T> {
     return this.#build;
   }
@@ -75,14 +84,12 @@ export class Script<T> implements Pickable<T> {
     then: ThenFunction<T, Out>,
     opts?: ScriptOpts,
   ): Script<Out> {
-    opts = opts ?? { cachable: false };
-
     const build = (pick: PickFunction): Out => {
       const val = this.buildFrom(pick);
       return then(val, pick);
     };
 
-    return Script.make(name, build);
+    return Script.make(name, build, opts);
   }
 
   static make<T>(

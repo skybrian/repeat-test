@@ -104,9 +104,14 @@ export type MakePickFunctionOpts = {
   limit?: number;
 
   /**
-   * If set, top-level calls to pick() will be recorded to this log.
+   * If set, picks will be recorded to this log.
    */
   log?: PickLogger;
+
+  /**
+   * If set, calls will also be recorded to the log.
+   */
+  logCalls?: boolean;
 };
 
 export function makePickFunction<T>(
@@ -116,7 +121,8 @@ export function makePickFunction<T>(
   const limit = opts?.limit;
 
   const log = opts?.log;
-  let level = 0;
+  const logCalls = opts?.logCalls;
+  let level = logCalls ? 0 : 1;
   let pickCount = 0;
 
   /** Builds a script, retrying if it throws Filtered. */

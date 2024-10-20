@@ -83,6 +83,7 @@ function mutateImpl<T>(
     return props;
   }
 
+  buf.endScript(script, next);
   return {
     script,
     calls: buf.takeLog(),
@@ -289,6 +290,7 @@ export function generate<T>(
     if (next === filtered) {
       continue;
     }
+    log.endScript(script, next);
     return new Gen({
       script,
       calls: log.takeLog(),
