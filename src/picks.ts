@@ -247,6 +247,9 @@ export class PickView {
   }
 
   diffAt(index: number): number {
+    if (index >= this.length) {
+      return 0;
+    }
     const req = this.log.reqs[this.start + index];
     const reply = this.log.replies[this.start + index];
     return reply - req.min;
@@ -278,9 +281,7 @@ export class PickView {
    */
   get trimmedLength(): number {
     let last = this.end - 1;
-    while (
-      last >= this.start && this.log.replies[last] === this.log.reqs[last].min
-    ) {
+    while (last >= this.start && this.diffAt(last) === 0) {
       last--;
     }
     return last + 1;

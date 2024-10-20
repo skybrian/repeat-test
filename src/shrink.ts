@@ -204,13 +204,8 @@ export class Shrinker<T> {
     offset: number,
   ): boolean {
     this.console.log("shrinking step:", stepKey, "offset:", offset);
-    const picks = this.seed.getPicks(stepKey);
 
-    if (picks.trimmedLength <= offset) {
-      return false; // No change; nothing to shrink
-    }
-
-    const diff = picks.diffAt(offset);
+    const diff = this.seed.getPicks(stepKey).diffAt(offset);
     if (diff === 0) {
       return false; // No change; already at the minimum
     }
