@@ -116,6 +116,10 @@ export class CallLog {
     return this.props.starts.length;
   }
 
+  get reqs(): Range[] {
+    return this.props.pickLog.reqs;
+  }
+
   get replies(): number[] {
     return this.props.pickLog.replies;
   }
@@ -125,12 +129,20 @@ export class CallLog {
   }
 
   picksAt(index: number): PickView {
-    const { starts, pickLog } = this.props;
+    assert(index >= 0);
 
-    const end = (index + 1 < starts.length)
-      ? starts[index + 1]
-      : pickLog.length;
-    return new PickView(pickLog, starts[index], end);
+    if (index >= this.length) {
+      return PickView.empty;
+    }
+
+    const { start, end } = this.rangeAt(index);
+    return new PickView(this.props.pickLog, start, end);
+  }
+
+  repliesAt(index: number): number[] {
+    assert(index >= 0 && index < this.length);
+    const { start, end } = this.rangeAt(index);
+    return this.props.pickLog.replies.slice(start, end);
   }
 
   callAt(index: number): Call<unknown> {
@@ -174,6 +186,16 @@ export class CallLog {
       }
       throw e;
     }
+  }
+
+  private rangeAt(index: number): { start: number; end: number } {
+    const { starts, pickLog } = this.props;
+    assert(index >= 0 && index < starts.length);
+    const start = starts[index];
+    const end = (index + 1 < starts.length)
+      ? starts[index + 1]
+      : pickLog.length;
+    return { start, end };
   }
 
   private makePlaybackPickFunction() {

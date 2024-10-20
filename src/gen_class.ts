@@ -1,13 +1,13 @@
 import type { Failure, Success } from "./results.ts";
 import type { Pickable } from "./pickable.ts";
-import type { Range } from "./picks.ts";
+import type { PickView, Range } from "./picks.ts";
 import type { StepEditor, StepKey } from "./edits.ts";
 import type { Backtracker } from "./backtracking.ts";
 
 import { assert } from "@std/assert";
 import { failure, filtered } from "./results.ts";
 import { Script } from "./script_class.ts";
-import { PickView, PlaybackPicker } from "./picks.ts";
+import { PlaybackPicker } from "./picks.ts";
 import { keep, PickEditor } from "./edits.ts";
 import { onePlayout } from "./backtracking.ts";
 import { makePickFunction, usePicks } from "./build.ts";
@@ -156,7 +156,6 @@ export class Gen<T> implements Success<T> {
   readonly #props: Props<T>;
   readonly #result: () => T;
 
-  #picksByKey: Map<StepKey, PickView>;
   #reqs: Range[] | undefined;
   #replies: number[] | undefined;
 
@@ -172,8 +171,6 @@ export class Gen<T> implements Success<T> {
   ) {
     this.#props = props;
     this.#result = result ?? cacheResult(props);
-    this.#picksByKey = new Map();
-    this.#picksByKey.set(0, props.calls.pickView);
   }
 
   /** Satisfies the Success interface. */
@@ -186,29 +183,15 @@ export class Gen<T> implements Success<T> {
   }
 
   get reqs(): Range[] {
-    if (this.#reqs === undefined) {
-      const reqs: Range[] = [];
-      for (const picks of this.#picksByKey.values()) {
-        reqs.push(...picks.reqs);
-      }
-      this.#reqs = reqs;
-    }
-    return this.#reqs;
+    return this.#props.calls.reqs;
   }
 
   get replies(): number[] {
-    if (this.#replies === undefined) {
-      const replies: number[] = [];
-      for (const picks of this.#picksByKey.values()) {
-        replies.push(...picks.replies);
-      }
-      this.#replies = replies;
-    }
-    return this.#replies;
+    return this.#props.calls.replies;
   }
 
   get picks(): PickView {
-    return PickView.wrap(this.reqs, this.replies);
+    return this.#props.calls.pickView;
   }
 
   /**
@@ -217,12 +200,14 @@ export class Gen<T> implements Success<T> {
    * (Some steps might use zero picks.)
    */
   get stepKeys(): StepKey[] {
-    return Array.from(this.#picksByKey.keys());
+    const len = this.#props.calls.length;
+    return new Array(len).fill(0).map((_, i) => i);
   }
 
   /** Returns the picks for the given step, or an empty PickList if not found. */
   getPicks(key: StepKey): PickView {
-    return this.#picksByKey.get(key) ?? PickView.empty;
+    assert(typeof key === "number");
+    return this.#props.calls.picksAt(key);
   }
 
   /**
@@ -284,13 +269,20 @@ export function generate<T>(
 
   while (playouts.startAt(0)) {
     const log = new CallBuffer();
-    const pick = makePickFunction(playouts, { ...opts, log });
+    const pick = makePickFunction(playouts, {
+      ...opts,
+      log,
+      logCalls: script.logCalls,
+    });
 
     const next = script.build(pick);
     if (next === filtered) {
       continue;
     }
-    log.endScript(script, next);
+    if (!script.logCalls) {
+      // Treat it as a single call.
+      log.endScript(script, next);
+    }
     return new Gen({
       script,
       calls: log.takeLog(),
