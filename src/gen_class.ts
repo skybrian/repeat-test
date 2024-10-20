@@ -65,7 +65,7 @@ function mutateImpl<T>(
   const { script, calls } = props;
 
   const buf = new CallBuffer(calls);
-  const next = calls.tryEdit(script, editors, { log: buf });
+  const next = calls.tryEdit(script, editors, buf);
   if (next === filtered) {
     return filtered;
   } else if (!buf.changed) {

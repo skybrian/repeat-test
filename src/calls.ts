@@ -199,7 +199,7 @@ export class CallLog {
    */
   build<T>(target: Pickable<T>): T | typeof filtered {
     try {
-      return target.buildFrom(makePickFunctionWithEdits(this, () => keep, {}));
+      return target.buildFrom(makePickFunctionWithEdits(this, () => keep));
     } catch (e) {
       if (e instanceof Filtered) {
         return filtered;
@@ -214,11 +214,10 @@ export class CallLog {
   tryEdit<T>(
     target: Script<T>,
     edits: StepEditor,
-    opts?: { log?: CallBuffer },
+    log: CallBuffer,
   ): T | typeof filtered {
     if (!target.splitCalls) {
       // only record the top-level call.
-      const log = opts?.log;
       const picks = new PickEditor(this.replies, edits(0));
       const pick = makePickFunction(picks, { log });
       const val = target.build(pick);
@@ -229,11 +228,7 @@ export class CallLog {
       return val;
     }
 
-    const log = opts?.log;
-    const pick = makePickFunctionWithEdits(this, edits, {
-      log,
-      logCalls: true,
-    });
+    const pick = makePickFunctionWithEdits(this, edits, log);
     return target.build(pick);
   }
 
@@ -251,9 +246,46 @@ export class CallLog {
 function makePickFunctionWithEdits(
   origin: CallLog,
   edits: StepEditor,
-  outerOpts: { log?: CallBuffer; logCalls?: boolean },
+  log?: CallBuffer,
 ) {
   let index = 0;
+
+  function buildPick<T>(
+    req: PickRequest,
+    before: number[],
+    edit: Edit,
+  ): T {
+    const responder = new PickEditor(before, () => edit);
+    const reply = responder.nextPick(req);
+
+    log?.push(req, reply);
+    log?.endPick();
+
+    return reply as T;
+  }
+
+  function buildScript<T>(
+    script: Script<T>,
+    before: Call<unknown>,
+    editor: StreamEditor,
+  ): T {
+    if (
+      editor === keep && before.val !== regen &&
+      before.arg === script
+    ) {
+      // Skip the script call and return the cached value.
+      log?.keep();
+      return before.val as T;
+    }
+    const responder = new PickEditor(before.picks.replies, editor);
+    const pick = makePickFunction(responder, { log }); // log picks only
+    const val = script.buildFrom(pick);
+    log?.endScript(script, val);
+    if (responder.edited) {
+      log?.setChanged();
+    }
+    return val;
+  }
 
   const pick_function = <T>(
     req: Pickable<T>,
@@ -263,14 +295,13 @@ function makePickFunctionWithEdits(
       const before = origin.repliesAt(index);
       const edit = edits(index)(0, before[0], req);
       index++;
-      return buildPickWithEdits(req, before, edit, outerOpts);
+      return buildPick(req, before, edit);
     }
 
     // handle a script call
     const script = Script.from(req);
     const before = origin.callAt(index);
-
-    const val = buildScriptWithEdits(script, before, edits(index), outerOpts);
+    const val = buildScript(script, before, edits(index));
 
     const accept = opts?.accept;
     if (accept !== undefined && !accept(val)) {
@@ -282,47 +313,4 @@ function makePickFunctionWithEdits(
   };
 
   return pick_function;
-}
-
-function buildPickWithEdits<T>(
-  req: PickRequest,
-  before: number[],
-  edit: Edit,
-  opts: { log?: CallBuffer; logCalls?: boolean },
-): T {
-  const responder = new PickEditor(before, () => edit);
-  const reply = responder.nextPick(req);
-
-  opts.log?.push(req, reply);
-  if (opts.logCalls) {
-    opts.log?.endPick();
-  }
-
-  return reply as T;
-}
-
-function buildScriptWithEdits<T>(
-  script: Script<T>,
-  before: Call<unknown>,
-  editor: StreamEditor,
-  opts: { log?: CallBuffer; logCalls?: boolean },
-): T {
-  if (
-    editor === keep && before.val !== regen &&
-    before.arg === script
-  ) {
-    // Skip the script call and return the cached value.
-    opts.log?.keep();
-    return before.val as T;
-  }
-  const responder = new PickEditor(before.picks.replies, editor);
-  const pick = makePickFunction(responder, { log: opts.log }); // log picks only
-  const val = script.buildFrom(pick);
-  if (opts.logCalls) {
-    opts.log?.endScript(script, val);
-  }
-  if (responder.edited) {
-    opts.log?.setChanged();
-  }
-  return val;
 }

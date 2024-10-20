@@ -292,7 +292,7 @@ describe("CallLog", () => {
         const log = buf.takeLog();
 
         buf = new CallBuffer(log);
-        const val = log.tryEdit(roll, () => keep, { log: buf });
+        const val = log.tryEdit(roll, () => keep, buf);
         assertEquals(val, 2);
         assertEquals(buf.length, 1);
         assertFalse(buf.changed);
@@ -305,7 +305,7 @@ describe("CallLog", () => {
         const log = buf.takeLog();
 
         buf = new CallBuffer(log);
-        const val = log.tryEdit(roll, replaceOnce(0, 0, 0), { log: buf });
+        const val = log.tryEdit(roll, replaceOnce(0, 0, 0), buf);
         assertEquals(val, 1);
         assertEquals(buf.length, 1);
         assert(buf.changed);
@@ -324,7 +324,7 @@ describe("CallLog", () => {
         const log = buf.takeLog();
 
         buf = new CallBuffer(log);
-        const val = log.tryEdit(roll, replaceOnce(0, 0, 0), { log: buf });
+        const val = log.tryEdit(roll, replaceOnce(0, 0, 0), buf);
         assertEquals(val, 1);
         assertEquals(buf.length, 1);
         assert(buf.changed);
@@ -339,7 +339,7 @@ describe("CallLog", () => {
         const log = buf.takeLog();
 
         buf = new CallBuffer(log);
-        const val = log.tryEdit(rollStr, () => keep, { log: buf });
+        const val = log.tryEdit(rollStr, () => keep, buf);
         assertEquals(val, "rolled 2"); // ignored cached value
         assertEquals(buf.length, 1);
         assertFalse(buf.changed);
@@ -352,7 +352,7 @@ describe("CallLog", () => {
         const log = buf.takeLog();
 
         buf = new CallBuffer(log);
-        const val = log.tryEdit(readsCachedRoll, () => keep, { log: buf });
+        const val = log.tryEdit(readsCachedRoll, () => keep, buf);
         assertEquals(val, "cached");
         assertEquals(buf.length, 1);
         assertFalse(buf.changed);
@@ -365,7 +365,7 @@ describe("CallLog", () => {
         const log = buf.takeLog();
 
         buf = new CallBuffer(log);
-        const val = log.tryEdit(rollStr, replaceOnce(0, 0, 0), { log: buf });
+        const val = log.tryEdit(rollStr, replaceOnce(0, 0, 0), buf);
         assertEquals(val, "rolled 1");
         assertEquals(buf.length, 1);
         assert(buf.changed);
@@ -378,9 +378,7 @@ describe("CallLog", () => {
         const log = buf.takeLog();
 
         buf = new CallBuffer(log);
-        const val = log.tryEdit(readsCachedRoll, replaceOnce(0, 0, 5), {
-          log: buf,
-        });
+        const val = log.tryEdit(readsCachedRoll, replaceOnce(0, 0, 5), buf);
         assertEquals(val, "rolled 6");
         assertEquals(buf.length, 1);
         assert(buf.changed);
