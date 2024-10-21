@@ -285,11 +285,11 @@ export class PickView {
    * Returns the length of the view with default picks removed from the end.
    */
   get trimmedLength(): number {
-    let last = this.end - 1;
-    while (last >= this.start && this.diffAt(last) === 0) {
-      last--;
+    let i = this.length - 1;
+    while (i >= 0 && this.diffAt(i) === 0) {
+      i--;
     }
-    return last - this.start + 1;
+    return i + 1;
   }
 
   /**

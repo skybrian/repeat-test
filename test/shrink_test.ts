@@ -16,6 +16,10 @@ import { Gen } from "@/arbitrary.ts";
 import { CountingTestConsole } from "../src/console.ts";
 
 import { shrink, Shrinker } from "../src/shrink.ts";
+import { generate } from "../src/gen_class.ts";
+import { randomPicker } from "../src/random.ts";
+import { onePlayout } from "../src/backtracking.ts";
+import { filtered } from "../src/results.ts";
 
 function assertShrinks<T>(
   dom: Domain<T>,
@@ -233,6 +237,23 @@ describe("shrink", () => {
         );
       }, { reps: 100 });
     });
+
+    function repeatString(s: string, n: number): string {
+      let res = "";
+      for (let i = 0; i < n; i++) {
+        res += s;
+      }
+      return res;
+    }
+
+    it("shrinks each string to a given size", () => {
+      const input = arb.array(arb.string({ length: 20 }), { length: 10 });
+      const seed = generate(input, onePlayout(randomPicker(123)));
+      assert(seed !== filtered);
+      const gen = shrink(seed, () => true);
+      const expectedItem = repeatString("a", 20);
+      assertEquals(gen.val, Array(10).fill(expectedItem));
+    });
   });
 
   describe("for a filtered string", () => {
@@ -288,7 +309,7 @@ describe("Shrinker", () => {
       test: (val: T) => boolean,
     ): Gen<T> | undefined {
       const s = new Shrinker(seed, test);
-      return s.shrinkTail() ? s.seed.gen : undefined;
+      return s.shrinkTails() ? s.seed.gen : undefined;
     }
 
     it("can't shrink an empty seed", () => {
@@ -338,6 +359,23 @@ describe("Shrinker", () => {
         assert(gen !== undefined, "expected a result from shrinkTail");
         assertEquals(gen.val.length, len);
       });
+    });
+
+    it("shrinks strings using split calls", () => {
+      const rec = arb.record({
+        a: arb.string(),
+        b: arb.string(),
+      });
+      assert(Script.from(rec).splitCalls);
+      const seed = Gen.mustBuild(rec, [1, 3, 1, 3, 0, 1, 3, 1, 3, 0]);
+      assertEquals(seed.val, { a: "dd", b: "dd" });
+      assertEquals(seed.stepKeys, [0, 1]);
+
+      const s = new Shrinker(seed, acceptAll);
+      assert(s.shrinkTails());
+      const gen = s.seed.gen;
+      assertEquals(gen.val, { a: "", b: "" });
+      assertEquals(gen.replies, [0, 0]);
     });
   });
 
@@ -434,6 +472,23 @@ describe("Shrinker", () => {
       const seed = Gen.mustBuild(twoBits, [1, 1]);
       const gen = shrinkAllPicks(seed, acceptAll);
       assertEquals(gen?.replies, [0, 0]);
+    });
+
+    it("shrinks strings using split calls", () => {
+      const rec = arb.record({
+        a: arb.string(),
+        b: arb.string(),
+      });
+      assert(Script.from(rec).splitCalls);
+      const seed = Gen.mustBuild(rec, [1, 3, 1, 3, 0, 1, 3, 1, 3, 0]);
+      assertEquals(seed.val, { a: "dd", b: "dd" });
+      assertEquals(seed.stepKeys, [0, 1]);
+
+      const s = new Shrinker(seed, acceptAll);
+      assert(s.shrinkAllPicks());
+      const gen = s.seed.gen;
+      assertEquals(gen.replies, [0, 0]);
+      assertEquals(gen.val, { a: "", b: "" });
     });
   });
 

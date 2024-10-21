@@ -35,7 +35,7 @@ export class Shrinker<T> {
   shrink(): Gen<T> {
     this.console.log("shrink:", this.seed.val);
 
-    this.shrinkTail();
+    this.shrinkTails();
     this.console.log("after shrinkTail:", this.seed.val);
 
     this.shrinkAllOptions();
@@ -56,13 +56,14 @@ export class Shrinker<T> {
   }
 
   /**
-   * Removes unnecessary picks from the end of a playout.
+   * Removes unnecessary picks from the end of each group.
    *
-   * Postcondition: the last pick in the last non-empty step is necessary, or
-   * no steps have any picks.
+   * Postcondition: the last pick in each group is necessary, or the group is
+   * empty.
    */
-  shrinkTail<T>(): boolean {
+  shrinkTails(): boolean {
     let keys = this.seed.stepKeys;
+    this.console?.log("shrinkTail keys:", keys);
     let changed = false;
     for (let i = keys.length - 1; i >= 0; i--) {
       const key = keys[i];
@@ -70,10 +71,9 @@ export class Shrinker<T> {
         continue;
       }
 
-      if (!this.shrinkTailAt(i)) {
-        return changed;
+      if (this.shrinkTailAt(key)) {
+        changed = true;
       }
-      changed = true;
       keys = this.seed.stepKeys;
     }
     return changed;
@@ -84,9 +84,10 @@ export class Shrinker<T> {
    *
    * Postcondition: the last pick is necessary, or the step has no picks left.
    */
-  shrinkTailAt<T>(
+  shrinkTailAt(
     key: StepKey,
   ): boolean {
+    this.console.log("shrinkTailAt:", key);
     const len = this.trimmedLength(key);
     assert(len > 0);
 
@@ -122,7 +123,7 @@ export class Shrinker<T> {
     return changed;
   }
 
-  shrinkSegmentOptions<T>(stepKey: StepKey): boolean {
+  shrinkSegmentOptions(stepKey: StepKey): boolean {
     let picks = this.seed.getPicks(stepKey);
     const len = picks.trimmedLength;
 
@@ -203,7 +204,7 @@ export class Shrinker<T> {
     stepKey: StepKey,
     offset: number,
   ): boolean {
-    this.console.log("shrinking step:", stepKey, "offset:", offset);
+    // this.console.log("shrinking step:", stepKey, "offset:", offset);
 
     const diff = this.seed.getPicks(stepKey).diffAt(offset);
     if (diff === 0) {

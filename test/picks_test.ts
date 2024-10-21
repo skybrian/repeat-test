@@ -15,6 +15,7 @@ import { invalidIntRange } from "./lib/ranges.ts";
 import {
   alwaysPick,
   biasedBitRequest,
+  PickLog,
   PickRequest,
   PickView,
   PlaybackPicker,
@@ -297,6 +298,22 @@ describe("PickView", () => {
       picks.logTo(con);
       con.logged(["0: 1..10 =>", 1]);
       con.checkEmpty();
+    });
+  });
+
+  describe("trimmedLength", () => {
+    it("returns the length for the second view in a PickLog", () => {
+      const roll = { min: 1, max: 6 };
+      const log = new PickLog();
+      log.push(roll, 1);
+      log.push(roll, 2);
+      log.push(roll, 3);
+      log.push(roll, 4);
+      log.push(roll, 5);
+      const view = new PickView(log, 1, 3);
+      assertEquals(view.length, 2);
+      assertEquals(view.replies, [2, 3]);
+      assertEquals(view.trimmedLength, 2);
     });
   });
 });
