@@ -162,6 +162,7 @@ export function string(
   const joinChars = (parts: string[]): string => parts.join("");
   return arb.array(char16(), opts).map(joinChars).with({
     name: "string",
+    cachable: true,
   });
 }
 

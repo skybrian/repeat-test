@@ -1,4 +1,4 @@
-import type { Pickable } from "@/arbitrary.ts";
+import { type Pickable, Script } from "@/arbitrary.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals } from "@std/assert";
@@ -179,6 +179,10 @@ describe("string", () => {
 
   it("has a name", () => {
     assertEquals(arb.string().name, "string");
+  });
+
+  it("has the cachable flag set", () => {
+    assertEquals(Script.from(arb.string()).cachable, true);
   });
 });
 

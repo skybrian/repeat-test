@@ -75,8 +75,13 @@ export class Script<T> implements Pickable<T> {
     }
   }
 
-  with(opts: { name: string }): Script<T> {
-    return new Script(opts.name, this.#build, this.#opts);
+  with(opts: { name?: string; cachable?: boolean }): Script<T> {
+    const name = opts.name ?? this.#name;
+    if (opts.cachable === undefined) {
+      return new Script(name, this.#build, this.#opts);
+    }
+    const newOpts = { ...this.#opts, cachable: opts.cachable };
+    return new Script(name, this.#build, newOpts);
   }
 
   then<Out>(

@@ -1,4 +1,9 @@
-import { Arbitrary, biasedBitRequest, PickRequest } from "@/arbitrary.ts";
+import {
+  Arbitrary,
+  biasedBitRequest,
+  PickRequest,
+  Script,
+} from "@/arbitrary.ts";
 
 import type {
   BuildFunction,
@@ -144,7 +149,7 @@ export function array<T>(
     }
   }
 
-  function pickArray(pick: PickFunction) {
+  const script = Script.make("array", function pickArray(pick: PickFunction) {
     const result = [];
     let i = 0;
     while (wantItem(i, pick)) {
@@ -152,7 +157,7 @@ export function array<T>(
       i++;
     }
     return result;
-  }
+  });
 
-  return Arbitrary.from(pickArray).with({ name: "array" });
+  return Arbitrary.from(script);
 }

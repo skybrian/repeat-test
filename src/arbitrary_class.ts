@@ -184,9 +184,9 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
   }
 
   /**
-   * Returns a new Arbitrary with a different name.
+   * Returns a new Arbitrary with a different name or other options.
    */
-  with(opts: { name: string }): Arbitrary<T> {
+  with(opts: { name?: string; cachable?: boolean }): Arbitrary<T> {
     const script = this.#script.with(opts);
 
     return new Arbitrary(script, {
