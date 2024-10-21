@@ -356,3 +356,18 @@ uniqueArray of 100 ints          389.2 µs         2,569 (369.8 µs … 566.2 µ
 generate 10k strings              92.7 ms          10.8 ( 88.6 ms …  95.6 ms)  92.9 ms  95.6 ms  95.6 ms
 shrink a 1k string                60.7 ms          16.5 ( 60.4 ms …  61.3 ms)  60.8 ms  61.3 ms  61.3 ms
 ```
+
+### Add benchmark for shrinking an array of strings
+
+```
+benchmark                    time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+---------------------------- ----------------------------- --------------------- --------------------------
+generate a string                     5.4 µs       186,300 (  4.8 µs … 176.2 µs)   5.3 µs   6.4 µs   7.5 µs
+take 10k char16                       4.4 ms         226.2 (  4.3 ms …   4.9 ms)   4.5 ms   4.7 ms   4.9 ms
+uniqueArray of 5 ints                45.0 µs        22,210 ( 41.2 µs … 712.9 µs)  43.7 µs  87.2 µs 114.5 µs
+uniqueArray of 6 ints                47.5 µs        21,030 ( 44.8 µs … 518.2 µs)  46.1 µs 110.2 µs 115.4 µs
+uniqueArray of 100 ints             393.9 µs         2,539 (373.8 µs … 570.8 µs) 387.0 µs 507.3 µs 532.2 µs
+generate 10k strings                 95.1 ms          10.5 ( 95.0 ms …  95.2 ms)  95.2 ms  95.2 ms  95.2 ms
+fail to shrink a 1k string           60.5 ms          16.5 ( 60.2 ms …  61.2 ms)  60.6 ms  61.2 ms  61.2 ms
+shrink an array of strings          144.4 ms           6.9 (142.7 ms … 147.1 ms) 145.5 ms 147.1 ms 147.1 ms
+```
