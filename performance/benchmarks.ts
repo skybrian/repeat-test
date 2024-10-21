@@ -8,6 +8,7 @@ import { take } from "../src/ordered.ts";
 import { randomPlayouts } from "../src/random.ts";
 import { assert } from "@std/assert/assert";
 import { shrink } from "../src/shrink.ts";
+import { filtered } from "../src/results.ts";
 
 const str = arb.string({ length: 100 });
 const rand = randomPicker(pickRandomSeed());
@@ -41,7 +42,7 @@ Deno.bench("generate 10k strings", () => {
 Deno.bench("shrink a 1k string", (b) => {
   const str = dom.string({ length: 1000 });
   const gen = generate(str, onePlayout(randomPicker(123)));
-  assert(gen !== undefined);
+  assert(gen !== filtered);
   b.start();
   shrink(gen, (s) => s === gen.val);
   b.end();

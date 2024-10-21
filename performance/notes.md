@@ -337,3 +337,22 @@ uniqueArray of 100 ints          493.5 µs         2,027 (437.4 µs …   2.2 ms
 generate 10k strings              94.9 ms          10.5 ( 94.7 ms …  95.1 ms)  94.9 ms  95.1 ms  95.1 ms
 shrink a 1k string                56.4 ms          17.7 ( 56.0 ms …  57.4 ms)  56.6 ms  57.4 ms  57.4 ms
 ```
+
+## After getting to where splitCalls can be turned on for shrinking
+
+```
+    CPU | Apple M2
+Runtime | Deno 2.0.0 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+
+benchmark                 time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+------------------------- ----------------------------- --------------------- --------------------------
+generate a string                  5.3 µs       187,300 (  4.8 µs … 365.8 µs)   5.3 µs   6.2 µs   7.2 µs
+take 10k char16                    4.2 ms         236.7 (  4.2 ms …   4.9 ms)   4.3 ms   4.4 ms   4.9 ms
+uniqueArray of 5 ints             44.4 µs        22,500 ( 40.5 µs … 575.0 µs)  42.9 µs 107.3 µs 121.0 µs
+uniqueArray of 6 ints             46.6 µs        21,480 ( 43.9 µs … 615.0 µs)  45.2 µs 108.8 µs 114.7 µs
+uniqueArray of 100 ints          389.2 µs         2,569 (369.8 µs … 566.2 µs) 379.0 µs 500.4 µs 522.4 µs
+generate 10k strings              92.7 ms          10.8 ( 88.6 ms …  95.6 ms)  92.9 ms  95.6 ms  95.6 ms
+shrink a 1k string                60.7 ms          16.5 ( 60.4 ms …  61.3 ms)  60.8 ms  61.3 ms  61.3 ms
+```

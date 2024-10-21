@@ -5,10 +5,11 @@ import { assertEquals } from "@std/assert/equals";
 import { generate } from "../src/gen_class.ts";
 import { onePlayout } from "../src/backtracking.ts";
 import { randomPicker } from "../src/random.ts";
+import { filtered } from "../src/results.ts";
 
 const str = dom.string({ length: 10000 });
 const gen = generate(str, onePlayout(randomPicker(123)));
-assert(gen !== undefined);
+assert(gen !== filtered);
 
 const original = gen.val;
 function checkEq(s: string): boolean {
