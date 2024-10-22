@@ -1,7 +1,7 @@
 import type { Failure, Success } from "./results.ts";
 import type { Pickable } from "./pickable.ts";
 import type { PickView, Range } from "./picks.ts";
-import type { StepEditor, StepKey } from "./edits.ts";
+import type { GroupKey, MultiEdit } from "./edits.ts";
 import type { Backtracker } from "./backtracking.ts";
 import type { CallLog } from "./calls.ts";
 
@@ -50,7 +50,7 @@ function cacheResult<T>(props: Props<T>): () => T {
     const next = script.build(usePicks(...lastReplies));
     assert(
       next !== filtered,
-      "can't regenerate value of nondeterministic step",
+      "can't regenerate value of nondeterministic script",
     );
     return next;
   };
@@ -72,7 +72,7 @@ export class MutableGen<T> {
    * (if provided).
    */
   tryMutate(
-    editor: StepEditor,
+    editor: MultiEdit,
     test?: (val: T) => boolean,
   ): boolean {
     const { script, calls } = this.#props;
@@ -105,11 +105,11 @@ export class MutableGen<T> {
     return this.#gen;
   }
 
-  get stepKeys(): StepKey[] {
+  get stepKeys(): GroupKey[] {
     return this.#gen.stepKeys;
   }
 
-  getPicks(key: StepKey): PickView {
+  getPicks(key: GroupKey): PickView {
     return this.#gen.getPicks(key);
   }
 
@@ -164,13 +164,13 @@ export class Gen<T> implements Success<T> {
    *
    * (Some steps might use zero picks.)
    */
-  get stepKeys(): StepKey[] {
+  get stepKeys(): GroupKey[] {
     const len = this.#props.calls.length;
     return new Array(len).fill(0).map((_, i) => i);
   }
 
-  /** Returns the picks for the given step, or an empty PickList if not found. */
-  getPicks(key: StepKey): PickView {
+  /** Returns the picks for the given group, or an empty PickList if not found. */
+  getPicks(key: GroupKey): PickView {
     assert(typeof key === "number");
     return this.#props.calls.picksAt(key);
   }

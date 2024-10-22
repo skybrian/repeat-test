@@ -20,7 +20,7 @@ export type {
   RandomSource,
 } from "../picks.ts";
 
-export type { StreamEditor } from "../edits.ts";
+export type { GroupEdit } from "../edits.ts";
 
 export type { RecordShape } from "../options.ts";
 

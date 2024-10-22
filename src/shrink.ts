@@ -1,9 +1,9 @@
 import type { Gen, MutableGen } from "./gen_class.ts";
-import type { StepEditor, StepKey } from "./edits.ts";
+import type { GroupKey, MultiEdit } from "./edits.ts";
 import type { SystemConsole } from "./console.ts";
 
 import { assert } from "@std/assert";
-import { removeRange, replaceOnce, trimStep } from "./edits.ts";
+import { removeRange, replaceOnce, trimGroup } from "./edits.ts";
 import { nullConsole } from "./console.ts";
 
 /**
@@ -47,11 +47,11 @@ export class Shrinker<T> {
     return this.seed.gen;
   }
 
-  trimmedLength(key: StepKey): number {
+  trimmedLength(key: GroupKey): number {
     return this.seed.gen.getPicks(key).trimmedLength;
   }
 
-  tryMutate(edit: StepEditor): boolean {
+  tryMutate(edit: MultiEdit): boolean {
     return this.seed.tryMutate(edit, this.test);
   }
 
@@ -80,19 +80,19 @@ export class Shrinker<T> {
   }
 
   /**
-   * Removes unnecessary picks from the end of the given step.
+   * Removes unnecessary picks from the end of the given group.
    *
-   * Postcondition: the last pick is necessary, or the step has no picks left.
+   * Postcondition: the last pick is necessary, or the group has no picks left.
    */
   shrinkTailAt(
-    key: StepKey,
+    key: GroupKey,
   ): boolean {
     this.console.log("shrinkTailAt:", key);
     const len = this.trimmedLength(key);
     assert(len > 0);
 
     // Try to remove the last pick to fail fast.
-    if (!this.tryMutate(trimStep(key, len - 1))) {
+    if (!this.tryMutate(trimGroup(key, len - 1))) {
       return false;
     }
 
@@ -103,7 +103,7 @@ export class Shrinker<T> {
     while (tooLow + 2 <= hi) {
       const mid = (tooLow + 1 + hi) >>> 1;
       assert(mid > tooLow && mid < hi);
-      if (!this.tryMutate(trimStep(key, mid))) {
+      if (!this.tryMutate(trimGroup(key, mid))) {
         // failed; retry with a higher length
         tooLow = mid;
         continue;
@@ -123,7 +123,7 @@ export class Shrinker<T> {
     return changed;
   }
 
-  shrinkSegmentOptions(stepKey: StepKey): boolean {
+  shrinkSegmentOptions(stepKey: GroupKey): boolean {
     let picks = this.seed.getPicks(stepKey);
     const len = picks.trimmedLength;
 
@@ -166,13 +166,13 @@ export class Shrinker<T> {
   }
 
   /**
-   * Attempts to shrink each pick in every step.
+   * Attempts to set each pick to the lowest possible value in every group.
    *
    * Postcondition: reducing any pick by one would fail the test.
    */
   shrinkAllPicks(): boolean {
     let changed = false;
-    const seen = new Set<StepKey>();
+    const seen = new Set<GroupKey>();
     while (true) {
       const todo = this.seed.stepKeys.filter((key) => !seen.has(key));
       if (todo.length === 0) {
@@ -201,33 +201,31 @@ export class Shrinker<T> {
    * Postcondition: decrementing the pick by one would fail the test.
    */
   shrinkOnePick(
-    stepKey: StepKey,
+    key: GroupKey,
     offset: number,
   ): boolean {
-    // this.console.log("shrinking step:", stepKey, "offset:", offset);
-
-    const diff = this.seed.getPicks(stepKey).diffAt(offset);
+    const diff = this.seed.getPicks(key).diffAt(offset);
     if (diff === 0) {
       return false; // No change; already at the minimum
     }
 
     // See if the test fails if we subtract one.
-    if (!this.tryMutate(replaceOnce(stepKey, offset, diff - 1))) {
+    if (!this.tryMutate(replaceOnce(key, offset, diff - 1))) {
       return false; // No change; the postcondition already holds
     }
 
     // Binary search to find the smallest pick that succeeds.
     let tooLow = -1;
-    let hi = this.seed.getPicks(stepKey).diffAt(offset);
+    let hi = this.seed.getPicks(key).diffAt(offset);
     while (tooLow + 2 <= hi) {
       const mid = (tooLow + 1 + hi) >>> 1;
       assert(mid > tooLow && mid < hi);
-      if (!this.tryMutate(replaceOnce(stepKey, offset, mid))) {
+      if (!this.tryMutate(replaceOnce(key, offset, mid))) {
         // failed; retry with a higher pick
         tooLow = mid;
         continue;
       }
-      hi = this.seed.getPicks(stepKey).diffAt(offset);
+      hi = this.seed.getPicks(key).diffAt(offset);
     }
     return true;
   }

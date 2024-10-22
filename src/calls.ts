@@ -1,7 +1,7 @@
 import type { PickLogger } from "./build.ts";
 import type { Range } from "./picks.ts";
 import type { Pickable } from "./pickable.ts";
-import type { Edit, StepEditor, StreamEditor } from "./edits.ts";
+import type { Edit, GroupEdit, MultiEdit } from "./edits.ts";
 
 import { assert } from "@std/assert";
 import { Filtered, type PickFunctionOpts } from "@/arbitrary.ts";
@@ -9,7 +9,7 @@ import { filtered } from "./results.ts";
 import { PickLog, PickRequest, PickView } from "./picks.ts";
 import { Script } from "./script_class.ts";
 import { makePickFunction } from "./build.ts";
-import { keep, PickEditor } from "./edits.ts";
+import { EditResponder, keep } from "./edits.ts";
 
 export const regen = Symbol("regen");
 
@@ -213,12 +213,12 @@ export class CallLog {
    */
   tryEdit<T>(
     target: Script<T>,
-    edits: StepEditor,
+    edits: MultiEdit,
     log: CallBuffer,
   ): T | typeof filtered {
     if (!target.splitCalls) {
       // only record the top-level call.
-      const picks = new PickEditor(this.replies, edits(0));
+      const picks = new EditResponder(this.replies, edits(0));
       const pick = makePickFunction(picks, { log });
       const val = target.build(pick);
       log?.endScript(target, val);
@@ -245,7 +245,7 @@ export class CallLog {
 
 function makePickFunctionWithEdits(
   origin: CallLog,
-  edits: StepEditor,
+  edits: MultiEdit,
   log?: CallBuffer,
 ) {
   let index = 0;
@@ -255,7 +255,7 @@ function makePickFunctionWithEdits(
     before: number[],
     edit: Edit,
   ): T {
-    const responder = new PickEditor(before, () => edit);
+    const responder = new EditResponder(before, () => edit);
     const reply = responder.nextPick(req);
 
     log?.push(req, reply);
@@ -267,7 +267,7 @@ function makePickFunctionWithEdits(
   function buildScript<T>(
     script: Script<T>,
     before: Call<unknown>,
-    editor: StreamEditor,
+    editor: GroupEdit,
   ): T {
     if (
       editor === keep && before.val !== regen &&
@@ -277,7 +277,7 @@ function makePickFunctionWithEdits(
       log?.keep();
       return before.val as T;
     }
-    const responder = new PickEditor(before.picks.replies, editor);
+    const responder = new EditResponder(before.picks.replies, editor);
     const pick = makePickFunction(responder, { log }); // log picks only
     const val = script.buildFrom(pick);
     log?.endScript(script, val);

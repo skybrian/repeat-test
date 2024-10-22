@@ -1,35 +1,34 @@
 import type { Range } from "./picks.ts";
 import type { PickResponder } from "./build.ts";
 
-import { assert } from "@std/assert";
-
 export type Edit =
   | { type: "keep" }
   | { type: "replace"; diff: number }
   | { type: "snip" };
 
 /**
- * Given a pick request and reply from a stream, returns the reply to use in
- * the new stream.
+ * Returns the edit to make at each offset in a group.
  */
-export type StreamEditor = (
-  pickIndex: number,
+export type GroupEdit = (
+  offset: number,
   before: number,
   req: Range,
 ) => Edit;
 
-/** An editor that keeps each pick. */
+/** A group edit that keeps everything the same. */
 export function keep(): Edit {
   return { type: "keep" };
 }
 
-/** An editor that deletes each pick. */
+/** A group edit that deletes everything. */
 export function snip(): Edit {
   return { type: "snip" };
 }
 
 /**
- * Makes an edit that changes each pick to a value relative to its minimum.
+ * A group edit that sets a pick to a new value.
+ *
+ * The argument is relative to the minimum value of the request.
  * (That is, if diff is 0, the pick is set to its minimum value.)
  */
 export function replace(diff: number): Edit {
@@ -37,19 +36,23 @@ export function replace(diff: number): Edit {
 }
 
 /**
- * Replays a stream of picks, applying the given editor to each pick.
+ * Replays the picks in a group, applying the given editor to each pick before
+ * returning it.
  */
-export class PickEditor implements PickResponder {
-  private offset = 0;
+export class EditResponder implements PickResponder {
+  readonly #before: readonly number[];
+  readonly #edit: GroupEdit;
 
+  #offset = 0;
   #edits = 0;
   #deletes = 0;
 
   constructor(
-    private readonly before: readonly number[],
-    private readonly editor: StreamEditor,
+    before: readonly number[],
+    edit: GroupEdit,
   ) {
-    assert(this.depth === 0);
+    this.#before = before;
+    this.#edit = edit;
 
     for (let i = 0; i < before.length; i++) {
       if (!Number.isSafeInteger(before[i])) {
@@ -67,22 +70,21 @@ export class PickEditor implements PickResponder {
   }
 
   nextPick(req: Range): number {
-    const pick = this.edit(req);
-    return pick;
+    return this.edit(req);
   }
 
   get depth(): number {
-    return this.offset;
+    return this.#offset;
   }
 
   private edit(req: Range): number {
     while (true) {
-      if (this.offset >= this.before.length) {
+      if (this.#offset >= this.#before.length) {
         return req.min;
       }
-      const index = this.offset++;
-      const before = this.before[index];
-      const edit = this.editor(index, before, req);
+      const index = this.#offset++;
+      const before = this.#before[index];
+      const edit = this.#edit(index, before, req);
       let val = before;
       switch (edit.type) {
         case "keep":
@@ -117,53 +119,54 @@ export class PickEditor implements PickResponder {
   }
 }
 
-export type StepKey = number | string;
+export type GroupKey = number | string;
 
 /**
- * Edits a stream of picks that's split into steps.
+ * Returns the GroupEdit to use for each group.
  */
-export type StepEditor = (key: StepKey) => StreamEditor;
+export type MultiEdit = (key: GroupKey) => GroupEdit;
 
-function trimEnd(len: number): StreamEditor {
+function trimEnd(len: number): GroupEdit {
   return (offset) => offset >= len ? snip() : keep();
 }
 
 /**
- * Edits a step's picks by removing picks from the end.
+ * Edits a single group by removing picks from the end.
  *
  * (This forces them to be the minimum value.)
  */
-export function trimStep(
-  stepKey: StepKey,
+export function trimGroup(
+  at: GroupKey,
   len: number,
-): StepEditor {
-  return (key) => (key === stepKey) ? trimEnd(len) : keep;
+): MultiEdit {
+  return (key) => (key === at) ? trimEnd(len) : keep;
 }
 
-function snipRange(start: number, end: number): StreamEditor {
+function snipRange(start: number, end: number): GroupEdit {
   return (offset) => offset >= start && offset < end ? snip() : keep();
 }
 
-/** Removes a range of picks in one step. */
+/** Removes a range of picks in one group. */
 export function removeRange(
-  stepKey: StepKey,
+  at: GroupKey,
   start: number,
   end: number,
-): StepEditor {
-  return (key: StepKey) => (key === stepKey) ? snipRange(start, end) : keep;
+): MultiEdit {
+  return (key: GroupKey) => (key === at) ? snipRange(start, end) : keep;
 }
 
 function replaceAt(
   at: number,
   diff: number,
-): StreamEditor {
+): GroupEdit {
   return (offset) => offset === at ? replace(diff) : keep();
 }
 
+/** Edits one pick in one group. */
 export function replaceOnce(
-  stepKey: StepKey,
-  at: number,
+  at: GroupKey,
+  offset: number,
   diff: number,
-): StepEditor {
-  return (key) => key === stepKey ? replaceAt(at, diff) : keep;
+): MultiEdit {
+  return (key) => key === at ? replaceAt(offset, diff) : keep;
 }

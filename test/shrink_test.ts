@@ -1,6 +1,6 @@
 import type { Domain } from "@/domain.ts";
 import type { SystemConsole } from "@/runner.ts";
-import type { StepKey } from "../src/edits.ts";
+import type { GroupKey } from "../src/edits.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, fail } from "@std/assert";
@@ -494,7 +494,7 @@ describe("Shrinker", () => {
 
   describe("shrinkOnePick", () => {
     function shrinkOnePick<T>(
-      key: StepKey,
+      key: GroupKey,
       offset: number,
       seed: Gen<T>,
       test: (val: T) => boolean,
