@@ -9,7 +9,7 @@ import { filtered } from "./results.ts";
 import { PickLog, PickRequest, PickView } from "./picks.ts";
 import { Script } from "./script_class.ts";
 import { makePickFunction } from "./build.ts";
-import { EditResponder, keep } from "./edits.ts";
+import { EditResponder, keep, removeGroup, snip } from "./edits.ts";
 
 export const regen = Symbol("regen");
 
@@ -218,7 +218,11 @@ export class CallLog {
   ): T | typeof filtered {
     if (!target.splitCalls) {
       // only record the top-level call.
-      const picks = new EditResponder(this.replies, edits(0));
+      let edit = edits(0);
+      if (edit === removeGroup) {
+        edit = snip;
+      }
+      const picks = new EditResponder(this.replies, edit);
       const pick = makePickFunction(picks, { log });
       const val = target.build(pick);
       log?.endScript(target, val);
@@ -248,8 +252,6 @@ function makePickFunctionWithEdits(
   edits: MultiEdit,
   log?: CallBuffer,
 ) {
-  let index = 0;
-
   function buildPick<T>(
     req: PickRequest,
     before: number[],
@@ -287,28 +289,33 @@ function makePickFunctionWithEdits(
     return val;
   }
 
+  let callIndex = 0;
+
   const pick_function = <T>(
     req: Pickable<T>,
     opts?: PickFunctionOpts<T>,
   ): T => {
+    let groupEdit = edits(callIndex++);
+    while (groupEdit === removeGroup) {
+      groupEdit = edits(callIndex++);
+    }
+
     if (req instanceof PickRequest) {
-      const before = origin.repliesAt(index);
-      const edit = edits(index)(0, req, before[0]);
-      index++;
+      const before = origin.repliesAt(callIndex - 1);
+      const edit = groupEdit(0, req, before[0]);
       return buildPick(req, before, edit);
     }
 
     // handle a script call
     const script = Script.from(req);
-    const before = origin.callAt(index);
-    const val = buildScript(script, before, edits(index));
+    const before = origin.callAt(callIndex - 1);
+    const val = buildScript(script, before, groupEdit);
 
     const accept = opts?.accept;
     if (accept !== undefined && !accept(val)) {
       throw new Filtered("not accepted");
     }
 
-    index++;
     return val;
   };
 

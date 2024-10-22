@@ -67,6 +67,31 @@ const bitReq = new PickRequest(0, 1);
 const roll = new PickRequest(1, 6);
 
 describe("Shrinker", () => {
+  describe("removeGroups", () => {
+    const rolls = Script.make("roll until one", (pick) => {
+      const out: number[] = [];
+      for (let r = pick(roll); r !== 1; r = pick(roll)) {
+        out.push(r);
+      }
+      return out;
+    }, { splitCalls: true });
+
+    const seed = Gen.mustBuild(rolls, [6, 2, 3, 4, 5, 1]);
+
+    it("can remove all the calls", () => {
+      const s = new Shrinker(seed, acceptAll);
+      assert(s.removeGroups());
+      assertEquals(s.seed.val, []);
+    });
+
+    it("can remove all but one call", () => {
+      repeatTest([2, 3, 4, 5, 6], (keeper) => {
+        const s = new Shrinker(seed, (val) => val.includes(keeper));
+        assert(s.removeGroups());
+        assertEquals(s.seed.val, [keeper]);
+      });
+    });
+  });
   describe("shrinkTails", () => {
     function shrinkTails<T>(
       seed: Gen<T>,

@@ -371,3 +371,23 @@ generate 10k strings                 95.1 ms          10.5 ( 95.0 ms …  95.2 m
 fail to shrink a 1k string           60.5 ms          16.5 ( 60.2 ms …  61.2 ms)  60.6 ms  61.2 ms  61.2 ms
 shrink an array of strings          144.4 ms           6.9 (142.7 ms … 147.1 ms) 145.5 ms 147.1 ms 147.1 ms
 ```
+
+### Implement removeGroups in shrinker
+
+```
+    CPU | Apple M2
+Runtime | Deno 2.0.0 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+
+benchmark                    time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+---------------------------- ----------------------------- --------------------- --------------------------
+generate a string                     5.4 µs       186,000 (  4.8 µs … 133.3 µs)   5.3 µs   6.2 µs   7.1 µs
+take 10k char16                       4.5 ms         224.1 (  4.4 ms …   5.0 ms)   4.5 ms   4.7 ms   5.0 ms
+uniqueArray of 5 ints                45.1 µs        22,150 ( 41.5 µs … 820.5 µs)  43.7 µs  95.7 µs 122.4 µs
+uniqueArray of 6 ints                47.9 µs        20,890 ( 44.9 µs … 556.9 µs)  46.2 µs 110.5 µs 116.8 µs
+uniqueArray of 100 ints             396.9 µs         2,519 (377.2 µs … 565.9 µs) 385.8 µs 512.3 µs 531.5 µs
+generate 10k strings                 95.5 ms          10.5 ( 94.9 ms …  95.7 ms)  95.6 ms  95.7 ms  95.7 ms
+fail to shrink a 1k string           60.4 ms          16.6 ( 60.2 ms …  60.8 ms)  60.4 ms  60.8 ms  60.8 ms
+shrink an array of strings           35.5 ms          28.2 ( 32.0 ms …  41.1 ms)  38.5 ms  41.1 ms  41.1 ms
+```

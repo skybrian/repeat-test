@@ -3,7 +3,7 @@ import type { GroupKey, MultiEdit } from "./edits.ts";
 import type { SystemConsole } from "./console.ts";
 
 import { assert } from "@std/assert";
-import { removeRange, replaceOnce, trimGroup } from "./edits.ts";
+import { removeGroups, removeRange, replaceOnce, trimGroup } from "./edits.ts";
 import { nullConsole } from "./console.ts";
 
 /**
@@ -35,6 +35,9 @@ export class Shrinker<T> {
   shrink(): Gen<T> {
     this.console.log("shrink:", this.seed.val);
 
+    this.removeGroups();
+    this.console.log("after removeGroups:", this.seed.val);
+
     this.shrinkTails();
     this.console.log("after shrinkTails:", this.seed.val);
 
@@ -53,6 +56,36 @@ export class Shrinker<T> {
 
   tryMutate(edit: MultiEdit): boolean {
     return this.seed.tryMutate(edit, this.test);
+  }
+
+  /**
+   * Removes entire groups, using a binary search to avoid trying each group
+   * individually where possible.
+   */
+  removeGroups(keys?: Set<GroupKey>): boolean {
+    if (keys === undefined) {
+      keys = new Set(this.seed.stepKeys);
+    }
+    this.console.log("removeGroups:", keys);
+
+    // First try removing the entire range.
+    if (this.tryMutate(removeGroups(keys))) {
+      return true;
+    }
+
+    // Split in two and try each half.
+    const half = Math.floor(keys.size / 2);
+    if (half < 1) {
+      return false; // too few groups
+    }
+
+    const items = Array.from(keys);
+    const firstHalf = new Set(items.slice(0, half));
+    const secondHalf = new Set(items.slice(half));
+    // Remove the second half first, so that the indexes don't shift for the first half.
+    const secondChanged = this.removeGroups(secondHalf);
+    const firstChanged = this.removeGroups(firstHalf);
+    return secondChanged || firstChanged;
   }
 
   /**

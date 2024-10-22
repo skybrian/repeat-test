@@ -121,10 +121,20 @@ export class EditResponder implements PickResponder {
 
 export type GroupKey = number | string;
 
+export const removeGroup = Symbol("removeGroup");
+
 /**
  * Returns the GroupEdit to use for each group.
  */
-export type MultiEdit = (key: GroupKey) => GroupEdit;
+export type MultiEdit = (key: GroupKey) => GroupEdit | typeof removeGroup;
+
+/**
+ * Removes each group with the given key.
+ * The picks for later groups will be shifted to the left.
+ */
+export function removeGroups(keys: Set<GroupKey>): MultiEdit {
+  return (key) => (keys.has(key)) ? removeGroup : keep;
+}
 
 function trimEnd(len: number): GroupEdit {
   return (offset) => offset >= len ? snip() : keep();
