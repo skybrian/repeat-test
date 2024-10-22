@@ -154,10 +154,6 @@ export class Gen<T> implements Success<T> {
     return this.#props.calls.replies;
   }
 
-  get picks(): PickView {
-    return this.#props.calls.pickView;
-  }
-
   pushTo(sink: PickSink): boolean {
     for (const key of this.groupKeys) {
       const picks = this.getPicks(key);

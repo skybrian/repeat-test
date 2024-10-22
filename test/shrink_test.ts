@@ -10,7 +10,7 @@ import * as dom from "@/doms.ts";
 
 import { minMaxVal } from "./lib/ranges.ts";
 
-import { PickRequest } from "../src/picks.ts";
+import { PickRequest, PickView } from "../src/picks.ts";
 import { Script } from "../src/script_class.ts";
 import { Gen } from "@/arbitrary.ts";
 import { CountingTestConsole } from "../src/console.ts";
@@ -139,7 +139,7 @@ describe("Shrinker", () => {
 
         const gen = shrinkTails(seed, acceptAll);
         assert(gen !== undefined, "expected a result from shrinkTails");
-        assertEquals(gen.picks.trimmed().replies, []);
+        assertEquals(PickView.copyFrom(gen).trimmed().replies, []);
       });
     });
 
@@ -191,7 +191,7 @@ describe("Shrinker", () => {
 
       const gen = shrinkAllOptions(seed, acceptAll);
       assert(gen !== undefined);
-      assertEquals(gen.picks.trimmed().replies, []);
+      assertEquals(PickView.copyFrom(gen).trimmed().replies, []);
     });
 
     it("removes two options", () => {
@@ -201,7 +201,7 @@ describe("Shrinker", () => {
       );
       const gen = shrinkAllOptions(seed, acceptAll);
       assert(gen !== undefined);
-      assertEquals(gen.picks.trimmed().replies, [6]);
+      assertEquals(PickView.copyFrom(gen).trimmed().replies, [6]);
     });
 
     it("removes unused leading characters", () => {
@@ -417,7 +417,7 @@ describe("shrink", () => {
         const seed = seedFrom(bits.map(() => bitReq), bits);
         const gen = shrink(seed, acceptAll);
         assert(gen !== undefined);
-        assertEquals(gen.picks.trimmed().replies, []);
+        assertEquals(PickView.copyFrom(gen).trimmed().replies, []);
       });
     });
 
@@ -433,7 +433,7 @@ describe("shrink", () => {
         const gen = shrink(seed, (arr) => arr.at(prefix.length) === 1);
         assert(gen !== undefined);
         const expected = Array(prefix.length).fill(0).concat(1);
-        assertEquals(gen.picks.trimmed().replies, expected);
+        assertEquals(PickView.copyFrom(gen).trimmed().replies, expected);
       });
     });
   });
