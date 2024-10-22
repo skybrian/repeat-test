@@ -21,40 +21,24 @@ type Props<T> = {
 
 const alwaysBuild = Symbol("alwaysBuild");
 
-/**
- * A Done result that rebuilds the value after its first access.
- *
- * (For returning mutable objects.)
- */
-function cacheOnce<T>(val: T, build: () => T): () => T {
-  let cache: T | typeof alwaysBuild = val;
-
-  return () => {
-    if (cache === alwaysBuild) {
-      return build();
-    }
-    const val = cache;
-    cache = alwaysBuild;
-    return val;
-  };
-}
-
 function cacheResult<T>(props: Props<T>): () => T {
   const { script, calls, val } = props;
   if (Object.isFrozen(props.val)) {
     return () => val;
   }
 
-  const regenerate = (): T => {
-    const next = calls.build(script);
-    assert(
-      next !== filtered,
-      "can't regenerate value of nondeterministic script",
-    );
-    return next;
-  };
+  let cache: T | typeof alwaysBuild = val;
 
-  return cacheOnce(val, regenerate);
+  return () => {
+    if (cache === alwaysBuild) {
+      const next = calls.rebuild(script);
+      assert(next !== filtered, "can't rebuild nondeterministic script");
+      return next;
+    }
+    const val = cache;
+    cache = alwaysBuild;
+    return val;
+  };
 }
 
 export class MutableGen<T> {

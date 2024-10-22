@@ -204,7 +204,7 @@ export class CallLog {
   /**
    * Builds a pickable using this log.
    */
-  build<T>(target: Pickable<T>): T | typeof filtered {
+  rebuild<T>(target: Pickable<T>): T | typeof filtered {
     try {
       return target.buildFrom(makePickFunctionWithEdits(this, () => keep));
     } catch (e) {
