@@ -15,7 +15,11 @@ export function assertRoundTrip<T>(dom: Domain<T>, val: T) {
   assertEquals(gen.val, val, "regenerated value didn't match");
 }
 
-export function assertEncoding<T>(dom: Domain<T>, picks: number[], val: T) {
+export function assertEncoding<T>(
+  dom: Domain<T>,
+  picks: Iterable<number>,
+  val: T,
+) {
   const gen = dom.regenerate(val);
   assert(gen.ok, "can't regenerate value");
   assertEquals(gen.val, val, `dom.generate(${picks}) didn't match val`);
@@ -56,7 +60,7 @@ type Gen<T> = { val: T; picks: number[] };
 function takeGen<T>(set: Pickable<T>, n: number): Gen<T>[] {
   return takeGenerated(set, n).map((gen) => ({
     val: gen.val,
-    picks: gen.replies,
+    picks: Array.from(gen.replies),
   }));
 }
 

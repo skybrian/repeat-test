@@ -150,7 +150,7 @@ export class Gen<T> implements Success<T> {
     return this.#props.script.name;
   }
 
-  get replies(): number[] {
+  get replies(): Iterable<number> {
     return this.#props.calls.replies;
   }
 
@@ -193,7 +193,7 @@ export class Gen<T> implements Success<T> {
     return new MutableGen(this.#props, this);
   }
 
-  static mustBuild<T>(arg: Pickable<T>, replies: number[]): Gen<T> {
+  static mustBuild<T>(arg: Pickable<T>, replies: Iterable<number>): Gen<T> {
     const gen = Gen.build(arg, replies);
     if (!gen.ok) {
       throw new Error(gen.message);
@@ -201,7 +201,10 @@ export class Gen<T> implements Success<T> {
     return gen;
   }
 
-  static build<T>(arg: Pickable<T>, replies: number[]): Gen<T> | Failure {
+  static build<T>(
+    arg: Pickable<T>,
+    replies: Iterable<number>,
+  ): Gen<T> | Failure {
     const script = Script.from(arg, { caller: "Gen.build()" });
     const picker = new PlaybackPicker(replies);
     const gen = generate(script, onePlayout(picker));

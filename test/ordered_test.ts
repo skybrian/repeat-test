@@ -284,9 +284,9 @@ describe("takeGenerated", () => {
 
     const vals = Array.from(generateAll(digits));
     assertEquals(vals[0].val, 0);
-    assertEquals(vals[0].replies, [0, 0, 0]);
+    assertEquals(Array.from(vals[0].replies), [0, 0, 0]);
     assertEquals(vals[999].val, 999);
-    assertEquals(vals[999].replies, [9, 9, 9]);
+    assertEquals(Array.from(vals[999].replies), [9, 9, 9]);
   });
 });
 

@@ -202,9 +202,9 @@ export class PickTree {
   /**
    * Returns true if the pick sequence hasn't been pruned yet.
    */
-  available(picks: number[]): boolean {
+  available(replies: Iterable<number>): boolean {
     const walk = this.walk();
-    return walk.follow(picks) !== 0;
+    return walk.follow(replies) !== 0;
   }
 
   /**
@@ -309,10 +309,10 @@ export class Walk {
    * Attempts to extend the path to an existing node. Returns the number of branches left,
    * 0 if it's pruned, or undefined if it's not created yet.
    */
-  follow(picks: number[]): number | undefined {
+  follow(replies: Iterable<number>): number | undefined {
     let parent = this.parent;
     let parentPick = this.lastReply;
-    for (let i = 0; i < picks.length; i++) {
+    for (const reply of replies) {
       const branch = parent.getBranch(parentPick);
       if (branch === PRUNED) {
         return 0;
@@ -320,7 +320,7 @@ export class Walk {
         return undefined;
       }
       parent = branch;
-      parentPick = picks[i];
+      parentPick = reply;
       this.pushNode(parent, parentPick);
     }
 

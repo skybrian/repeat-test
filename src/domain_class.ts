@@ -18,7 +18,7 @@ export type PickifyCallback = (
   val: unknown,
   sendErr: SendErr,
   name: string,
-) => number[] | undefined;
+) => Iterable<number> | undefined;
 
 /**
  * A Domain represents a set of JavaScript values that can be both validated and
@@ -122,8 +122,8 @@ export class Domain<T> extends Arbitrary<T> {
   /**
    * Given some picks, attempts to generate the corresponding value.
    */
-  generate(picks: number[]): Gen<T> | Failure {
-    return Gen.build(this.buildScript, picks);
+  generate(replies: Iterable<number>): Gen<T> | Failure {
+    return Gen.build(this.buildScript, replies);
   }
 
   /**
@@ -153,7 +153,7 @@ export class Domain<T> extends Arbitrary<T> {
       const err = firstError ?? defaultMessage ?? "not in domain";
       return failure(err);
     }
-    return success(picks);
+    return success(Array.from(picks));
   }
 
   /**
@@ -172,7 +172,7 @@ export class Domain<T> extends Arbitrary<T> {
     val: unknown,
     sendErr: SendErr,
     location?: number | string,
-  ): number[] | undefined {
+  ): Iterable<number> | undefined {
     let innerErr: SendErr = sendErr;
     if (location !== undefined) {
       innerErr = (msg, opts) => {

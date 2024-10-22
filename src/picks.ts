@@ -400,17 +400,20 @@ export function alwaysPick(n: number) {
  * A picker that provides a single playout and checks for mismatches.
  */
 export class PlaybackPicker implements IntPicker {
+  private readonly expected: number[] = [];
   private depth = 0;
   private rangeError?: string = undefined;
 
-  constructor(private readonly expected: number[]) {
-    for (let i = 0; i < expected.length; i++) {
-      const pick = expected[i];
-      if (!Number.isSafeInteger(expected[i])) {
+  constructor(expected: Iterable<number>) {
+    let i = 0;
+    for (const pick of expected) {
+      if (!Number.isSafeInteger(pick)) {
         throw new Error(`${i}: expected a safe integer, got: ${pick}`);
       } else if (pick < 0) {
         throw new Error(`${i}: expected a non-negative integer, got: ${pick}`);
       }
+      this.expected.push(pick);
+      i++;
     }
   }
 

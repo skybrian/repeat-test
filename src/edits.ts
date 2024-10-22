@@ -40,7 +40,7 @@ export function replace(diff: number): Edit {
  * returning it.
  */
 export class EditResponder implements PickResponder {
-  readonly #before: readonly number[];
+  readonly #before: number[] = [];
   readonly #edit: GroupEdit;
 
   #offset = 0;
@@ -48,20 +48,22 @@ export class EditResponder implements PickResponder {
   #deletes = 0;
 
   constructor(
-    before: readonly number[],
+    before: Iterable<number>,
     edit: GroupEdit,
   ) {
-    this.#before = before;
     this.#edit = edit;
 
-    for (let i = 0; i < before.length; i++) {
-      if (!Number.isSafeInteger(before[i])) {
-        throw new Error(`${i}: expected a safe integer, got: ${before[i]}`);
-      } else if (before[i] < 0) {
+    let i = 0;
+    for (const reply of before) {
+      if (!Number.isSafeInteger(reply)) {
+        throw new Error(`${i}: expected a safe integer, got: ${reply}`);
+      } else if (reply < 0) {
         throw new Error(
-          `${i}: expected a non-negative integer, got: ${before[i]}`,
+          `${i}: expected a non-negative integer, got: ${reply}`,
         );
       }
+      this.#before.push(reply);
+      i++;
     }
   }
 

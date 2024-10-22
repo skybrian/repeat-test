@@ -156,12 +156,8 @@ export class CallLog {
     return this.props.starts.length;
   }
 
-  get replies(): number[] {
+  get replies(): Iterable<number> {
     return this.props.pickLog.replies;
-  }
-
-  get pickView(): PickView {
-    return new PickView(this.props.pickLog, 0, this.props.pickLog.length);
   }
 
   picksAt(index: number): PickView {

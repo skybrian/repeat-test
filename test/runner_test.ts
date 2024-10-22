@@ -142,7 +142,7 @@ describe("RepSource", () => {
 
     const def = src.generateDefault();
     assert(def.ok);
-    assertEquals(def.arg.replies.length, 0);
+    assertEquals(Array.from(def.arg.replies).length, 0);
     assertEquals(def.arg.val, 123);
 
     const random = src.generateRandom();
