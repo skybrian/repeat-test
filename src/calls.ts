@@ -171,15 +171,15 @@ export class CallLog {
     return new PickView(this.props.pickLog, start, end);
   }
 
-  repliesAt(index: number): number[] {
+  firstReplyAt(index: number, defaultReply: number): number {
     assert(index >= 0);
 
     if (index >= this.length) {
-      return [];
+      return defaultReply;
     }
 
-    const { start, end } = this.rangeAt(index);
-    return this.props.pickLog.replies.slice(start, end);
+    const start = this.props.starts[index];
+    return this.props.pickLog.replies[start];
   }
 
   callAt(index: number): Call<unknown> {
@@ -309,9 +309,9 @@ function makePickFunctionWithEdits(
     }
 
     if (req instanceof PickRequest) {
-      const before = origin.repliesAt(callIndex - 1);
-      const edit = groupEdit(0, req, before[0]);
-      return buildPick(req, before, edit);
+      const before = origin.firstReplyAt(callIndex - 1, req.min);
+      const edit = groupEdit(0, req, before);
+      return buildPick(req, [before], edit);
     }
 
     // handle a script call

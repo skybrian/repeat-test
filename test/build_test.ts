@@ -1,6 +1,5 @@
 import type { PickFunction } from "@/arbitrary.ts";
 import type { GenProps } from "./lib/props.ts";
-import type { Call } from "../src/calls.ts";
 
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
@@ -21,17 +20,6 @@ import {
 } from "../src/build.ts";
 
 const bitReq = PickRequest.bit;
-
-function propsFromCall<T>(c: Call<T>): GenProps<T | typeof regen> {
-  const { arg, picks, val } = c;
-  const name = (arg instanceof Script) ? arg.name : arg.toString();
-  return {
-    val,
-    name,
-    reqs: picks.reqs,
-    replies: picks.replies,
-  };
-}
 
 describe("makePickFunction", () => {
   let buf = new CallBuffer();
@@ -56,8 +44,15 @@ describe("makePickFunction", () => {
 
   function checkCalls(...expected: GenProps<unknown>[]) {
     const actual: GenProps<unknown>[] = [];
-    for (const call of buf.takeLog().calls) {
-      actual.push(propsFromCall(call));
+    const log = buf.takeLog();
+    for (const { arg, picks, val } of log.calls) {
+      const name = (arg instanceof Script) ? arg.name : arg.toString();
+      actual.push({
+        val,
+        name,
+        reqs: picks.reqs,
+        replies: picks.replies,
+      });
     }
     assertEquals(actual, expected);
   }
