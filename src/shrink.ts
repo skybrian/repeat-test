@@ -51,7 +51,7 @@ export class Shrinker<T> {
   }
 
   trimmedLength(key: GroupKey): number {
-    return this.seed.gen.getPicks(key).trimmedLength;
+    return this.seed.picksAt(key).trimmedLength;
   }
 
   tryMutate(edit: MultiEdit): boolean {
@@ -160,8 +160,8 @@ export class Shrinker<T> {
     return changed;
   }
 
-  shrinkSegmentOptions(stepKey: GroupKey): boolean {
-    let picks = this.seed.getPicks(stepKey);
+  shrinkSegmentOptions(key: GroupKey): boolean {
+    let picks = this.seed.picksAt(key);
     const len = picks.trimmedLength;
 
     if (len < 1) {
@@ -178,7 +178,7 @@ export class Shrinker<T> {
         // Try deleting it by itself.
         end = i + 1;
       }
-      if (!this.tryMutate(removeRange(stepKey, i, end))) {
+      if (!this.tryMutate(removeRange(key, i, end))) {
         const containsEmptyOption = (end === i + 1) &&
           picks.getOption(end) === 0 &&
           picks.getOption(end + 1) !== undefined;
@@ -189,12 +189,12 @@ export class Shrinker<T> {
         }
 
         // Try extending the range to include an option that wasn't taken
-        if (this.tryMutate(removeRange(stepKey, i, end + 1))) {
+        if (this.tryMutate(removeRange(key, i, end + 1))) {
           continue;
         }
       }
 
-      picks = this.seed.getPicks(stepKey);
+      picks = this.seed.picksAt(key);
       end = i;
       changed = true;
     }
@@ -218,7 +218,7 @@ export class Shrinker<T> {
       for (const key of todo) {
         for (
           let offset = 0;
-          offset < this.seed.getPicks(key).length;
+          offset < this.seed.picksAt(key).length;
           offset++
         ) {
           if (this.shrinkOnePick(key, offset)) {
@@ -241,7 +241,7 @@ export class Shrinker<T> {
     key: GroupKey,
     offset: number,
   ): boolean {
-    const diff = this.seed.getPicks(key).diffAt(offset);
+    const diff = this.seed.picksAt(key).diffAt(offset);
     if (diff === 0) {
       return false; // No change; already at the minimum
     }
@@ -253,7 +253,7 @@ export class Shrinker<T> {
 
     // Binary search to find the smallest pick that succeeds.
     let tooLow = -1;
-    let hi = this.seed.getPicks(key).diffAt(offset);
+    let hi = this.seed.picksAt(key).diffAt(offset);
     while (tooLow + 2 <= hi) {
       const mid = (tooLow + 1 + hi) >>> 1;
       assert(mid > tooLow && mid < hi);
@@ -262,7 +262,7 @@ export class Shrinker<T> {
         tooLow = mid;
         continue;
       }
-      hi = this.seed.getPicks(key).diffAt(offset);
+      hi = this.seed.picksAt(key).diffAt(offset);
     }
     return true;
   }

@@ -153,10 +153,10 @@ describe("Gen", () => {
     });
   });
 
-  describe("getPicks", () => {
+  describe("picksAt", () => {
     it("returns empty for an unknown key", () => {
       const gen = Gen.mustBuild(multiStep, [0, 1]);
-      assert(gen.getPicks(2) === PickView.empty);
+      assert(gen.picksAt(2) === PickView.empty);
     });
   });
 

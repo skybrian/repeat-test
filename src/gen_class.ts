@@ -108,8 +108,8 @@ export class MutableGen<T> {
     return this.#gen.groupKeys;
   }
 
-  getPicks(key: GroupKey): PickView {
-    return this.#gen.getPicks(key);
+  picksAt(key: GroupKey): PickView {
+    return this.#gen.picksAt(key);
   }
 
   get val(): T {
@@ -156,7 +156,7 @@ export class Gen<T> implements Success<T> {
 
   pushTo(sink: PickSink): boolean {
     for (const key of this.groupKeys) {
-      const picks = this.getPicks(key);
+      const picks = this.picksAt(key);
       if (!picks.pushTo(sink)) {
         return false;
       }
@@ -174,7 +174,7 @@ export class Gen<T> implements Success<T> {
   }
 
   /** Returns the picks for the given group, or an empty PickList if not found. */
-  getPicks(key: GroupKey): PickView {
+  picksAt(key: GroupKey): PickView {
     assert(typeof key === "number");
     return this.#props.calls.picksAt(key);
   }
