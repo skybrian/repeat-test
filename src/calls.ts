@@ -293,7 +293,7 @@ function makePickFunctionWithEdits(
   ): T => {
     if (req instanceof PickRequest) {
       const before = origin.repliesAt(index);
-      const edit = edits(index)(0, before[0], req);
+      const edit = edits(index)(0, req, before[0]);
       index++;
       return buildPick(req, before, edit);
     }

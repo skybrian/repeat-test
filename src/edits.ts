@@ -11,8 +11,8 @@ export type Edit =
  */
 export type GroupEdit = (
   offset: number,
-  before: number,
   req: Range,
+  originalReply: number,
 ) => Edit;
 
 /** A group edit that keeps everything the same. */
@@ -84,7 +84,7 @@ export class EditResponder implements PickResponder {
       }
       const index = this.#offset++;
       const before = this.#before[index];
-      const edit = this.#edit(index, before, req);
+      const edit = this.#edit(index, req, before);
       let val = before;
       switch (edit.type) {
         case "keep":
