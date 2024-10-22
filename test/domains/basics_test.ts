@@ -163,7 +163,13 @@ describe("array", () => {
     it("rejects arrays with an invalid item", () => {
       assertThrows(() => arr.parse([1, 0]), Error, "1: not in range");
     });
+    it("has one more group than the size of the array", () => {
+      const gen = arr.regenerate([1, 2, 3]);
+      assert(gen.ok);
+      assertEquals(gen.stepKeys.length, gen.val.length + 1);
+    });
   });
+
   describe("with a minimum length", () => {
     const arr = dom.array(dom.int(1, 3), { length: { min: 2 } });
     it("rejects arrays that are too short", () => {
@@ -174,6 +180,7 @@ describe("array", () => {
       );
     });
   });
+
   describe("with a maximum length", () => {
     const arr = dom.array(dom.int(1, 3), { length: { max: 2 } });
     it("rejects arrays that are too long", () => {
@@ -184,6 +191,7 @@ describe("array", () => {
       );
     });
   });
+
   describe("with a fixed-length array", () => {
     const arr = dom.array(dom.int(1, 3), { length: 2 });
     it("encodes the items without prefixes", () => {

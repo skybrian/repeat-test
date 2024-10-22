@@ -62,29 +62,33 @@ export class Shrinker<T> {
    * Removes entire groups, using a binary search to avoid trying each group
    * individually where possible.
    */
-  removeGroups(keys?: Set<GroupKey>): boolean {
+  removeGroups(keys?: GroupKey[]): boolean {
     if (keys === undefined) {
-      keys = new Set(this.seed.stepKeys);
+      keys = this.seed.stepKeys;
     }
-    this.console.log("removeGroups:", keys);
+    this.console.log("removeGroups keys:", keys, "val:", this.seed.val);
 
     // First try removing the entire range.
-    if (this.tryMutate(removeGroups(keys))) {
+    if (this.tryMutate(removeGroups(new Set(keys)))) {
+      this.console.log(
+        "-removed- keys:",
+        this.seed.stepKeys,
+        "val:",
+        this.seed.val,
+      );
       return true;
     }
 
     // Split in two and try each half.
-    const half = Math.floor(keys.size / 2);
+    const half = Math.floor(keys.length / 2);
     if (half < 1) {
       return false; // too few groups
     }
 
     const items = Array.from(keys);
-    const firstHalf = new Set(items.slice(0, half));
-    const secondHalf = new Set(items.slice(half));
     // Remove the second half first, so that the indexes don't shift for the first half.
-    const secondChanged = this.removeGroups(secondHalf);
-    const firstChanged = this.removeGroups(firstHalf);
+    const secondChanged = this.removeGroups(items.slice(half));
+    const firstChanged = this.removeGroups(items.slice(0, half));
     return secondChanged || firstChanged;
   }
 

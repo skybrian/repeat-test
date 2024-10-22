@@ -104,6 +104,19 @@ export function oneOf<T>(...cases: Pickable<T>[]): Arbitrary<T> {
   return Arbitrary.oneOf(...cases);
 }
 
+const off = Symbol("off");
+
+function option<T>(bias: number, item: Pickable<T>): Script<T | typeof off> {
+  const coin = biased(bias);
+  return Script.make("option", (pick) => {
+    if (pick(coin)) {
+      return pick(item);
+    } else {
+      return off;
+    }
+  }, { cachable: Script.from(item).cachable });
+}
+
 /**
  * Defines an Arbitrary that generates arrays of the given item.
  *
@@ -132,32 +145,36 @@ export function array<T>(
     startRegionSize,
   });
 
-  const startCoin = biased(startBias);
-  const extendedCoin = biased(extendedBias);
+  const startOption = option(startBias, item);
+  const extendedOption = option(extendedBias, item);
 
-  function wantItem(i: number, pick: PickFunction): boolean {
+  function nextItem(i: number, pick: PickFunction): T | typeof off {
     if (i >= max) {
-      return false; // done
+      return off; // done
     }
     if (i < min) {
-      return true; // fixed-length portion
+      return pick(item); // fixed-length portion
     }
     if (i < min + startRegionSize) {
-      return pick(startCoin);
+      return pick(startOption);
     } else {
-      return pick(extendedCoin);
+      return pick(extendedOption);
     }
   }
 
   const script = Script.make("array", function pickArray(pick: PickFunction) {
     const result = [];
     let i = 0;
-    while (wantItem(i, pick)) {
-      result.push(pick(item));
+    while (true) {
+      const item = nextItem(i, pick);
+      if (item === off) {
+        break;
+      }
+      result.push(item);
       i++;
     }
     return result;
-  });
+  }, { splitCalls: true });
 
   return Arbitrary.from(script);
 }

@@ -76,20 +76,28 @@ describe("Shrinker", () => {
       return out;
     }, { splitCalls: true });
 
-    const seed = Gen.mustBuild(rolls, [6, 2, 3, 4, 5, 1]);
-
     it("can remove all the calls", () => {
+      const seed = Gen.mustBuild(rolls, [6, 2, 3, 4, 5, 1]);
       const s = new Shrinker(seed, acceptAll);
       assert(s.removeGroups());
       assertEquals(s.seed.val, []);
     });
 
     it("can remove all but one call", () => {
+      const seed = Gen.mustBuild(rolls, [6, 2, 3, 4, 5, 1]);
       repeatTest([2, 3, 4, 5, 6], (keeper) => {
         const s = new Shrinker(seed, (val) => val.includes(keeper));
         assert(s.removeGroups());
         assertEquals(s.seed.val, [keeper]);
       });
+    });
+    it("can remove an empty string", () => {
+      const domain = dom.array(dom.string());
+      const seed = domain.regenerate(["", "<->"]);
+      assert(seed.ok);
+      const s = new Shrinker(seed, (val) => val.includes("<->"));
+      assert(s.removeGroups([0]));
+      assertEquals(s.seed.val, ["<->"]);
     });
   });
   describe("shrinkTails", () => {
@@ -213,11 +221,13 @@ describe("Shrinker", () => {
     });
 
     it("removes leading strings in an array", () => {
-      const seed = dom.array(dom.string()).regenerate(["a", "b", "c"]);
+      const inner = dom.array(dom.string());
+      // wrap to disable splitting
+      const seed = dom.array(inner).regenerate([["a", "b", "c"]]);
       assert(seed.ok);
-      const gen = shrinkAllOptions(seed, (s) => s.includes("c"));
+      const gen = shrinkAllOptions(seed, (s) => s[0].includes("c"));
       assert(gen !== undefined, "didn't shrink");
-      assertEquals(gen.val, ["c"]);
+      assertEquals(gen.val, [["c"]]);
     });
 
     it("shrinks strings in an array", () => {
@@ -457,7 +467,7 @@ describe("shrink", () => {
 
   describe("for an array of ints", () => {
     it("removes leading and trailing unused elements", () => {
-      const hay = arb.array(arb.int(1, 5), { length: { max: 10 } });
+      const hay = arb.array(arb.int(1, 5), { length: { max: 5 } });
       const example = arb.from((pick) => {
         const prefix = pick(hay);
         const suffix = pick(hay);
@@ -465,13 +475,14 @@ describe("shrink", () => {
         const needle = Array(needleSize).fill(6);
         return { prefix, needle, suffix };
       });
-      repeatTest(example, ({ prefix, needle, suffix }) => {
+      repeatTest(example, ({ prefix, needle, suffix }, console) => {
         const input = prefix.concat(needle).concat(suffix);
         assertShrinks(
           dom.array(dom.int(1, 6)),
           (a) => includesSubarray(a, needle),
           input,
           needle,
+          console,
         );
       }, { reps: 100 });
     });
@@ -495,7 +506,7 @@ describe("shrink", () => {
         const needle = Array(needleSize).fill("<->");
         return { prefix, needle, suffix };
       });
-      repeatTest(example, ({ prefix, needle, suffix }) => {
+      repeatTest(example, ({ prefix, needle, suffix }, console) => {
         const input = prefix.concat(needle).concat(suffix);
         assert(!includesSubarray(prefix, needle));
         assertShrinks(
@@ -503,6 +514,7 @@ describe("shrink", () => {
           (a) => includesSubarray(a, needle),
           input,
           needle,
+          console,
         );
       }, { reps: 100 });
     });

@@ -115,6 +115,17 @@ export class CallBuffer implements PickLogger {
     this.endCall(arg, val);
   }
 
+  /**
+   * Skips a call from the original log.
+   *
+   * This is so that {@link keep} will use the next call.
+   */
+  skipOriginal(): void {
+    assert(this.complete);
+    this.#before.next();
+    this.#changed = true;
+  }
+
   takeLog(): CallLog {
     assert(this.complete);
     const log = new CallLog(this.props);
@@ -298,6 +309,7 @@ function makePickFunctionWithEdits(
     let groupEdit = edits(callIndex++);
     while (groupEdit === removeGroup) {
       groupEdit = edits(callIndex++);
+      log?.skipOriginal();
     }
 
     if (req instanceof PickRequest) {

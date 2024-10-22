@@ -4,7 +4,7 @@ import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import { Filtered, type Pickable, PickRequest, Script } from "@/arbitrary.ts";
 import { filtered } from "../src/results.ts";
 import { CallBuffer } from "../src/calls.ts";
-import { keep, replaceOnce } from "../src/edits.ts";
+import { keep, removeGroups, replaceOnce } from "../src/edits.ts";
 
 const roll = Script.make("roll", (pick) => {
   return pick(new PickRequest(1, 6));
@@ -310,6 +310,27 @@ describe("CallLog", () => {
         assertEquals(buf.length, 1);
         assert(buf.changed);
         assertEquals(buf.takeLog().build(roll), 1);
+      });
+
+      it("removes a group", () => {
+        buf.push({ min: 1, max: 6 }, 2);
+        buf.endScript(roll, 2);
+        buf.push({ min: 1, max: 6 }, 3);
+        buf.endScript(roll, 3);
+        const log = buf.takeLog();
+
+        const rollTwo = Script.make("rollTwo", (pick) => {
+          const first = pick(roll);
+          const second = pick(roll);
+          return `${first}, ${second}`;
+        }, { splitCalls: true });
+
+        buf = new CallBuffer(log);
+        const val = log.tryEdit(rollTwo, removeGroups(new Set([0])), buf);
+        assertEquals(val, "3, 1");
+        assert(buf.changed);
+        assertEquals(buf.length, 2);
+        assertEquals(buf.takeLog().build(rollTwo), "3, 1");
       });
     });
 

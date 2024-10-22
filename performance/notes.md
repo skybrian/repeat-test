@@ -374,6 +374,8 @@ shrink an array of strings          144.4 ms           6.9 (142.7 ms … 147.1 m
 
 ### Implement removeGroups in shrinker
 
+Shrinking an array got a lot faster.
+
 ```
     CPU | Apple M2
 Runtime | Deno 2.0.0 (aarch64-apple-darwin)
@@ -390,4 +392,26 @@ uniqueArray of 100 ints             396.9 µs         2,519 (377.2 µs … 565.9
 generate 10k strings                 95.5 ms          10.5 ( 94.9 ms …  95.7 ms)  95.6 ms  95.7 ms  95.7 ms
 fail to shrink a 1k string           60.4 ms          16.6 ( 60.2 ms …  60.8 ms)  60.4 ms  60.8 ms  60.8 ms
 shrink an array of strings           35.5 ms          28.2 ( 32.0 ms …  41.1 ms)  38.5 ms  41.1 ms  41.1 ms
+```
+
+### Turn on splitting for arrays
+
+Shrinking an array of strings regressed a bit.
+
+```
+    CPU | Apple M2
+Runtime | Deno 2.0.0 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+
+benchmark                    time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+---------------------------- ----------------------------- --------------------- --------------------------
+generate a string                     5.3 µs       189,000 (  4.7 µs … 291.8 µs)   5.2 µs   6.1 µs   6.6 µs
+take 10k char16                       4.5 ms         222.1 (  4.4 ms …   5.1 ms)   4.6 ms   4.9 ms   5.1 ms
+uniqueArray of 5 ints                44.5 µs        22,490 ( 40.7 µs … 997.6 µs)  42.9 µs 107.0 µs 117.2 µs
+uniqueArray of 6 ints                47.8 µs        20,910 ( 44.2 µs … 545.8 µs)  46.5 µs 118.5 µs 124.5 µs
+uniqueArray of 100 ints             389.3 µs         2,569 (369.8 µs … 566.8 µs) 379.0 µs 504.6 µs 533.0 µs
+generate 10k strings                 93.2 ms          10.7 ( 93.1 ms …  93.4 ms)  93.3 ms  93.4 ms  93.4 ms
+fail to shrink a 1k string           61.9 ms          16.1 ( 61.5 ms …  63.1 ms)  62.0 ms  63.1 ms  63.1 ms
+shrink an array of strings           48.4 ms          20.7 ( 46.3 ms …  50.7 ms)  49.3 ms  50.7 ms  50.7 ms
 ```
