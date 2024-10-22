@@ -303,8 +303,8 @@ describe("shrink", () => {
 });
 
 describe("Shrinker", () => {
-  describe("shrinkTail", () => {
-    function shrinkTail<T>(
+  describe("shrinkTails", () => {
+    function shrinkTails<T>(
       seed: Gen<T>,
       test: (val: T) => boolean,
     ): Gen<T> | undefined {
@@ -313,7 +313,7 @@ describe("Shrinker", () => {
     }
 
     it("can't shrink an empty seed", () => {
-      assertEquals(shrinkTail(emptySeed, acceptAll), undefined);
+      assertEquals(shrinkTails(emptySeed, acceptAll), undefined);
     });
 
     it("shrinks a pipeline", () => {
@@ -325,7 +325,7 @@ describe("Shrinker", () => {
       const seed = Gen.mustBuild(script, [1, 0, 0]);
       assertEquals(seed.val, "a!");
 
-      const gen = shrinkTail(seed, acceptAll);
+      const gen = shrinkTails(seed, acceptAll);
       assert(gen !== undefined);
       assertEquals(gen.val, "!");
     });
@@ -340,8 +340,8 @@ describe("Shrinker", () => {
         const replies = recs.map((r) => r.val);
         const seed = seedFrom(reqs, replies);
 
-        const gen = shrinkTail(seed, acceptAll);
-        assert(gen !== undefined, "expected a result from shrinkTail");
+        const gen = shrinkTails(seed, acceptAll);
+        assert(gen !== undefined, "expected a result from shrinkTails");
         assertEquals(gen.picks.trimmed().replies, []);
       });
     });
@@ -355,8 +355,8 @@ describe("Shrinker", () => {
       repeatTest(example, ({ s, len }) => {
         const seed = dom.string().regenerate(s);
         assert(seed.ok);
-        const gen = shrinkTail(seed, (s) => s.length >= len);
-        assert(gen !== undefined, "expected a result from shrinkTail");
+        const gen = shrinkTails(seed, (s) => s.length >= len);
+        assert(gen !== undefined, "expected a result from shrinkTails");
         assertEquals(gen.val.length, len);
       });
     });

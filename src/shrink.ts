@@ -36,7 +36,7 @@ export class Shrinker<T> {
     this.console.log("shrink:", this.seed.val);
 
     this.shrinkTails();
-    this.console.log("after shrinkTail:", this.seed.val);
+    this.console.log("after shrinkTails:", this.seed.val);
 
     this.shrinkAllOptions();
     this.console.log("after shrinkAllOptions:", this.seed.val);
@@ -63,7 +63,7 @@ export class Shrinker<T> {
    */
   shrinkTails(): boolean {
     let keys = this.seed.stepKeys;
-    this.console?.log("shrinkTail keys:", keys);
+    this.console?.log("shrinkTails keys:", keys);
     let changed = false;
     for (let i = keys.length - 1; i >= 0; i--) {
       const key = keys[i];
