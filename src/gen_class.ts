@@ -10,7 +10,7 @@ import { failure, filtered } from "./results.ts";
 import { Script } from "./script_class.ts";
 import { PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
-import { makePickFunction, usePicks } from "./build.ts";
+import { makePickFunction } from "./build.ts";
 import { CallBuffer } from "./calls.ts";
 
 type Props<T> = {
@@ -45,9 +45,8 @@ function cacheResult<T>(props: Props<T>): () => T {
     return () => val;
   }
 
-  const lastReplies = calls.replies;
   const regenerate = (): T => {
-    const next = script.build(usePicks(...lastReplies));
+    const next = calls.build(script);
     assert(
       next !== filtered,
       "can't regenerate value of nondeterministic script",

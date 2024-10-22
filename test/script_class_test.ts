@@ -1,7 +1,7 @@
 import type { Pickable } from "../src/pickable.ts";
 
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { filtered } from "../src/results.ts";
 import { PickRequest } from "../src/picks.ts";
@@ -39,6 +39,21 @@ describe("Script", () => {
         Error,
         "failed",
       );
+    });
+  });
+
+  describe("with", () => {
+    it("returns a new script with the given name", () => {
+      const original = Script.make("original", () => true);
+      const renamed = original.with({ name: "renamed" });
+      assertEquals(renamed.name, "renamed");
+    });
+
+    it("returns a new script with cachable set to true", () => {
+      const original = Script.make("original", () => true);
+      assertFalse(original.cachable);
+      const cached = original.with({ cachable: true });
+      assert(cached.cachable);
     });
   });
 });
