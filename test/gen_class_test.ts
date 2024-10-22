@@ -146,10 +146,10 @@ describe("Gen", () => {
     });
   });
 
-  describe("stepKeys", () => {
-    it("returns a single key for a non-piped script", () => {
+  describe("groupKeys", () => {
+    it("returns a single key for a non-split script", () => {
       const gen = Gen.mustBuild(bit, [0]);
-      assertEquals(gen.stepKeys, [0]);
+      assertEquals(gen.groupKeys, [0]);
     });
   });
 
@@ -349,7 +349,7 @@ describe("generate", () => {
           replies: expectedReplies,
         });
         assert(gen !== filtered);
-        assertEquals(gen.stepKeys, [0, 1]);
+        assertEquals(gen.groupKeys, [0, 1]);
       }
       assertEquals(generate(multiStep, playouts), filtered);
     });

@@ -199,7 +199,12 @@ export interface PickSink {
   push(req: Range, pick: number): boolean;
 }
 
-export class PickLog {
+export interface Pushable {
+  /** Returns true if all picks were pushed to the sink. */
+  pushTo(sink: PickSink): boolean;
+}
+
+export class PickLog implements PickSink {
   reqs: Range[] = [];
   replies: number[] = [];
 
@@ -221,9 +226,10 @@ export class PickLog {
     this.replies.length = newLen;
   }
 
-  push(req: Range, reply: number): void {
+  push(req: Range, reply: number): boolean {
     this.reqs.push(req);
     this.replies.push(reply);
+    return true;
   }
 
   pushAll(reqs: Range[], replies: number[]): void {
@@ -232,7 +238,7 @@ export class PickLog {
   }
 }
 
-export class PickView {
+export class PickView implements Pushable {
   constructor(
     private readonly log: PickLog,
     readonly start: number,
@@ -306,6 +312,8 @@ export class PickView {
 
   /**
    * Writes each pick to a sink.
+   *
+   * Returns true if all picks were pushed.
    */
   pushTo(sink: PickSink): boolean {
     for (let i = 0; i < this.length; i++) {
@@ -316,13 +324,6 @@ export class PickView {
       }
     }
     return true;
-  }
-
-  static wrap(reqs: Range[], replies: number[]): PickView {
-    const log = new PickLog();
-    log.reqs = reqs;
-    log.replies = replies;
-    return new PickView(log, 0, reqs.length);
   }
 
   /**
@@ -336,6 +337,26 @@ export class PickView {
   }
 
   static empty = PickView.wrap([], []);
+
+  /**
+   * Creates a view from two arrays.
+   */
+  static wrap(reqs: Range[], replies: number[]): PickView {
+    assert(reqs.length === replies.length);
+    const log = new PickLog();
+    log.reqs = reqs;
+    log.replies = replies;
+    return new PickView(log, 0, reqs.length);
+  }
+
+  /**
+   * Copies picks from some source, returning a view.
+   */
+  static copyFrom(source: Pushable): PickView {
+    const log = new PickLog();
+    assert(source.pushTo(log));
+    return new PickView(log, 0, log.length);
+  }
 }
 
 /**

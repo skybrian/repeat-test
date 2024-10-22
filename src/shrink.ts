@@ -64,7 +64,7 @@ export class Shrinker<T> {
    */
   removeGroups(keys?: GroupKey[]): boolean {
     if (keys === undefined) {
-      keys = this.seed.stepKeys;
+      keys = this.seed.groupKeys;
     }
     this.console.log("removeGroups keys:", keys, "val:", this.seed.val);
 
@@ -72,7 +72,7 @@ export class Shrinker<T> {
     if (this.tryMutate(removeGroups(new Set(keys)))) {
       this.console.log(
         "-removed- keys:",
-        this.seed.stepKeys,
+        this.seed.groupKeys,
         "val:",
         this.seed.val,
       );
@@ -99,7 +99,7 @@ export class Shrinker<T> {
    * empty.
    */
   shrinkTails(): boolean {
-    let keys = this.seed.stepKeys;
+    let keys = this.seed.groupKeys;
     this.console?.log("shrinkTails keys:", keys);
     let changed = false;
     for (let i = keys.length - 1; i >= 0; i--) {
@@ -111,7 +111,7 @@ export class Shrinker<T> {
       if (this.shrinkTailAt(key)) {
         changed = true;
       }
-      keys = this.seed.stepKeys;
+      keys = this.seed.groupKeys;
     }
     return changed;
   }
@@ -152,7 +152,7 @@ export class Shrinker<T> {
 
   shrinkAllOptions<T>(): boolean {
     let changed = false;
-    for (const key of this.seed.stepKeys) {
+    for (const key of this.seed.groupKeys) {
       if (this.shrinkSegmentOptions(key)) {
         changed = true;
       }
@@ -211,7 +211,7 @@ export class Shrinker<T> {
     let changed = false;
     const seen = new Set<GroupKey>();
     while (true) {
-      const todo = this.seed.stepKeys.filter((key) => !seen.has(key));
+      const todo = this.seed.groupKeys.filter((key) => !seen.has(key));
       if (todo.length === 0) {
         break;
       }

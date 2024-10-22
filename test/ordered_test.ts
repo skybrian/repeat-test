@@ -6,7 +6,7 @@ import { assert, assertEquals, assertThrows, fail } from "@std/assert";
 import { Arbitrary } from "@/arbitrary.ts";
 
 import { Filtered } from "../src/pickable.ts";
-import { PickRequest } from "../src/picks.ts";
+import { PickRequest, PickView } from "../src/picks.ts";
 import { Script } from "../src/script_class.ts";
 
 import { assertGenerated, assertValues } from "./lib/asserts.ts";
@@ -226,7 +226,7 @@ describe("takeGenerated", () => {
     const examples = Arbitrary.of(1, 2, 3);
     const gens = takeGenerated(examples, 4);
     assertEquals(gens.length, 3);
-    const playout = gens[0].picks;
+    const playout = PickView.copyFrom(gens[0]);
     assertEquals(playout.length, 1);
     const req = playout.getPick(0).req;
     assertEquals(req.min, 0);

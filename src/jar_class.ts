@@ -126,7 +126,7 @@ export class Jar<T> {
     const canon = this.dom.regenerate(val);
     assert(canon.ok, "regenerate should always succeed");
 
-    return this.remaining.prune(canon.picks);
+    return this.remaining.prune(canon);
   };
 
   #refreshExample(): void {

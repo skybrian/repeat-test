@@ -166,7 +166,7 @@ describe("array", () => {
     it("has one more group than the size of the array", () => {
       const gen = arr.regenerate([1, 2, 3]);
       assert(gen.ok);
-      assertEquals(gen.stepKeys.length, gen.val.length + 1);
+      assertEquals(gen.groupKeys.length, gen.val.length + 1);
     });
   });
 

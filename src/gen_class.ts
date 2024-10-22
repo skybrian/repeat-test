@@ -1,6 +1,6 @@
 import type { Failure, Success } from "./results.ts";
 import type { Pickable } from "./pickable.ts";
-import type { PickView, Range } from "./picks.ts";
+import type { PickSink, PickView, Range } from "./picks.ts";
 import type { GroupKey, MultiEdit } from "./edits.ts";
 import type { Backtracker } from "./backtracking.ts";
 import type { CallLog } from "./calls.ts";
@@ -104,8 +104,8 @@ export class MutableGen<T> {
     return this.#gen;
   }
 
-  get stepKeys(): GroupKey[] {
-    return this.#gen.stepKeys;
+  get groupKeys(): GroupKey[] {
+    return this.#gen.groupKeys;
   }
 
   getPicks(key: GroupKey): PickView {
@@ -158,12 +158,21 @@ export class Gen<T> implements Success<T> {
     return this.#props.calls.pickView;
   }
 
+  pushTo(sink: PickSink): boolean {
+    for (const key of this.groupKeys) {
+      const picks = this.getPicks(key);
+      if (!picks.pushTo(sink)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /**
-   * The number of steps that were needed to generate this value.
-   *
-   * (Some steps might use zero picks.)
+   * The key of each group of picks used to generate this value, in the order
+   * they were used.
    */
-  get stepKeys(): GroupKey[] {
+  get groupKeys(): GroupKey[] {
     const len = this.#props.calls.length;
     return new Array(len).fill(0).map((_, i) => i);
   }

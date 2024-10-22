@@ -1,6 +1,8 @@
-import type { Gen } from "../../src/gen_class.ts";
 import type { Range } from "../../src/picks.ts";
+import type { Gen } from "../../src/gen_class.ts";
+
 import { filtered } from "../../src/results.ts";
+import { PickView } from "../../src/picks.ts";
 
 export type GenProps<T> = {
   val: T;
@@ -18,7 +20,9 @@ export function propsFromGen<T>(
   if (gen === filtered) {
     return filtered;
   }
-  const picks = gen.picks;
+
+  const picks = PickView.copyFrom(gen);
+
   const out: GenProps<T> = {
     val: gen.val,
     name: gen.name,
