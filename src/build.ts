@@ -78,7 +78,7 @@ export function usePicks(...replies: number[]): PickFunction {
  */
 export interface PickLogger {
   /**
-   * Pushes a pick to the buffer. It might be removed later
+   * Pushes a pick used by a script to the buffer. It might be removed later
    * using {@link undoPushes}.
    */
   push(req: Range, pick: number): void;
@@ -87,9 +87,9 @@ export interface PickLogger {
   undoPushes(count: number): void;
 
   /** Ends a top-level pick request. */
-  endPick(): void;
+  endPick(req: Range, pick: number): void;
 
-  /** Ends a top-level call that's not a pick request. */
+  /** Ends a top-level script call. This uses any pushed picks since previous call. */
   endScript<T>(arg: Script<T>, result: T): void;
 }
 
@@ -157,11 +157,12 @@ export function makePickFunction<T>(
       }
       const pick = playouts.nextPick(req);
       if (pick === undefined) throw new Filtered("cancelled in PlayoutSource");
-      log?.push(req, pick);
-      pickCount++;
       if (level === 0) {
-        log?.endPick();
+        log?.endPick(req, pick);
+      } else {
+        log?.push(req, pick);
       }
+      pickCount++;
       return pick as T;
     }
 

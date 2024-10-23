@@ -35,8 +35,7 @@ describe("CallBuffer", () => {
 
   describe("keep", () => {
     it("preserves a pick call from a previous log", () => {
-      buf.push({ min: 1, max: 6 }, 3);
-      buf.endPick();
+      buf.endPick({ min: 1, max: 6 }, 3);
       const log = buf.takeLog();
       assertEquals(log.rebuild(roll), 3);
 
@@ -75,16 +74,14 @@ describe("CallLog", () => {
       });
 
       it("uses a recorded pick", () => {
-        buf.push({ min: 1, max: 6 }, 3);
-        buf.endPick();
+        buf.endPick({ min: 1, max: 6 }, 3);
         const log = buf.takeLog();
 
         assertEquals(log.rebuild(roll), 3);
       });
 
       it("returns the minimum if the pick is out of range", () => {
-        buf.push({ min: 1, max: 7 }, 7);
-        buf.endPick();
+        buf.endPick({ min: 1, max: 7 }, 7);
         const log = buf.takeLog();
 
         assertEquals(log.rebuild(roll), 1);
@@ -134,8 +131,7 @@ describe("CallLog", () => {
       });
 
       it("uses the cached value if the script call matches", () => {
-        buf.push({ min: 1, max: 6 }, 3);
-        buf.endPick();
+        buf.endPick({ min: 1, max: 6 }, 3);
         buf.push({ min: 1, max: 6 }, 6);
         buf.endScript(cachableRoll, "hello");
         const log = buf.takeLog();
@@ -144,8 +140,7 @@ describe("CallLog", () => {
       });
 
       it("regenerates from picks if the script doesn't match", () => {
-        buf.push({ min: 1, max: 6 }, 3);
-        buf.endPick();
+        buf.endPick({ min: 1, max: 6 }, 3);
         buf.push({ min: 1, max: 6 }, 4);
         buf.endScript(roll, 1);
         const log = buf.takeLog();
@@ -154,10 +149,8 @@ describe("CallLog", () => {
       });
 
       it("regenerates from a pick call", () => {
-        buf.push({ min: 1, max: 6 }, 3);
-        buf.endPick();
-        buf.push({ min: 1, max: 6 }, 4);
-        buf.endPick();
+        buf.endPick({ min: 1, max: 6 }, 3);
+        buf.endPick({ min: 1, max: 6 }, 4);
         const log = buf.takeLog();
 
         assertEquals(log.rebuild(rollAndStr), "3, rolled 4");
@@ -183,18 +176,15 @@ describe("CallLog", () => {
       it("uses the cached value if the script call matches", () => {
         buf.push({ min: 1, max: 6 }, 3);
         buf.endScript(cachableRoll, "hello");
-        buf.push({ min: 1, max: 6 }, 6);
-        buf.endPick();
+        buf.endPick({ min: 1, max: 6 }, 6);
         const log = buf.takeLog();
 
         assertEquals(log.rebuild(script), "hello, 6");
       });
 
       it("uses a pick as input for a script call", () => {
-        buf.push({ min: 1, max: 6 }, 3);
-        buf.endPick();
-        buf.push({ min: 1, max: 6 }, 4);
-        buf.endPick();
+        buf.endPick({ min: 1, max: 6 }, 3);
+        buf.endPick({ min: 1, max: 6 }, 4);
         const log = buf.takeLog();
 
         assertEquals(log.rebuild(script), "rolled 3, 4");
@@ -300,8 +290,7 @@ describe("CallLog", () => {
       });
 
       it("edits the pick", () => {
-        buf.push({ min: 1, max: 6 }, 2);
-        buf.endPick();
+        buf.endPick({ min: 1, max: 6 }, 2);
         const log = buf.takeLog();
 
         buf = new CallBuffer(log);
@@ -340,8 +329,7 @@ describe("CallLog", () => {
       }, { splitCalls: true });
 
       it("edits the pick", () => {
-        buf.push({ min: 1, max: 6 }, 2);
-        buf.endPick();
+        buf.endPick({ min: 1, max: 6 }, 2);
         const log = buf.takeLog();
 
         buf = new CallBuffer(log);

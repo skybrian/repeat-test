@@ -78,13 +78,10 @@ export class CallBuffer implements PickLogger {
     this.#log.nextViewLength -= count;
   }
 
-  endPick(): void {
-    const log = this.#log;
-    assert(log.nextViewLength === 1);
-
-    const req = log.reqs[log.viewStart];
-    const reply = log.replies[log.viewStart];
-    this.endCall(req, reply);
+  endPick(req: Range, reply: number): void {
+    assert(this.complete);
+    this.#log.push(req, reply);
+    this.endCall(req, reply, this.#log.takeView());
 
     const next = this.#before.next();
     if (next.done || next.value.arg !== req || next.value.val !== reply) {
@@ -95,7 +92,8 @@ export class CallBuffer implements PickLogger {
   endScript<T>(arg: Script<T>, val: T): void {
     const shouldCache = arg.cachable && Object.isFrozen(val);
     const storedVal = shouldCache ? val : regen;
-    this.endCall(arg, storedVal);
+    const picks = this.#log.takeView();
+    this.endCall(arg, storedVal, picks);
 
     const next = this.#before.next();
     if (next.done || next.value.arg !== arg || next.value.val !== storedVal) {
@@ -109,10 +107,9 @@ export class CallBuffer implements PickLogger {
 
     const next = this.#before.next();
     assert(!next.done);
-    const { arg, picks, val } = next.value;
-
+    const { arg, val, picks } = next.value;
     this.#log.pushAll(picks.reqs, picks.replies);
-    this.endCall(arg, val);
+    this.endCall(arg, val, this.#log.takeView());
   }
 
   /**
@@ -133,12 +130,16 @@ export class CallBuffer implements PickLogger {
     return log;
   }
 
-  private endCall<T>(arg: Range | Script<T>, val: T | typeof regen): void {
+  private endCall<T>(
+    arg: Range | Script<T>,
+    val: T | typeof regen,
+    view: PickView,
+  ): void {
     const { args, vals, picks } = this.props;
 
     args.push(arg);
     vals.push(val);
-    picks.push(this.#log.takeView());
+    picks.push(view);
   }
 }
 
@@ -167,6 +168,7 @@ export class CallLog {
     if (offset >= this.length) {
       return PickView.empty;
     }
+
     return this.props.picks[offset];
   }
 
@@ -184,11 +186,10 @@ export class CallLog {
 
   callAt(index: number): Call<unknown> {
     const { args, vals } = this.props;
-    return {
-      arg: args[index],
-      picks: this.picksAt(index),
-      val: vals[index],
-    };
+    const arg = args[index];
+    const val = vals[index];
+    const picks = this.picksAt(index);
+    return { arg, val, picks };
   }
 
   get calls(): IterableIterator<Call<unknown>> {
@@ -257,8 +258,7 @@ function makePickFunctionWithEdits(
     const responder = new EditResponder(before, () => edit);
     const reply = responder.nextPick(req);
 
-    log?.push(req, reply);
-    log?.endPick();
+    log?.endPick(req, reply);
 
     return reply as T;
   }
@@ -306,7 +306,11 @@ function makePickFunctionWithEdits(
 
     // handle a script call
     const script = Script.from(req);
-    const before = origin.callAt(callIndex - 1);
+    const before = callIndex <= origin.length ? origin.callAt(callIndex - 1) : {
+      arg: script,
+      picks: PickView.empty,
+      val: regen,
+    };
     const val = buildScript(script, before, groupEdit);
 
     const accept = opts?.accept;
