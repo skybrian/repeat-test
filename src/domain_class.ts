@@ -70,7 +70,7 @@ export class Domain<T> extends Arbitrary<T> {
         );
       }
       assertEquals(
-        def.replies,
+        Array.from(def.replies),
         picks.val,
         `callback's picks don't match for the default value of ${arb.name}`,
       );

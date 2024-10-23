@@ -1,9 +1,8 @@
 import type { Domain } from "@/domain.ts";
 import type { SystemConsole } from "@/runner.ts";
-import type { GroupKey } from "../src/edits.ts";
 
 import { describe, it } from "@std/testing/bdd";
-import { assert, assertEquals, fail } from "@std/assert";
+import { assert, assertEquals, assertFalse, fail } from "@std/assert";
 import { repeatTest } from "@/runner.ts";
 import * as arb from "@/arbs.ts";
 import * as dom from "@/doms.ts";
@@ -100,17 +99,11 @@ describe("Shrinker", () => {
       assertEquals(s.seed.val, ["<->"]);
     });
   });
-  describe("shrinkTails", () => {
-    function shrinkTails<T>(
-      seed: Gen<T>,
-      test: (val: T) => boolean,
-    ): Gen<T> | undefined {
-      const s = new Shrinker(seed, test);
-      return s.shrinkTails() ? s.seed.gen : undefined;
-    }
 
+  describe("shrinkTails", () => {
     it("can't shrink an empty seed", () => {
-      assertEquals(shrinkTails(emptySeed, acceptAll), undefined);
+      const s = new Shrinker(emptySeed, acceptAll);
+      assertFalse(s.shrinkTails());
     });
 
     it("shrinks a pipeline", () => {
@@ -122,9 +115,9 @@ describe("Shrinker", () => {
       const seed = Gen.mustBuild(script, [1, 0, 0]);
       assertEquals(seed.val, "a!");
 
-      const gen = shrinkTails(seed, acceptAll);
-      assert(gen !== undefined);
-      assertEquals(gen.val, "!");
+      const s = new Shrinker(seed, acceptAll);
+      assert(s.shrinkTails());
+      assertEquals(s.seed.gen.val, "!");
     });
 
     const nonEmptySeeds = arb.array(minMaxVal({ minMin: 0 }), {
@@ -137,24 +130,25 @@ describe("Shrinker", () => {
         const replies = recs.map((r) => r.val);
         const seed = seedFrom(reqs, replies);
 
-        const gen = shrinkTails(seed, acceptAll);
-        assert(gen !== undefined, "expected a result from shrinkTails");
-        assertEquals(PickView.copyFrom(gen).trimmed().replies, []);
+        const s = new Shrinker(seed, acceptAll);
+        assert(s.shrinkTails());
+        const picks = PickView.copyFrom(s.seed.gen);
+        assertEquals(picks.trimmed().replies, []);
       });
     });
 
     it("shrinks a string to a smaller length", () => {
       const example = arb.from((pick) => {
-        const s = pick(arb.string({ length: { min: 1, max: 100 } }));
-        const len = pick(arb.int(0, s.length - 1));
-        return { s, len };
+        const str = pick(arb.string({ length: { min: 1, max: 100 } }));
+        const len = pick(arb.int(0, str.length - 1));
+        return { str, len };
       });
-      repeatTest(example, ({ s, len }) => {
-        const seed = dom.string().regenerate(s);
+      repeatTest(example, ({ str, len }) => {
+        const seed = dom.string().regenerate(str);
         assert(seed.ok);
-        const gen = shrinkTails(seed, (s) => s.length >= len);
-        assert(gen !== undefined, "expected a result from shrinkTails");
-        assertEquals(gen.val.length, len);
+        const s = new Shrinker(seed, (s) => s.length >= len);
+        assert(s.shrinkTails());
+        assertEquals(s.seed.gen.val.length, len);
       });
     });
 
@@ -172,7 +166,8 @@ describe("Shrinker", () => {
       assert(s.shrinkTails());
       const gen = s.seed.gen;
       assertEquals(gen.val, { a: "", b: "" });
-      assertEquals(gen.replies, [0, 0]);
+      const picks = PickView.copyFrom(gen);
+      assertEquals(picks.replies, [0, 0]);
     });
   });
 
@@ -240,28 +235,22 @@ describe("Shrinker", () => {
   });
 
   describe("shrinkAllPicks", () => {
-    function shrinkAllPicks<T>(
-      seed: Gen<T>,
-      test: (val: T) => boolean,
-      console?: SystemConsole,
-    ) {
-      const s = new Shrinker(seed, test, console);
-      return s.shrinkAllPicks() ? s.seed.gen : undefined;
-    }
-
     it("can't shrink an empty seed", () => {
-      assertEquals(shrinkAllPicks(emptySeed, acceptAll), undefined);
+      const s = new Shrinker(emptySeed, acceptAll);
+      assertEquals(s.shrinkAllPicks(), false);
     });
 
     it("shrinks to default picks", () => {
       const lo = new PickRequest(1, 2);
       const hi = new PickRequest(3, 4);
       const seed = seedFrom([lo, hi], [2, 4]);
-      const gen = shrinkAllPicks(seed, acceptAll);
-      assertEquals(gen?.replies, [1, 3]);
+      const s = new Shrinker(seed, acceptAll);
+      assert(s.shrinkAllPicks());
+      const picks = PickView.copyFrom(s.seed.gen);
+      assertEquals(picks.replies, [1, 3]);
     });
 
-    it("shrinks a pipeline", () => {
+    it("shrinks two picks", () => {
       const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
       const twoBits = bit.then(
         "two bits",
@@ -269,8 +258,10 @@ describe("Shrinker", () => {
       );
 
       const seed = Gen.mustBuild(twoBits, [1, 1]);
-      const gen = shrinkAllPicks(seed, acceptAll);
-      assertEquals(gen?.replies, [0, 0]);
+      const s = new Shrinker(seed, acceptAll);
+      assert(s.shrinkAllPicks());
+      const picks = PickView.copyFrom(s.seed.gen);
+      assertEquals(picks.replies, [0, 0]);
     });
 
     it("shrinks strings using split calls", () => {
@@ -286,30 +277,23 @@ describe("Shrinker", () => {
       const s = new Shrinker(seed, acceptAll);
       assert(s.shrinkAllPicks());
       const gen = s.seed.gen;
-      assertEquals(gen.replies, [0, 0]);
       assertEquals(gen.val, { a: "", b: "" });
+      const picks = PickView.copyFrom(gen);
+      assertEquals(picks.replies, [0, 0]);
     });
   });
 
   describe("shrinkOnePick", () => {
-    function shrinkOnePick<T>(
-      key: GroupKey,
-      offset: number,
-      seed: Gen<T>,
-      test: (val: T) => boolean,
-    ) {
-      const s = new Shrinker(seed, test);
-      return s.shrinkOnePick(key, offset) ? s.seed.gen : undefined;
-    }
-
     it("can't shrink an empty seed", () => {
-      assertEquals(shrinkOnePick(0, 0, emptySeed, acceptAll), undefined);
+      const s = new Shrinker(emptySeed, acceptAll);
+      assertFalse(s.shrinkOnePick(0, 0));
     });
 
     const roll = new PickRequest(1, 6);
     it("can't shrink a pick already at the minimum", () => {
       const seed = seedFrom([roll], [1]);
-      assertEquals(shrinkOnePick(0, 0, seed, acceptAll), undefined);
+      const s = new Shrinker(seed, acceptAll);
+      assertFalse(s.shrinkOnePick(0, 0));
     });
 
     it("shrinks a pick to the minimum", () => {
@@ -323,8 +307,10 @@ describe("Shrinker", () => {
         const replies = [...prefix, value, ...suffix];
         const reqs = new Array(replies.length).fill(roll);
         const seed = seedFrom(reqs, replies);
-        const gen = shrinkOnePick(0, prefix.length, seed, acceptAll);
-        assertEquals(gen?.replies, [...prefix, 1, ...suffix]);
+        const s = new Shrinker(seed, acceptAll);
+        assert(s.shrinkOnePick(0, prefix.length));
+        const picks = PickView.copyFrom(s.seed.gen);
+        assertEquals(picks.replies, [...prefix, 1, ...suffix]);
       });
     });
 
@@ -338,8 +324,9 @@ describe("Shrinker", () => {
         const seed = dom.int(1, 10).regenerate(start);
         assert(seed.ok);
         const accept = (v: number) => v >= want;
-        const gen = shrinkOnePick(0, 0, seed, accept);
-        assertEquals(gen?.replies, [want]);
+        const s = new Shrinker(seed, accept);
+        assert(s.shrinkOnePick(0, 0));
+        assertEquals(PickView.copyFrom(s.seed.gen).replies, [want]);
       });
     });
   });

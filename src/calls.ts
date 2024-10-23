@@ -128,7 +128,7 @@ export class CallBuffer implements PickLogger {
 
   takeLog(): CallLog {
     assert(this.complete);
-    const log = new CallLog(this.props, this.#log);
+    const log = new CallLog(this.props);
     this.reset();
     return log;
   }
@@ -146,18 +146,19 @@ export class CallBuffer implements PickLogger {
  * The calls that were made to a pick function.
  */
 export class CallLog {
-  readonly #log: PickLog;
-
-  constructor(readonly props: Props, log: PickLog) {
-    this.#log = log;
-  }
+  constructor(private readonly props: Props) {}
 
   get length(): number {
     return this.props.args.length;
   }
 
   get replies(): Iterable<number> {
-    return this.#log.replies;
+    function* generate(picks: PickView[]): Iterable<number> {
+      for (const view of picks) {
+        yield* view.replies;
+      }
+    }
+    return generate(this.props.picks);
   }
 
   picksAt(offset: number): PickView {
