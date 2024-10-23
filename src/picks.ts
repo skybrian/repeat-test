@@ -205,7 +205,7 @@ export interface Pushable {
 }
 
 /**
- * Stores picks before creating a {@link PickView}.
+ * Stores picks before creating a {@link PickList}.
  */
 export class PickBuffer implements PickSink {
   #reqs: Range[] = [];
@@ -223,33 +223,32 @@ export class PickBuffer implements PickSink {
     return true;
   }
 
-  pushAll(reqs: Range[], replies: number[]): void {
-    for (let i = 0; i < reqs.length; i++) {
-      this.push(reqs[i], replies[i]);
-    }
-  }
-
   undoPushes(toRemove: number) {
     assert(toRemove <= this.pushCount);
     this.#count -= toRemove;
   }
 
-  takeView(): PickView {
+  takeList(): PickList {
     if (this.#count === 0) {
-      return PickView.empty;
+      return PickList.empty;
     }
-    const view = PickView.slice(
+
+    const list = PickList.fromSlices(
       this.#reqs,
       this.#replies,
       0,
       this.#count,
     );
+
     this.#count = 0;
-    return view;
+    return list;
   }
 }
 
-export class PickView implements Pushable {
+/**
+ * A list of (request, reply) pairs.
+ */
+export class PickList implements Pushable {
   private constructor(
     readonly reqs: Range[],
     readonly replies: number[],
@@ -298,7 +297,8 @@ export class PickView implements Pushable {
   }
 
   /**
-   * Returns the length of the view with default picks removed from the end.
+   * Returns the length that the list would be with default picks removed from
+   * the end.
    */
   get trimmedLength(): number {
     let i = this.length - 1;
@@ -309,11 +309,11 @@ export class PickView implements Pushable {
   }
 
   /**
-   * Returns the requests and replies with default picks removed from the end.
+   * Returns a new list with default picks removed from the end.
    */
-  trimmed(): PickView {
+  trimmed(): PickList {
     const len = this.trimmedLength;
-    return new PickView(this.reqs.slice(0, len), this.replies.slice(0, len));
+    return new PickList(this.reqs.slice(0, len), this.replies.slice(0, len));
   }
 
   /**
@@ -342,35 +342,35 @@ export class PickView implements Pushable {
     }
   }
 
-  static empty = PickView.wrap([], []);
+  static empty = PickList.wrap([], []);
 
   /**
-   * Creates a view by wrapping two arrays.
+   * Creates a PickList by wrapping two arrays, without copying them.
    */
-  static wrap(reqs: Range[], replies: number[]): PickView {
+  static wrap(reqs: Range[], replies: number[]): PickList {
     assert(reqs.length === replies.length);
-    return new PickView(reqs, replies);
+    return new PickList(reqs, replies);
   }
 
   /**
-   * Creates a view by slicing two parallel arrays.
+   * Creates a PickList by slicing two parallel arrays.
    */
-  static slice(
+  static fromSlices(
     reqs: Range[],
     replies: number[],
     start: number,
     end: number,
-  ): PickView {
-    return new PickView(reqs.slice(start, end), replies.slice(start, end));
+  ): PickList {
+    return new PickList(reqs.slice(start, end), replies.slice(start, end));
   }
 
   /**
-   * Copies picks from some source, returning a view.
+   * Copies picks from a pushable source to a new list.
    */
-  static copyFrom(source: Pushable): PickView {
+  static copyFrom(source: Pushable): PickList {
     const buf = new PickBuffer();
     assert(source.pushTo(buf));
-    return buf.takeView();
+    return buf.takeList();
   }
 }
 

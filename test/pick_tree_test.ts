@@ -5,11 +5,11 @@ import { repeatTest } from "@/runner.ts";
 
 import * as arb from "../src/arbitraries/basics.ts";
 
-import { PickRequest, PickView } from "../src/picks.ts";
+import { PickList, PickRequest } from "../src/picks.ts";
 import { PickTree } from "../src/pick_tree.ts";
 
 function playout(reqs: PickRequest[], replies: number[]) {
-  return PickView.wrap(reqs, replies);
+  return PickList.wrap(reqs, replies);
 }
 
 describe("PickTree", () => {

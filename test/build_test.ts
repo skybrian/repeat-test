@@ -45,13 +45,13 @@ describe("makePickFunction", () => {
   function checkCalls(...expected: GenProps<unknown>[]) {
     const actual: GenProps<unknown>[] = [];
     const log = buf.takeLog();
-    for (const { arg, picks, val } of log.calls) {
+    for (const { arg, val, group } of log.calls) {
       const name = (arg instanceof Script) ? arg.name : arg.toString();
       actual.push({
-        val,
         name,
-        reqs: picks.reqs,
-        replies: picks.replies,
+        val,
+        reqs: group.reqs,
+        replies: group.replies,
       });
     }
     assertEquals(actual, expected);

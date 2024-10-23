@@ -16,8 +16,8 @@ import {
   alwaysPick,
   biasedBitRequest,
   PickBuffer,
+  PickList,
   PickRequest,
-  PickView,
   PlaybackPicker,
 } from "../src/picks.ts";
 import { RecordingConsole } from "../src/console.ts";
@@ -267,10 +267,10 @@ describe("biasedBitRequest", () => {
   });
 });
 
-describe("PickView", () => {
+describe("PickList", () => {
   describe("properties", () => {
     it("has two enumerable properties", () => {
-      assertEquals(Object.keys(PickView.empty), ["reqs", "replies"]);
+      assertEquals(Object.keys(PickList.empty), ["reqs", "replies"]);
     });
   });
 
@@ -279,20 +279,20 @@ describe("PickView", () => {
     const bit = PickRequest.bit;
 
     it("two empty lists are equal", () => {
-      const a = PickView.wrap([], []);
-      const b = PickView.empty;
+      const a = PickList.wrap([], []);
+      const b = PickList.empty;
       assertEquals(a, b);
     });
 
     it("compares differently with different requests", () => {
-      const a = PickView.wrap([zero], [0]);
-      const b = PickView.wrap([bit], [0]);
+      const a = PickList.wrap([zero], [0]);
+      const b = PickList.wrap([bit], [0]);
       assert(!equal(a, b));
     });
 
     it("compares differently with different replies", () => {
-      const a = PickView.wrap([bit], [0]);
-      const b = PickView.wrap([bit], [1]);
+      const a = PickList.wrap([bit], [0]);
+      const b = PickList.wrap([bit], [1]);
       assert(!equal(a, b));
     });
   });
@@ -300,7 +300,7 @@ describe("PickView", () => {
   describe("logTo", () => {
     it("logs to a console", () => {
       const con = new RecordingConsole();
-      const picks = PickView.wrap([new PickRequest(1, 10)], [1]);
+      const picks = PickList.wrap([new PickRequest(1, 10)], [1]);
       picks.logTo(con);
       con.logged(["0: 1..10 =>", 1]);
       con.checkEmpty();
@@ -308,19 +308,19 @@ describe("PickView", () => {
   });
 
   describe("trimmedLength", () => {
-    it("returns the length for the second view in a PickLog", () => {
+    it("returns the length for the second list from a PickBuffer", () => {
       const roll = { min: 1, max: 6 };
       const buf = new PickBuffer();
       buf.push(roll, 1);
-      buf.takeView();
+      buf.takeList();
       buf.push(roll, 2);
       buf.push(roll, 3);
-      const view = buf.takeView();
+      const picks = buf.takeList();
       buf.push(roll, 4);
       buf.push(roll, 5);
-      assertEquals(view.length, 2);
-      assertEquals(view.replies, [2, 3]);
-      assertEquals(view.trimmedLength, 2);
+      assertEquals(picks.length, 2);
+      assertEquals(picks.replies, [2, 3]);
+      assertEquals(picks.trimmedLength, 2);
     });
   });
 });

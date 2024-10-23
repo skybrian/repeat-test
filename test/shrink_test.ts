@@ -9,7 +9,7 @@ import * as dom from "@/doms.ts";
 
 import { minMaxVal } from "./lib/ranges.ts";
 
-import { PickRequest, PickView } from "../src/picks.ts";
+import { PickList, PickRequest } from "../src/picks.ts";
 import { Script } from "../src/script_class.ts";
 import { Gen } from "@/arbitrary.ts";
 import { CountingTestConsole } from "../src/console.ts";
@@ -132,7 +132,7 @@ describe("Shrinker", () => {
 
         const s = new Shrinker(seed, acceptAll);
         assert(s.shrinkTails());
-        const picks = PickView.copyFrom(s.seed.gen);
+        const picks = PickList.copyFrom(s.seed.gen);
         assertEquals(picks.trimmed().replies, []);
       });
     });
@@ -166,7 +166,7 @@ describe("Shrinker", () => {
       assert(s.shrinkTails());
       const gen = s.seed.gen;
       assertEquals(gen.val, { a: "", b: "" });
-      const picks = PickView.copyFrom(gen);
+      const picks = PickList.copyFrom(gen);
       assertEquals(picks.replies, [0, 0]);
     });
   });
@@ -186,7 +186,7 @@ describe("Shrinker", () => {
 
       const gen = shrinkAllOptions(seed, acceptAll);
       assert(gen !== undefined);
-      assertEquals(PickView.copyFrom(gen).trimmed().replies, []);
+      assertEquals(PickList.copyFrom(gen).trimmed().replies, []);
     });
 
     it("removes two options", () => {
@@ -196,7 +196,7 @@ describe("Shrinker", () => {
       );
       const gen = shrinkAllOptions(seed, acceptAll);
       assert(gen !== undefined);
-      assertEquals(PickView.copyFrom(gen).trimmed().replies, [6]);
+      assertEquals(PickList.copyFrom(gen).trimmed().replies, [6]);
     });
 
     it("removes unused leading characters", () => {
@@ -246,7 +246,7 @@ describe("Shrinker", () => {
       const seed = seedFrom([lo, hi], [2, 4]);
       const s = new Shrinker(seed, acceptAll);
       assert(s.shrinkAllPicks());
-      const picks = PickView.copyFrom(s.seed.gen);
+      const picks = PickList.copyFrom(s.seed.gen);
       assertEquals(picks.replies, [1, 3]);
     });
 
@@ -260,7 +260,7 @@ describe("Shrinker", () => {
       const seed = Gen.mustBuild(twoBits, [1, 1]);
       const s = new Shrinker(seed, acceptAll);
       assert(s.shrinkAllPicks());
-      const picks = PickView.copyFrom(s.seed.gen);
+      const picks = PickList.copyFrom(s.seed.gen);
       assertEquals(picks.replies, [0, 0]);
     });
 
@@ -278,7 +278,7 @@ describe("Shrinker", () => {
       assert(s.shrinkAllPicks());
       const gen = s.seed.gen;
       assertEquals(gen.val, { a: "", b: "" });
-      const picks = PickView.copyFrom(gen);
+      const picks = PickList.copyFrom(gen);
       assertEquals(picks.replies, [0, 0]);
     });
   });
@@ -309,7 +309,7 @@ describe("Shrinker", () => {
         const seed = seedFrom(reqs, replies);
         const s = new Shrinker(seed, acceptAll);
         assert(s.shrinkOnePick(0, prefix.length));
-        const picks = PickView.copyFrom(s.seed.gen);
+        const picks = PickList.copyFrom(s.seed.gen);
         assertEquals(picks.replies, [...prefix, 1, ...suffix]);
       });
     });
@@ -326,7 +326,7 @@ describe("Shrinker", () => {
         const accept = (v: number) => v >= want;
         const s = new Shrinker(seed, accept);
         assert(s.shrinkOnePick(0, 0));
-        assertEquals(PickView.copyFrom(s.seed.gen).replies, [want]);
+        assertEquals(PickList.copyFrom(s.seed.gen).replies, [want]);
       });
     });
   });
@@ -404,7 +404,7 @@ describe("shrink", () => {
         const seed = seedFrom(bits.map(() => bitReq), bits);
         const gen = shrink(seed, acceptAll);
         assert(gen !== undefined);
-        assertEquals(PickView.copyFrom(gen).trimmed().replies, []);
+        assertEquals(PickList.copyFrom(gen).trimmed().replies, []);
       });
     });
 
@@ -420,7 +420,7 @@ describe("shrink", () => {
         const gen = shrink(seed, (arr) => arr.at(prefix.length) === 1);
         assert(gen !== undefined);
         const expected = Array(prefix.length).fill(0).concat(1);
-        assertEquals(PickView.copyFrom(gen).trimmed().replies, expected);
+        assertEquals(PickList.copyFrom(gen).trimmed().replies, expected);
       });
     });
   });

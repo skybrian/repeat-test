@@ -14,8 +14,8 @@ export type {
 } from "../pickable.ts";
 
 export type {
+  PickList,
   PickRequestOpts,
-  PickView,
   RandomPicker,
   RandomSource,
 } from "../picks.ts";

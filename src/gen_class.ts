@@ -1,6 +1,6 @@
 import type { Failure, Success } from "./results.ts";
 import type { Pickable } from "./pickable.ts";
-import type { PickSink, PickView, Range } from "./picks.ts";
+import type { PickList, PickSink, Range } from "./picks.ts";
 import type { GroupKey, MultiEdit } from "./edits.ts";
 import type { Backtracker } from "./backtracking.ts";
 import type { CallLog } from "./calls.ts";
@@ -92,7 +92,7 @@ export class MutableGen<T> {
     return this.#gen.groupKeys;
   }
 
-  picksAt(key: GroupKey): PickView {
+  picksAt(key: GroupKey): PickList {
     return this.#gen.picksAt(key);
   }
 
@@ -158,9 +158,9 @@ export class Gen<T> implements Success<T> {
   }
 
   /** Returns the picks for the given group, or an empty PickList if not found. */
-  picksAt(key: GroupKey): PickView {
+  picksAt(key: GroupKey): PickList {
     assert(typeof key === "number");
-    return this.#props.calls.picksAt(key);
+    return this.#props.calls.groupAt(key);
   }
 
   /**

@@ -3,7 +3,7 @@ import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { filtered } from "../src/results.ts";
 import { Filtered } from "../src/pickable.ts";
-import { PickRequest, PickView, PlaybackPicker } from "../src/picks.ts";
+import { PickList, PickRequest, PlaybackPicker } from "../src/picks.ts";
 import { keep, replace, snip } from "../src/edits.ts";
 import { Script } from "../src/script_class.ts";
 import { Gen, generate } from "../src/gen_class.ts";
@@ -156,7 +156,7 @@ describe("Gen", () => {
   describe("picksAt", () => {
     it("returns empty for an unknown key", () => {
       const gen = Gen.mustBuild(multiStep, [0, 1]);
-      assert(gen.picksAt(2) === PickView.empty);
+      assert(gen.picksAt(2) === PickList.empty);
     });
   });
 

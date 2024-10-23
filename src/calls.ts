@@ -6,7 +6,7 @@ import type { Edit, GroupEdit, MultiEdit } from "./edits.ts";
 import { assert } from "@std/assert";
 import { Filtered, type PickFunctionOpts } from "@/arbitrary.ts";
 import { filtered } from "./results.ts";
-import { PickBuffer, PickRequest, PickView } from "./picks.ts";
+import { PickBuffer, PickList, PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
 import { makePickFunction } from "./build.ts";
 import { EditResponder, keep, removeGroup, snip } from "./edits.ts";
@@ -16,20 +16,20 @@ export const regen = Symbol("regen");
 export type Call<T> = {
   readonly arg: Range | Script<T>;
   readonly val: T | typeof regen;
-  readonly picks: PickView;
+  readonly group: PickList;
 };
 
 type Props = {
   readonly args: (Range | Script<unknown>)[];
   readonly vals: unknown[];
-  readonly picks: PickView[];
+  readonly groups: PickList[];
 };
 
 export class CallBuffer implements PickLogger {
   private props: Props = {
     args: [],
     vals: [],
-    picks: [],
+    groups: [],
   };
 
   #buf = new PickBuffer();
@@ -60,7 +60,7 @@ export class CallBuffer implements PickLogger {
     this.props = {
       args: [],
       vals: [],
-      picks: [],
+      groups: [],
     };
     this.#buf = new PickBuffer();
   }
@@ -81,7 +81,7 @@ export class CallBuffer implements PickLogger {
   endPick(req: Range, reply: number): void {
     assert(this.complete);
     this.#buf.push(req, reply);
-    this.endCall(req, reply, this.#buf.takeView());
+    this.endCall(req, reply, this.#buf.takeList());
 
     const next = this.#before.next();
     if (next.done || next.value.arg !== req || next.value.val !== reply) {
@@ -92,7 +92,7 @@ export class CallBuffer implements PickLogger {
   endScript<T>(arg: Script<T>, val: T): void {
     const shouldCache = arg.cachable && Object.isFrozen(val);
     const storedVal = shouldCache ? val : regen;
-    const picks = this.#buf.takeView();
+    const picks = this.#buf.takeList();
     this.endCall(arg, storedVal, picks);
 
     const next = this.#before.next();
@@ -107,9 +107,9 @@ export class CallBuffer implements PickLogger {
 
     const next = this.#before.next();
     assert(!next.done);
-    const { arg, val, picks } = next.value;
-    this.#buf.pushAll(picks.reqs, picks.replies);
-    this.endCall(arg, val, this.#buf.takeView());
+    const { arg, val, group } = next.value;
+    assert(group.pushTo(this.#buf));
+    this.endCall(arg, val, this.#buf.takeList());
   }
 
   /**
@@ -133,13 +133,13 @@ export class CallBuffer implements PickLogger {
   private endCall<T>(
     arg: Range | Script<T>,
     val: T | typeof regen,
-    view: PickView,
+    picks: PickList,
   ): void {
-    const { args, vals, picks } = this.props;
+    const { args, vals, groups } = this.props;
 
     args.push(arg);
     vals.push(val);
-    picks.push(view);
+    groups.push(picks);
   }
 }
 
@@ -154,42 +154,45 @@ export class CallLog {
   }
 
   get replies(): Iterable<number> {
-    function* generate(picks: PickView[]): Iterable<number> {
-      for (const view of picks) {
-        yield* view.replies;
+    function* generate(groups: PickList[]): Iterable<number> {
+      for (const group of groups) {
+        yield* group.replies;
       }
     }
-    return generate(this.props.picks);
+    return generate(this.props.groups);
   }
 
-  picksAt(offset: number): PickView {
+  /**
+   * Returns the group of picks for the call at the given offset.
+   */
+  groupAt(offset: number): PickList {
     assert(offset >= 0);
 
     if (offset >= this.length) {
-      return PickView.empty;
+      return PickList.empty;
     }
 
-    return this.props.picks[offset];
+    return this.props.groups[offset];
   }
 
-  firstReplyAt(index: number, defaultReply: number): number {
-    assert(index >= 0);
+  firstReplyAt(offset: number, defaultReply: number): number {
+    assert(offset >= 0);
 
-    if (index >= this.length) {
+    if (offset >= this.length) {
       return defaultReply;
     }
 
-    const view = this.props.picks[index];
-    assert(view.length > 0);
-    return view.replyAt(0);
+    const group = this.props.groups[offset];
+    assert(group.length > 0);
+    return group.replyAt(0);
   }
 
-  callAt(index: number): Call<unknown> {
+  callAt(offset: number): Call<unknown> {
     const { args, vals } = this.props;
-    const arg = args[index];
-    const val = vals[index];
-    const picks = this.picksAt(index);
-    return { arg, val, picks };
+    const arg = args[offset];
+    const val = vals[offset];
+    const group = this.groupAt(offset);
+    return { arg, val, group };
   }
 
   get calls(): IterableIterator<Call<unknown>> {
@@ -276,7 +279,7 @@ function makePickFunctionWithEdits(
       log?.keep();
       return before.val as T;
     }
-    const responder = new EditResponder(before.picks.replies, editor);
+    const responder = new EditResponder(before.group.replies, editor);
     const pick = makePickFunction(responder, { log }); // log picks only
     const val = script.buildFrom(pick);
     log?.endScript(script, val);
@@ -308,8 +311,8 @@ function makePickFunctionWithEdits(
     const script = Script.from(req);
     const before = callIndex <= origin.length ? origin.callAt(callIndex - 1) : {
       arg: script,
-      picks: PickView.empty,
       val: regen,
+      group: PickList.empty,
     };
     const val = buildScript(script, before, groupEdit);
 
