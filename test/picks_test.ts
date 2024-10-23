@@ -15,7 +15,7 @@ import { invalidIntRange } from "./lib/ranges.ts";
 import {
   alwaysPick,
   biasedBitRequest,
-  PickLog,
+  PickBuffer,
   PickRequest,
   PickView,
   PlaybackPicker,
@@ -268,6 +268,12 @@ describe("biasedBitRequest", () => {
 });
 
 describe("PickView", () => {
+  describe("properties", () => {
+    it("has two enumerable properties", () => {
+      assertEquals(Object.keys(PickView.empty), ["reqs", "replies"]);
+    });
+  });
+
   describe("equality", () => {
     const zero = new PickRequest(0, 0);
     const bit = PickRequest.bit;
@@ -304,13 +310,14 @@ describe("PickView", () => {
   describe("trimmedLength", () => {
     it("returns the length for the second view in a PickLog", () => {
       const roll = { min: 1, max: 6 };
-      const log = new PickLog();
-      log.push(roll, 1);
-      log.push(roll, 2);
-      log.push(roll, 3);
-      log.push(roll, 4);
-      log.push(roll, 5);
-      const view = new PickView(log, 1, 3);
+      const buf = new PickBuffer();
+      buf.push(roll, 1);
+      buf.takeView();
+      buf.push(roll, 2);
+      buf.push(roll, 3);
+      const view = buf.takeView();
+      buf.push(roll, 4);
+      buf.push(roll, 5);
       assertEquals(view.length, 2);
       assertEquals(view.replies, [2, 3]);
       assertEquals(view.trimmedLength, 2);

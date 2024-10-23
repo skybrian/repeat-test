@@ -204,71 +204,67 @@ export interface Pushable {
   pushTo(sink: PickSink): boolean;
 }
 
-export class PickLog implements PickSink {
-  reqs: Range[] = [];
-  replies: number[] = [];
+/**
+ * Stores picks before creating a {@link PickView}.
+ */
+export class PickBuffer implements PickSink {
+  #reqs: Range[] = [];
+  #replies: number[] = [];
+  #count = 0;
 
-  /** The start of the next view. */
-  viewStart = 0;
-
-  get length(): number {
-    return this.reqs.length;
-  }
-
-  get nextViewLength(): number {
-    return this.reqs.length - this.viewStart;
-  }
-
-  set nextViewLength(newVal: number) {
-    const newLen = this.viewStart + newVal;
-    assert(newLen >= this.viewStart && newLen <= this.length);
-    this.reqs.length = newLen;
-    this.replies.length = newLen;
+  get pushCount(): number {
+    return this.#count;
   }
 
   push(req: Range, reply: number): boolean {
-    this.reqs.push(req);
-    this.replies.push(reply);
+    this.#reqs[this.#count] = req;
+    this.#replies[this.#count] = reply;
+    this.#count++;
     return true;
   }
 
   pushAll(reqs: Range[], replies: number[]): void {
-    this.reqs.push(...reqs);
-    this.replies.push(...replies);
+    for (let i = 0; i < reqs.length; i++) {
+      this.push(reqs[i], replies[i]);
+    }
+  }
+
+  undoPushes(toRemove: number) {
+    assert(toRemove <= this.pushCount);
+    this.#count -= toRemove;
   }
 
   takeView(): PickView {
-    const view = new PickView(this, this.viewStart, this.reqs.length);
-    this.viewStart = this.reqs.length;
+    if (this.#count === 0) {
+      return PickView.empty;
+    }
+    const view = PickView.slice(
+      this.#reqs,
+      this.#replies,
+      0,
+      this.#count,
+    );
+    this.#count = 0;
     return view;
   }
 }
 
 export class PickView implements Pushable {
-  constructor(
-    private readonly log: PickLog,
-    readonly start: number,
-    readonly end: number,
+  private constructor(
+    readonly reqs: Range[],
+    readonly replies: number[],
   ) {}
 
   get length() {
-    return this.end - this.start;
-  }
-
-  get reqs(): Range[] {
-    return this.log.reqs.slice(this.start, this.end);
-  }
-
-  get replies(): number[] {
-    return this.log.replies.slice(this.start, this.end);
+    return this.reqs.length;
   }
 
   reqAt(offset: number): Range {
-    return this.log.reqs[this.start + offset];
+    return this.reqs[offset];
   }
 
   replyAt(offset: number): number {
-    return this.log.replies[this.start + offset];
+    return this.replies[offset];
   }
 
   diffAt(offset: number): number {
@@ -317,11 +313,7 @@ export class PickView implements Pushable {
    */
   trimmed(): PickView {
     const len = this.trimmedLength;
-    return new PickView(
-      this.log,
-      this.start,
-      this.start + len,
-    );
+    return new PickView(this.reqs.slice(0, len), this.replies.slice(0, len));
   }
 
   /**
@@ -331,8 +323,8 @@ export class PickView implements Pushable {
    */
   pushTo(sink: PickSink): boolean {
     for (let i = 0; i < this.length; i++) {
-      const req = this.log.reqs[this.start + i];
-      const reply = this.log.replies[this.start + i];
+      const req = this.reqs[i];
+      const reply = this.replies[i];
       if (!sink.push(req, reply)) {
         return false;
       }
@@ -353,23 +345,32 @@ export class PickView implements Pushable {
   static empty = PickView.wrap([], []);
 
   /**
-   * Creates a view from two arrays.
+   * Creates a view by wrapping two arrays.
    */
   static wrap(reqs: Range[], replies: number[]): PickView {
     assert(reqs.length === replies.length);
-    const log = new PickLog();
-    log.reqs = reqs;
-    log.replies = replies;
-    return new PickView(log, 0, reqs.length);
+    return new PickView(reqs, replies);
+  }
+
+  /**
+   * Creates a view by slicing two parallel arrays.
+   */
+  static slice(
+    reqs: Range[],
+    replies: number[],
+    start: number,
+    end: number,
+  ): PickView {
+    return new PickView(reqs.slice(start, end), replies.slice(start, end));
   }
 
   /**
    * Copies picks from some source, returning a view.
    */
   static copyFrom(source: Pushable): PickView {
-    const log = new PickLog();
-    assert(source.pushTo(log));
-    return new PickView(log, 0, log.length);
+    const buf = new PickBuffer();
+    assert(source.pushTo(buf));
+    return buf.takeView();
   }
 }
 

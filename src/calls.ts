@@ -6,7 +6,7 @@ import type { Edit, GroupEdit, MultiEdit } from "./edits.ts";
 import { assert } from "@std/assert";
 import { Filtered, type PickFunctionOpts } from "@/arbitrary.ts";
 import { filtered } from "./results.ts";
-import { PickLog, PickRequest, PickView } from "./picks.ts";
+import { PickBuffer, PickRequest, PickView } from "./picks.ts";
 import { Script } from "./script_class.ts";
 import { makePickFunction } from "./build.ts";
 import { EditResponder, keep, removeGroup, snip } from "./edits.ts";
@@ -32,7 +32,7 @@ export class CallBuffer implements PickLogger {
     picks: [],
   };
 
-  #log = new PickLog();
+  #buf = new PickBuffer();
 
   #before: Iterator<Call<unknown>>;
   #changed = false;
@@ -42,7 +42,7 @@ export class CallBuffer implements PickLogger {
   }
 
   get complete(): boolean {
-    return this.#log.nextViewLength === 0;
+    return this.#buf.pushCount === 0;
   }
 
   /** Returns the number of calls recorded. */
@@ -62,7 +62,7 @@ export class CallBuffer implements PickLogger {
       vals: [],
       picks: [],
     };
-    this.#log = new PickLog();
+    this.#buf = new PickBuffer();
   }
 
   setChanged() {
@@ -71,17 +71,17 @@ export class CallBuffer implements PickLogger {
   }
 
   push(req: Range, reply: number): void {
-    this.#log.push(req, reply);
+    this.#buf.push(req, reply);
   }
 
-  undoPushes(count: number): void {
-    this.#log.nextViewLength -= count;
+  undoPushes(removeCount: number): void {
+    this.#buf.undoPushes(removeCount);
   }
 
   endPick(req: Range, reply: number): void {
     assert(this.complete);
-    this.#log.push(req, reply);
-    this.endCall(req, reply, this.#log.takeView());
+    this.#buf.push(req, reply);
+    this.endCall(req, reply, this.#buf.takeView());
 
     const next = this.#before.next();
     if (next.done || next.value.arg !== req || next.value.val !== reply) {
@@ -92,7 +92,7 @@ export class CallBuffer implements PickLogger {
   endScript<T>(arg: Script<T>, val: T): void {
     const shouldCache = arg.cachable && Object.isFrozen(val);
     const storedVal = shouldCache ? val : regen;
-    const picks = this.#log.takeView();
+    const picks = this.#buf.takeView();
     this.endCall(arg, storedVal, picks);
 
     const next = this.#before.next();
@@ -108,8 +108,8 @@ export class CallBuffer implements PickLogger {
     const next = this.#before.next();
     assert(!next.done);
     const { arg, val, picks } = next.value;
-    this.#log.pushAll(picks.reqs, picks.replies);
-    this.endCall(arg, val, this.#log.takeView());
+    this.#buf.pushAll(picks.reqs, picks.replies);
+    this.endCall(arg, val, this.#buf.takeView());
   }
 
   /**
