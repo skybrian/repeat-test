@@ -15,24 +15,24 @@ export const regen = Symbol("regen");
 
 export type Call<T> = {
   readonly arg: Range | Script<T>;
-  readonly picks: PickView;
   readonly val: T | typeof regen;
+  readonly picks: PickView;
 };
 
 type Props = {
-  readonly pickLog: PickLog;
-  readonly starts: number[];
-  readonly callReqs: (Range | Script<unknown>)[];
+  readonly args: (Range | Script<unknown>)[];
   readonly vals: unknown[];
+  readonly picks: PickView[];
 };
 
 export class CallBuffer implements PickLogger {
   private props: Props = {
-    pickLog: new PickLog(),
-    starts: [],
-    callReqs: [],
+    args: [],
     vals: [],
+    picks: [],
   };
+
+  #log = new PickLog();
 
   #before: Iterator<Call<unknown>>;
   #changed = false;
@@ -42,12 +42,12 @@ export class CallBuffer implements PickLogger {
   }
 
   get complete(): boolean {
-    return this.props.pickLog.nextViewLength === 0;
+    return this.#log.nextViewLength === 0;
   }
 
   /** Returns the number of calls recorded. */
   get length(): number {
-    return this.props.starts.length;
+    return this.props.args.length;
   }
 
   /** Returns true if the recorded log is different from the origin. */
@@ -58,11 +58,11 @@ export class CallBuffer implements PickLogger {
 
   reset() {
     this.props = {
-      pickLog: new PickLog(),
-      starts: [],
-      callReqs: [],
+      args: [],
       vals: [],
+      picks: [],
     };
+    this.#log = new PickLog();
   }
 
   setChanged() {
@@ -71,19 +71,19 @@ export class CallBuffer implements PickLogger {
   }
 
   push(req: Range, reply: number): void {
-    this.props.pickLog.push(req, reply);
+    this.#log.push(req, reply);
   }
 
   undoPushes(count: number): void {
-    this.props.pickLog.nextViewLength -= count;
+    this.#log.nextViewLength -= count;
   }
 
   endPick(): void {
-    const { pickLog } = this.props;
-    assert(pickLog.nextViewLength === 1);
+    const log = this.#log;
+    assert(log.nextViewLength === 1);
 
-    const req = pickLog.reqs[pickLog.viewStart];
-    const reply = pickLog.replies[pickLog.viewStart];
+    const req = log.reqs[log.viewStart];
+    const reply = log.replies[log.viewStart];
     this.endCall(req, reply);
 
     const next = this.#before.next();
@@ -111,7 +111,7 @@ export class CallBuffer implements PickLogger {
     assert(!next.done);
     const { arg, picks, val } = next.value;
 
-    this.props.pickLog.pushAll(picks.reqs, picks.replies);
+    this.#log.pushAll(picks.reqs, picks.replies);
     this.endCall(arg, val);
   }
 
@@ -128,21 +128,17 @@ export class CallBuffer implements PickLogger {
 
   takeLog(): CallLog {
     assert(this.complete);
-    const log = new CallLog(this.props);
+    const log = new CallLog(this.props, this.#log);
     this.reset();
     return log;
   }
 
   private endCall<T>(arg: Range | Script<T>, val: T | typeof regen): void {
-    const { pickLog, starts, callReqs, vals } = this.props;
+    const { args, vals, picks } = this.props;
 
-    // record the start of this call's picks
-    starts.push(pickLog.viewStart);
-    pickLog.viewStart = pickLog.length;
-
-    // record the call
-    callReqs.push(arg);
+    args.push(arg);
     vals.push(val);
+    picks.push(this.#log.takeView());
   }
 }
 
@@ -150,25 +146,27 @@ export class CallBuffer implements PickLogger {
  * The calls that were made to a pick function.
  */
 export class CallLog {
-  constructor(readonly props: Props) {}
+  readonly #log: PickLog;
+
+  constructor(readonly props: Props, log: PickLog) {
+    this.#log = log;
+  }
 
   get length(): number {
-    return this.props.starts.length;
+    return this.props.args.length;
   }
 
   get replies(): Iterable<number> {
-    return this.props.pickLog.replies;
+    return this.#log.replies;
   }
 
-  picksAt(index: number): PickView {
-    assert(index >= 0);
+  picksAt(offset: number): PickView {
+    assert(offset >= 0);
 
-    if (index >= this.length) {
+    if (offset >= this.length) {
       return PickView.empty;
     }
-
-    const { start, end } = this.rangeAt(index);
-    return new PickView(this.props.pickLog, start, end);
+    return this.props.picks[offset];
   }
 
   firstReplyAt(index: number, defaultReply: number): number {
@@ -178,14 +176,15 @@ export class CallLog {
       return defaultReply;
     }
 
-    const start = this.props.starts[index];
-    return this.props.pickLog.replies[start];
+    const view = this.props.picks[index];
+    assert(view.length > 0);
+    return view.replyAt(0);
   }
 
   callAt(index: number): Call<unknown> {
-    const { callReqs, vals } = this.props;
+    const { args, vals } = this.props;
     return {
-      arg: callReqs[index],
+      arg: args[index],
       picks: this.picksAt(index),
       val: vals[index],
     };
@@ -241,16 +240,6 @@ export class CallLog {
 
     const pick = makePickFunctionWithEdits(this, edits, log);
     return target.build(pick);
-  }
-
-  private rangeAt(index: number): { start: number; end: number } {
-    const { starts, pickLog } = this.props;
-    assert(index >= 0 && index < starts.length);
-    const start = starts[index];
-    const end = (index + 1 < starts.length)
-      ? starts[index + 1]
-      : pickLog.length;
-    return { start, end };
   }
 }
 

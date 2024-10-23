@@ -236,6 +236,12 @@ export class PickLog implements PickSink {
     this.reqs.push(...reqs);
     this.replies.push(...replies);
   }
+
+  takeView(): PickView {
+    const view = new PickView(this, this.viewStart, this.reqs.length);
+    this.viewStart = this.reqs.length;
+    return view;
+  }
 }
 
 export class PickView implements Pushable {
@@ -257,34 +263,42 @@ export class PickView implements Pushable {
     return this.log.replies.slice(this.start, this.end);
   }
 
-  diffAt(index: number): number {
-    if (index >= this.length) {
+  reqAt(offset: number): Range {
+    return this.log.reqs[this.start + offset];
+  }
+
+  replyAt(offset: number): number {
+    return this.log.replies[this.start + offset];
+  }
+
+  diffAt(offset: number): number {
+    if (offset >= this.length) {
       return 0;
     }
-    const req = this.log.reqs[this.start + index];
-    const reply = this.log.replies[this.start + index];
+    const req = this.reqAt(offset);
+    const reply = this.replyAt(offset);
     return reply - req.min;
   }
 
-  getPick(index: number): Pick {
+  getPick(offset: number): Pick {
     return {
-      req: this.log.reqs[this.start + index],
-      reply: this.log.replies[this.start + index],
+      req: this.reqAt(offset),
+      reply: this.replyAt(offset),
     };
   }
 
   /**
    * If the request at the given index is for a bit, returns the reply.
    */
-  getOption(index: number): number | undefined {
-    if (index >= this.length) {
+  getOption(offset: number): number | undefined {
+    if (offset >= this.length) {
       return undefined;
     }
-    const req = this.log.reqs[this.start + index];
+    const req = this.reqAt(offset);
     if (req.min !== 0 || req.max !== 1) {
       return undefined;
     }
-    return this.log.replies[this.start + index];
+    return this.replyAt(offset);
   }
 
   /**
