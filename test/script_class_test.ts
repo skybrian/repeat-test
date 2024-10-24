@@ -21,13 +21,13 @@ describe("Script", () => {
     });
   });
 
-  describe("build", () => {
+  describe("run", () => {
     it("executes a script", () => {
-      assertEquals(bool.build(usePicks(1)), true);
+      assertEquals(bool.run(usePicks(1)), true);
     });
 
     it("returns filtered for an invalid pick", () => {
-      assertEquals(bool.build(usePicks(3)), filtered);
+      assertEquals(bool.run(usePicks(3)), filtered);
     });
 
     it("throws an error if the script does", () => {
@@ -35,7 +35,7 @@ describe("Script", () => {
         throw new Error("failed");
       });
       assertThrows(
-        () => fails.build(usePicks(3)),
+        () => fails.run(usePicks(3)),
         Error,
         "failed",
       );

@@ -31,7 +31,7 @@ function cacheResult<T>(props: Props<T>): () => T {
 
   return () => {
     if (cache === alwaysBuild) {
-      const next = calls.rebuild(script);
+      const next = calls.run(script);
       assert(next !== filtered, "can't rebuild nondeterministic script");
       return next;
     }
@@ -61,7 +61,7 @@ export class MutableGen<T> {
     const { script, calls } = this.#props;
 
     const buf = new CallBuffer();
-    const nextVal = calls.tryEdit(script, editor, buf);
+    const nextVal = calls.runWithEdit(script, editor, buf);
     if (nextVal === filtered) {
       return false; // edits didn't apply
     } else if (!buf.changed) {
@@ -231,19 +231,17 @@ export function generate<T>(
       logCalls: script.splitCalls,
     });
 
-    const next = script.build(pick);
-    if (next === filtered) {
+    const val = script.run(pick);
+    if (val === filtered) {
       continue;
     }
     if (!script.splitCalls) {
       // Treat it as a single call.
-      log.endScript(script, next);
+      log.endScript(script, val);
     }
-    return new Gen({
-      script,
-      calls: log.takeLog(),
-      val: next,
-    }); // finished
+
+    // Finished!
+    return new Gen({script, calls: log.takeLog(), val});
   }
   return filtered;
 }

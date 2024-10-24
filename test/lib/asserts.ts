@@ -1,7 +1,6 @@
-import { type Arbitrary, type Pickable, Script } from "@/arbitrary.ts";
+import type { Arbitrary, Pickable } from "@/arbitrary.ts";
 import type { Domain } from "@/domain.ts";
 
-import { filtered } from "../../src/results.ts";
 import { assert, assertEquals } from "@std/assert";
 import { take, takeAll, takeGenerated } from "../../src/ordered.ts";
 import { randomPicker } from "../../src/random.ts";
@@ -31,12 +30,10 @@ export function assertSometimes<T>(
   expectedMin: number,
   expectedMax: number,
 ) {
-  const script = Script.from(input);
   const rand = randomPicker(123);
   let count = 0;
   for (let i = 0; i < 1000; i++) {
-    const val = script.build(usePicker(rand));
-    assert(val !== filtered);
+    const val = input.directBuild(usePicker(rand));
     if (predicate(val)) {
       count++;
     }

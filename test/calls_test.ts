@@ -1,7 +1,7 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
-import { Filtered, type Pickable, PickRequest, Script } from "@/arbitrary.ts";
+import { Filtered, PickRequest, Script } from "@/arbitrary.ts";
 import { filtered } from "../src/results.ts";
 import { CallBuffer } from "../src/calls.ts";
 import { keep, removeGroups, replaceOnce } from "../src/edits.ts";
@@ -37,24 +37,24 @@ describe("CallBuffer", () => {
     it("preserves a pick call from a previous log", () => {
       buf.endPick({ min: 1, max: 6 }, 3);
       const log = buf.takeLog();
-      assertEquals(log.rebuild(roll), 3);
+      assertEquals(log.run(roll), 3);
 
       const buf2 = new CallBuffer();
       buf2.keep(log.callAt(0));
       const log2 = buf2.takeLog();
-      assertEquals(log2.rebuild(roll), 3);
+      assertEquals(log2.run(roll), 3);
     });
 
     it("preserves a cached script call from a previous log", () => {
       buf.push({ min: 1, max: 6 }, 3);
       buf.endScript(cachableRoll, "cached");
       const log = buf.takeLog();
-      assertEquals(log.rebuild(readsCachedRoll), "cached");
+      assertEquals(log.run(readsCachedRoll), "cached");
 
       const buf2 = new CallBuffer();
       buf2.keep(log.callAt(0));
       const log2 = buf2.takeLog();
-      assertEquals(log2.rebuild(readsCachedRoll), "cached");
+      assertEquals(log2.run(readsCachedRoll), "cached");
     });
   });
 });
@@ -66,25 +66,25 @@ describe("CallLog", () => {
     buf = new CallBuffer();
   });
 
-  describe("build", () => {
+  describe("run", () => {
     describe("for one pick call", () => {
       it("returns the minimum for an empty log", () => {
         const log = buf.takeLog();
-        assertEquals(log.rebuild(roll), 1);
+        assertEquals(log.run(roll), 1);
       });
 
       it("uses a recorded pick", () => {
         buf.endPick({ min: 1, max: 6 }, 3);
         const log = buf.takeLog();
 
-        assertEquals(log.rebuild(roll), 3);
+        assertEquals(log.run(roll), 3);
       });
 
       it("returns the minimum if the pick is out of range", () => {
         buf.endPick({ min: 1, max: 7 }, 7);
         const log = buf.takeLog();
 
-        assertEquals(log.rebuild(roll), 1);
+        assertEquals(log.run(roll), 1);
       });
 
       it("takes the first pick if a script call was recorded", () => {
@@ -92,14 +92,14 @@ describe("CallLog", () => {
         buf.endScript(cachableRoll, "ignored");
         const log = buf.takeLog();
 
-        assertEquals(log.rebuild(roll), 3);
+        assertEquals(log.run(roll), 3);
       });
     });
 
     describe("for one script call", () => {
       it("for an empty log, use minimum picks", () => {
         const log = buf.takeLog();
-        assertEquals(log.rebuild(cachableRoll), "rolled 1");
+        assertEquals(log.run(cachableRoll), "rolled 1");
       });
 
       it("when the script matches, returns the recorded value", () => {
@@ -113,7 +113,7 @@ describe("CallLog", () => {
           return pick(cached);
         });
 
-        assertEquals(log.rebuild(readsCache), "hello");
+        assertEquals(log.run(readsCache), "hello");
       });
 
       it("when the script doesn't match, rebuilds using the recorded picks", () => {
@@ -121,7 +121,7 @@ describe("CallLog", () => {
         buf.endScript(differentRoll, "ignored");
         const log = buf.takeLog();
 
-        assertEquals(log.rebuild(cachableRoll), "rolled 2");
+        assertEquals(log.run(cachableRoll), "rolled 2");
       });
     });
 
@@ -136,7 +136,7 @@ describe("CallLog", () => {
         buf.endScript(cachableRoll, "hello");
         const log = buf.takeLog();
 
-        assertEquals(log.rebuild(rollAndStr), "3, hello");
+        assertEquals(log.run(rollAndStr), "3, hello");
       });
 
       it("regenerates from picks if the script doesn't match", () => {
@@ -145,7 +145,7 @@ describe("CallLog", () => {
         buf.endScript(roll, 1);
         const log = buf.takeLog();
 
-        assertEquals(log.rebuild(rollAndStr), "3, rolled 4");
+        assertEquals(log.run(rollAndStr), "3, rolled 4");
       });
 
       it("regenerates from a pick call", () => {
@@ -153,7 +153,7 @@ describe("CallLog", () => {
         buf.endPick({ min: 1, max: 6 }, 4);
         const log = buf.takeLog();
 
-        assertEquals(log.rebuild(rollAndStr), "3, rolled 4");
+        assertEquals(log.run(rollAndStr), "3, rolled 4");
       });
 
       it("uses a script call as a pick", () => {
@@ -164,7 +164,7 @@ describe("CallLog", () => {
         buf.endScript(roll, 1);
         const log = buf.takeLog();
 
-        assertEquals(log.rebuild(rollAndStr), "3, rolled 4");
+        assertEquals(log.run(rollAndStr), "3, rolled 4");
       });
     });
 
@@ -179,7 +179,7 @@ describe("CallLog", () => {
         buf.endPick({ min: 1, max: 6 }, 6);
         const log = buf.takeLog();
 
-        assertEquals(log.rebuild(script), "hello, 6");
+        assertEquals(log.run(script), "hello, 6");
       });
 
       it("uses a pick as input for a script call", () => {
@@ -187,7 +187,7 @@ describe("CallLog", () => {
         buf.endPick({ min: 1, max: 6 }, 4);
         const log = buf.takeLog();
 
-        assertEquals(log.rebuild(script), "rolled 3, 4");
+        assertEquals(log.run(script), "rolled 3, 4");
       });
     });
 
@@ -203,7 +203,7 @@ describe("CallLog", () => {
         buf.endScript(cachableRoll, "world");
         const log = buf.takeLog();
 
-        assertEquals(log.rebuild(script), "hello, world");
+        assertEquals(log.run(script), "hello, world");
       });
 
       it("regenerates from picks if a script doesn't match", () => {
@@ -213,7 +213,7 @@ describe("CallLog", () => {
         buf.endScript(differentRoll, "world");
         const log = buf.takeLog();
 
-        assertEquals(log.rebuild(script), "hello, rolled 4");
+        assertEquals(log.run(script), "hello, rolled 4");
       });
     });
 
@@ -227,7 +227,7 @@ describe("CallLog", () => {
         buf.endScript(roll, 2);
         const log = buf.takeLog();
 
-        assertEquals(log.rebuild(even), 2);
+        assertEquals(log.run(even), 2);
       });
 
       it("returns filtered if rejected", () => {
@@ -235,23 +235,7 @@ describe("CallLog", () => {
         buf.endScript(roll, 3);
         const log = buf.takeLog();
 
-        assertEquals(log.rebuild(even), filtered);
-      });
-    });
-
-    describe("for a pickable that's not a script", () => {
-      const pickable: Pickable<number> = {
-        directBuild: (pick) => {
-          return pick(roll);
-        },
-      };
-
-      it("doesn't use a cached result", () => {
-        buf.push({ min: 1, max: 6 }, 2);
-        buf.endScript(roll, 3);
-        const log = buf.takeLog();
-
-        assertEquals(log.rebuild(pickable), 2);
+        assertEquals(log.run(even), filtered);
       });
     });
 
@@ -261,7 +245,7 @@ describe("CallLog", () => {
       const throws = Script.make("throws", () => {
         throw new Filtered("oops");
       });
-      assertEquals(log.rebuild(throws), filtered);
+      assertEquals(log.run(throws), filtered);
     });
 
     it("throws an Error if the build function throws", () => {
@@ -270,11 +254,11 @@ describe("CallLog", () => {
       const throws = Script.make("throws", () => {
         throw new Error("oops");
       });
-      assertThrows(() => log.rebuild(throws), Error, "oops");
+      assertThrows(() => log.run(throws), Error, "oops");
     });
   });
 
-  describe("tryEdit", () => {
+  describe("runWithEdit", () => {
     describe("for a script that makes one pick (unsplit)", () => {
       it("makes no change if there is no edit", () => {
         buf.push({ min: 1, max: 6 }, 2);
@@ -282,11 +266,11 @@ describe("CallLog", () => {
         const log = buf.takeLog();
 
         buf = new CallBuffer();
-        const val = log.tryEdit(roll, () => keep, buf);
+        const val = log.runWithEdit(roll, () => keep, buf);
         assertEquals(val, 2);
         assertEquals(buf.length, 1);
         assertFalse(buf.changed);
-        assertEquals(buf.takeLog().rebuild(roll), 2);
+        assertEquals(buf.takeLog().run(roll), 2);
       });
 
       it("edits the pick", () => {
@@ -294,11 +278,11 @@ describe("CallLog", () => {
         const log = buf.takeLog();
 
         buf = new CallBuffer();
-        const val = log.tryEdit(roll, replaceOnce(0, 0, 0), buf);
+        const val = log.runWithEdit(roll, replaceOnce(0, 0, 0), buf);
         assertEquals(val, 1);
         assertEquals(buf.length, 1);
         assert(buf.changed);
-        assertEquals(buf.takeLog().rebuild(roll), 1);
+        assertEquals(buf.takeLog().run(roll), 1);
       });
 
       it("removes a group", () => {
@@ -315,11 +299,11 @@ describe("CallLog", () => {
         }, { splitCalls: true });
 
         buf = new CallBuffer();
-        const val = log.tryEdit(rollTwo, removeGroups(new Set([0])), buf);
+        const val = log.runWithEdit(rollTwo, removeGroups(new Set([0])), buf);
         assertEquals(val, "3, 1");
         assert(buf.changed);
         assertEquals(buf.length, 2);
-        assertEquals(buf.takeLog().rebuild(rollTwo), "3, 1");
+        assertEquals(buf.takeLog().run(rollTwo), "3, 1");
       });
     });
 
@@ -333,11 +317,11 @@ describe("CallLog", () => {
         const log = buf.takeLog();
 
         buf = new CallBuffer();
-        const val = log.tryEdit(roll, replaceOnce(0, 0, 0), buf);
+        const val = log.runWithEdit(roll, replaceOnce(0, 0, 0), buf);
         assertEquals(val, 1);
         assertEquals(buf.length, 1);
         assert(buf.changed);
-        assertEquals(buf.takeLog().rebuild(roll), 1);
+        assertEquals(buf.takeLog().run(roll), 1);
       });
     });
 
@@ -348,11 +332,11 @@ describe("CallLog", () => {
         const log = buf.takeLog();
 
         buf = new CallBuffer();
-        const val = log.tryEdit(rollStr, () => keep, buf);
+        const val = log.runWithEdit(rollStr, () => keep, buf);
         assertEquals(val, "rolled 2"); // ignored cached value
         assertEquals(buf.length, 1);
         assertFalse(buf.changed);
-        assertEquals(buf.takeLog().rebuild(rollStr), "rolled 2");
+        assertEquals(buf.takeLog().run(rollStr), "rolled 2");
       });
 
       it("uses a cached value when there is no change)", () => {
@@ -361,11 +345,11 @@ describe("CallLog", () => {
         const log = buf.takeLog();
 
         buf = new CallBuffer();
-        const val = log.tryEdit(readsCachedRoll, () => keep, buf);
+        const val = log.runWithEdit(readsCachedRoll, () => keep, buf);
         assertEquals(val, "cached");
         assertEquals(buf.length, 1);
         assertFalse(buf.changed);
-        assertEquals(buf.takeLog().rebuild(readsCachedRoll), "cached");
+        assertEquals(buf.takeLog().run(readsCachedRoll), "cached");
       });
 
       it("edits a pick (uncached)", () => {
@@ -374,11 +358,11 @@ describe("CallLog", () => {
         const log = buf.takeLog();
 
         buf = new CallBuffer();
-        const val = log.tryEdit(rollStr, replaceOnce(0, 0, 0), buf);
+        const val = log.runWithEdit(rollStr, replaceOnce(0, 0, 0), buf);
         assertEquals(val, "rolled 1");
         assertEquals(buf.length, 1);
         assert(buf.changed);
-        assertEquals(buf.takeLog().rebuild(rollStr), "rolled 1");
+        assertEquals(buf.takeLog().run(rollStr), "rolled 1");
       });
 
       it("doesn't use the cached value when a pick is edited", () => {
@@ -387,11 +371,11 @@ describe("CallLog", () => {
         const log = buf.takeLog();
 
         buf = new CallBuffer();
-        const val = log.tryEdit(readsCachedRoll, replaceOnce(0, 0, 5), buf);
+        const val = log.runWithEdit(readsCachedRoll, replaceOnce(0, 0, 5), buf);
         assertEquals(val, "rolled 6");
         assertEquals(buf.length, 1);
         assert(buf.changed);
-        assertEquals(buf.takeLog().rebuild(readsCachedRoll), "rolled 6");
+        assertEquals(buf.takeLog().run(readsCachedRoll), "rolled 6");
       });
     });
   });

@@ -1,11 +1,11 @@
-import type { PickLogger } from "./build.ts";
+import type { filtered } from "./results.ts";
 import type { Range } from "./picks.ts";
 import type { Pickable } from "./pickable.ts";
+import type { PickLogger } from "./build.ts";
 import type { Edit, GroupEdit, MultiEdit } from "./edits.ts";
 
 import { assert } from "@std/assert";
 import { Filtered, type PickFunctionOpts } from "@/arbitrary.ts";
-import { filtered } from "./results.ts";
 import { PickBuffer, PickList, PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
 import { makePickFunction } from "./build.ts";
@@ -189,23 +189,18 @@ export class CallLog {
   }
 
   /**
-   * Builds a pickable using this log.
+   * Runs a script using the calls from this log.
    */
-  rebuild<T>(target: Pickable<T>): T | typeof filtered {
-    try {
-      return target.directBuild(makePickFunctionWithEdits(this, () => keep));
-    } catch (e) {
-      if (e instanceof Filtered) {
-        return filtered;
-      }
-      throw e;
-    }
+  run<T>(target: Script<T>): T | typeof filtered {
+    // Reuse cached pick results by using the editing version of the pick function.
+    const pick = makePickFunctionWithEdits(this, () => keep);
+    return target.run(pick);
   }
 
   /**
-   * Builds a script using this log after applying the given edits.
+   * Runs a script using the calls from this log, after applying the given edits.
    */
-  tryEdit<T>(
+  runWithEdit<T>(
     target: Script<T>,
     edits: MultiEdit,
     log?: CallBuffer,
@@ -218,7 +213,7 @@ export class CallLog {
       }
       const picks = new EditResponder(this.replies, edit);
       const pick = makePickFunction(picks, { log });
-      const val = target.build(pick);
+      const val = target.run(pick);
       log?.endScript(target, val);
       if (picks.edited) {
         log?.setChanged();
@@ -227,7 +222,7 @@ export class CallLog {
     }
 
     const pick = makePickFunctionWithEdits(this, edits, log);
-    return target.build(pick);
+    return target.run(pick);
   }
 }
 

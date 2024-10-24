@@ -74,7 +74,7 @@ export class Script<T> implements Pickable<T> {
    * Similar to {@link directBuild}, except that it returns {@link filtered}
    * instead of throwing {@link Filtered}.
    */
-  build(pick: PickFunction): T | typeof filtered {
+  run(pick: PickFunction): T | typeof filtered {
     try {
       return this.#build(pick);
     } catch (e) {
