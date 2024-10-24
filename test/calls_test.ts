@@ -39,8 +39,8 @@ describe("CallBuffer", () => {
       const log = buf.takeLog();
       assertEquals(log.rebuild(roll), 3);
 
-      const buf2 = new CallBuffer(log);
-      buf2.keep();
+      const buf2 = new CallBuffer();
+      buf2.keep(log.callAt(0));
       const log2 = buf2.takeLog();
       assertEquals(log2.rebuild(roll), 3);
     });
@@ -51,8 +51,8 @@ describe("CallBuffer", () => {
       const log = buf.takeLog();
       assertEquals(log.rebuild(readsCachedRoll), "cached");
 
-      const buf2 = new CallBuffer(log);
-      buf2.keep();
+      const buf2 = new CallBuffer();
+      buf2.keep(log.callAt(0));
       const log2 = buf2.takeLog();
       assertEquals(log2.rebuild(readsCachedRoll), "cached");
     });
@@ -281,7 +281,7 @@ describe("CallLog", () => {
         buf.endScript(roll, 2);
         const log = buf.takeLog();
 
-        buf = new CallBuffer(log);
+        buf = new CallBuffer();
         const val = log.tryEdit(roll, () => keep, buf);
         assertEquals(val, 2);
         assertEquals(buf.length, 1);
@@ -293,7 +293,7 @@ describe("CallLog", () => {
         buf.endPick({ min: 1, max: 6 }, 2);
         const log = buf.takeLog();
 
-        buf = new CallBuffer(log);
+        buf = new CallBuffer();
         const val = log.tryEdit(roll, replaceOnce(0, 0, 0), buf);
         assertEquals(val, 1);
         assertEquals(buf.length, 1);
@@ -314,7 +314,7 @@ describe("CallLog", () => {
           return `${first}, ${second}`;
         }, { splitCalls: true });
 
-        buf = new CallBuffer(log);
+        buf = new CallBuffer();
         const val = log.tryEdit(rollTwo, removeGroups(new Set([0])), buf);
         assertEquals(val, "3, 1");
         assert(buf.changed);
@@ -332,7 +332,7 @@ describe("CallLog", () => {
         buf.endPick({ min: 1, max: 6 }, 2);
         const log = buf.takeLog();
 
-        buf = new CallBuffer(log);
+        buf = new CallBuffer();
         const val = log.tryEdit(roll, replaceOnce(0, 0, 0), buf);
         assertEquals(val, 1);
         assertEquals(buf.length, 1);
@@ -347,7 +347,7 @@ describe("CallLog", () => {
         buf.endScript(roll, -1);
         const log = buf.takeLog();
 
-        buf = new CallBuffer(log);
+        buf = new CallBuffer();
         const val = log.tryEdit(rollStr, () => keep, buf);
         assertEquals(val, "rolled 2"); // ignored cached value
         assertEquals(buf.length, 1);
@@ -360,7 +360,7 @@ describe("CallLog", () => {
         buf.endScript(cachableRoll, "cached");
         const log = buf.takeLog();
 
-        buf = new CallBuffer(log);
+        buf = new CallBuffer();
         const val = log.tryEdit(readsCachedRoll, () => keep, buf);
         assertEquals(val, "cached");
         assertEquals(buf.length, 1);
@@ -373,7 +373,7 @@ describe("CallLog", () => {
         buf.endScript(roll, -1);
         const log = buf.takeLog();
 
-        buf = new CallBuffer(log);
+        buf = new CallBuffer();
         const val = log.tryEdit(rollStr, replaceOnce(0, 0, 0), buf);
         assertEquals(val, "rolled 1");
         assertEquals(buf.length, 1);
@@ -386,7 +386,7 @@ describe("CallLog", () => {
         buf.endScript(cachableRoll, "cached");
         const log = buf.takeLog();
 
-        buf = new CallBuffer(log);
+        buf = new CallBuffer();
         const val = log.tryEdit(readsCachedRoll, replaceOnce(0, 0, 5), buf);
         assertEquals(val, "rolled 6");
         assertEquals(buf.length, 1);

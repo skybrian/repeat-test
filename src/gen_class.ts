@@ -60,7 +60,7 @@ export class MutableGen<T> {
   ): boolean {
     const { script, calls } = this.#props;
 
-    const buf = new CallBuffer(calls);
+    const buf = new CallBuffer();
     const nextVal = calls.tryEdit(script, editor, buf);
     if (nextVal === filtered) {
       return false; // edits didn't apply

@@ -130,4 +130,9 @@ export class Script<T> implements Pickable<T> {
       return Script.make("untitled", arg.buildFrom);
     }
   }
+
+  /** A script that never completes. */
+  static filtered = Script.make("filtered", () => {
+    throw new Filtered("rejects all picks");
+  });
 }
