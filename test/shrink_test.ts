@@ -106,11 +106,11 @@ describe("Shrinker", () => {
       assertFalse(s.shrinkTails());
     });
 
-    it("shrinks a pipeline", () => {
-      const script = arb.string().buildScript.then(
-        "mapped string",
-        (a) => a.concat("!"),
-      );
+    it("shrinks a script with splitCalls turned on", () => {
+      const script = Script.make("mapped string", (pick) => {
+        const a = pick(arb.string());
+        return a.concat("!");
+      });
 
       const seed = Gen.mustBuild(script, [1, 0, 0]);
       assertEquals(seed.val, "a!");
@@ -252,10 +252,10 @@ describe("Shrinker", () => {
 
     it("shrinks two picks", () => {
       const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
-      const twoBits = bit.then(
-        "two bits",
-        (a, pick) => [a, pick(PickRequest.bit)],
-      );
+      const twoBits = Script.make("two bits", (pick) => {
+        const a = pick(bit);
+        return [a, pick(PickRequest.bit)];
+      }, {splitCalls: true});
 
       const seed = Gen.mustBuild(twoBits, [1, 1]);
       const s = new Shrinker(seed, acceptAll);
@@ -425,13 +425,13 @@ describe("shrink", () => {
     });
   });
 
-  describe("for a mult-step build script", () => {
+  describe("for a script with splitCalls turned on", () => {
     const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
 
-    const twoBits = bit.then("twoBits", (a, pick) => {
-      const b = pick(PickRequest.bit);
-      return [a, b];
-    });
+    const twoBits = Script.make("two bits", (pick) => {
+      const a = pick(bit);
+      return [a, pick(PickRequest.bit)];
+    }, {splitCalls: true});
 
     it("can't shrink the default value", () => {
       const seed = Gen.mustBuild(twoBits, [0, 0]);

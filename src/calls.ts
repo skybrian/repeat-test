@@ -20,7 +20,7 @@ export type Call<T> = {
 };
 
 const defaultCall: Call<unknown> = {
-  arg: Script.filtered,
+  arg: Script.neverReturns,
   val: regen,
   group: PickList.empty,
 };

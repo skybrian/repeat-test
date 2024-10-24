@@ -98,19 +98,6 @@ export class Script<T> implements Pickable<T> {
     return new Script(name, this.#build, newOpts);
   }
 
-  then<Out>(
-    name: string,
-    then: ThenFunction<T, Out>,
-    opts?: ScriptOpts,
-  ): Script<Out> {
-    const build = (pick: PickFunction): Out => {
-      const val = this.directBuild(pick);
-      return then(val, pick);
-    };
-
-    return Script.make(name, build, opts);
-  }
-
   /**
    * Makes a new script with the given name and options.
    */
@@ -154,8 +141,8 @@ export class Script<T> implements Pickable<T> {
     }
   }
 
-  /** A script that never completes. */
-  static filtered = Script.make("filtered", () => {
-    throw new Filtered("rejects all picks");
+  /** A script that rejects all picks. */
+  static neverReturns = Script.make("neverReturns", () => {
+    throw new Filtered("neverReturns rejects all picks");
   });
 }

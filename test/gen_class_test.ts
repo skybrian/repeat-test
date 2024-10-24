@@ -30,29 +30,11 @@ const frozen = Script.make("frozen", () => Object.freeze(["frozen"]));
 
 const mutable = Script.make("mutable", () => ["mutable"]);
 
-const pruned = Script.make("never", () => {
-  throw new Filtered("nope");
-});
-
-const multiStep = bit.then("multi-step", (a, pick) => {
+const twoBits = Script.make("twoBits", (pick) => {
+  const a = pick(PickRequest.bit);
   const b = pick(PickRequest.bit);
   return `(${a}, ${b})`;
 }, { splitCalls: true });
-
-const multiStepMutable = mutable.then(
-  "multi-step mutable",
-  (a) => {
-    return [...a, "!"];
-  },
-);
-
-const firstStepPruned = pruned.then(
-  "first-step-pruned",
-  (a, pick) => {
-    const b = pick(PickRequest.bit);
-    return `(${a}, ${b})`;
-  },
-);
 
 describe("Gen", () => {
   describe("build", () => {
@@ -65,12 +47,12 @@ describe("Gen", () => {
         },
       );
     });
-    it("fails when the picks were pruned", () => {
+    it("fails when the script never returns", () => {
       assertEquals(
-        Gen.build(pruned, []),
+        Gen.build(Script.neverReturns, []),
         {
           ok: false,
-          message: "can't build 'never': picks not accepted",
+          message: "can't build 'neverReturns': picks not accepted",
         },
       );
     });
@@ -104,20 +86,29 @@ describe("Gen", () => {
       );
     });
 
-    describe("with multiple steps", () => {
+    describe("with a splitable script", () => {
       it("fails when there aren't enough picks", () => {
         assertThrows(
-          () => Gen.mustBuild(multiStep, []),
+          () => Gen.mustBuild(twoBits, []),
           Error,
-          "can't build 'multi-step': ran out of picks",
+          "can't build 'twoBits': ran out of picks",
         );
       });
 
-      it("fails when the first step was pruned", () => {
+      const firstPickFiltered = Script.make(
+        "firstPickFiltered",
+        (pick) => {
+          const a = pick(Script.neverReturns);
+          const b = pick(PickRequest.bit);
+          return `(${a}, ${b})`;
+        },
+      );
+      
+      it("fails when the first pick threw Filtered", () => {
         assertThrows(
-          () => Gen.mustBuild(firstStepPruned, [0]),
+          () => Gen.mustBuild(firstPickFiltered, [0]),
           Error,
-          "can't build 'first-step-pruned': read only 0 of 1 available picks",
+          "can't build 'firstPickFiltered': read only 0 of 1 available picks",
         );
       });
     });
@@ -138,10 +129,15 @@ describe("Gen", () => {
       assert(gen.val !== first);
     });
 
-    it("regenerates using multiple steps", () => {
-      const gen = Gen.mustBuild(multiStepMutable, []);
+    const usesMutable = Script.make("usesMutable", (pick) => {
+      const a = pick(mutable);
+      return [a[0] + "!"];
+    }, { splitCalls: true });
+    
+    it("regenerates without caching when picking from a mutable", () => {
+      const gen = Gen.mustBuild(usesMutable, []);
       const first = gen.val;
-      assertEquals(first, ["mutable", "!"]);
+      assertEquals(first, ["mutable!"]);
       assert(gen.val !== first);
     });
   });
@@ -155,7 +151,7 @@ describe("Gen", () => {
 
   describe("picksAt", () => {
     it("returns empty for an unknown key", () => {
-      const gen = Gen.mustBuild(multiStep, [0, 1]);
+      const gen = Gen.mustBuild(twoBits, [0, 1]);
       assert(gen.picksAt(2) === PickList.empty);
     });
   });
@@ -171,7 +167,7 @@ describe("Gen", () => {
 
 describe("MutableGen", () => {
   describe("tryMutate", () => {
-    it("keeps the same gen when there are no edits, for a single-step build", () => {
+    it("keeps the same gen when there are no edits, for a single-group build", () => {
       const original = Gen.mustBuild(bit, [1]);
       const mut = original.toMutable();
 
@@ -182,8 +178,8 @@ describe("MutableGen", () => {
       assert(mut.gen === original);
     });
 
-    it("keeps the same gen when there are no edits, for a multi-step build", () => {
-      const original = Gen.mustBuild(multiStep, [0, 0]);
+    it("keeps the same gen when there are no edits, for a two-group build", () => {
+      const original = Gen.mustBuild(twoBits, [0, 0]);
       const mut = original.toMutable();
 
       assert(mut.tryMutate(() => keep));
@@ -205,28 +201,28 @@ describe("MutableGen", () => {
       });
     });
 
-    it("can edit the first step of a multi-step build", () => {
-      const original = Gen.mustBuild(multiStep, [1, 1]);
+    it("can edit the first group of a two-group build", () => {
+      const original = Gen.mustBuild(twoBits, [1, 1]);
       assertEquals(original.val, `(1, 1)`);
 
       const mut = original.toMutable();
       assert(mut.tryMutate((i) => i === 0 ? snip : keep));
       assertEquals(propsFromGen(mut.gen), {
-        name: "multi-step",
+        name: "twoBits",
         val: `(0, 1)`,
         reqs: [PickRequest.bit, PickRequest.bit],
         replies: [0, 1],
       });
     });
 
-    it("can edit the second step of a multi-step build", () => {
-      const original = Gen.mustBuild(multiStep, [1, 1]);
+    it("can edit the second group of a two-group build", () => {
+      const original = Gen.mustBuild(twoBits, [1, 1]);
       assertEquals(original.val, `(1, 1)`);
 
       const mut = original.toMutable();
       assert(mut.tryMutate((i) => i === 1 ? snip : keep));
       assertEquals(propsFromGen(mut.gen), {
-        name: "multi-step",
+        name: "twoBits",
         val: `(1, 0)`,
         reqs: [PickRequest.bit, PickRequest.bit],
         replies: [1, 0],
@@ -241,7 +237,8 @@ describe("MutableGen", () => {
       return roll;
     });
 
-    const evenDoubles = evenRoll.then("evenDoubles", (a, pick) => {
+    const evenDoubles = Script.make("evenDoubles", (pick) => {
+      const a = pick(evenRoll);
       const b = pick(new PickRequest(1, 6));
       if (a !== b) {
         throw new Filtered("not a double");
@@ -249,7 +246,7 @@ describe("MutableGen", () => {
       return [a, b];
     });
 
-    it("fails if editing the first step fails", () => {
+    it("fails if editing the first group fails", () => {
       const original = Gen.mustBuild(evenDoubles, [2, 2]);
       const mut = original.toMutable();
       assertFalse(
@@ -337,49 +334,52 @@ describe("generate", () => {
     });
   });
 
-  describe("for Script.then", () => {
+  describe("for a script with splitCalls turned on", () => {
     it("generates all values", () => {
       const playouts = orderedPlayouts();
       for (const expectedReplies of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
-        const gen = generate(multiStep, playouts);
+        const gen = generate(twoBits, playouts);
         assertEquals(propsFromGen(gen), {
+          name: "twoBits",
           val: `(${expectedReplies[0]}, ${expectedReplies[1]})`,
-          name: "multi-step",
           reqs: [bitReq, bitReq],
           replies: expectedReplies,
         });
         assert(gen !== filtered);
         assertEquals(gen.groupKeys, [0, 1]);
       }
-      assertEquals(generate(multiStep, playouts), filtered);
+      assertEquals(generate(twoBits, playouts), filtered);
     });
 
-    it("retries for a pruned multi-step build script", () => {
-      const pruned = bit.then("pruned", (val) => {
-        if (val === 0) {
-          throw new Filtered("try again");
-        }
-        return val;
-      });
-      const gen = generate(pruned, orderedPlayouts());
+    it("retries when the first group is filtered", () => {
+      const filterZero = Script.make("filterZero", (pick) => {
+        const a = pick(bit, { accept: (v) => v !== 0 });
+        const b = pick(bit);
+        return [a, b];
+      }, { splitCalls: true});
+
+      const gen = generate(filterZero, orderedPlayouts());
+
       assertEquals(propsFromGen(gen), {
-        val: 1,
-        name: "pruned",
-        reqs: [bitReq],
-        replies: [1],
+        val: [1, 0],
+        name: "filterZero",
+        reqs: [bitReq, bitReq],
+        replies: [1, 0],
       });
+      assert(gen !== filtered);
+      assertEquals(gen.groupKeys, [0, 1]);
     });
 
-    it("regenerates the same value the second time", () => {
-      const script = frozen.then(
-        "untitled",
-        (val, pick) => val.concat(["" + pick(PickRequest.bit)]),
-      );
+    it("regenerates a result that can't be cached", () => {
+      const cached = Script.make("uncached", (pick) => {
+        const val = pick(frozen);
+        return val.concat(["" + pick(PickRequest.bit)]);
+      }, { splitCalls: true });
 
-      const gen = generate(script, minPlayout());
+      const gen = generate(cached, minPlayout());
 
       assertEquals(propsFromGen(gen), {
-        name: "untitled",
+        name: "uncached",
         reqs: [PickRequest.bit],
         replies: [0],
         val: ["frozen", "0"],
@@ -395,9 +395,10 @@ describe("generate", () => {
     });
 
     it("fails when the rule throws an error", () => {
-      const script = bit.then("untitled", () => {
+      const script = Script.make("throws", (pick) => {
+        pick(bit);
         throw new Error("oops");
-      });
+      }, { splitCalls: true });
 
       const picks = onePlayout(new PlaybackPicker([]));
       assertThrows(
@@ -408,9 +409,9 @@ describe("generate", () => {
     });
 
     it("fails when all playouts were rejected", () => {
-      const script = bit.then("untitled", () => {
-        throw new Filtered("nope");
-      });
+      const script = Script.make("untitled", (pick) => {
+        pick(bit, { accept: () => false });
+      }, { splitCalls: true });
 
       const gen = generate(
         script,

@@ -104,9 +104,13 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
    * examples are in the same order as in the original.)
    */
   map<U>(convert: (val: T) => U): Arbitrary<U> {
-    const build = this.#script.then("map", convert);
+    const script = Script.make("map", (pick) => {
+      const val = this.directBuild(pick);
+      return convert(val);
+    });
+
     const maxSize = this.maxSize;
-    return new Arbitrary(build, { maxSize });
+    return new Arbitrary(script, { maxSize });
   }
 
   /**
@@ -170,18 +174,16 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
   /**
    * Creates a new Arbitrary that maps each example to another Arbitrary and
    * then picks from it.
-   *
-   * (Although less convenient than calling {@link Arbitrary.from} with a
-   * function, it sometimes allows the intermediate value to be cached.)
    */
   chain<U>(
     convert: (val: T) => Arbitrary<U>,
   ): Arbitrary<U> {
-    const build = this.#script.then("chain", (val, pick) => {
+    const script = Script.make("chain", (pick) => {
+      const val = this.directBuild(pick);
       const next = convert(val);
       return pick(next);
     });
-    return new Arbitrary(build);
+    return new Arbitrary(script);
   }
 
   /**
@@ -293,6 +295,8 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
     if (cases.length === 0) {
       throw new Error("Arbitrary.oneOf() requires at least one alternative");
     }
+
+    // Convert to Arbitraries first, in case maxSize is defined for all of them.    
     const caseArbs = cases.map((c) => Arbitrary.from(c));
     if (caseArbs.length === 1) {
       return caseArbs[0];
@@ -311,13 +315,11 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
     const req = new PickRequest(0, cases.length - 1);
     const scripts = caseArbs.map((arb) => arb.#script);
 
-    const build = Script.make("oneOf pick", (pick) => {
-      return pick(req);
-    }).then("oneOf", (i, pick) => {
-      return scripts[i].directBuild(pick);
+    const script = Script.make("oneOf", (pick) => {
+      const index = pick(req);
+      return scripts[index].directBuild(pick);
     });
-
-    return new Arbitrary(build, { maxSize, dryRun: false });
+    return new Arbitrary(script, { maxSize, dryRun: false });
   }
 
   /**
