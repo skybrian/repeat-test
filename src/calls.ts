@@ -193,7 +193,7 @@ export class CallLog {
    */
   rebuild<T>(target: Pickable<T>): T | typeof filtered {
     try {
-      return target.buildFrom(makePickFunctionWithEdits(this, () => keep));
+      return target.directBuild(makePickFunctionWithEdits(this, () => keep));
     } catch (e) {
       if (e instanceof Filtered) {
         return filtered;
@@ -267,7 +267,7 @@ function makePickFunctionWithEdits(
     }
     const responder = new EditResponder(before.group.replies, edit);
     const pick = makePickFunction(responder, { log }); // log picks only
-    const val = script.buildFrom(pick);
+    const val = script.directBuild(pick);
     log?.endScript(script, val);
     if (responder.edited) {
       log?.setChanged();

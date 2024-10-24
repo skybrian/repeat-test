@@ -142,8 +142,15 @@ export class PickRequest implements Pickable<number>, Range {
     return this.#random;
   }
 
-  /** Returns the next pick from the given source. */
-  get buildFrom(): BuildFunction<number> {
+  /**
+   * Equivalent to `pick(request)`. 
+   *
+   * Because evaluating a PickRequest is a primitive operation, it has to be
+   * handled as a special case by the *pick* function. Therefore, calling
+   * `directBuild` on a PickRequest isn't very useful, other than to satisfy the
+   * {@link Pickable} interface.
+   */
+  get directBuild(): BuildFunction<number> {
     return (pick) => pick(this);
   }
 

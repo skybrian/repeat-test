@@ -90,7 +90,7 @@ describe("makePickFunction", () => {
   });
 
   it("accepts a Pickable that's not a Script", () => {
-    const hi = { buildFrom: () => "hi" };
+    const hi = { directBuild: () => "hi" };
     assertEquals(pick(hi), "hi");
     checkCalls({ name: "untitled", val: regen, reqs: [], replies: [] });
   });

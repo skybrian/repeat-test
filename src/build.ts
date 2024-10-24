@@ -126,13 +126,13 @@ export function makePickFunction<T>(
   let pickCount = 0;
 
   /** Builds a script, retrying if it throws Filtered. */
-  function retryScript<T>(script: Script<T>, pick: PickFunction): T {
+  function retry<T>(script: Script<T>, pick: PickFunction): T {
     while (true) {
       const depth = playouts.depth;
       const start = pickCount;
       level++;
       try {
-        return script.buildFrom(pick);
+        return script.directBuild(pick);
       } catch (e) {
         log?.undoPushes(pickCount - start);
         pickCount = start;
@@ -170,7 +170,7 @@ export function makePickFunction<T>(
 
     const accept = opts?.accept;
     if (accept === undefined) {
-      const val = retryScript(script, dispatch);
+      const val = retry(script, dispatch);
       if (level == 0) {
         log?.endScript(script, val);
       }
@@ -183,7 +183,7 @@ export function makePickFunction<T>(
       const depth = playouts.depth;
 
       const start = pickCount;
-      const val = retryScript(script, dispatch);
+      const val = retry(script, dispatch);
       if (accept(val)) {
         if (level == 0) {
           log?.endScript(script, val);

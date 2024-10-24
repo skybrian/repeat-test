@@ -181,13 +181,12 @@ export function takeGenerated<T>(arg: Pickable<T>, n: number): Gen<T>[] {
  * There may be duplicates.
  */
 export function take<T>(arg: Pickable<T>, n: number): T[] {
-  const script = Script.from(arg);
   const result = [];
   const playouts = orderedPlayouts();
   const pick = makePickFunction(playouts);
   while (playouts.startAt(0) && result.length < n) {
     try {
-      result.push(script.buildFrom(pick));
+      result.push(arg.directBuild(pick));
     } catch (e) {
       if (!(e instanceof Filtered)) {
         throw e;

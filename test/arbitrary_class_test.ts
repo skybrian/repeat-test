@@ -29,7 +29,7 @@ describe("Arbitrary", () => {
     });
     describe("given a Pickable", () => {
       const answer: Pickable<string> = {
-        buildFrom: (pick) => {
+        directBuild: (pick) => {
           return pick(bit) == 1 ? "yes" : "no";
         },
       };
@@ -305,7 +305,7 @@ describe("Arbitrary", () => {
   describe("buildPick", () => {
     it("works in a build script", () => {
       // Verbose, but valid.
-      const zero = arb.from((pick) => Arbitrary.of(0).buildFrom(pick));
+      const zero = arb.from((pick) => Arbitrary.of(0).directBuild(pick));
       repeatTest(zero, (val) => {
         assertEquals(val, 0);
       });

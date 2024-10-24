@@ -11,17 +11,23 @@ import { Filtered } from "./pickable.ts";
 export type ThenFunction<In, Out> = (input: In, pick: PickFunction) => Out;
 
 /**
- * Some Pickables can pause instead of returning a value immediately.
+ * An optional interface that a Pickable can use to give itself a name and set
+ * build flags.
  */
 export interface HasScript<T> extends Pickable<T> {
   /**
-   * Returns a script that builds the same values as {@link Pickable.buildFrom},
-   * but may also pause.
+   * The script that should be returned after calling {@link Script.from} on
+   * this object. (Otherwise, an untitled script will be created that calls
+   * {@link Pickable.directBuild}.)
    */
   readonly buildScript: Script<T>;
 }
 
 export type ScriptOpts = {
+  /**
+   * Turns on caching for this script. This will only have an effect if the
+   * script builds values that satisfy `Object.isFrozen`.
+   */
   readonly cachable?: boolean;
 
   /**
@@ -31,7 +37,7 @@ export type ScriptOpts = {
 };
 
 /**
- * A Pickable that can pause.
+ * A Pickable with a name and build options.
  */
 export class Script<T> implements Pickable<T> {
   readonly #name: string;
@@ -60,10 +66,14 @@ export class Script<T> implements Pickable<T> {
     return this.#opts?.splitCalls === true;
   }
 
-  get buildFrom(): BuildFunction<T> {
+  get directBuild(): BuildFunction<T> {
     return this.#build;
   }
 
+  /**
+   * Similar to {@link directBuild}, except that it returns {@link filtered}
+   * instead of throwing {@link Filtered}.
+   */
   build(pick: PickFunction): T | typeof filtered {
     try {
       return this.#build(pick);
@@ -75,6 +85,10 @@ export class Script<T> implements Pickable<T> {
     }
   }
 
+  /**
+   * Returns a script that builds the same thing, but with a different name or
+   * build options.
+   */
   with(opts: { name?: string; cachable?: boolean }): Script<T> {
     const name = opts.name ?? this.#name;
     if (opts.cachable === undefined) {
@@ -90,13 +104,16 @@ export class Script<T> implements Pickable<T> {
     opts?: ScriptOpts,
   ): Script<Out> {
     const build = (pick: PickFunction): Out => {
-      const val = this.buildFrom(pick);
+      const val = this.directBuild(pick);
       return then(val, pick);
     };
 
     return Script.make(name, build, opts);
   }
 
+  /**
+   * Makes a new script with the given name and options.
+   */
   static make<T>(
     name: string,
     build: BuildFunction<T>,
@@ -105,6 +122,12 @@ export class Script<T> implements Pickable<T> {
     return new Script(name, build, opts);
   }
 
+  /**
+   * Converts any Pickable into a Script.
+   *
+   * If it wasn't already a Script and didn't implement HasScript, it will be
+   * named 'untitled'.
+   */
   static from<T>(
     arg: Pickable<T>,
     opts?: { caller: string },
@@ -115,7 +138,7 @@ export class Script<T> implements Pickable<T> {
 
     if (
       arg === null || typeof arg !== "object" ||
-      typeof arg.buildFrom !== "function"
+      typeof arg.directBuild !== "function"
     ) {
       const caller = opts?.caller ?? "Script.from()";
       throw new Error(`${caller} called with an invalid argument`);
@@ -127,7 +150,7 @@ export class Script<T> implements Pickable<T> {
     ) {
       return props.buildScript;
     } else {
-      return Script.make("untitled", arg.buildFrom);
+      return Script.make("untitled", arg.directBuild);
     }
   }
 

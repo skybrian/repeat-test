@@ -241,7 +241,7 @@ describe("CallLog", () => {
 
     describe("for a pickable that's not a script", () => {
       const pickable: Pickable<number> = {
-        buildFrom: (pick) => {
+        directBuild: (pick) => {
           return pick(roll);
         },
       };

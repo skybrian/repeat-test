@@ -209,10 +209,10 @@ describe("PickRequest", () => {
     });
   });
 
-  describe("buildPick", () => {
+  describe("directBuild", () => {
     it("works in a build script", () => {
       // Verbose, but valid.
-      const bit = arb.from((pick) => PickRequest.bit.buildFrom(pick));
+      const bit = arb.from((pick) => PickRequest.bit.directBuild(pick));
       repeatTest(bit, (val, console) => {
         console.sometimes("is zero", val === 0);
         console.sometimes("is one", val === 1);

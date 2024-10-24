@@ -114,7 +114,7 @@ export class Jar<T> {
     // filtering when there are few values left.)
     const maxTries = this.taken + 1000;
 
-    const script = makeMiddleware(this.name, this.dom.buildFrom, middle);
+    const script = makeMiddleware(this.name, this.dom.directBuild, middle);
     const val = pick(script, { accept: this.#accept, maxTries });
     this.#refreshExample();
     this.taken++;
