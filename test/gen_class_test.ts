@@ -103,7 +103,7 @@ describe("Gen", () => {
           return `(${a}, ${b})`;
         },
       );
-      
+
       it("fails when the first pick threw Filtered", () => {
         assertThrows(
           () => Gen.mustBuild(firstPickFiltered, [0]),
@@ -133,7 +133,7 @@ describe("Gen", () => {
       const a = pick(mutable);
       return [a[0] + "!"];
     }, { splitCalls: true });
-    
+
     it("regenerates without caching when picking from a mutable", () => {
       const gen = Gen.mustBuild(usesMutable, []);
       const first = gen.val;
@@ -166,15 +166,15 @@ describe("Gen", () => {
 });
 
 describe("MutableGen", () => {
-  describe("tryMutate", () => {
+  describe("tryEdits", () => {
     it("keeps the same gen when there are no edits, for a single-group build", () => {
       const original = Gen.mustBuild(bit, [1]);
       const mut = original.toMutable();
 
-      assert(mut.tryMutate(() => keep));
+      assert(mut.tryEdits(() => keep));
       assert(mut.gen === original);
 
-      assert(mut.tryMutate(() => () => keep()));
+      assert(mut.tryEdits(() => () => keep()));
       assert(mut.gen === original);
     });
 
@@ -182,17 +182,17 @@ describe("MutableGen", () => {
       const original = Gen.mustBuild(twoBits, [0, 0]);
       const mut = original.toMutable();
 
-      assert(mut.tryMutate(() => keep));
+      assert(mut.tryEdits(() => keep));
       assert(mut.gen === original);
 
-      assert(mut.tryMutate(() => () => keep()));
+      assert(mut.tryEdits(() => () => keep()));
       assert(mut.gen === original);
     });
 
     it("can edit a single-step build", () => {
       const original = Gen.mustBuild(bit, [1]);
       const mut = original.toMutable();
-      assert(mut.tryMutate(() => snip));
+      assert(mut.tryEdits(() => snip));
       assertEquals(propsFromGen(mut.gen), {
         name: "bit",
         val: 0,
@@ -206,7 +206,7 @@ describe("MutableGen", () => {
       assertEquals(original.val, `(1, 1)`);
 
       const mut = original.toMutable();
-      assert(mut.tryMutate((i) => i === 0 ? snip : keep));
+      assert(mut.tryEdits((i) => i === 0 ? snip : keep));
       assertEquals(propsFromGen(mut.gen), {
         name: "twoBits",
         val: `(0, 1)`,
@@ -220,7 +220,7 @@ describe("MutableGen", () => {
       assertEquals(original.val, `(1, 1)`);
 
       const mut = original.toMutable();
-      assert(mut.tryMutate((i) => i === 1 ? snip : keep));
+      assert(mut.tryEdits((i) => i === 1 ? snip : keep));
       assertEquals(propsFromGen(mut.gen), {
         name: "twoBits",
         val: `(1, 0)`,
@@ -250,7 +250,7 @@ describe("MutableGen", () => {
       const original = Gen.mustBuild(evenDoubles, [2, 2]);
       const mut = original.toMutable();
       assertFalse(
-        mut.tryMutate((i) => (i === 0) ? () => replace(0) : keep),
+        mut.tryEdits((i) => (i === 0) ? () => replace(0) : keep),
       );
       assert(mut.gen === original);
     });
@@ -356,7 +356,7 @@ describe("generate", () => {
         const a = pick(bit, { accept: (v) => v !== 0 });
         const b = pick(bit);
         return [a, b];
-      }, { splitCalls: true});
+      }, { splitCalls: true });
 
       const gen = generate(filterZero, orderedPlayouts());
 

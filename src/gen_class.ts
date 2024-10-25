@@ -54,24 +54,25 @@ export class MutableGen<T> {
    * Returns true if the edits could be applied and the result passes the test
    * (if provided).
    */
-  tryMutate(
-    editor: MultiEdit,
-    test?: (val: T) => boolean,
-  ): boolean {
+  tryEdits(edits: MultiEdit, test?: (val: T) => boolean): boolean {
     const { script, calls } = this.#props;
 
     const buf = new CallBuffer();
-    const nextVal = calls.runWithEdit(script, editor, buf);
-    if (nextVal === filtered) {
+
+    const result = calls.runWithEdits(script, edits, buf);
+    if (result === filtered) {
       return false; // edits didn't apply
-    } else if (!buf.changed) {
+    }
+
+    const { val, changed } = result;
+    if (!changed) {
       return true; // edits applied, but had no effect
     }
 
     const next = {
       script,
       calls: buf.takeLog(),
-      val: nextVal,
+      val,
     };
 
     const cache = cacheResult(next);
@@ -241,7 +242,7 @@ export function generate<T>(
     }
 
     // Finished!
-    return new Gen({script, calls: log.takeLog(), val});
+    return new Gen({ script, calls: log.takeLog(), val });
   }
   return filtered;
 }

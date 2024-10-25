@@ -54,8 +54,8 @@ export class Shrinker<T> {
     return this.seed.picksAt(key).trimmedLength;
   }
 
-  tryMutate(edit: MultiEdit): boolean {
-    return this.seed.tryMutate(edit, this.test);
+  tryMutate(edits: MultiEdit): boolean {
+    return this.seed.tryEdits(edits, this.test);
   }
 
   /**

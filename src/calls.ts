@@ -1,4 +1,3 @@
-import type { filtered } from "./results.ts";
 import type { Range } from "./picks.ts";
 import type { Pickable } from "./pickable.ts";
 import type { PickLogger } from "./build.ts";
@@ -6,6 +5,7 @@ import type { Edit, GroupEdit, MultiEdit } from "./edits.ts";
 
 import { assert } from "@std/assert";
 import { Filtered, type PickFunctionOpts } from "@/arbitrary.ts";
+import { filtered } from "./results.ts";
 import { PickBuffer, PickList, PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
 import { makePickFunction } from "./build.ts";
@@ -39,7 +39,6 @@ export class CallBuffer implements PickLogger {
   };
 
   #buf = new PickBuffer();
-  #changed = false;
 
   get complete(): boolean {
     return this.#buf.pushCount === 0;
@@ -57,15 +56,6 @@ export class CallBuffer implements PickLogger {
       groups: [],
     };
     this.#buf = new PickBuffer();
-  }
-
-  /** Returns true if the changed flag was set */
-  get changed(): boolean {
-    return this.#changed;
-  }
-
-  setChanged() {
-    this.#changed = true;
   }
 
   push(req: Range, reply: number): void {
@@ -193,18 +183,20 @@ export class CallLog {
    */
   run<T>(target: Script<T>): T | typeof filtered {
     // Reuse cached pick results by using the editing version of the pick function.
-    const pick = makePickFunctionWithEdits(this, () => keep);
+    const pick = makePickFunctionWithEdits(this, () => keep, () => {});
     return target.run(pick);
   }
 
   /**
    * Runs a script using the calls from this log, after applying the given edits.
    */
-  runWithEdit<T>(
+  runWithEdits<T>(
     target: Script<T>,
     edits: MultiEdit,
     log?: CallBuffer,
-  ): T | typeof filtered {
+  ): { val: T; changed: boolean } | typeof filtered {
+    let changed = false;
+
     if (!target.splitCalls) {
       // Record a single call.
       let edit = edits(0);
@@ -214,21 +206,33 @@ export class CallLog {
       const picks = new EditResponder(this.replies, edit);
       const pick = makePickFunction(picks, { log });
       const val = target.run(pick);
+      if (val === filtered) {
+        return filtered;
+      }
       log?.endScript(target, val);
       if (picks.edited) {
-        log?.setChanged();
+        changed = true;
       }
-      return val;
+      return { val, changed };
     }
 
-    const pick = makePickFunctionWithEdits(this, edits, log);
-    return target.run(pick);
+    function onChange() {
+      changed = true;
+    }
+
+    const pick = makePickFunctionWithEdits(this, edits, onChange, log);
+    const val = target.run(pick);
+    if (val === filtered) {
+      return filtered;
+    }
+    return { val, changed };
   }
 }
 
 function makePickFunctionWithEdits(
   origin: CallLog,
   edits: MultiEdit,
+  changed: () => void,
   log?: CallBuffer,
 ) {
   function handlePickRequest<T>(
@@ -241,7 +245,7 @@ function makePickFunctionWithEdits(
 
     log?.endPick(req, reply);
     if (responder.edited) {
-      log?.setChanged();
+      changed();
     }
 
     return reply as T;
@@ -265,7 +269,7 @@ function makePickFunctionWithEdits(
     const val = script.directBuild(pick);
     log?.endScript(script, val);
     if (responder.edited) {
-      log?.setChanged();
+      changed();
     }
     return val;
   }
@@ -279,7 +283,7 @@ function makePickFunctionWithEdits(
     let groupEdit = edits(callIndex++);
     while (groupEdit === removeGroup) {
       groupEdit = edits(callIndex++);
-      log?.setChanged();
+      changed();
     }
 
     if (req instanceof PickRequest) {
