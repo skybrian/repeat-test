@@ -143,7 +143,7 @@ export class PickRequest implements Pickable<number>, Range {
   }
 
   /**
-   * Equivalent to `pick(request)`. 
+   * Equivalent to `pick(request)`.
    *
    * Because evaluating a PickRequest is a primitive operation, it has to be
    * handled as a special case by the *pick* function. Therefore, calling
@@ -215,12 +215,16 @@ export interface Pushable {
  * Stores picks before creating a {@link PickList}.
  */
 export class PickBuffer implements PickSink {
-  #reqs: Range[] = [];
-  #replies: number[] = [];
+  readonly #reqs: Range[] = [];
+  readonly #replies: number[] = [];
   #count = 0;
 
   get pushCount(): number {
     return this.#count;
+  }
+
+  reset() {
+    this.#count = 0;
   }
 
   push(req: Range, reply: number): boolean {

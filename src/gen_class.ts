@@ -13,40 +13,15 @@ import { onePlayout } from "./backtracking.ts";
 import { makePickFunction } from "./build.ts";
 import { CallBuffer } from "./calls.ts";
 
-type Props<T> = {
-  readonly script: Script<T>;
-  readonly calls: CallLog;
-  readonly val: T;
-};
-
-const alwaysBuild = Symbol("alwaysBuild");
-
-function cacheResult<T>(props: Props<T>): () => T {
-  const { script, calls, val } = props;
-  if (Object.isFrozen(props.val)) {
-    return () => val;
-  }
-
-  let cache: T | typeof alwaysBuild = val;
-
-  return () => {
-    if (cache === alwaysBuild) {
-      const next = calls.run(script);
-      assert(next !== filtered, "can't rebuild nondeterministic script");
-      return next;
-    }
-    const val = cache;
-    cache = alwaysBuild;
-    return val;
-  };
-}
-
 export class MutableGen<T> {
-  #props: Props<T>;
+  readonly #script: Script<T>;
+  readonly #buf = new CallBuffer();
+  #calls: CallLog;
   #gen: Gen<T>;
 
-  constructor(props: Props<T>, origin: Gen<T>) {
-    this.#props = props;
+  constructor(script: Script<T>, calls: CallLog, origin: Gen<T>) {
+    this.#script = script;
+    this.#calls = calls;
     this.#gen = origin;
   }
 
@@ -55,11 +30,8 @@ export class MutableGen<T> {
    * (if provided).
    */
   tryEdits(edits: MultiEdit, test?: (val: T) => boolean): boolean {
-    const { script, calls } = this.#props;
-
-    const buf = new CallBuffer();
-
-    const result = calls.runWithEdits(script, edits, buf);
+    this.#buf.reset();
+    const result = this.#calls.runWithEdits(this.#script, edits, this.#buf);
     if (result === filtered) {
       return false; // edits didn't apply
     }
@@ -69,19 +41,19 @@ export class MutableGen<T> {
       return true; // edits applied, but had no effect
     }
 
-    const next = {
-      script,
-      calls: buf.takeLog(),
-      val,
-    };
-
-    const cache = cacheResult(next);
-    if (test && !test(cache())) {
+    if (test && !test(val)) {
       return false; // didn't pass the test
     }
 
-    this.#props = next;
-    this.#gen = new Gen(next, cache);
+    const calls = this.#buf.takeLog();
+    const regenerate = Object.isFrozen(val) ? () => val : () => {
+      const next = calls.run(this.#script);
+      assert(next !== filtered, "can't rebuild nondeterministic script");
+      return next;
+    };
+
+    this.#calls = calls;
+    this.#gen = new Gen(this.#script, calls, regenerate);
     return true;
   }
 
@@ -106,7 +78,8 @@ export class MutableGen<T> {
  * A generated value and the picks that were used to generate it.
  */
 export class Gen<T> implements Success<T> {
-  readonly #props: Props<T>;
+  readonly #script: Script<T>;
+  readonly #calls: CallLog;
   readonly #result: () => T;
 
   #reqs: Range[] | undefined;
@@ -119,11 +92,13 @@ export class Gen<T> implements Success<T> {
    * the {@link generate} method or a {@link Domain}.
    */
   constructor(
-    props: Props<T>,
-    result?: () => T,
+    script: Script<T>,
+    calls: CallLog,
+    result: () => T,
   ) {
-    this.#props = props;
-    this.#result = result ?? cacheResult(props);
+    this.#script = script;
+    this.#calls = calls;
+    this.#result = result;
   }
 
   /** Satisfies the Success interface. */
@@ -132,11 +107,11 @@ export class Gen<T> implements Success<T> {
   }
 
   get name(): string {
-    return this.#props.script.name;
+    return this.#script.name;
   }
 
   get replies(): Iterable<number> {
-    return this.#props.calls.replies;
+    return this.#calls.replies;
   }
 
   pushTo(sink: PickSink): boolean {
@@ -154,14 +129,14 @@ export class Gen<T> implements Success<T> {
    * they were used.
    */
   get groupKeys(): GroupKey[] {
-    const len = this.#props.calls.length;
+    const len = this.#calls.length;
     return new Array(len).fill(0).map((_, i) => i);
   }
 
   /** Returns the picks for the given group, or an empty PickList if not found. */
   picksAt(key: GroupKey): PickList {
     assert(typeof key === "number");
-    return this.#props.calls.groupAt(key);
+    return this.#calls.groupAt(key);
   }
 
   /**
@@ -175,7 +150,7 @@ export class Gen<T> implements Success<T> {
   }
 
   toMutable(): MutableGen<T> {
-    return new MutableGen(this.#props, this);
+    return new MutableGen(this.#script, this.#calls, this);
   }
 
   static mustBuild<T>(arg: Pickable<T>, replies: Iterable<number>): Gen<T> {
@@ -242,7 +217,30 @@ export function generate<T>(
     }
 
     // Finished!
-    return new Gen({ script, calls: log.takeLog(), val });
+    const calls = log.takeLog();
+    const result = cacheResult(script, calls, val);
+    return new Gen(script, calls, result);
   }
   return filtered;
+}
+
+const alwaysBuild = Symbol("alwaysBuild");
+
+function cacheResult<T>(script: Script<T>, calls: CallLog, val: T): () => T {
+  if (Object.isFrozen(val)) {
+    return () => val;
+  }
+
+  let cache: T | typeof alwaysBuild = val;
+
+  return () => {
+    if (cache === alwaysBuild) {
+      const next = calls.run(script);
+      assert(next !== filtered, "can't rebuild nondeterministic script");
+      return next;
+    }
+    const val = cache;
+    cache = alwaysBuild;
+    return val;
+  };
 }

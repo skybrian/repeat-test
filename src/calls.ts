@@ -25,20 +25,11 @@ const defaultCall: Call<unknown> = {
   group: PickList.empty,
 };
 
-type Props = {
-  readonly args: (Range | Script<unknown>)[];
-  readonly vals: unknown[];
-  readonly groups: PickList[];
-};
-
 export class CallBuffer implements PickLogger {
-  private props: Props = {
-    args: [],
-    vals: [],
-    groups: [],
-  };
-
-  #buf = new PickBuffer();
+  readonly #args: (Range | Script<unknown>)[] = [];
+  readonly #vals: unknown[] = [];
+  readonly #groups: PickList[] = [];
+  readonly #buf = new PickBuffer();
 
   get complete(): boolean {
     return this.#buf.pushCount === 0;
@@ -46,16 +37,14 @@ export class CallBuffer implements PickLogger {
 
   /** Returns the number of calls recorded. */
   get length(): number {
-    return this.props.args.length;
+    return this.#args.length;
   }
 
   reset() {
-    this.props = {
-      args: [],
-      vals: [],
-      groups: [],
-    };
-    this.#buf = new PickBuffer();
+    this.#args.length = 0;
+    this.#vals.length = 0;
+    this.#groups.length = 0;
+    this.#buf.reset();
   }
 
   push(req: Range, reply: number): void {
@@ -89,7 +78,11 @@ export class CallBuffer implements PickLogger {
 
   takeLog(): CallLog {
     assert(this.complete);
-    const log = new CallLog(this.props);
+    const log = new CallLog(
+      this.#args.slice(),
+      this.#vals.slice(),
+      this.#groups.slice(),
+    );
     this.reset();
     return log;
   }
@@ -99,11 +92,9 @@ export class CallBuffer implements PickLogger {
     val: T | typeof regen,
     picks: PickList,
   ): void {
-    const { args, vals, groups } = this.props;
-
-    args.push(arg);
-    vals.push(val);
-    groups.push(picks);
+    this.#args.push(arg);
+    this.#vals.push(val);
+    this.#groups.push(picks);
   }
 }
 
@@ -111,10 +102,22 @@ export class CallBuffer implements PickLogger {
  * The calls that were made to a pick function.
  */
 export class CallLog {
-  constructor(private readonly props: Props) {}
+  #args: (Range | Script<unknown>)[] = [];
+  #vals: unknown[] = [];
+  #groups: PickList[] = [];
+
+  constructor(
+    args: (Range | Script<unknown>)[],
+    vals: unknown[],
+    groups: PickList[],
+  ) {
+    this.#args = args;
+    this.#vals = vals;
+    this.#groups = groups;
+  }
 
   get length(): number {
-    return this.props.args.length;
+    return this.#args.length;
   }
 
   get replies(): Iterable<number> {
@@ -123,7 +126,7 @@ export class CallLog {
         yield* group.replies;
       }
     }
-    return generate(this.props.groups);
+    return generate(this.#groups);
   }
 
   /**
@@ -136,7 +139,7 @@ export class CallLog {
       return PickList.empty;
     }
 
-    return this.props.groups[offset];
+    return this.#groups[offset];
   }
 
   firstReplyAt(offset: number, defaultReply: number): number {
@@ -146,7 +149,7 @@ export class CallLog {
       return defaultReply;
     }
 
-    const group = this.props.groups[offset];
+    const group = this.#groups[offset];
     assert(group.length > 0);
     return group.replyAt(0);
   }
@@ -161,9 +164,8 @@ export class CallLog {
     if (offset >= this.length) {
       return defaultCall;
     }
-    const { args, vals } = this.props;
-    const arg = args[offset];
-    const val = vals[offset];
+    const arg = this.#args[offset];
+    const val = this.#vals[offset];
     const group = this.groupAt(offset);
     return { arg, val, group };
   }
