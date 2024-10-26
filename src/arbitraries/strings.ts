@@ -165,7 +165,7 @@ export function string(
   const script = Script.make("string", (pick) => {
     const arr = charArray.directBuild(pick);
     return arr.join("");
-  }, { cachable: true, splitCalls: false });
+  }, { cachable: true });
 
   return Arbitrary.from(script);
 }

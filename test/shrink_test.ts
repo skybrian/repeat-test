@@ -129,19 +129,19 @@ describe("Shrinker", () => {
       const script = Script.make("mapped string", (pick) => {
         const a = pick(arb.string());
         return a.concat("!");
-      });
+      }, { splitCalls: true });
 
-      const seed = Gen.mustBuild(script, [1, 0, 0]);
-      assertEquals(seed.val, "a!");
+      const seed = Gen.mustBuild(script, [1, 1, 1, 1, 0]);
+      assertEquals(seed.val, "bb!");
 
       const s = new Shrinker(seed, acceptAll);
       assert(s.shrinkTails());
       assertEquals(s.seed.gen.val, "!");
     });
 
-    const nonEmptySeeds = arb.array(minMaxVal({ minMin: 0 }), {
-      length: { max: 100 },
-    }).filter((recs) => recs.some((r) => r.val !== r.min));
+    const nonEmptySeeds = arb.array(minMaxVal({ minMin: 0, minSize: 2 }), {
+      length: { min: 3, max: 100 },
+    }).filter((recs) => recs.filter((r) => r.val > r.min).length > 2);
 
     it("shrinks random picks to nothing", () => {
       repeatTest(nonEmptySeeds, (recs) => {
@@ -158,16 +158,20 @@ describe("Shrinker", () => {
 
     it("shrinks a string to a smaller length", () => {
       const example = arb.from((pick) => {
-        const str = pick(arb.string({ length: { min: 1, max: 100 } }));
+        const str = pick(arb.string({ length: { min: 3, max: 100 } }));
         const len = pick(arb.int(0, str.length - 1));
         return { str, len };
       });
       repeatTest(example, ({ str, len }) => {
-        const seed = dom.string().regenerate(str);
+        // Put it in an array so it's not top-level.
+        const seed = dom.array(dom.string()).regenerate([str]);
         assert(seed.ok);
-        const s = new Shrinker(seed, (s) => s.length >= len);
+        const s = new Shrinker(
+          seed,
+          (arr) => arr.length === 1 && arr[0].length >= len,
+        );
         assert(s.shrinkTails());
-        assertEquals(s.seed.gen.val.length, len);
+        assertEquals(s.seed.gen.val[0].length, len);
       });
     });
 

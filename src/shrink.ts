@@ -159,8 +159,8 @@ export class Shrinker<T> {
   /**
    * Removes unnecessary picks from the end of each group.
    *
-   * Postcondition: the last pick in each group is necessary, or the group is
-   * empty.
+   * Postcondition: the last pick in each group is necessary, or the group has a
+   * length <= 2. (Very short groups are handled elsewhere.)
    */
   shrinkTails(): boolean {
     let keys = this.seed.groupKeys;
@@ -168,7 +168,7 @@ export class Shrinker<T> {
     let changed = false;
     for (let i = keys.length - 1; i >= 0; i--) {
       const key = keys[i];
-      if (this.trimmedLength(key) === 0) {
+      if (this.trimmedLength(key) <= 2) {
         continue;
       }
 
