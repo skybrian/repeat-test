@@ -162,7 +162,7 @@ export function string(
 ): Arbitrary<string> {
   const charArray = arb.array(char16(), opts);
 
-  const script = Script.make("string", (pick) => {
+  const script = Script.make("string", function makeString(pick) {
     const arr = charArray.directBuild(pick);
     return arr.join("");
   }, { cachable: true, splitCalls: true });

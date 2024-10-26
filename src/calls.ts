@@ -72,8 +72,7 @@ export class CallBuffer implements PickLogger {
   keep(call: Call<unknown>): void {
     assert(this.complete);
     const { arg, val, group } = call;
-    assert(group.pushTo(this.#buf));
-    this.endCall(arg, val, this.#buf.takeList());
+    this.endCall(arg, val, group);
   }
 
   takeLog(): CallLog {
@@ -239,10 +238,10 @@ function makePickFunctionWithEdits(
 ) {
   function handlePickRequest<T>(
     req: PickRequest,
-    before: number[],
+    before: number,
     edit: Edit,
   ): T {
-    const responder = new EditResponder(before, () => edit);
+    const responder = new EditResponder([before], () => edit);
     const reply = responder.nextPick(req);
 
     log?.endPick(req, reply);
@@ -291,7 +290,7 @@ function makePickFunctionWithEdits(
     if (req instanceof PickRequest) {
       const before = origin.firstReplyAt(callIndex - 1, req.min);
       const pickEdit = groupEdit(0, req, before);
-      return handlePickRequest(req, [before], pickEdit);
+      return handlePickRequest(req, before, pickEdit);
     }
 
     // handle a script call
