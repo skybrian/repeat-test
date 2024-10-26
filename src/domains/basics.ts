@@ -119,7 +119,7 @@ export function array<T>(
       out.push(...picks);
       i++;
     }
-    if (min < max) {
+    if (min < max && i < max) {
       out.push(0);
     }
     return out;

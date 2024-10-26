@@ -22,6 +22,7 @@ export function shrink<T>(
 export class Shrinker<T> {
   readonly seed: MutableGen<T>;
   private readonly console: SystemConsole;
+  #tries = 0;
 
   constructor(
     seed: Gen<T>,
@@ -55,41 +56,104 @@ export class Shrinker<T> {
   }
 
   tryMutate(edits: MultiEdit): boolean {
+    this.#tries++;
     return this.seed.tryEdits(edits, this.test);
   }
 
-  /**
-   * Removes entire groups, using a binary search to avoid trying each group
-   * individually where possible.
-   */
-  removeGroups(keys?: GroupKey[]): boolean {
-    if (keys === undefined) {
-      keys = this.seed.groupKeys;
-    }
-    this.console.log("removeGroups keys:", keys, "val:", this.seed.val);
+  get tries() {
+    return this.#tries;
+  }
 
-    // First try removing the entire range.
-    if (this.tryMutate(removeGroups(new Set(keys)))) {
+  /**
+   * Removes leading and trailing groups.
+   */
+  removeGroups(): boolean {
+    const startSize = this.seed.groupKeys.length;
+    this.removeTailGroups(this.seed.groupKeys);
+    this.removeHeadGroups(this.seed.groupKeys.length - 1);
+    return this.seed.groupKeys.length < startSize;
+  }
+
+  /**
+   * Attempts to remove the given number of groups from the start of the group keys.
+   *
+   * Returns the number actually removed.
+   */
+  removeHeadGroups(goal: number): number {
+    this.console.log(
+      "removeHeadGroups goal:",
+      goal,
+      "val:",
+      this.seed.val,
+    );
+
+    let removed = 0;
+    while (goal > 0) {
+      const allAtOnce = this.seed.groupKeys.slice(0, goal);
+      if (this.tryMutate(removeGroups(new Set(allAtOnce)))) {
+        // goal achieved
+        removed += goal;
+        return removed;
+      }
+
+      // reduce goal; can't remove them all
+      goal--;
+
+      const halfGoal = Math.floor(goal / 2);
+      if (halfGoal > 0 && halfGoal < goal) {
+        const actual = this.removeHeadGroups(halfGoal);
+        removed += actual;
+        if (actual < halfGoal) {
+          // Was unable to remove half.
+          return removed;
+        }
+      }
+
+      // tail recurse to remove the other half
+      goal -= halfGoal;
+    }
+
+    return removed;
+  }
+
+  /**
+   * Removes all unneeded groups from the end of the list.
+   *
+   * Returns the number of remaining groups.
+   */
+  removeTailGroups(keys: GroupKey[]): number {
+    this.console.log(
+      "removeTailGroups keys:",
+      keys,
+      "val:",
+      this.seed.val,
+    );
+
+    while (true) {
+      if (this.tryMutate(removeGroups(new Set(keys)))) {
+        return 0; // removed everything.
+      }
+
+      if (keys.length <= 1) {
+        return keys.length; // remaining group can't be removed.
+      }
+
+      const half = Math.floor(keys.length / 2);
+      const lastHalf = keys.slice(half);
+      const remaining = this.removeTailGroups(lastHalf);
+      if (remaining !== 0) {
+        return half + remaining; // nothing more to do
+      }
+
+      // tail recurse to remove first half
+      keys = keys.slice(0, half);
       this.console.log(
-        "-removed- keys:",
-        this.seed.groupKeys,
+        "removeTailGroups loop keys:",
+        keys,
         "val:",
         this.seed.val,
       );
-      return true;
     }
-
-    // Split in two and try each half.
-    const half = Math.floor(keys.length / 2);
-    if (half < 1) {
-      return false; // too few groups
-    }
-
-    const items = Array.from(keys);
-    // Remove the second half first, so that the indexes don't shift for the first half.
-    const secondChanged = this.removeGroups(items.slice(half));
-    const firstChanged = this.removeGroups(items.slice(0, half));
-    return secondChanged || firstChanged;
   }
 
   /**

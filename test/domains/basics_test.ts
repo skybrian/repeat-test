@@ -149,20 +149,25 @@ describe("record", () => {
 describe("array", () => {
   describe("for a variable-length array", () => {
     const arr = dom.array(dom.int(1, 3));
+
     it("writes a zero for the end of an array", () => {
       assertEncoding(arr, [0], []);
     });
+
     it("writes a one to start each item", () => {
       assertEncoding(arr, [1, 2, 0], [2]);
       assertEncoding(arr, [1, 2, 1, 3, 0], [2, 3]);
     });
+
     it("rejects non-arrays", () => {
       assertThrows(() => arr.parse(undefined), Error, "not an array");
       assertThrows(() => arr.parse(0), Error, "not an array");
     });
+
     it("rejects arrays with an invalid item", () => {
       assertThrows(() => arr.parse([1, 0]), Error, "1: not in range");
     });
+
     it("has one more group than the size of the array", () => {
       const gen = arr.regenerate([1, 2, 3]);
       assert(gen.ok);
@@ -183,12 +188,17 @@ describe("array", () => {
 
   describe("with a maximum length", () => {
     const arr = dom.array(dom.int(1, 3), { length: { max: 2 } });
+
     it("rejects arrays that are too long", () => {
       assertThrows(
         () => arr.parse([1, 2, 3]),
         Error,
         "array too long; want len <= 2, got: 3",
       );
+    });
+
+    it("doesn't write a zero at max length", () => {
+      assertEncoding(arr, [1, 2], [1, 2]);
     });
   });
 

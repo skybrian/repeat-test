@@ -90,13 +90,32 @@ describe("Shrinker", () => {
         assertEquals(s.seed.val, [keeper]);
       });
     });
+
     it("can remove an empty string", () => {
       const domain = dom.array(dom.string());
       const seed = domain.regenerate(["", "<->"]);
       assert(seed.ok);
       const s = new Shrinker(seed, (val) => val.includes("<->"));
-      assert(s.removeGroups([0]));
+      assert(s.removeGroups());
       assertEquals(s.seed.val, ["<->"]);
+    });
+
+    it("fails to remove a single group", () => {
+      const domain = dom.array(dom.string());
+      const seed = domain.regenerate(["keeper"]);
+      assert(seed.ok);
+      const s = new Shrinker(seed, (val) => val.includes("keeper"));
+      assertFalse(s.removeGroups());
+    });
+
+    it("gives up after 100 tries", () => {
+      const domain = dom.array(dom.string());
+      const seed = domain.regenerate(Array(1000).fill("x"));
+      assert(seed.ok);
+      const s = new Shrinker(seed, (val) => val.length === 1000);
+      assertFalse(s.removeGroups());
+      assertEquals(s.seed.val, seed.val);
+      assert(s.tries <= 100, `want <= 100 tries; got ${s.tries}`);
     });
   });
 
@@ -255,7 +274,7 @@ describe("Shrinker", () => {
       const twoBits = Script.make("two bits", (pick) => {
         const a = pick(bit);
         return [a, pick(PickRequest.bit)];
-      }, {splitCalls: true});
+      }, { splitCalls: true });
 
       const seed = Gen.mustBuild(twoBits, [1, 1]);
       const s = new Shrinker(seed, acceptAll);
@@ -431,7 +450,7 @@ describe("shrink", () => {
     const twoBits = Script.make("two bits", (pick) => {
       const a = pick(bit);
       return [a, pick(PickRequest.bit)];
-    }, {splitCalls: true});
+    }, { splitCalls: true });
 
     it("can't shrink the default value", () => {
       const seed = Gen.mustBuild(twoBits, [0, 0]);
