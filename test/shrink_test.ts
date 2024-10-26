@@ -222,12 +222,12 @@ describe("Shrinker", () => {
       assertEquals(PickList.copyFrom(gen).trimmed().replies, [6]);
     });
 
-    it("removes unused leading characters", () => {
-      const seed = dom.string().regenerate("abc");
+    it("removes unused leading characters in a wrapped string", () => {
+      const seed = dom.array(dom.string()).regenerate(["abc"]);
       assert(seed.ok);
-      const gen = shrinkAllOptions(seed, (s) => s.includes("c"));
+      const gen = shrinkAllOptions(seed, (s) => s[0].includes("c"));
       assert(gen !== undefined);
-      assertEquals(gen.val, "c");
+      assertEquals(gen.val, ["c"]);
     });
 
     it("removes trailing strings in an array", () => {
@@ -285,6 +285,15 @@ describe("Shrinker", () => {
       assert(s.shrinkAllPicks());
       const picks = PickList.copyFrom(s.seed.gen);
       assertEquals(picks.replies, [0, 0]);
+    });
+
+    it("fails to shrink a string with the expected number of picks", () => {
+      const seed = dom.string().regenerate("abc");
+      assert(seed.ok);
+      const s = new Shrinker(seed, (s) => s === "abc");
+      assertFalse(s.shrinkAllPicks());
+      assertEquals(s.seed.val, "abc");
+      assertEquals(s.tries, 5); // 6 - 1 (a is at minimum)
     });
 
     it("shrinks strings using split calls", () => {

@@ -93,7 +93,7 @@ export const char16: () => Arbitrary<string> = Arbitrary.from(
     }
     return String.fromCodePoint(code);
   },
-).with({ name: "char16" }).asFunction();
+).with({ name: "char16", cachable: true }).asFunction();
 
 const basicPlaneCount = supplementalPlaneStart - surrogateGap;
 
@@ -165,7 +165,7 @@ export function string(
   const script = Script.make("string", (pick) => {
     const arr = charArray.directBuild(pick);
     return arr.join("");
-  }, { cachable: true });
+  }, { cachable: true, splitCalls: true });
 
   return Arbitrary.from(script);
 }

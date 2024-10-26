@@ -273,23 +273,15 @@ export class Shrinker<T> {
    */
   shrinkAllPicks(): boolean {
     let changed = false;
-    const seen = new Set<GroupKey>();
-    while (true) {
-      const todo = this.seed.groupKeys.filter((key) => !seen.has(key));
-      if (todo.length === 0) {
-        break;
-      }
-      for (const key of todo) {
-        for (
-          let offset = 0;
-          offset < this.seed.picksAt(key).length;
-          offset++
-        ) {
-          if (this.shrinkOnePick(key, offset)) {
-            changed = true;
-          }
+    for (const key of this.seed.groupKeys) {
+      for (
+        let offset = 0;
+        offset < this.seed.picksAt(key).length;
+        offset++
+      ) {
+        if (this.shrinkOnePick(key, offset)) {
+          changed = true;
         }
-        seen.add(key);
       }
     }
 
