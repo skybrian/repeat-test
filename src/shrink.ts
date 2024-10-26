@@ -60,6 +60,14 @@ export class Shrinker<T> {
     return this.seed.tryEdits(edits, this.test);
   }
 
+  tryDeleteRange(
+    start: number,
+    count: number,
+  ): boolean {
+    this.#tries++;
+    return this.seed.tryDeleteRange(start, count, this.test);
+  }
+
   get tries() {
     return this.#tries;
   }
@@ -89,8 +97,7 @@ export class Shrinker<T> {
 
     let removed = 0;
     while (goal > 0) {
-      const allAtOnce = this.seed.groupKeys.slice(0, goal);
-      if (this.tryMutate(removeGroups(new Set(allAtOnce)))) {
+      if (this.tryDeleteRange(0, goal)) {
         // goal achieved
         removed += goal;
         return removed;

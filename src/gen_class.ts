@@ -11,7 +11,7 @@ import { Script } from "./script_class.ts";
 import { PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
 import { makePickFunction } from "./build.ts";
-import { CallBuffer } from "./calls.ts";
+import { CallBuffer, unchanged } from "./calls.ts";
 
 export class MutableGen<T> {
   readonly #script: Script<T>;
@@ -34,27 +34,40 @@ export class MutableGen<T> {
     const result = this.#calls.runWithEdits(this.#script, edits, this.#buf);
     if (result === filtered) {
       return false; // edits didn't apply
-    }
-
-    const { val, changed } = result;
-    if (!changed) {
+    } else if (result === unchanged) {
       return true; // edits applied, but had no effect
     }
 
-    if (test && !test(val)) {
+    if (test && !test(result)) {
       return false; // didn't pass the test
     }
 
-    const calls = this.#buf.takeLog();
-    const regenerate = Object.isFrozen(val) ? () => val : () => {
-      const next = calls.run(this.#script);
-      assert(next !== filtered, "can't rebuild nondeterministic script");
-      return next;
-    };
+    return this.commit(result);
+  }
 
-    this.#calls = calls;
-    this.#gen = new Gen(this.#script, calls, regenerate);
-    return true;
+  tryDeleteRange(
+    start: number,
+    end: number,
+    test?: (val: T) => boolean,
+  ): boolean {
+    this.#buf.reset();
+    const result = this.#calls.runWithDeletedRange(
+      this.#script,
+      start,
+      end,
+      this.#buf,
+    );
+    if (result === filtered) {
+      return false; // edits didn't apply
+    } else if (result === unchanged) {
+      return true; // edits applied, but had no effect
+    }
+
+    if (test && !test(result)) {
+      return false; // didn't pass the test
+    }
+
+    return this.commit(result);
   }
 
   get gen(): Gen<T> {
@@ -71,6 +84,19 @@ export class MutableGen<T> {
 
   get val(): T {
     return this.#gen.val;
+  }
+
+  private commit(val: T): boolean {
+    const calls = this.#buf.takeLog();
+    const regenerate = Object.isFrozen(val) ? () => val : () => {
+      const next = calls.run(this.#script);
+      assert(next !== filtered, "can't rebuild nondeterministic script");
+      return next;
+    };
+
+    this.#calls = calls;
+    this.#gen = new Gen(this.#script, calls, regenerate);
+    return true;
   }
 }
 

@@ -3,7 +3,7 @@ import { assertEquals, assertThrows } from "@std/assert";
 
 import { Filtered, PickRequest, Script } from "@/arbitrary.ts";
 import { filtered } from "../src/results.ts";
-import { CallBuffer } from "../src/calls.ts";
+import { CallBuffer, unchanged } from "../src/calls.ts";
 import { keep, removeGroups, replaceOnce } from "../src/edits.ts";
 
 const roll = Script.make("roll", (pick) => {
@@ -267,7 +267,7 @@ describe("CallLog", () => {
 
         buf = new CallBuffer();
         const result = log.runWithEdits(roll, () => keep, buf);
-        assertEquals(result, { val: 2, changed: false });
+        assertEquals(result, unchanged);
         assertEquals(buf.length, 1);
         assertEquals(buf.takeLog().run(roll), 2);
       });
@@ -278,7 +278,7 @@ describe("CallLog", () => {
 
         buf = new CallBuffer();
         const result = log.runWithEdits(roll, replaceOnce(0, 0, 0), buf);
-        assertEquals(result, { val: 1, changed: true });
+        assertEquals(result, 1);
         assertEquals(buf.length, 1);
         assertEquals(buf.takeLog().run(roll), 1);
       });
@@ -302,7 +302,7 @@ describe("CallLog", () => {
           removeGroups(new Set([0])),
           buf,
         );
-        assertEquals(result, { val: "3, 1", changed: true });
+        assertEquals(result, "3, 1");
         assertEquals(buf.length, 2);
         assertEquals(buf.takeLog().run(rollTwo), "3, 1");
       });
@@ -319,7 +319,7 @@ describe("CallLog", () => {
 
         buf = new CallBuffer();
         const result = log.runWithEdits(roll, replaceOnce(0, 0, 0), buf);
-        assertEquals(result, { val: 1, changed: true });
+        assertEquals(result, 1);
         assertEquals(buf.length, 1);
         assertEquals(buf.takeLog().run(roll), 1);
       });
@@ -337,26 +337,26 @@ describe("CallLog", () => {
     });
 
     describe("for a script that calls a script (split)", () => {
-      it("makes no change if there is no edit (uncached)", () => {
+      it("returns unchanged when there is no edit", () => {
         buf.push({ min: 1, max: 6 }, 2);
         buf.endScript(roll, -1);
         const log = buf.takeLog();
 
         buf = new CallBuffer();
         const result = log.runWithEdits(rollStr, () => keep, buf);
-        assertEquals(result, { val: "rolled 2", changed: false }); // ignored cached value
+        assertEquals(result, unchanged); // ignored cached value
         assertEquals(buf.length, 1);
         assertEquals(buf.takeLog().run(rollStr), "rolled 2");
       });
 
-      it("uses a cached value when there is no change)", () => {
+      it("returns unchanged when there is a cached value", () => {
         buf.push({ min: 1, max: 6 }, 2);
         buf.endScript(cachableRoll, "cached");
         const log = buf.takeLog();
 
         buf = new CallBuffer();
         const result = log.runWithEdits(readsCachedRoll, () => keep, buf);
-        assertEquals(result, { val: "cached", changed: false });
+        assertEquals(result, unchanged);
         assertEquals(buf.length, 1);
         assertEquals(buf.takeLog().run(readsCachedRoll), "cached");
       });
@@ -368,7 +368,7 @@ describe("CallLog", () => {
 
         buf = new CallBuffer();
         const result = log.runWithEdits(rollStr, replaceOnce(0, 0, 0), buf);
-        assertEquals(result, { val: "rolled 1", changed: true });
+        assertEquals(result, "rolled 1");
         assertEquals(buf.length, 1);
         assertEquals(buf.takeLog().run(rollStr), "rolled 1");
       });
@@ -384,7 +384,7 @@ describe("CallLog", () => {
           replaceOnce(0, 0, 5),
           buf,
         );
-        assertEquals(result, { val: "rolled 6", changed: true });
+        assertEquals(result, "rolled 6");
         assertEquals(buf.length, 1);
         assertEquals(buf.takeLog().run(readsCachedRoll), "rolled 6");
       });

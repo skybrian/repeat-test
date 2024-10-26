@@ -9,7 +9,13 @@ import { filtered } from "./results.ts";
 import { PickBuffer, PickList, PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
 import { makePickFunction } from "./build.ts";
-import { EditResponder, keep, removeGroup, snip } from "./edits.ts";
+import {
+  EditResponder,
+  keep,
+  removeGroup,
+  removeGroups,
+  snip,
+} from "./edits.ts";
 
 export const regen = Symbol("regen");
 
@@ -97,6 +103,8 @@ export class CallBuffer implements PickLogger {
   }
 }
 
+export const unchanged = Symbol("unchanged");
+
 /**
  * The calls that were made to a pick function.
  */
@@ -126,6 +134,14 @@ export class CallLog {
       }
     }
     return generate(this.#groups);
+  }
+
+  argAt(offset: number): Range | Script<unknown> {
+    return this.#args[offset];
+  }
+
+  cachedValAt(offset: number): unknown | typeof regen {
+    return this.#vals[offset];
   }
 
   /**
@@ -195,9 +211,7 @@ export class CallLog {
     target: Script<T>,
     edits: MultiEdit,
     log?: CallBuffer,
-  ): { val: T; changed: boolean } | typeof filtered {
-    let changed = false;
-
+  ): T | typeof unchanged | typeof filtered {
     if (!target.splitCalls) {
       // Record a single call.
       let edit = edits(0);
@@ -211,12 +225,10 @@ export class CallLog {
         return filtered;
       }
       log?.endScript(target, val);
-      if (picks.edited) {
-        changed = true;
-      }
-      return { val, changed };
+      return picks.edited ? val : unchanged;
     }
 
+    let changed = false;
     function onChange() {
       changed = true;
     }
@@ -226,7 +238,18 @@ export class CallLog {
     if (val === filtered) {
       return filtered;
     }
-    return { val, changed };
+
+    return changed ? val : unchanged;
+  }
+
+  runWithDeletedRange<T>(
+    target: Script<T>,
+    start: number,
+    end: number,
+    log?: CallBuffer,
+  ): T | typeof unchanged | typeof filtered {
+    const toDelete = Array(end - start).fill(0).map((_, i) => i + start);
+    return this.runWithEdits(target, removeGroups(new Set(toDelete)), log);
   }
 }
 
@@ -286,16 +309,17 @@ function makePickFunctionWithEdits(
       groupEdit = edits(callIndex++);
       changed();
     }
+    const idx = callIndex - 1;
 
     if (req instanceof PickRequest) {
-      const before = origin.firstReplyAt(callIndex - 1, req.min);
+      const before = origin.firstReplyAt(idx, req.min);
       const pickEdit = groupEdit(0, req, before);
       return handlePickRequest(req, before, pickEdit);
     }
 
     // handle a script call
     const script = Script.from(req);
-    const before = origin.callAt(callIndex - 1);
+    const before = origin.callAt(idx);
     const val = handleScript(script, before, groupEdit);
 
     const accept = opts?.accept;
