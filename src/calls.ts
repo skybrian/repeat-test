@@ -80,9 +80,9 @@ export class CallBuffer implements PickLogger {
     this.endCall(arg, val, group);
   }
 
-  takeCalls(): CallLog {
+  take(): Call[] {
     assert(this.complete);
-    const calls: Call<unknown>[] = Array(this.length);
+    const calls: Call[] = Array(this.length);
     for (let i = 0; i < this.#len; i++) {
       calls[i] = new Call(
         this.#args[i],
@@ -90,9 +90,8 @@ export class CallBuffer implements PickLogger {
         this.#groups[i],
       );
     }
-    const log = new CallLog(calls);
     this.reset();
-    return log;
+    return calls;
   }
 
   private endCall<T>(
@@ -107,117 +106,88 @@ export class CallBuffer implements PickLogger {
   }
 }
 
+export function* allReplies(calls: Call<unknown>[]): Iterable<number> {
+  for (const call of calls) {
+    yield* call.group.replies;
+  }
+}
+
+/**
+ * Runs a script by replaying a list of calls.
+ */
+export function runWithCalls<T>(
+  target: Script<T>,
+  calls: Call[],
+): T | typeof filtered {
+  const handlers = new Handlers(calls);
+  const pick: PickFunction = (req, opts) => {
+    return handlers.dispatch(keep, req, opts);
+  };
+  return target.run(pick);
+}
+
 export const unchanged = Symbol("unchanged");
 
 /**
- * The calls that were made to a pick function.
+ * Runs a script by replying a list of calls, after applying the given edits.
  */
-export class CallLog {
-  #calls: Call[];
-
-  constructor(calls: Call[]) {
-    this.#calls = calls;
-  }
-
-  get length(): number {
-    return this.#calls.length;
-  }
-
-  get calls(): Call[] {
-    return this.#calls;
-  }
-
-  /**
-   * Returns the group of picks for the call at the given offset.
-   */
-  groupAt(offset: number): PickList {
-    assert(offset >= 0);
-
-    if (offset >= this.length) {
-      return PickList.empty;
-    }
-    return this.#calls[offset].group;
-  }
-
-  get allReplies(): Iterable<number> {
-    function* generate(calls: Call<unknown>[]): Iterable<number> {
-      for (const call of calls) {
-        yield* call.group.replies;
-      }
-    }
-    return generate(this.#calls);
-  }
-
-  /**
-   * Runs a script using the calls from this log.
-   */
-  run<T>(target: Script<T>): T | typeof filtered {
-    const handlers = new Handlers(this.#calls);
-    const pick: PickFunction = (req, opts) => {
-      return handlers.dispatch(keep, req, opts);
-    };
-    return target.run(pick);
-  }
-
-  /**
-   * Runs a script using the calls from this log, after applying the given edits.
-   */
-  runWithEdits<T>(
-    target: Script<T>,
-    edits: MultiEdit,
-    log?: CallBuffer,
-  ): T | typeof unchanged | typeof filtered {
-    if (!target.splitCalls) {
-      // Record a single call.
-      const picks = new EditResponder(this.allReplies, edits(0));
-      const pick = makePickFunction(picks, { log });
-      const val = target.run(pick);
-      if (val === filtered) {
-        return filtered;
-      }
-      log?.endScript(target, val);
-      return picks.edited ? val : unchanged;
-    }
-
-    const handlers = new Handlers(this.#calls, log);
-    const pick: PickFunction = (req, opts) => {
-      const edit = edits(handlers.callIndex);
-      return handlers.dispatch(edit, req, opts);
-    };
-
+export function runWithEdits<T>(
+  target: Script<T>,
+  calls: Call[],
+  edits: MultiEdit,
+  log?: CallBuffer,
+): T | typeof unchanged | typeof filtered {
+  if (!target.splitCalls) {
+    // Record a single call.
+    const picks = new EditResponder(allReplies(calls), edits(0));
+    const pick = makePickFunction(picks, { log });
     const val = target.run(pick);
     if (val === filtered) {
       return filtered;
     }
-    return handlers.changed ? val : unchanged;
+    log?.endScript(target, val);
+    return picks.edited ? val : unchanged;
   }
 
-  /**
-   * Runs a script using the calls from this log, after deleting the calls in the given range.
-   */
-  runWithDeletedRange<T>(
-    target: Script<T>,
-    start: number,
-    end: number,
-    log?: CallBuffer,
-  ): T | typeof unchanged | typeof filtered {
-    assert(start < end);
+  const handlers = new Handlers(calls, log);
+  const pick: PickFunction = (req, opts) => {
+    const edit = edits(handlers.callIndex);
+    return handlers.dispatch(edit, req, opts);
+  };
 
-    const handlers = new Handlers(this.#calls, log);
-    const pick: PickFunction = (req, opts) => {
-      if (handlers.callIndex === start) {
-        handlers.callIndex = end;
-        handlers.changed = true;
-      }
-      return handlers.dispatch(keep, req, opts);
-    };
+  const val = target.run(pick);
+  if (val === filtered) {
+    return filtered;
+  }
+  return handlers.changed ? val : unchanged;
+}
 
-    const val = target.run(pick);
-    if (val === filtered) {
-      return filtered;
+/**
+ * Runs a script using the calls from this log, after deleting the calls in the given range.
+ */
+export function runWithDeletedRange<T>(
+  target: Script<T>,
+  input: Call[],
+  start: number,
+  end: number,
+  log?: CallBuffer,
+): T | typeof unchanged | typeof filtered {
+  assert(start < end);
+
+  const handlers = new Handlers(input, log);
+  const pick: PickFunction = (req, opts) => {
+    if (handlers.callIndex === start) {
+      handlers.callIndex = end;
+      handlers.changed = true;
     }
-    return handlers.changed ? val : unchanged;
+    return handlers.dispatch(keep, req, opts);
+  };
+
+  const val = target.run(pick);
+  if (val === filtered) {
+    return filtered;
   }
+  return handlers.changed ? val : unchanged;
 }
 
 class Handlers {

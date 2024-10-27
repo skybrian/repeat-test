@@ -44,8 +44,7 @@ describe("makePickFunction", () => {
 
   function checkCalls(...expected: GenProps<unknown>[]) {
     const actual: GenProps<unknown>[] = [];
-    const calls = buf.takeCalls().calls;
-    for (const { arg, val, group } of calls) {
+    for (const { arg, val, group } of buf.take()) {
       const name = (arg instanceof Script) ? arg.name : arg.toString();
       actual.push({
         name,
