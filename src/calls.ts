@@ -147,18 +147,6 @@ export class CallLog {
     return this.#calls[offset].group;
   }
 
-  firstReplyAt(offset: number, defaultReply: number): number {
-    assert(offset >= 0);
-
-    if (offset >= this.length) {
-      return defaultReply;
-    }
-
-    const group = this.#calls[offset].group;
-    assert(group.length > 0);
-    return group.replyAt(0);
-  }
-
   get allReplies(): Iterable<number> {
     function* generate(calls: Call<unknown>[]): Iterable<number> {
       for (const call of calls) {
@@ -255,12 +243,13 @@ class Handlers {
     opts?: PickFunctionOpts<T>,
   ): T {
     const idx = this.callIndex++;
+    const before = this.origin.callAt(idx);
 
     if (req instanceof PickRequest) {
-      return this.handlePick(req, idx, edit);
+      return this.handlePick(req, before.group, edit);
     }
 
-    const val = this.handleScript(Script.from(req), idx, edit);
+    const val = this.handleScript(Script.from(req), before, edit);
 
     const accept = opts?.accept;
     if (accept !== undefined && !accept(val)) {
@@ -271,10 +260,10 @@ class Handlers {
 
   handlePick<T>(
     req: PickRequest,
-    callIndex: number,
+    group: PickList,
     groupEdit: GroupEdit,
   ): T {
-    const before = this.origin.firstReplyAt(callIndex, req.min);
+    const before = group.length === 0 ? req.min : group.replyAt(0);
     const edit = groupEdit(0, req, before);
     const responder = new EditResponder([before], () => edit);
     const reply = responder.nextPick(req);
@@ -288,11 +277,9 @@ class Handlers {
 
   handleScript<T>(
     script: Script<T>,
-    callIndex: number,
+    before: Call<unknown>,
     groupEdit: GroupEdit,
   ): T {
-    const before = this.origin.callAt(callIndex);
-
     if (
       groupEdit === keep && before.val !== regen &&
       before.arg === script
