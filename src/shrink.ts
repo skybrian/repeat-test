@@ -3,7 +3,7 @@ import type { GroupKey, MultiEdit } from "./edits.ts";
 import type { SystemConsole } from "./console.ts";
 
 import { assert } from "@std/assert";
-import { removeGroups, removeRange, replaceOnce, trimGroup } from "./edits.ts";
+import { removeRange, replaceOnce, trimGroup } from "./edits.ts";
 import { nullConsole } from "./console.ts";
 
 /**
@@ -77,7 +77,7 @@ export class Shrinker<T> {
    */
   removeGroups(): boolean {
     const startSize = this.seed.groupKeys.length;
-    this.removeTailGroups(this.seed.groupKeys);
+    this.removeTailGroups(0, this.seed.groupKeys.length);
     this.removeHeadGroups(this.seed.groupKeys.length - 1);
     return this.seed.groupKeys.length < startSize;
   }
@@ -124,39 +124,43 @@ export class Shrinker<T> {
   }
 
   /**
-   * Removes all unneeded groups from the end of the list.
+   * Removes unneeded groups from the end of the given range.
    *
    * Returns the number of remaining groups.
    */
-  removeTailGroups(keys: GroupKey[]): number {
+  removeTailGroups(start: number, end: number): number {
     this.console.log(
-      "removeTailGroups keys:",
-      keys,
+      "removeTailGroups start:",
+      start,
+      "end:",
+      end,
       "val:",
       this.seed.val,
     );
 
     while (true) {
-      if (this.tryMutate(removeGroups(new Set(keys)))) {
+      if (this.tryDeleteRange(start, end)) {
         return 0; // removed everything.
       }
 
-      if (keys.length <= 1) {
-        return keys.length; // remaining group can't be removed.
+      const len = end - start;
+      if (len <= 1) {
+        return len; // remaining group can't be removed.
       }
 
-      const half = Math.floor(keys.length / 2);
-      const lastHalf = keys.slice(half);
-      const remaining = this.removeTailGroups(lastHalf);
+      const half = Math.floor(len / 2);
+      const remaining = this.removeTailGroups(start + half, end);
       if (remaining !== 0) {
         return half + remaining; // nothing more to do
       }
 
       // tail recurse to remove first half
-      keys = keys.slice(0, half);
+      end = start + half;
       this.console.log(
-        "removeTailGroups loop keys:",
-        keys,
+        "removeTailGroups loop start:",
+        start,
+        "end:",
+        end,
         "val:",
         this.seed.val,
       );

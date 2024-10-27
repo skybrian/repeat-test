@@ -4,7 +4,7 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { Filtered, PickRequest, Script } from "@/arbitrary.ts";
 import { filtered } from "../src/results.ts";
 import { CallBuffer, unchanged } from "../src/calls.ts";
-import { keep, removeGroups, replaceOnce } from "../src/edits.ts";
+import { keep, replaceOnce } from "../src/edits.ts";
 
 const roll = Script.make("roll", (pick) => {
   return pick(new PickRequest(1, 6));
@@ -282,8 +282,10 @@ describe("CallLog", () => {
         assertEquals(buf.length, 1);
         assertEquals(buf.takeLog().run(roll), 1);
       });
+    });
 
-      it("removes a group", () => {
+    describe("runWithDeletedRange", () => {
+      it("removes one group", () => {
         buf.push({ min: 1, max: 6 }, 2);
         buf.endScript(roll, 2);
         buf.push({ min: 1, max: 6 }, 3);
@@ -297,11 +299,7 @@ describe("CallLog", () => {
         }, { splitCalls: true });
 
         buf = new CallBuffer();
-        const result = log.runWithEdits(
-          rollTwo,
-          removeGroups(new Set([0])),
-          buf,
-        );
+        const result = log.runWithDeletedRange(rollTwo, 0, 1, buf);
         assertEquals(result, "3, 1");
         assertEquals(buf.length, 2);
         assertEquals(buf.takeLog().run(rollTwo), "3, 1");

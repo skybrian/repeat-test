@@ -1,21 +1,15 @@
 import type { Range } from "./picks.ts";
-import type { Pickable } from "./pickable.ts";
+import type { PickFunction } from "./pickable.ts";
 import type { PickLogger } from "./build.ts";
-import type { Edit, GroupEdit, MultiEdit } from "./edits.ts";
+import type { GroupEdit, MultiEdit } from "./edits.ts";
 
 import { assert } from "@std/assert";
-import { Filtered, type PickFunctionOpts } from "@/arbitrary.ts";
+import { Filtered, type Pickable, type PickFunctionOpts } from "@/arbitrary.ts";
 import { filtered } from "./results.ts";
 import { PickBuffer, PickList, PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
 import { makePickFunction } from "./build.ts";
-import {
-  EditResponder,
-  keep,
-  removeGroup,
-  removeGroups,
-  snip,
-} from "./edits.ts";
+import { EditResponder, keep } from "./edits.ts";
 
 export const regen = Symbol("regen");
 
@@ -136,14 +130,6 @@ export class CallLog {
     return generate(this.#groups);
   }
 
-  argAt(offset: number): Range | Script<unknown> {
-    return this.#args[offset];
-  }
-
-  cachedValAt(offset: number): unknown | typeof regen {
-    return this.#vals[offset];
-  }
-
   /**
    * Returns the group of picks for the call at the given offset.
    */
@@ -199,8 +185,10 @@ export class CallLog {
    * Runs a script using the calls from this log.
    */
   run<T>(target: Script<T>): T | typeof filtered {
-    // Reuse cached pick results by using the editing version of the pick function.
-    const pick = makePickFunctionWithEdits(this, () => keep, () => {});
+    const handlers = new Handlers(this);
+    const pick: PickFunction = (req, opts) => {
+      return handlers.dispatch(keep, req, opts);
+    };
     return target.run(pick);
   }
 
@@ -214,11 +202,7 @@ export class CallLog {
   ): T | typeof unchanged | typeof filtered {
     if (!target.splitCalls) {
       // Record a single call.
-      let edit = edits(0);
-      if (edit === removeGroup) {
-        edit = snip;
-      }
-      const picks = new EditResponder(this.replies, edit);
+      const picks = new EditResponder(this.replies, edits(0));
       const pick = makePickFunction(picks, { log });
       const val = target.run(pick);
       if (val === filtered) {
@@ -228,18 +212,17 @@ export class CallLog {
       return picks.edited ? val : unchanged;
     }
 
-    let changed = false;
-    function onChange() {
-      changed = true;
-    }
+    const handlers = new Handlers(this, log);
+    const pick: PickFunction = (req, opts) => {
+      const edit = edits(handlers.callIndex);
+      return handlers.dispatch(edit, req, opts);
+    };
 
-    const pick = makePickFunctionWithEdits(this, edits, onChange, log);
     const val = target.run(pick);
     if (val === filtered) {
       return filtered;
     }
-
-    return changed ? val : unchanged;
+    return handlers.changed ? val : unchanged;
   }
 
   runWithDeletedRange<T>(
@@ -248,87 +231,97 @@ export class CallLog {
     end: number,
     log?: CallBuffer,
   ): T | typeof unchanged | typeof filtered {
-    const toDelete = Array(end - start).fill(0).map((_, i) => i + start);
-    return this.runWithEdits(target, removeGroups(new Set(toDelete)), log);
+    if (start === end) {
+      return unchanged; // Nothing to do.
+    }
+    assert(start < end);
+
+    const handlers = new Handlers(this, log);
+    const pick: PickFunction = (req, opts) => {
+      if (handlers.callIndex === start) {
+        handlers.callIndex = end;
+        handlers.changed = true;
+      }
+      return handlers.dispatch(keep, req, opts);
+    };
+
+    const val = target.run(pick);
+    if (val === filtered) {
+      return filtered;
+    }
+    return handlers.changed ? val : unchanged;
   }
 }
 
-function makePickFunctionWithEdits(
-  origin: CallLog,
-  edits: MultiEdit,
-  changed: () => void,
-  log?: CallBuffer,
-) {
-  function handlePickRequest<T>(
-    req: PickRequest,
-    before: number,
-    edit: Edit,
-  ): T {
-    const responder = new EditResponder([before], () => edit);
-    const reply = responder.nextPick(req);
+class Handlers {
+  callIndex = 0;
+  changed = false;
 
-    log?.endPick(req, reply);
-    if (responder.edited) {
-      changed();
-    }
+  constructor(
+    readonly origin: CallLog,
+    readonly log?: CallBuffer,
+  ) {}
 
-    return reply as T;
-  }
-
-  function handleScript<T>(
-    script: Script<T>,
-    before: Call<unknown>,
+  dispatch<T>(
     edit: GroupEdit,
-  ): T {
-    if (
-      edit === keep && before.val !== regen &&
-      before.arg === script
-    ) {
-      // Skip the script call and return the cached value.
-      log?.keep(before);
-      return before.val as T;
-    }
-    const responder = new EditResponder(before.group.replies, edit);
-    const pick = makePickFunction(responder, { log }); // log picks only
-    const val = script.directBuild(pick);
-    log?.endScript(script, val);
-    if (responder.edited) {
-      changed();
-    }
-    return val;
-  }
-
-  let callIndex = 0;
-
-  const pick_function = <T>(
     req: Pickable<T>,
     opts?: PickFunctionOpts<T>,
-  ): T => {
-    let groupEdit = edits(callIndex++);
-    while (groupEdit === removeGroup) {
-      groupEdit = edits(callIndex++);
-      changed();
-    }
-    const idx = callIndex - 1;
+  ): T {
+    const idx = this.callIndex++;
 
     if (req instanceof PickRequest) {
-      const before = origin.firstReplyAt(idx, req.min);
-      const pickEdit = groupEdit(0, req, before);
-      return handlePickRequest(req, before, pickEdit);
+      return this.handlePick(req, idx, edit);
     }
 
-    // handle a script call
-    const script = Script.from(req);
-    const before = origin.callAt(idx);
-    const val = handleScript(script, before, groupEdit);
+    const val = this.handleScript(Script.from(req), idx, edit);
 
     const accept = opts?.accept;
     if (accept !== undefined && !accept(val)) {
       throw new Filtered("not accepted");
     }
-
     return val;
-  };
+  }
 
-  return pick_function;
+  handlePick<T>(
+    req: PickRequest,
+    callIndex: number,
+    groupEdit: GroupEdit,
+  ): T {
+    const before = this.origin.firstReplyAt(callIndex, req.min);
+    const edit = groupEdit(0, req, before);
+    const responder = new EditResponder([before], () => edit);
+    const reply = responder.nextPick(req);
+
+    this.log?.endPick(req, reply);
+    if (responder.edited) {
+      this.changed = true;
+    }
+    return reply as T;
+  }
+
+  handleScript<T>(
+    script: Script<T>,
+    callIndex: number,
+    groupEdit: GroupEdit,
+  ): T {
+    const before = this.origin.callAt(callIndex);
+
+    if (
+      groupEdit === keep && before.val !== regen &&
+      before.arg === script
+    ) {
+      // Skip the script call and return the cached value.
+      this.log?.keep(before);
+      return before.val as T;
+    }
+
+    const responder = new EditResponder(before.group.replies, groupEdit);
+    const pick = makePickFunction(responder, { log: this.log }); // log picks only
+    const val = script.directBuild(pick);
+    this.log?.endScript(script, val);
+    if (responder.edited) {
+      this.changed = true;
+    }
+    return val;
+  }
 }

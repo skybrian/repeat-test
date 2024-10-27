@@ -7,7 +7,7 @@ import { onePlayout } from "../src/backtracking.ts";
 import { randomPicker } from "../src/random.ts";
 import { filtered } from "../src/results.ts";
 
-const str = dom.string({ length: 1000 });
+const str = dom.string({ length: 10000 });
 const gen = generate(str, onePlayout(randomPicker(123)));
 assert(gen !== filtered);
 
@@ -17,14 +17,10 @@ function checkEq(s: string): boolean {
 }
 
 // warmup
-for (let i = 0; i < 10; i++) {
-  const result = shrink(gen, checkEq);
-  assertEquals(result.val, gen.val);
-}
+const result = shrink(gen, checkEq);
+assertEquals(result.val, gen.val);
 
 console.log("profiling shrink...");
 console.profile();
-for (let i = 0; i < 100; i++) {
-  shrink(gen, checkEq);
-}
+shrink(gen, checkEq);
 console.profileEnd();
