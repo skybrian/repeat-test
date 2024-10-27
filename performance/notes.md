@@ -462,7 +462,7 @@ shrink an array of strings           13.0 ms          76.8 ( 11.5 ms …  15.1 m
 
 ### After reusing PickView and CallBuffer
 
-Fail to shrink' benchmark is back to how it was.
+Fail to shrink benchmark is back to how it was.
 
 ```
     CPU | Apple M2
@@ -480,4 +480,26 @@ uniqueArray of 100 ints             671.3 µs         1,490 (604.5 µs …   3.1
 generate 10k strings                137.3 ms           7.3 (132.0 ms … 142.2 ms) 139.4 ms 142.2 ms 142.2 ms
 fail to shrink a 1k string           56.8 ms          17.6 ( 56.5 ms …  57.5 ms)  56.8 ms  57.5 ms  57.5 ms
 shrink an array of strings           12.7 ms          78.6 ( 12.2 ms …  14.0 ms)  12.6 ms  14.0 ms  14.0 ms
+```
+
+### After reusing arrays in CallBuffer
+
+Fail to shrink benchmark is a bit faster.
+
+```
+    CPU | Apple M2
+Runtime | Deno 2.0.1 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+
+benchmark                    time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+---------------------------- ----------------------------- --------------------- --------------------------
+generate a string                     9.9 µs       100,600 (  9.0 µs … 146.5 µs)   9.6 µs  13.4 µs  17.9 µs
+take 10k char16                       4.4 ms         227.2 (  4.3 ms …   5.6 ms)   4.5 ms   5.1 ms   5.6 ms
+uniqueArray of 5 ints                63.7 µs        15,700 ( 53.6 µs …   1.7 ms)  60.7 µs 277.2 µs 348.5 µs
+uniqueArray of 6 ints                65.0 µs        15,390 ( 59.2 µs …   1.3 ms)  61.2 µs 278.4 µs 298.7 µs
+uniqueArray of 100 ints             675.0 µs         1,481 (577.7 µs …   3.3 ms) 649.5 µs   1.9 ms   2.5 ms
+generate 10k strings                140.5 ms           7.1 (134.9 ms … 142.7 ms) 142.5 ms 142.7 ms 142.7 ms
+fail to shrink a 1k string           43.8 ms          22.8 ( 43.2 ms …  45.7 ms)  43.8 ms  45.7 ms  45.7 ms
+shrink an array of strings           12.3 ms          81.0 ( 10.9 ms …  14.6 ms)  12.9 ms  14.6 ms  14.6 ms
 ```
