@@ -14,9 +14,9 @@ import { makePickFunction } from "./build.ts";
 import {
   allReplies,
   CallBuffer,
-  runWithCalls,
-  runWithDeletedRange,
-  runWithEdits,
+  replay,
+  replayWithDeletedRange,
+  replayWithEdits,
   unchanged,
 } from "./calls.ts";
 
@@ -38,7 +38,7 @@ export class MutableGen<T> {
    */
   tryEdits(edits: MultiEdit, test?: (val: T) => boolean): boolean {
     this.#buf.reset();
-    const result = runWithEdits(this.#script, this.#calls, edits, this.#buf);
+    const result = replayWithEdits(this.#script, this.#calls, edits, this.#buf);
     if (result === filtered) {
       return false; // edits didn't apply
     } else if (result === unchanged) {
@@ -58,7 +58,7 @@ export class MutableGen<T> {
     test?: (val: T) => boolean,
   ): boolean {
     this.#buf.reset();
-    const result = runWithDeletedRange(
+    const result = replayWithDeletedRange(
       this.#script,
       this.#calls,
       start,
@@ -98,7 +98,7 @@ export class MutableGen<T> {
     const calls = this.#buf.take();
 
     const regenerate = Object.isFrozen(val) ? () => val : () => {
-      const next = runWithCalls(this.#script, calls);
+      const next = replay(this.#script, calls);
       assert(next !== filtered, "can't rebuild nondeterministic script");
       return next;
     };
@@ -280,7 +280,7 @@ function cacheResult<T>(
 
   return () => {
     if (cache === alwaysBuild) {
-      const next = runWithCalls(script, calls());
+      const next = replay(script, calls());
       assert(next !== filtered, "can't rebuild nondeterministic script");
       return next;
     }

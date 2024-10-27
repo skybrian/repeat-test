@@ -5,9 +5,9 @@ import { Filtered, PickRequest, Script } from "@/arbitrary.ts";
 import { filtered } from "../src/results.ts";
 import {
   CallBuffer,
-  runWithCalls,
-  runWithDeletedRange,
-  runWithEdits,
+  replay,
+  replayWithDeletedRange,
+  replayWithEdits,
   unchanged,
 } from "../src/calls.ts";
 import { keep, replaceOnce } from "../src/edits.ts";
@@ -43,27 +43,27 @@ describe("CallBuffer", () => {
     it("preserves a pick call from a previous log", () => {
       buf.endPick({ min: 1, max: 6 }, 3);
       const calls = buf.take();
-      assertEquals(runWithCalls(roll, calls), 3);
+      assertEquals(replay(roll, calls), 3);
 
       const buf2 = new CallBuffer();
       buf2.keep(calls[0]);
-      assertEquals(runWithCalls(roll, buf2.take()), 3);
+      assertEquals(replay(roll, buf2.take()), 3);
     });
 
     it("preserves a cached script call from a previous log", () => {
       buf.push({ min: 1, max: 6 }, 3);
       buf.endScript(cachableRoll, "cached");
       const calls = buf.take();
-      assertEquals(runWithCalls(readsCachedRoll, calls), "cached");
+      assertEquals(replay(readsCachedRoll, calls), "cached");
 
       const buf2 = new CallBuffer();
       buf2.keep(calls[0]);
-      assertEquals(runWithCalls(readsCachedRoll, buf2.take()), "cached");
+      assertEquals(replay(readsCachedRoll, buf2.take()), "cached");
     });
   });
 });
 
-describe("runWithEdits", () => {
+describe("replayWithEdits", () => {
   let buf = new CallBuffer();
 
   beforeEach(() => {
@@ -71,16 +71,22 @@ describe("runWithEdits", () => {
   });
 
   describe("for a script that makes one pick (unsplit)", () => {
+    it("makes no change if there is no call to edit", () => {
+      const result = replayWithEdits(roll, [], () => keep, buf);
+      assertEquals(result, unchanged);
+      assertEquals(buf.length, 1);
+    });
+
     it("makes no change if there is no edit", () => {
       buf.push({ min: 1, max: 6 }, 2);
       buf.endScript(roll, 2);
       const calls = buf.take();
 
       buf = new CallBuffer();
-      const result = runWithEdits(roll, calls, () => keep, buf);
+      const result = replayWithEdits(roll, calls, () => keep, buf);
       assertEquals(result, unchanged);
       assertEquals(buf.length, 1);
-      assertEquals(runWithCalls(roll, buf.take()), 2);
+      assertEquals(replay(roll, buf.take()), 2);
     });
 
     it("edits the pick", () => {
@@ -88,10 +94,10 @@ describe("runWithEdits", () => {
       const calls = buf.take();
 
       buf = new CallBuffer();
-      const result = runWithEdits(roll, calls, replaceOnce(0, 0, 0), buf);
+      const result = replayWithEdits(roll, calls, replaceOnce(0, 0, 0), buf);
       assertEquals(result, 1);
       assertEquals(buf.length, 1);
-      assertEquals(runWithCalls(roll, buf.take()), 1);
+      assertEquals(replay(roll, buf.take()), 1);
     });
   });
 
@@ -100,15 +106,21 @@ describe("runWithEdits", () => {
       return pick(new PickRequest(1, 6));
     }, { splitCalls: true });
 
+    it("makes no change if there is no call to edit", () => {
+      const result = replayWithEdits(roll, [], () => keep, buf);
+      assertEquals(result, unchanged);
+      assertEquals(buf.length, 1);
+    });
+
     it("edits the pick", () => {
       buf.endPick({ min: 1, max: 6 }, 2);
       const calls = buf.take();
 
       buf = new CallBuffer();
-      const result = runWithEdits(roll, calls, replaceOnce(0, 0, 0), buf);
+      const result = replayWithEdits(roll, calls, replaceOnce(0, 0, 0), buf);
       assertEquals(result, 1);
       assertEquals(buf.length, 1);
-      assertEquals(runWithCalls(roll, buf.take()), 1);
+      assertEquals(replay(roll, buf.take()), 1);
     });
 
     const throws = Script.make("throws", () => {
@@ -118,7 +130,7 @@ describe("runWithEdits", () => {
     it("returns filtered if the build function throws", () => {
       buf.endPick({ min: 1, max: 6 }, 2);
       const calls = buf.take();
-      const result = runWithEdits(throws, calls, () => keep, buf);
+      const result = replayWithEdits(throws, calls, () => keep, buf);
       assertEquals(result, filtered);
     });
   });
@@ -130,10 +142,10 @@ describe("runWithEdits", () => {
       const calls = buf.take();
 
       buf = new CallBuffer();
-      const result = runWithEdits(rollStr, calls, () => keep, buf);
+      const result = replayWithEdits(rollStr, calls, () => keep, buf);
       assertEquals(result, unchanged); // ignored cached value
       assertEquals(buf.length, 1);
-      assertEquals(runWithCalls(rollStr, buf.take()), "rolled 2");
+      assertEquals(replay(rollStr, buf.take()), "rolled 2");
     });
 
     it("returns unchanged when there is a cached value", () => {
@@ -142,10 +154,10 @@ describe("runWithEdits", () => {
       const calls = buf.take();
 
       buf = new CallBuffer();
-      const result = runWithEdits(readsCachedRoll, calls, () => keep, buf);
+      const result = replayWithEdits(readsCachedRoll, calls, () => keep, buf);
       assertEquals(result, unchanged);
       assertEquals(buf.length, 1);
-      assertEquals(runWithCalls(readsCachedRoll, buf.take()), "cached");
+      assertEquals(replay(readsCachedRoll, buf.take()), "cached");
     });
 
     it("edits a pick (uncached)", () => {
@@ -154,10 +166,10 @@ describe("runWithEdits", () => {
       const calls = buf.take();
 
       buf = new CallBuffer();
-      const result = runWithEdits(rollStr, calls, replaceOnce(0, 0, 0), buf);
+      const result = replayWithEdits(rollStr, calls, replaceOnce(0, 0, 0), buf);
       assertEquals(result, "rolled 1");
       assertEquals(buf.length, 1);
-      assertEquals(runWithCalls(rollStr, buf.take()), "rolled 1");
+      assertEquals(replay(rollStr, buf.take()), "rolled 1");
     });
 
     it("doesn't use the cached value when a pick is edited", () => {
@@ -166,7 +178,7 @@ describe("runWithEdits", () => {
       const calls = buf.take();
 
       buf = new CallBuffer();
-      const result = runWithEdits(
+      const result = replayWithEdits(
         readsCachedRoll,
         calls,
         replaceOnce(0, 0, 5),
@@ -174,12 +186,12 @@ describe("runWithEdits", () => {
       );
       assertEquals(result, "rolled 6");
       assertEquals(buf.length, 1);
-      assertEquals(runWithCalls(readsCachedRoll, buf.take()), "rolled 6");
+      assertEquals(replay(readsCachedRoll, buf.take()), "rolled 6");
     });
   });
 });
 
-describe("runWithDeletedRange", () => {
+describe("replayWithDeletedRange", () => {
   let buf = new CallBuffer();
 
   beforeEach(() => {
@@ -200,14 +212,14 @@ describe("runWithDeletedRange", () => {
     }, { splitCalls: true });
 
     buf = new CallBuffer();
-    const result = runWithDeletedRange(rollTwo, calls, 0, 1, buf);
+    const result = replayWithDeletedRange(rollTwo, calls, 0, 1, buf);
     assertEquals(result, "3, 1");
     assertEquals(buf.length, 2);
-    assertEquals(runWithCalls(rollTwo, buf.take()), "3, 1");
+    assertEquals(replay(rollTwo, buf.take()), "3, 1");
   });
 });
 
-describe("runWithCalls", () => {
+describe("replay", () => {
   let buf = new CallBuffer();
 
   beforeEach(() => {
@@ -216,21 +228,21 @@ describe("runWithCalls", () => {
 
   describe("for one pick call", () => {
     it("returns the minimum for an empty log", () => {
-      assertEquals(runWithCalls(roll, []), 1);
+      assertEquals(replay(roll, []), 1);
     });
 
     it("uses a recorded pick", () => {
       buf.endPick({ min: 1, max: 6 }, 3);
       const calls = buf.take();
 
-      assertEquals(runWithCalls(roll, calls), 3);
+      assertEquals(replay(roll, calls), 3);
     });
 
     it("returns the minimum if the pick is out of range", () => {
       buf.endPick({ min: 1, max: 7 }, 7);
       const calls = buf.take();
 
-      assertEquals(runWithCalls(roll, calls), 1);
+      assertEquals(replay(roll, calls), 1);
     });
 
     it("takes the first pick if a script call was recorded", () => {
@@ -238,13 +250,13 @@ describe("runWithCalls", () => {
       buf.endScript(cachableRoll, "ignored");
       const calls = buf.take();
 
-      assertEquals(runWithCalls(roll, calls), 3);
+      assertEquals(replay(roll, calls), 3);
     });
   });
 
   describe("for one script call", () => {
     it("for an empty log, use minimum picks", () => {
-      assertEquals(runWithCalls(cachableRoll, []), "rolled 1");
+      assertEquals(replay(cachableRoll, []), "rolled 1");
     });
 
     it("when the script matches, returns the recorded value", () => {
@@ -258,7 +270,7 @@ describe("runWithCalls", () => {
         return pick(cached);
       });
 
-      assertEquals(runWithCalls(readsCache, calls), "hello");
+      assertEquals(replay(readsCache, calls), "hello");
     });
 
     it("when the script doesn't match, rebuilds using the recorded picks", () => {
@@ -266,7 +278,7 @@ describe("runWithCalls", () => {
       buf.endScript(differentRoll, "ignored");
       const calls = buf.take();
 
-      assertEquals(runWithCalls(cachableRoll, calls), "rolled 2");
+      assertEquals(replay(cachableRoll, calls), "rolled 2");
     });
   });
 
@@ -281,7 +293,7 @@ describe("runWithCalls", () => {
       buf.endScript(cachableRoll, "hello");
       const calls = buf.take();
 
-      assertEquals(runWithCalls(rollAndStr, calls), "3, hello");
+      assertEquals(replay(rollAndStr, calls), "3, hello");
     });
 
     it("regenerates from picks if the script doesn't match", () => {
@@ -290,7 +302,7 @@ describe("runWithCalls", () => {
       buf.endScript(roll, 1);
       const calls = buf.take();
 
-      assertEquals(runWithCalls(rollAndStr, calls), "3, rolled 4");
+      assertEquals(replay(rollAndStr, calls), "3, rolled 4");
     });
 
     it("regenerates from a pick call", () => {
@@ -298,7 +310,7 @@ describe("runWithCalls", () => {
       buf.endPick({ min: 1, max: 6 }, 4);
       const calls = buf.take();
 
-      assertEquals(runWithCalls(rollAndStr, calls), "3, rolled 4");
+      assertEquals(replay(rollAndStr, calls), "3, rolled 4");
     });
 
     it("uses a script call as a pick", () => {
@@ -309,7 +321,7 @@ describe("runWithCalls", () => {
       buf.endScript(roll, 1);
       const calls = buf.take();
 
-      assertEquals(runWithCalls(rollAndStr, calls), "3, rolled 4");
+      assertEquals(replay(rollAndStr, calls), "3, rolled 4");
     });
   });
 
@@ -324,7 +336,7 @@ describe("runWithCalls", () => {
       buf.endPick({ min: 1, max: 6 }, 6);
       const calls = buf.take();
 
-      assertEquals(runWithCalls(script, calls), "hello, 6");
+      assertEquals(replay(script, calls), "hello, 6");
     });
 
     it("uses a pick as input for a script call", () => {
@@ -332,7 +344,7 @@ describe("runWithCalls", () => {
       buf.endPick({ min: 1, max: 6 }, 4);
       const calls = buf.take();
 
-      assertEquals(runWithCalls(script, calls), "rolled 3, 4");
+      assertEquals(replay(script, calls), "rolled 3, 4");
     });
   });
 
@@ -348,7 +360,7 @@ describe("runWithCalls", () => {
       buf.endScript(cachableRoll, "world");
       const calls = buf.take();
 
-      assertEquals(runWithCalls(script, calls), "hello, world");
+      assertEquals(replay(script, calls), "hello, world");
     });
 
     it("regenerates from picks if a script doesn't match", () => {
@@ -358,7 +370,7 @@ describe("runWithCalls", () => {
       buf.endScript(differentRoll, "world");
       const calls = buf.take();
 
-      assertEquals(runWithCalls(script, calls), "hello, rolled 4");
+      assertEquals(replay(script, calls), "hello, rolled 4");
     });
   });
 
@@ -372,7 +384,7 @@ describe("runWithCalls", () => {
       buf.endScript(roll, 2);
       const calls = buf.take();
 
-      assertEquals(runWithCalls(even, calls), 2);
+      assertEquals(replay(even, calls), 2);
     });
 
     it("returns filtered if rejected", () => {
@@ -380,7 +392,7 @@ describe("runWithCalls", () => {
       buf.endScript(roll, 3);
       const calls = buf.take();
 
-      assertEquals(runWithCalls(even, calls), filtered);
+      assertEquals(replay(even, calls), filtered);
     });
   });
 
@@ -388,13 +400,13 @@ describe("runWithCalls", () => {
     const throws = Script.make("throws", () => {
       throw new Filtered("oops");
     });
-    assertEquals(runWithCalls(throws, []), filtered);
+    assertEquals(replay(throws, []), filtered);
   });
 
   it("throws an Error if the build function throws", () => {
     const throws = Script.make("throws", () => {
       throw new Error("oops");
     });
-    assertThrows(() => runWithCalls(throws, []), Error, "oops");
+    assertThrows(() => replay(throws, []), Error, "oops");
   });
 });

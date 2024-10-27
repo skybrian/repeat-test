@@ -115,13 +115,15 @@ export function* allReplies(calls: Call<unknown>[]): Iterable<number> {
 /**
  * Runs a script by replaying a list of calls.
  */
-export function runWithCalls<T>(
+export function replay<T>(
   target: Script<T>,
   calls: Call[],
 ): T | typeof filtered {
-  const handlers = new Handlers(calls);
+  const replay = new Replay();
+  let i = 0;
   const pick: PickFunction = (req, opts) => {
-    return handlers.dispatch(keep, req, opts);
+    const input = calls[i++] ?? Call.none;
+    return replay.pick(input, keep, req, opts);
   };
   return target.run(pick);
 }
@@ -131,7 +133,7 @@ export const unchanged = Symbol("unchanged");
 /**
  * Runs a script by replying a list of calls, after applying the given edits.
  */
-export function runWithEdits<T>(
+export function replayWithEdits<T>(
   target: Script<T>,
   calls: Call[],
   edits: MultiEdit,
@@ -149,69 +151,74 @@ export function runWithEdits<T>(
     return picks.edited ? val : unchanged;
   }
 
-  const handlers = new Handlers(calls, log);
+  const replay = new Replay(log);
+  let i = 0;
   const pick: PickFunction = (req, opts) => {
-    const edit = edits(handlers.callIndex);
-    return handlers.dispatch(edit, req, opts);
+    const next = i++;
+    const input = calls[next] ?? Call.none;
+    const edit = edits(next);
+    return replay.pick(input, edit, req, opts);
   };
 
   const val = target.run(pick);
   if (val === filtered) {
     return filtered;
   }
-  return handlers.changed ? val : unchanged;
+  return replay.edited ? val : unchanged;
 }
 
 /**
- * Runs a script using the calls from this log, after deleting the calls in the given range.
+ * Runs a script by replaying a list of calls, after deleting the calls in the given range.
  */
-export function runWithDeletedRange<T>(
+export function replayWithDeletedRange<T>(
   target: Script<T>,
-  input: Call[],
+  calls: Call[],
   start: number,
   end: number,
   log?: CallBuffer,
 ): T | typeof unchanged | typeof filtered {
   assert(start < end);
 
-  const handlers = new Handlers(input, log);
+  const replay = new Replay(log);
+  let i = 0;
   const pick: PickFunction = (req, opts) => {
-    if (handlers.callIndex === start) {
-      handlers.callIndex = end;
-      handlers.changed = true;
+    if (i === start) {
+      i = end;
+      replay.edited = true;
     }
-    return handlers.dispatch(keep, req, opts);
+    const next = i++;
+    const input = calls[next] ?? Call.none;
+    return replay.pick(input, keep, req, opts);
   };
 
   const val = target.run(pick);
   if (val === filtered) {
     return filtered;
   }
-  return handlers.changed ? val : unchanged;
+  return replay.edited ? val : unchanged;
 }
 
-class Handlers {
-  callIndex = 0;
-  changed = false;
+/**
+ * Replays a sequence of pick calls, possibly with edits.
+ */
+class Replay {
+  edited = false;
 
   constructor(
-    readonly origin: Call[],
     readonly log?: CallBuffer,
   ) {}
 
-  dispatch<T>(
+  pick<T>(
+    input: Call,
     edit: GroupEdit,
     req: Pickable<T>,
     opts?: PickFunctionOpts<T>,
   ): T {
-    const idx = this.callIndex++;
-    const before = idx >= this.origin.length ? Call.none : this.origin[idx];
-
     if (req instanceof PickRequest) {
-      return this.handlePick(req, before.group, edit);
+      return this.handlePick(req, input.group, edit);
     }
 
-    const val = this.handleScript(Script.from(req), before, edit);
+    const val = this.handleScript(Script.from(req), input, edit);
 
     const accept = opts?.accept;
     if (accept !== undefined && !accept(val)) {
@@ -220,7 +227,7 @@ class Handlers {
     return val;
   }
 
-  handlePick<T>(
+  private handlePick<T>(
     req: PickRequest,
     group: PickList,
     groupEdit: GroupEdit,
@@ -232,12 +239,12 @@ class Handlers {
 
     this.log?.endPick(req, reply);
     if (responder.edited) {
-      this.changed = true;
+      this.edited = true;
     }
     return reply as T;
   }
 
-  handleScript<T>(
+  private handleScript<T>(
     script: Script<T>,
     before: Call<unknown>,
     groupEdit: GroupEdit,
@@ -256,7 +263,7 @@ class Handlers {
     const val = script.directBuild(pick);
     this.log?.endScript(script, val);
     if (responder.edited) {
-      this.changed = true;
+      this.edited = true;
     }
     return val;
   }
