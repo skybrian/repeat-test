@@ -77,11 +77,15 @@ export class CallBuffer implements PickLogger {
 
   takeLog(): CallLog {
     assert(this.complete);
-    const log = new CallLog(
-      this.#args.slice(),
-      this.#vals.slice(),
-      this.#groups.slice(),
-    );
+    const calls: Call<unknown>[] = Array(this.length);
+    for (let i = 0; i < this.length; i++) {
+      calls[i] = {
+        arg: this.#args[i],
+        val: this.#vals[i],
+        group: this.#groups[i],
+      };
+    }
+    const log = new CallLog(calls);
     this.reset();
     return log;
   }
@@ -103,56 +107,18 @@ export const unchanged = Symbol("unchanged");
  * The calls that were made to a pick function.
  */
 export class CallLog {
-  #args: (Range | Script<unknown>)[] = [];
-  #vals: unknown[] = [];
-  #groups: PickList[] = [];
+  #calls: Call<unknown>[];
 
-  constructor(
-    args: (Range | Script<unknown>)[],
-    vals: unknown[],
-    groups: PickList[],
-  ) {
-    this.#args = args;
-    this.#vals = vals;
-    this.#groups = groups;
+  constructor(calls: Call<unknown>[]) {
+    this.#calls = calls;
   }
 
   get length(): number {
-    return this.#args.length;
+    return this.#calls.length;
   }
 
-  get replies(): Iterable<number> {
-    function* generate(groups: PickList[]): Iterable<number> {
-      for (const group of groups) {
-        yield* group.replies;
-      }
-    }
-    return generate(this.#groups);
-  }
-
-  /**
-   * Returns the group of picks for the call at the given offset.
-   */
-  groupAt(offset: number): PickList {
-    assert(offset >= 0);
-
-    if (offset >= this.length) {
-      return PickList.empty;
-    }
-
-    return this.#groups[offset];
-  }
-
-  firstReplyAt(offset: number, defaultReply: number): number {
-    assert(offset >= 0);
-
-    if (offset >= this.length) {
-      return defaultReply;
-    }
-
-    const group = this.#groups[offset];
-    assert(group.length > 0);
-    return group.replyAt(0);
+  get calls(): IterableIterator<Call<unknown>> {
+    return this.#calls[Symbol.iterator]();
   }
 
   /**
@@ -165,20 +131,40 @@ export class CallLog {
     if (offset >= this.length) {
       return defaultCall;
     }
-    const arg = this.#args[offset];
-    const val = this.#vals[offset];
-    const group = this.groupAt(offset);
-    return { arg, val, group };
+    return this.#calls[offset];
   }
 
-  get calls(): IterableIterator<Call<unknown>> {
-    function* generateCalls(log: CallLog): IterableIterator<Call<unknown>> {
-      const len = log.length;
-      for (let i = 0; i < len; i++) {
-        yield log.callAt(i);
+  /**
+   * Returns the group of picks for the call at the given offset.
+   */
+  groupAt(offset: number): PickList {
+    assert(offset >= 0);
+
+    if (offset >= this.length) {
+      return PickList.empty;
+    }
+    return this.#calls[offset].group;
+  }
+
+  firstReplyAt(offset: number, defaultReply: number): number {
+    assert(offset >= 0);
+
+    if (offset >= this.length) {
+      return defaultReply;
+    }
+
+    const group = this.#calls[offset].group;
+    assert(group.length > 0);
+    return group.replyAt(0);
+  }
+
+  get allReplies(): Iterable<number> {
+    function* generate(calls: Call<unknown>[]): Iterable<number> {
+      for (const call of calls) {
+        yield* call.group.replies;
       }
     }
-    return generateCalls(this);
+    return generate(this.#calls);
   }
 
   /**
@@ -202,7 +188,7 @@ export class CallLog {
   ): T | typeof unchanged | typeof filtered {
     if (!target.splitCalls) {
       // Record a single call.
-      const picks = new EditResponder(this.replies, edits(0));
+      const picks = new EditResponder(this.allReplies, edits(0));
       const pick = makePickFunction(picks, { log });
       const val = target.run(pick);
       if (val === filtered) {
@@ -225,15 +211,15 @@ export class CallLog {
     return handlers.changed ? val : unchanged;
   }
 
+  /**
+   * Runs a script using the calls from this log, after deleting the calls in the given range.
+   */
   runWithDeletedRange<T>(
     target: Script<T>,
     start: number,
     end: number,
     log?: CallBuffer,
   ): T | typeof unchanged | typeof filtered {
-    if (start === end) {
-      return unchanged; // Nothing to do.
-    }
     assert(start < end);
 
     const handlers = new Handlers(this, log);

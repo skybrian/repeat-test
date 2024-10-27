@@ -137,7 +137,7 @@ export class Gen<T> implements Success<T> {
   }
 
   get replies(): Iterable<number> {
-    return this.#calls.replies;
+    return this.#calls.allReplies;
   }
 
   pushTo(sink: PickSink): boolean {
