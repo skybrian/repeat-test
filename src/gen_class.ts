@@ -102,7 +102,7 @@ export class MutableGen<T> {
       assert(next !== filtered, "can't rebuild nondeterministic script");
       return next;
     };
-    this.#gen = new Gen(this.#script, calls, regenerate);
+    this.#gen = new Gen(this.#script, () => calls, regenerate);
     this.#calls = calls;
     return true;
   }
@@ -113,7 +113,7 @@ export class MutableGen<T> {
  */
 export class Gen<T> implements Success<T> {
   readonly #script: Script<T>;
-  readonly #calls: Call[];
+  readonly #getCalls: () => Call[];
   readonly #result: () => T;
 
   #reqs: Range[] | undefined;
@@ -127,11 +127,11 @@ export class Gen<T> implements Success<T> {
    */
   constructor(
     script: Script<T>,
-    calls: Call[],
+    calls: () => Call[],
     result: () => T,
   ) {
     this.#script = script;
-    this.#calls = calls;
+    this.#getCalls = calls;
     this.#result = result;
   }
 
@@ -145,7 +145,7 @@ export class Gen<T> implements Success<T> {
   }
 
   get replies(): Iterable<number> {
-    return allReplies(this.#calls);
+    return allReplies(this.#getCalls());
   }
 
   pushTo(sink: PickSink): boolean {
@@ -163,14 +163,14 @@ export class Gen<T> implements Success<T> {
    * they were used.
    */
   get groupKeys(): GroupKey[] {
-    const len = this.#calls.length;
+    const len = this.#getCalls().length;
     return new Array(len).fill(0).map((_, i) => i);
   }
 
   /** Returns the picks for the given group, or an empty PickList if not found. */
   picksAt(key: GroupKey): PickList {
     assert(typeof key === "number");
-    const call = this.#calls[key];
+    const call = this.#getCalls()[key];
     return call ? call.group : PickList.empty;
   }
 
@@ -185,7 +185,7 @@ export class Gen<T> implements Success<T> {
   }
 
   toMutable(): MutableGen<T> {
-    return new MutableGen(this.#script, this.#calls, this);
+    return new MutableGen(this.#script, this.#getCalls(), this);
   }
 
   static mustBuild<T>(arg: Pickable<T>, replies: Iterable<number>): Gen<T> {
@@ -252,7 +252,13 @@ export function generate<T>(
     }
 
     // Finished!
-    const calls = log.take();
+    let callCache: Call[] | undefined = undefined;
+    const calls = () => {
+      if (callCache === undefined) {
+        callCache = log.take();
+      }
+      return callCache;
+    };
     const result = cacheResult(script, calls, val);
     return new Gen(script, calls, result);
   }
@@ -261,7 +267,11 @@ export function generate<T>(
 
 const alwaysBuild = Symbol("alwaysBuild");
 
-function cacheResult<T>(script: Script<T>, calls: Call[], val: T): () => T {
+function cacheResult<T>(
+  script: Script<T>,
+  calls: () => Call[],
+  val: T,
+): () => T {
   if (Object.isFrozen(val)) {
     return () => val;
   }
@@ -270,7 +280,7 @@ function cacheResult<T>(script: Script<T>, calls: Call[], val: T): () => T {
 
   return () => {
     if (cache === alwaysBuild) {
-      const next = runWithCalls(script, calls);
+      const next = runWithCalls(script, calls());
       assert(next !== filtered, "can't rebuild nondeterministic script");
       return next;
     }

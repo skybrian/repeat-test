@@ -503,3 +503,25 @@ generate 10k strings                140.5 ms           7.1 (134.9 ms … 142.7 m
 fail to shrink a 1k string           43.8 ms          22.8 ( 43.2 ms …  45.7 ms)  43.8 ms  45.7 ms  45.7 ms
 shrink an array of strings           12.3 ms          81.0 ( 10.9 ms …  14.6 ms)  12.9 ms  14.6 ms  14.6 ms
 ```
+
+### After: generate Call objects lazily in generate()
+
+Speedup for uniqueArray.
+
+```
+    CPU | Apple M2
+Runtime | Deno 2.0.1 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+
+benchmark                    time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+---------------------------- ----------------------------- --------------------- --------------------------
+generate a string                     9.9 µs       100,900 (  8.8 µs … 115.9 µs)   9.5 µs  14.0 µs  56.6 µs
+take 10k char16                       4.4 ms         225.1 (  4.4 ms …   4.6 ms)   4.5 ms   4.6 ms   4.6 ms
+uniqueArray of 5 ints                49.6 µs        20,170 ( 45.0 µs … 807.2 µs)  47.5 µs 115.0 µs 126.7 µs
+uniqueArray of 6 ints                52.0 µs        19,230 ( 48.8 µs … 650.6 µs)  50.3 µs 121.9 µs 129.2 µs
+uniqueArray of 100 ints             450.5 µs         2,220 (428.7 µs … 640.2 µs) 438.0 µs 579.1 µs 615.5 µs
+generate 10k strings                140.1 ms           7.1 (139.8 ms … 141.4 ms) 140.0 ms 141.4 ms 141.4 ms
+fail to shrink a 1k string           44.1 ms          22.7 ( 43.8 ms …  44.6 ms)  44.4 ms  44.6 ms  44.6 ms
+shrink an array of strings           13.2 ms          75.8 ( 12.3 ms …  15.0 ms)  13.1 ms  15.0 ms  15.0 ms
+```
