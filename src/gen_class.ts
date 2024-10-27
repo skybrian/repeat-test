@@ -87,7 +87,7 @@ export class MutableGen<T> {
   }
 
   private commit(val: T): boolean {
-    const calls = this.#buf.takeLog();
+    const calls = this.#buf.takeCalls();
     const regenerate = Object.isFrozen(val) ? () => val : () => {
       const next = calls.run(this.#script);
       assert(next !== filtered, "can't rebuild nondeterministic script");
@@ -243,7 +243,7 @@ export function generate<T>(
     }
 
     // Finished!
-    const calls = log.takeLog();
+    const calls = log.takeCalls();
     const result = cacheResult(script, calls, val);
     return new Gen(script, calls, result);
   }

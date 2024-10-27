@@ -13,17 +13,22 @@ import { EditResponder, keep } from "./edits.ts";
 
 export const regen = Symbol("regen");
 
-export type Call<T> = {
-  readonly arg: Range | Script<T>;
-  readonly val: T | typeof regen;
-  readonly group: PickList;
-};
+/**
+ * Records a previous call to a {@link PickFunction}.
+ */
+export class Call<T = unknown> {
+  constructor(
+    readonly arg: Range | Script<T>,
+    readonly val: T | typeof regen,
+    readonly group: PickList,
+  ) {}
 
-const defaultCall: Call<unknown> = {
-  arg: Script.neverReturns,
-  val: regen,
-  group: PickList.empty,
-};
+  static none = new Call(
+    Script.neverReturns,
+    regen,
+    PickList.empty,
+  );
+}
 
 export class CallBuffer implements PickLogger {
   #len = 0;
@@ -75,15 +80,15 @@ export class CallBuffer implements PickLogger {
     this.endCall(arg, val, group);
   }
 
-  takeLog(): CallLog {
+  takeCalls(): CallLog {
     assert(this.complete);
     const calls: Call<unknown>[] = Array(this.length);
     for (let i = 0; i < this.#len; i++) {
-      calls[i] = {
-        arg: this.#args[i],
-        val: this.#vals[i],
-        group: this.#groups[i],
-      };
+      calls[i] = new Call(
+        this.#args[i],
+        this.#vals[i],
+        this.#groups[i],
+      );
     }
     const log = new CallLog(calls);
     this.reset();
@@ -108,9 +113,9 @@ export const unchanged = Symbol("unchanged");
  * The calls that were made to a pick function.
  */
 export class CallLog {
-  #calls: Call<unknown>[];
+  #calls: Call[];
 
-  constructor(calls: Call<unknown>[]) {
+  constructor(calls: Call[]) {
     this.#calls = calls;
   }
 
@@ -118,21 +123,8 @@ export class CallLog {
     return this.#calls.length;
   }
 
-  get calls(): IterableIterator<Call<unknown>> {
-    return this.#calls[Symbol.iterator]();
-  }
-
-  /**
-   * Returns the call at the given offset.
-   *
-   * If the offset is higher than the length of the list, returns {@link defaultCall}.
-   */
-  callAt(offset: number): Call<unknown> {
-    assert(offset >= 0);
-    if (offset >= this.length) {
-      return defaultCall;
-    }
-    return this.#calls[offset];
+  get calls(): Call[] {
+    return this.#calls;
   }
 
   /**
@@ -160,7 +152,7 @@ export class CallLog {
    * Runs a script using the calls from this log.
    */
   run<T>(target: Script<T>): T | typeof filtered {
-    const handlers = new Handlers(this);
+    const handlers = new Handlers(this.#calls);
     const pick: PickFunction = (req, opts) => {
       return handlers.dispatch(keep, req, opts);
     };
@@ -187,7 +179,7 @@ export class CallLog {
       return picks.edited ? val : unchanged;
     }
 
-    const handlers = new Handlers(this, log);
+    const handlers = new Handlers(this.#calls, log);
     const pick: PickFunction = (req, opts) => {
       const edit = edits(handlers.callIndex);
       return handlers.dispatch(edit, req, opts);
@@ -211,7 +203,7 @@ export class CallLog {
   ): T | typeof unchanged | typeof filtered {
     assert(start < end);
 
-    const handlers = new Handlers(this, log);
+    const handlers = new Handlers(this.#calls, log);
     const pick: PickFunction = (req, opts) => {
       if (handlers.callIndex === start) {
         handlers.callIndex = end;
@@ -233,7 +225,7 @@ class Handlers {
   changed = false;
 
   constructor(
-    readonly origin: CallLog,
+    readonly origin: Call[],
     readonly log?: CallBuffer,
   ) {}
 
@@ -243,7 +235,7 @@ class Handlers {
     opts?: PickFunctionOpts<T>,
   ): T {
     const idx = this.callIndex++;
-    const before = this.origin.callAt(idx);
+    const before = idx >= this.origin.length ? Call.none : this.origin[idx];
 
     if (req instanceof PickRequest) {
       return this.handlePick(req, before.group, edit);
