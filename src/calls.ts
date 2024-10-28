@@ -34,10 +34,14 @@ export class Call<T = unknown> {
 }
 
 export class CallBuffer implements PickLogger {
-  #len = 0;
-
   /** Holds 3-entry tuples representing a call. */
   readonly #log: unknown[] = [];
+
+  /** The length used in the #log array. */
+  #len = 0;
+
+  /** The number of calls recorded. */
+  #calls = 0;
 
   readonly #buf = new PickBuffer();
 
@@ -45,13 +49,14 @@ export class CallBuffer implements PickLogger {
     return this.#buf.pushCount === 0;
   }
 
-  /** Returns the number of calls recorded. */
+  /** Returns the entries the log. */
   get length(): number {
-    return this.#len;
+    return this.#calls;
   }
 
   reset() {
     this.#len = 0;
+    this.#calls = 0;
     this.#buf.reset();
   }
 
@@ -83,10 +88,10 @@ export class CallBuffer implements PickLogger {
 
   take(): Call[] {
     assert(this.complete);
-    const calls: Call[] = Array(this.length);
-    for (let i = 0; i < this.#len; i++) {
-      const start = i * 3;
-      calls[i] = new Call(
+    const calls: Call[] = Array(this.#calls);
+    let i = 0;
+    for (let start = 0; start < this.#len; start += 3) {
+      calls[i++] = new Call(
         this.#log[start] as Range | Script<unknown>,
         this.#log[start + 1] as unknown | typeof regen,
         this.#log[start + 2] as PickList,
@@ -101,11 +106,12 @@ export class CallBuffer implements PickLogger {
     val: T | typeof regen,
     picks: PickList,
   ): void {
-    const i = this.#len++;
-    const start = i * 3;
+    const start = this.#len;
     this.#log[start] = arg;
     this.#log[start + 1] = val;
     this.#log[start + 2] = picks;
+    this.#len += 3;
+    this.#calls++;
   }
 }
 
