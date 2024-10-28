@@ -10,6 +10,7 @@ import { assert } from "@std/assert/assert";
 import { shrink } from "../src/shrink.ts";
 import { filtered } from "../src/results.ts";
 import { assertEquals } from "@std/assert";
+import { usePicker } from "../src/build.ts";
 
 const str = arb.string({ length: 100 });
 const rand = randomPicker(pickRandomSeed());
@@ -44,6 +45,17 @@ Deno.bench("fail to shrink a 1k string", (b) => {
   const str = dom.string({ length: 1000 });
   const gen = generate(str, onePlayout(randomPicker(123)));
   assert(gen !== filtered);
+  b.start();
+  shrink(gen, (s) => s === gen.val);
+  b.end();
+  assert(gen.val === gen.val);
+});
+
+Deno.bench("fail to shrink var length 1k string", (b) => {
+  const pick = usePicker(randomPicker(123));
+  const input = arb.string({ length: 1000 }).directBuild(pick);
+  const gen = dom.string().regenerate(input);
+  assert(gen.ok);
   b.start();
   shrink(gen, (s) => s === gen.val);
   b.end();
