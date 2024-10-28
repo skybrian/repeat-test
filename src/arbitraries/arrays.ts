@@ -88,7 +88,7 @@ export function array<T>(
       i++;
     }
     return result;
-  }, { splitCalls: true });
+  }, { logCalls: true });
 
   return Arbitrary.from(script);
 }

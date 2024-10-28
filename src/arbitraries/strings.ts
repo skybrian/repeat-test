@@ -172,7 +172,7 @@ export function string(
       out += item;
       i++;
     }
-  }, { cachable: true, splitCalls: true });
+  }, { cachable: true, logCalls: true });
 
   return Arbitrary.from(script);
 }

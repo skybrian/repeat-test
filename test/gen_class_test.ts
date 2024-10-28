@@ -34,7 +34,7 @@ const twoBits = Script.make("twoBits", (pick) => {
   const a = pick(PickRequest.bit);
   const b = pick(PickRequest.bit);
   return `(${a}, ${b})`;
-}, { splitCalls: true });
+}, { logCalls: true });
 
 describe("Gen", () => {
   describe("build", () => {
@@ -132,7 +132,7 @@ describe("Gen", () => {
     const usesMutable = Script.make("usesMutable", (pick) => {
       const a = pick(mutable);
       return [a[0] + "!"];
-    }, { splitCalls: true });
+    }, { logCalls: true });
 
     it("regenerates without caching when picking from a mutable", () => {
       const gen = Gen.mustBuild(usesMutable, []);
@@ -320,7 +320,7 @@ describe("generate", () => {
     });
   });
 
-  describe("for a script with splitCalls turned on", () => {
+  describe("for a script with logCalls turned on", () => {
     it("generates all values", () => {
       const playouts = orderedPlayouts();
       for (const expectedReplies of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
@@ -342,7 +342,7 @@ describe("generate", () => {
         const a = pick(bit, { accept: (v) => v !== 0 });
         const b = pick(bit);
         return [a, b];
-      }, { splitCalls: true });
+      }, { logCalls: true });
 
       const gen = generate(filterZero, orderedPlayouts());
 
@@ -360,7 +360,7 @@ describe("generate", () => {
       const cached = Script.make("uncached", (pick) => {
         const val = pick(frozen);
         return val.concat(["" + pick(PickRequest.bit)]);
-      }, { splitCalls: true });
+      }, { logCalls: true });
 
       const gen = generate(cached, minPlayout());
 
@@ -384,7 +384,7 @@ describe("generate", () => {
       const script = Script.make("throws", (pick) => {
         pick(bit);
         throw new Error("oops");
-      }, { splitCalls: true });
+      }, { logCalls: true });
 
       const picks = onePlayout(new PlaybackPicker([]));
       assertThrows(
@@ -397,7 +397,7 @@ describe("generate", () => {
     it("fails when all playouts were rejected", () => {
       const script = Script.make("untitled", (pick) => {
         pick(bit, { accept: () => false });
-      }, { splitCalls: true });
+      }, { logCalls: true });
 
       const gen = generate(
         script,

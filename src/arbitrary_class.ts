@@ -107,7 +107,7 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
     const script = Script.make("map", (pick) => {
       const val = this.directBuild(pick);
       return convert(val);
-    });
+    }, this.#script.opts);
 
     const maxSize = this.maxSize;
     return new Arbitrary(script, { maxSize });
@@ -160,15 +160,15 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
       ? this.name
       : `${this.name} (filtered)`;
 
-    const build = Script.make(name, (pick) => {
+    const script = Script.make(name, (pick) => {
       return pick(this, { accept });
-    });
+    }, { cachable: true });
 
     // Check that a default exists
-    generateDefault(build);
+    generateDefault(script);
 
     const maxSize = this.maxSize;
-    return new Arbitrary(build, { maxSize, dryRun: false });
+    return new Arbitrary(script, { maxSize, dryRun: false });
   }
 
   /**
@@ -182,7 +182,7 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
       const val = this.directBuild(pick);
       const next = convert(val);
       return pick(next);
-    });
+    }, { cachable: true });
     return new Arbitrary(script);
   }
 
@@ -226,10 +226,10 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
     } else if (arg instanceof PickRequest) {
       const name = `${arg.min}..${arg.max}`;
       const maxSize = arg.max - arg.min + 1;
-      const build = Script.make(name, (pick: PickFunction) => {
+      const script = Script.make(name, (pick: PickFunction) => {
         return pick(arg);
-      });
-      return new Arbitrary(build, {
+      }, { cachable: true, logCalls: true });
+      return new Arbitrary(script, {
         maxSize,
         dryRun: false,
       }) as Arbitrary<T>;
@@ -296,7 +296,7 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
       throw new Error("Arbitrary.oneOf() requires at least one alternative");
     }
 
-    // Convert to Arbitraries first, in case maxSize is defined for all of them.    
+    // Convert to Arbitraries first, in case maxSize is defined for all of them.
     const caseArbs = cases.map((c) => Arbitrary.from(c));
     if (caseArbs.length === 1) {
       return caseArbs[0];
@@ -318,7 +318,7 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
     const script = Script.make("oneOf", (pick) => {
       const index = pick(req);
       return scripts[index].directBuild(pick);
-    });
+    }, { cachable: true });
     return new Arbitrary(script, { maxSize, dryRun: false });
   }
 
@@ -356,7 +356,7 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
         result[key] = pick(shape[key]);
       }
       return result as T;
-    }, { splitCalls: keys.length > 1 });
+    }, { logCalls: keys.length > 1 });
 
     return new Arbitrary(build, { maxSize, dryRun: false });
   }

@@ -16,7 +16,7 @@ const cachableRoll = Script.make("rollStr", (pick) => {
 
 const readsCachedRoll = Script.make("readsCache", (pick) => {
   return pick(cachableRoll);
-}, { splitCalls: true });
+}, { logCalls: true });
 
 describe("CallBuffer", () => {
   let buf = new CallBuffer();

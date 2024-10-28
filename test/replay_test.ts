@@ -19,7 +19,7 @@ const roll = Script.make("roll", (pick) => {
 
 const rollStr = Script.make("rollStr", (pick) => {
   return `rolled ${pick(roll)}`;
-}, { splitCalls: true });
+}, { logCalls: true });
 
 const cachableRoll = Script.make("rollStr", (pick) => {
   return `rolled ${pick(roll)}`;
@@ -27,7 +27,7 @@ const cachableRoll = Script.make("rollStr", (pick) => {
 
 const readsCachedRoll = Script.make("readsCache", (pick) => {
   return pick(cachableRoll);
-}, { splitCalls: true });
+}, { logCalls: true });
 
 const differentRoll = Script.make("rollStr", (pick) => {
   return `rolled ${pick(roll)}`;
@@ -276,7 +276,7 @@ describe("replayWithEdits", () => {
   describe("for a script that makes one pick (split)", () => {
     const roll = Script.make("roll", (pick) => {
       return pick(new PickRequest(1, 6));
-    }, { splitCalls: true });
+    }, { logCalls: true });
 
     it("makes no change if there is no call to edit", () => {
       const result = replayWithEdits(roll, [], () => keep, buf);
@@ -298,7 +298,7 @@ describe("replayWithEdits", () => {
 
     const throws = Script.make("throws", () => {
       throw new Filtered("oops");
-    }, { splitCalls: true });
+    }, { logCalls: true });
 
     it("returns filtered if the build function throws", () => {
       buf.push({ min: 1, max: 6 }, 2);
@@ -383,7 +383,7 @@ describe("replayWithDeletedRange", () => {
       const first = pick(roll);
       const second = pick(roll);
       return `${first}, ${second}`;
-    }, { splitCalls: true });
+    }, { logCalls: true });
 
     buf = new CallBuffer();
     const result = replayWithDeletedRange(rollTwo, calls, 0, 1, buf);

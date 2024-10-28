@@ -230,14 +230,14 @@ export function generate<T>(
     const pick = makePickFunction(playouts, {
       ...opts,
       logPicks: log,
-      logCalls: script.splitCalls ? log : undefined,
+      logCalls: script.logCalls ? log : undefined,
     });
 
     const val = script.run(pick);
     if (val === filtered) {
       continue;
     }
-    if (!script.splitCalls) {
+    if (!script.logCalls) {
       // Treat it as a single call.
       log.endScript(script, val);
     }

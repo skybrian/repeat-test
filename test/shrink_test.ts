@@ -73,7 +73,7 @@ describe("Shrinker", () => {
         out.push(r);
       }
       return out;
-    }, { splitCalls: true });
+    }, { logCalls: true });
 
     it("can remove all the calls", () => {
       const seed = Gen.mustBuild(rolls, [6, 2, 3, 4, 5, 1]);
@@ -125,11 +125,11 @@ describe("Shrinker", () => {
       assertFalse(s.shrinkTails());
     });
 
-    it("shrinks a script with splitCalls turned on", () => {
+    it("shrinks a script with logCalls turned on", () => {
       const script = Script.make("mapped string", (pick) => {
         const a = pick(arb.string());
         return a.concat("!");
-      }, { splitCalls: true });
+      }, { logCalls: true });
 
       const seed = Gen.mustBuild(script, [1, 1, 1, 1, 0]);
       assertEquals(seed.val, "bb!");
@@ -180,7 +180,7 @@ describe("Shrinker", () => {
         a: arb.string(),
         b: arb.string(),
       });
-      assert(Script.from(rec).splitCalls);
+      assert(Script.from(rec).logCalls);
       const seed = Gen.mustBuild(rec, [1, 3, 1, 3, 0, 1, 3, 1, 3, 0]);
       assertEquals(seed.val, { a: "dd", b: "dd" });
       assertEquals(seed.toMutable().groupKeys, [0, 1]);
@@ -278,7 +278,7 @@ describe("Shrinker", () => {
       const twoBits = Script.make("two bits", (pick) => {
         const a = pick(bit);
         return [a, pick(PickRequest.bit)];
-      }, { splitCalls: true });
+      }, { logCalls: true });
 
       const seed = Gen.mustBuild(twoBits, [1, 1]);
       const s = new Shrinker(seed, acceptAll);
@@ -301,7 +301,7 @@ describe("Shrinker", () => {
         a: arb.string(),
         b: arb.string(),
       });
-      assert(Script.from(rec).splitCalls);
+      assert(Script.from(rec).logCalls);
       const seed = Gen.mustBuild(rec, [1, 3, 1, 3, 0, 1, 3, 1, 3, 0]);
       assertEquals(seed.val, { a: "dd", b: "dd" });
       assertEquals(seed.toMutable().groupKeys, [0, 1]);
@@ -457,13 +457,13 @@ describe("shrink", () => {
     });
   });
 
-  describe("for a script with splitCalls turned on", () => {
+  describe("for a script with logCalls turned on", () => {
     const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
 
     const twoBits = Script.make("two bits", (pick) => {
       const a = pick(bit);
       return [a, pick(PickRequest.bit)];
-    }, { splitCalls: true });
+    }, { logCalls: true });
 
     it("can't shrink the default value", () => {
       const seed = Gen.mustBuild(twoBits, [0, 0]);

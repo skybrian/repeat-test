@@ -338,14 +338,14 @@ describe("take", () => {
     ]);
   });
 
-  it("works for a script with splitCalls turned on", () => {
+  it("works for a script with logCalls turned on", () => {
     const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
 
     const twoBits = Script.make("twoBits", (pick) => {
       const a = pick(bit);
       const b = pick(bit);
       return [a, b];
-    }, {splitCalls: true});
+    }, { logCalls: true });
 
     assertEquals(take(twoBits, 5), [
       [0, 0],

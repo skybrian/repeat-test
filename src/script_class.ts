@@ -33,7 +33,7 @@ export type ScriptOpts = {
   /**
    * Turns on individual call logging for this script.
    */
-  readonly splitCalls?: boolean;
+  readonly logCalls?: boolean;
 };
 
 /**
@@ -43,18 +43,18 @@ export class Script<T> implements Pickable<T> {
   readonly #name: string;
   readonly #build: BuildFunction<T>;
   readonly #cachable: boolean;
-  readonly #splitCalls: boolean;
+  readonly #logCalls: boolean;
 
   private constructor(
     name: string,
     build: BuildFunction<T>,
     cachable: boolean,
-    splitCalls: boolean,
+    logCalls: boolean,
   ) {
     this.#name = name;
     this.#build = build;
     this.#cachable = cachable;
-    this.#splitCalls = splitCalls;
+    this.#logCalls = logCalls;
   }
 
   get name(): string {
@@ -65,8 +65,15 @@ export class Script<T> implements Pickable<T> {
     return this.#cachable;
   }
 
-  get splitCalls(): boolean {
-    return this.#splitCalls;
+  get logCalls(): boolean {
+    return this.#logCalls;
+  }
+
+  get opts(): ScriptOpts {
+    return {
+      cachable: this.#cachable,
+      logCalls: this.#logCalls,
+    };
   }
 
   get directBuild(): BuildFunction<T> {
@@ -97,7 +104,7 @@ export class Script<T> implements Pickable<T> {
     const cachable = opts.cachable !== undefined
       ? opts.cachable
       : this.#cachable;
-    return new Script(name, this.#build, cachable, this.#splitCalls);
+    return new Script(name, this.#build, cachable, this.#logCalls);
   }
 
   /**
@@ -112,7 +119,7 @@ export class Script<T> implements Pickable<T> {
       name,
       build,
       opts?.cachable === true,
-      opts?.splitCalls === true,
+      opts?.logCalls === true,
     );
   }
 
