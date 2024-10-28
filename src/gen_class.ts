@@ -60,7 +60,8 @@ export class MutableGen<T> {
       return false; // didn't pass the test
     }
 
-    return this.commit(result);
+    this.commit(result);
+    return true;
   }
 
   tryDeleteRange(
@@ -86,7 +87,8 @@ export class MutableGen<T> {
       return false; // didn't pass the test
     }
 
-    return this.commit(result);
+    this.commit(result);
+    return true;
   }
 
   get gen(): Gen<T> {
@@ -108,12 +110,11 @@ export class MutableGen<T> {
     return this.#gen.val;
   }
 
-  private commit(val: T): boolean {
+  private commit(val: T): void {
     const calls = this.#buf.take();
     const regenerate = makeRegenerateFunction(this.#script, calls, val);
     this.#calls = calls;
     this.#gen = new Gen(this.#script, () => calls, regenerate);
-    return true;
   }
 }
 
