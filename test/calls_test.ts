@@ -27,7 +27,8 @@ describe("CallBuffer", () => {
 
   describe("keep", () => {
     it("preserves a pick call from a previous log", () => {
-      buf.endPick({ min: 1, max: 6 }, 3);
+      buf.push({ min: 1, max: 6 }, 3);
+      buf.endPick();
       const calls = buf.take();
       assertEquals(replay(roll, calls), 3);
 

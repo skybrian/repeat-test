@@ -46,14 +46,16 @@ describe("replay", () => {
     });
 
     it("uses a recorded pick", () => {
-      buf.endPick({ min: 1, max: 6 }, 3);
+      buf.push({ min: 1, max: 6 }, 3);
+      buf.endPick();
       const calls = buf.take();
 
       assertEquals(replay(roll, calls), 3);
     });
 
     it("returns the minimum if the pick is out of range", () => {
-      buf.endPick({ min: 1, max: 7 }, 7);
+      buf.push({ min: 1, max: 7 }, 7);
+      buf.endPick();
       const calls = buf.take();
 
       assertEquals(replay(roll, calls), 1);
@@ -102,7 +104,8 @@ describe("replay", () => {
     });
 
     it("uses the cached value if the script call matches", () => {
-      buf.endPick({ min: 1, max: 6 }, 3);
+      buf.push({ min: 1, max: 6 }, 3);
+      buf.endPick();
       buf.push({ min: 1, max: 6 }, 6);
       buf.endScript(cachableRoll, "hello");
       const calls = buf.take();
@@ -111,7 +114,8 @@ describe("replay", () => {
     });
 
     it("regenerates from picks if the script doesn't match", () => {
-      buf.endPick({ min: 1, max: 6 }, 3);
+      buf.push({ min: 1, max: 6 }, 3);
+      buf.endPick();
       buf.push({ min: 1, max: 6 }, 4);
       buf.endScript(roll, 1);
       const calls = buf.take();
@@ -120,8 +124,10 @@ describe("replay", () => {
     });
 
     it("regenerates from a pick call", () => {
-      buf.endPick({ min: 1, max: 6 }, 3);
-      buf.endPick({ min: 1, max: 6 }, 4);
+      buf.push({ min: 1, max: 6 }, 3);
+      buf.endPick();
+      buf.push({ min: 1, max: 6 }, 4);
+      buf.endPick();
       const calls = buf.take();
 
       assertEquals(replay(rollAndStr, calls), "3, rolled 4");
@@ -147,15 +153,18 @@ describe("replay", () => {
     it("uses the cached value if the script call matches", () => {
       buf.push({ min: 1, max: 6 }, 3);
       buf.endScript(cachableRoll, "hello");
-      buf.endPick({ min: 1, max: 6 }, 6);
+      buf.push({ min: 1, max: 6 }, 6);
+      buf.endPick();
       const calls = buf.take();
 
       assertEquals(replay(script, calls), "hello, 6");
     });
 
     it("uses a pick as input for a script call", () => {
-      buf.endPick({ min: 1, max: 6 }, 3);
-      buf.endPick({ min: 1, max: 6 }, 4);
+      buf.push({ min: 1, max: 6 }, 3);
+      buf.endPick();
+      buf.push({ min: 1, max: 6 }, 4);
+      buf.endPick();
       const calls = buf.take();
 
       assertEquals(replay(script, calls), "rolled 3, 4");
@@ -252,7 +261,8 @@ describe("replayWithEdits", () => {
     });
 
     it("edits the pick", () => {
-      buf.endPick({ min: 1, max: 6 }, 2);
+      buf.push({ min: 1, max: 6 }, 2);
+      buf.endPick();
       const calls = buf.take();
 
       buf = new CallBuffer();
@@ -275,7 +285,8 @@ describe("replayWithEdits", () => {
     });
 
     it("edits the pick", () => {
-      buf.endPick({ min: 1, max: 6 }, 2);
+      buf.push({ min: 1, max: 6 }, 2);
+      buf.endPick();
       const calls = buf.take();
 
       buf = new CallBuffer();
@@ -290,7 +301,8 @@ describe("replayWithEdits", () => {
     }, { splitCalls: true });
 
     it("returns filtered if the build function throws", () => {
-      buf.endPick({ min: 1, max: 6 }, 2);
+      buf.push({ min: 1, max: 6 }, 2);
+      buf.endPick();
       const calls = buf.take();
       const result = replayWithEdits(throws, calls, () => keep, buf);
       assertEquals(result, filtered);

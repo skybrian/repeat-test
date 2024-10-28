@@ -74,7 +74,7 @@ export function usePicks(...replies: number[]): PickFunction {
 }
 
 /**
- * A destination for recording picks and top-level calls to a pick function.
+ * A destination for recording picks made via a pick function.
  */
 export interface PickLogger {
   /**
@@ -85,11 +85,16 @@ export interface PickLogger {
 
   /** Pops the given number of picks from the buffer. */
   undoPushes(count: number): void;
+}
 
-  /** Ends a top-level pick request. */
-  endPick(req: Range, pick: number): void;
+/**
+ * A destination for recording top-level calls made via a pick function.
+ */
+export interface CallLogger {
+  /** Ends a top-level pick request. Uses one pushed pick. */
+  endPick(): void;
 
-  /** Ends a top-level script call. This uses any pushed picks since previous call. */
+  /** Ends a top-level script call. This uses any pushed picks since the previous call. */
   endScript<T>(arg: Script<T>, result: T): void;
 }
 
@@ -106,12 +111,12 @@ export type MakePickFunctionOpts = {
   /**
    * If set, picks will be recorded to this log.
    */
-  log?: PickLogger;
+  logPicks?: PickLogger;
 
   /**
-   * If set, calls will also be recorded to the log.
+   * If set, calls will be recorded to the log.
    */
-  logCalls?: boolean;
+  logCalls?: CallLogger;
 };
 
 export function makePickFunction<T>(
@@ -120,7 +125,7 @@ export function makePickFunction<T>(
 ): PickFunction {
   const limit = opts?.limit;
 
-  const log = opts?.log;
+  const logPicks = opts?.logPicks;
   const logCalls = opts?.logCalls;
   let level = logCalls ? 0 : 1;
   let pickCount = 0;
@@ -134,7 +139,7 @@ export function makePickFunction<T>(
       try {
         return script.directBuild(pick);
       } catch (e) {
-        log?.undoPushes(pickCount - start);
+        logPicks?.undoPushes(pickCount - start);
         pickCount = start;
 
         if (!(e instanceof Filtered)) {
@@ -157,10 +162,9 @@ export function makePickFunction<T>(
       }
       const pick = playouts.nextPick(req);
       if (pick === undefined) throw new Filtered("cancelled in PlayoutSource");
+      logPicks?.push(req, pick);
       if (level === 0) {
-        log?.endPick(req, pick);
-      } else {
-        log?.push(req, pick);
+        logCalls?.endPick();
       }
       pickCount++;
       return pick as T;
@@ -172,7 +176,7 @@ export function makePickFunction<T>(
     if (accept === undefined) {
       const val = retry(script, dispatch);
       if (level == 0) {
-        log?.endScript(script, val);
+        logCalls?.endScript(script, val);
       }
       return val;
     }
@@ -186,11 +190,11 @@ export function makePickFunction<T>(
       const val = retry(script, dispatch);
       if (accept(val)) {
         if (level == 0) {
-          log?.endScript(script, val);
+          logCalls?.endScript(script, val);
         }
         return val;
       }
-      log?.undoPushes(pickCount - start);
+      logPicks?.undoPushes(pickCount - start);
       pickCount = start;
 
       if (!playouts.startAt(depth)) {

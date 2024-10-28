@@ -43,7 +43,7 @@ export function replayWithEdits<T>(
   if (!target.splitCalls) {
     // Record a single call.
     const picks = new EditResponder(allReplies(calls), edits(0));
-    const pick = makePickFunction(picks, { log });
+    const pick = makePickFunction(picks, { logPicks: log });
     const val = target.run(pick);
     if (val === filtered) {
       return filtered;
@@ -137,8 +137,8 @@ class Replay {
     const edit = groupEdit(0, req, before);
     const responder = new EditResponder([before], () => edit);
     const reply = responder.nextPick(req);
-
-    this.log?.endPick(req, reply);
+    this.log?.push(req, reply);
+    this.log?.endPick();
     if (responder.edited) {
       this.edited = true;
     }
@@ -160,7 +160,7 @@ class Replay {
     }
 
     const responder = new EditResponder(before.group.replies, groupEdit);
-    const pick = makePickFunction(responder, { log: this.log }); // log picks only
+    const pick = makePickFunction(responder, { logPicks: this.log });
     const val = script.directBuild(pick);
     this.log?.endScript(script, val);
     if (responder.edited) {

@@ -237,8 +237,8 @@ export function generate<T>(
     const log = new CallBuffer();
     const pick = makePickFunction(playouts, {
       ...opts,
-      log,
-      logCalls: script.splitCalls,
+      logPicks: log,
+      logCalls: script.splitCalls ? log : undefined,
     });
 
     const val = script.run(pick);

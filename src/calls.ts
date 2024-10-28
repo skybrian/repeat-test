@@ -54,10 +54,10 @@ export class CallBuffer implements PickLogger {
     this.#buf.undoPushes(removeCount);
   }
 
-  endPick(req: Range, reply: number): void {
-    assert(this.complete);
-    this.#buf.push(req, reply);
-    this.endCall(req, reply, this.#buf.takeList());
+  endPick(): void {
+    assert(this.#buf.pushCount === 1);
+    const group = this.#buf.takeList();
+    this.endCall(group.reqAt(0), group.replyAt(0), group);
   }
 
   endScript<T>(arg: Script<T>, val: T): void {

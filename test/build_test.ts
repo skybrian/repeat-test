@@ -7,7 +7,7 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { Arbitrary, Filtered, Script } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
 
-import { alwaysPick, PickRequest } from "../src/picks.ts";
+import { alwaysPick, PickBuffer, PickRequest } from "../src/picks.ts";
 import { CallBuffer, regen } from "../src/calls.ts";
 import { Backtracker } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
@@ -32,14 +32,14 @@ describe("makePickFunction", () => {
   function logCalls(...picks: number[]): PickFunction {
     buf = new CallBuffer();
     const responder = responderFromReplies([...picks]);
-    return makePickFunction(responder, { log: buf, logCalls: true });
+    return makePickFunction(responder, { logPicks: buf, logCalls: buf });
   }
 
   function logRandomCalls() {
     buf = new CallBuffer();
     const playouts = randomPlayouts(123);
     playouts.startAt(0);
-    return makePickFunction(playouts, { log: buf, logCalls: true });
+    return makePickFunction(playouts, { logPicks: buf, logCalls: buf });
   }
 
   function checkCalls(...expected: GenProps<unknown>[]) {
@@ -64,6 +64,16 @@ describe("makePickFunction", () => {
     pick = logCalls(1);
     assertEquals(pick(bitReq), 1);
     checkCalls({ name: "0..1", val: 1, reqs: [bitReq], replies: [1] });
+  });
+
+  it("logs picks to a PickBuffer", () => {
+    const buf = new PickBuffer();
+    const responder = responderFromReplies([1]);
+    const pick = makePickFunction(responder, { logPicks: buf });
+    assertEquals(pick(bitReq), 1);
+    const picks = buf.takeList();
+    assertEquals(picks.reqs, [bitReq]);
+    assertEquals(picks.replies, [1]);
   });
 
   it("throws filtered for an invalid pick", () => {
@@ -207,7 +217,7 @@ describe("makePickFunction", () => {
     const tracker = new PartialTracker(alwaysPick(3));
     const playouts = new Backtracker(tracker);
     playouts.startAt(0);
-    pick = makePickFunction(playouts, { log: buf, logCalls: true });
+    pick = makePickFunction(playouts, { logPicks: buf, logCalls: buf });
 
     assertEquals(pick(arb), 4);
     checkCalls({ name: "untitled", val: regen, reqs: [roll], replies: [4] });
