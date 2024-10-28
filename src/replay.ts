@@ -24,7 +24,7 @@ export function replay<T>(
   let i = 0;
   const pick: PickFunction = (req, opts) => {
     const input = calls[i++] ?? Call.none;
-    return replay.pick(input, keep, req, opts);
+    return replay.dispatch(input, keep, req, opts);
   };
   return target.run(pick);
 }
@@ -54,14 +54,14 @@ export function replayWithEdits<T>(
 
   const replay = new Replay(log);
   let i = 0;
-  const pick: PickFunction = (req, opts) => {
+  const pickWithEdit: PickFunction = (req, opts) => {
     const next = i++;
     const input = calls[next] ?? Call.none;
     const edit = edits(next);
-    return replay.pick(input, edit, req, opts);
+    return replay.dispatch(input, edit, req, opts);
   };
 
-  const val = target.run(pick);
+  const val = target.run(pickWithEdit);
   if (val === filtered) {
     return filtered;
   }
@@ -89,7 +89,7 @@ export function replayWithDeletedRange<T>(
     }
     const next = i++;
     const input = calls[next] ?? Call.none;
-    return replay.pick(input, keep, req, opts);
+    return replay.dispatch(input, keep, req, opts);
   };
 
   const val = target.run(pick);
@@ -109,7 +109,7 @@ class Replay {
     readonly log?: CallBuffer,
   ) {}
 
-  pick<T>(
+  dispatch<T>(
     input: Call,
     edit: GroupEdit,
     req: Pickable<T>,

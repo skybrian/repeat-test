@@ -4,6 +4,7 @@ import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import { repeatTest } from "@/runner.ts";
 
 import * as arb from "../src/arbitraries/basics.ts";
+import { array } from "../src/arbitraries/arrays.ts";
 
 import { PickList, PickRequest } from "../src/picks.ts";
 import { PickTree } from "../src/pick_tree.ts";
@@ -33,7 +34,7 @@ describe("PickTree", () => {
       const example = arb.from((pick) => {
         const min = pick(arb.int(1, 2));
         const max = pick(arb.int(min, min + 5));
-        const path = pick(arb.array(arb.int(min, max)));
+        const path = pick(array(arb.int(min, max)));
         return { min, max, path };
       });
       repeatTest(example, ({ min, max, path }) => {

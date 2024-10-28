@@ -1,12 +1,11 @@
-import {
-  Arbitrary,
-  type PickFunction,
-  PickRequest,
-  type RandomSource,
-  Script,
-} from "@/arbitrary.ts";
+import type { PickFunction, RandomSource } from "@/arbitrary.ts";
+import type { ArrayOpts } from "../options.ts";
+
+import { assert } from "@std/assert/assert";
+import { Arbitrary, PickRequest, Script } from "@/arbitrary.ts";
 import * as arb from "./basics.ts";
-import { type ArrayOpts, parseArrayOpts } from "../options.ts";
+import { array } from "./arrays.ts";
+import { parseArrayOpts } from "../options.ts";
 import { pickToAscii } from "../ascii.ts";
 import {
   supplementalPlaneStart,
@@ -15,7 +14,6 @@ import {
   unicodeMax,
 } from "../unicode.ts";
 import { arrayLengthBiases } from "../math.ts";
-import { assert } from "@std/assert/assert";
 
 const asciiTableArb = Arbitrary.of(...pickToAscii).with({ name: "asciiChar" });
 
@@ -160,7 +158,7 @@ const basicPlaneChar = basicPlaneCodePoint.map((code) => {
 export function string(
   opts?: ArrayOpts,
 ): Arbitrary<string> {
-  const charArray = arb.array(char16(), opts);
+  const charArray = array(char16(), opts);
 
   const script = Script.make("string", function makeString(pick) {
     const arr = charArray.directBuild(pick);

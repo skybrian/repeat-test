@@ -34,20 +34,10 @@ export class Shrinker<T> {
   }
 
   shrink(): Gen<T> {
-    this.console.log("shrink:", this.seed.val);
-
     this.removeGroups();
-    this.console.log("after removeGroups:", this.seed.val);
-
     this.shrinkTails();
-    this.console.log("after shrinkTails:", this.seed.val);
-
     this.shrinkAllOptions();
-    this.console.log("after shrinkAllOptions:", this.seed.val);
-
     this.shrinkAllPicks();
-    this.console.log("after shrinkAllPicks:", this.seed.val);
-
     return this.seed.gen;
   }
 
