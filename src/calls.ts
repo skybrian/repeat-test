@@ -11,11 +11,20 @@ export const regen = Symbol("regen");
  * Records a previous call to a {@link PickFunction}.
  */
 export class Call<T = unknown> {
+  readonly val: T | typeof regen;
+
   constructor(
     readonly arg: Range | Script<T>,
-    readonly val: T | typeof regen,
+    val: T | typeof regen,
     readonly group: PickList,
-  ) {}
+  ) {
+    if (arg instanceof Script) {
+      const shouldCache = arg.cachable && Object.isFrozen(val);
+      this.val = shouldCache ? val : regen;
+    } else {
+      this.val = val;
+    }
+  }
 
   static none = new Call(
     Script.neverReturns,
@@ -61,10 +70,8 @@ export class CallBuffer implements PickLogger {
   }
 
   endScript<T>(arg: Script<T>, val: T): void {
-    const shouldCache = arg.cachable && Object.isFrozen(val);
-    const storedVal = shouldCache ? val : regen;
     const picks = this.#buf.takeList();
-    this.endCall(arg, storedVal, picks);
+    this.endCall(arg, val, picks);
   }
 
   /** Preserves a call from a previous log. */
