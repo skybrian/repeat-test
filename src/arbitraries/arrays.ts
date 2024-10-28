@@ -6,7 +6,7 @@ import { parseArrayOpts } from "../options.ts";
 import { arrayLengthBiases } from "../math.ts";
 import { biased } from "./basics.ts";
 
-const off = Symbol("off");
+export const off = Symbol("off");
 
 function option<T>(bias: number, item: Pickable<T>): Script<T | typeof off> {
   const coin = biased(bias);
@@ -19,9 +19,9 @@ function option<T>(bias: number, item: Pickable<T>): Script<T | typeof off> {
   }, { cachable: Script.from(item).cachable });
 }
 
-type ItemFunction<T> = (i: number, pick: PickFunction) => T | typeof off;
+export type ItemFunction<T> = (i: number, pick: PickFunction) => T | typeof off;
 
-function makeItemFunction<T>(
+export function makeItemFunction<T>(
   item: Pickable<T>,
   min: number,
   max: number,

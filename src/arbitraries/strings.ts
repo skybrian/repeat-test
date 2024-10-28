@@ -4,7 +4,7 @@ import type { ArrayOpts } from "../options.ts";
 import { assert } from "@std/assert/assert";
 import { Arbitrary, PickRequest, Script } from "@/arbitrary.ts";
 import * as arb from "./basics.ts";
-import { array } from "./arrays.ts";
+import { makeItemFunction, off } from "./arrays.ts";
 import { parseArrayOpts } from "../options.ts";
 import { pickToAscii } from "../ascii.ts";
 import {
@@ -158,11 +158,20 @@ const basicPlaneChar = basicPlaneCodePoint.map((code) => {
 export function string(
   opts?: ArrayOpts,
 ): Arbitrary<string> {
-  const charArray = array(char16(), opts);
+  const { min, max } = parseArrayOpts(opts);
+  const nextItem = makeItemFunction(char16(), min, max);
 
   const script = Script.make("string", function makeString(pick) {
-    const arr = charArray.directBuild(pick);
-    return arr.join("");
+    let out = "";
+    let i = 0;
+    while (true) {
+      const item = nextItem(i, pick);
+      if (item === off) {
+        return out;
+      }
+      out += item;
+      i++;
+    }
   }, { cachable: true, splitCalls: true });
 
   return Arbitrary.from(script);
