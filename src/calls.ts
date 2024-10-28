@@ -35,9 +35,9 @@ export class Call<T = unknown> {
 
 export class CallBuffer implements PickLogger {
   #len = 0;
-  readonly #args: (Range | Script<unknown>)[] = [];
-  readonly #vals: unknown[] = [];
-  readonly #groups: PickList[] = [];
+
+  /** Holds 3-entry tuples representing a call. */
+  readonly #log: unknown[] = [];
 
   readonly #buf = new PickBuffer();
 
@@ -85,10 +85,11 @@ export class CallBuffer implements PickLogger {
     assert(this.complete);
     const calls: Call[] = Array(this.length);
     for (let i = 0; i < this.#len; i++) {
+      const start = i * 3;
       calls[i] = new Call(
-        this.#args[i],
-        this.#vals[i],
-        this.#groups[i],
+        this.#log[start] as Range | Script<unknown>,
+        this.#log[start + 1] as unknown | typeof regen,
+        this.#log[start + 2] as PickList,
       );
     }
     this.reset();
@@ -101,9 +102,10 @@ export class CallBuffer implements PickLogger {
     picks: PickList,
   ): void {
     const i = this.#len++;
-    this.#args[i] = arg;
-    this.#vals[i] = val;
-    this.#groups[i] = picks;
+    const start = i * 3;
+    this.#log[start] = arg;
+    this.#log[start + 1] = val;
+    this.#log[start + 2] = picks;
   }
 }
 
