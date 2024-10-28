@@ -79,23 +79,31 @@ export class CallBuffer implements PickLogger {
     this.endCall(arg, val, picks);
   }
 
-  /** Preserves a call from a previous log. */
-  keep(call: Call<unknown>): void {
+  /** Preserves a cached call from a previous log. */
+  keep(call: Call): void {
     assert(this.complete);
-    const { arg, val, group } = call;
-    this.endCall(arg, val, group);
+    this.#log[this.#len++] = call;
+    this.#calls++;
   }
 
   take(): Call[] {
     assert(this.complete);
     const calls: Call[] = Array(this.#calls);
+    let start = 0;
     let i = 0;
-    for (let start = 0; start < this.#len; start += 3) {
-      calls[i++] = new Call(
-        this.#log[start] as Range | Script<unknown>,
-        this.#log[start + 1] as unknown | typeof regen,
-        this.#log[start + 2] as PickList,
-      );
+    while (start < this.#len) {
+      const op = this.#log[start];
+      if (op instanceof Call) {
+        calls[i++] = op;
+        start++;
+      } else {
+        calls[i++] = new Call(
+          this.#log[start] as Range | Script<unknown>,
+          this.#log[start + 1] as unknown | typeof regen,
+          this.#log[start + 2] as PickList,
+        );
+        start += 3;
+      }
     }
     this.reset();
     return calls;
@@ -115,7 +123,7 @@ export class CallBuffer implements PickLogger {
   }
 }
 
-export function* allReplies(calls: Call<unknown>[]): Iterable<number> {
+export function* allReplies(calls: Call[]): Iterable<number> {
   for (const call of calls) {
     yield* call.group.replies;
   }
