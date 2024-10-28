@@ -42,16 +42,19 @@ export type ScriptOpts = {
 export class Script<T> implements Pickable<T> {
   readonly #name: string;
   readonly #build: BuildFunction<T>;
-  readonly #opts?: ScriptOpts;
+  readonly #cachable: boolean;
+  readonly #splitCalls: boolean;
 
   private constructor(
     name: string,
     build: BuildFunction<T>,
-    opts?: ScriptOpts,
+    cachable: boolean,
+    splitCalls: boolean,
   ) {
     this.#name = name;
     this.#build = build;
-    this.#opts = opts;
+    this.#cachable = cachable;
+    this.#splitCalls = splitCalls;
   }
 
   get name(): string {
@@ -59,11 +62,11 @@ export class Script<T> implements Pickable<T> {
   }
 
   get cachable(): boolean {
-    return this.#opts?.cachable === true;
+    return this.#cachable;
   }
 
   get splitCalls(): boolean {
-    return this.#opts?.splitCalls === true;
+    return this.#splitCalls;
   }
 
   get directBuild(): BuildFunction<T> {
@@ -91,11 +94,10 @@ export class Script<T> implements Pickable<T> {
    */
   with(opts: { name?: string; cachable?: boolean }): Script<T> {
     const name = opts.name ?? this.#name;
-    if (opts.cachable === undefined) {
-      return new Script(name, this.#build, this.#opts);
-    }
-    const newOpts = { ...this.#opts, cachable: opts.cachable };
-    return new Script(name, this.#build, newOpts);
+    const cachable = opts.cachable !== undefined
+      ? opts.cachable
+      : this.#cachable;
+    return new Script(name, this.#build, cachable, this.#splitCalls);
   }
 
   /**
@@ -106,7 +108,12 @@ export class Script<T> implements Pickable<T> {
     build: BuildFunction<T>,
     opts?: ScriptOpts,
   ): Script<T> {
-    return new Script(name, build, opts);
+    return new Script(
+      name,
+      build,
+      opts?.cachable === true,
+      opts?.splitCalls === true,
+    );
   }
 
   /**
