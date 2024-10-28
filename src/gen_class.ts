@@ -11,14 +11,13 @@ import { Script } from "./script_class.ts";
 import { PickList, PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
 import { makePickFunction } from "./build.ts";
+import { allReplies, CallBuffer } from "./calls.ts";
 import {
-  allReplies,
-  CallBuffer,
   replay,
   replayWithDeletedRange,
   replayWithEdits,
   unchanged,
-} from "./calls.ts";
+} from "./replay.ts";
 
 export class MutableGen<T> {
   readonly #script: Script<T>;
