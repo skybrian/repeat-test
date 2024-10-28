@@ -19,6 +19,18 @@ import {
   unchanged,
 } from "./replay.ts";
 
+function makeRegenerateFunction<T>(
+  script: Script<T>,
+  calls: Call[],
+  val: T,
+): () => T {
+  return Object.isFrozen(val) ? () => val : () => {
+    const next = replay(script, calls);
+    assert(next !== filtered, "can't replay nondeterministic script");
+    return next;
+  };
+}
+
 export class MutableGen<T> {
   readonly #script: Script<T>;
   readonly #buf = new CallBuffer();
@@ -98,14 +110,9 @@ export class MutableGen<T> {
 
   private commit(val: T): boolean {
     const calls = this.#buf.take();
-
-    const regenerate = Object.isFrozen(val) ? () => val : () => {
-      const next = replay(this.#script, calls);
-      assert(next !== filtered, "can't rebuild nondeterministic script");
-      return next;
-    };
-    this.#gen = new Gen(this.#script, () => calls, regenerate);
+    const regenerate = makeRegenerateFunction(this.#script, calls, val);
     this.#calls = calls;
+    this.#gen = new Gen(this.#script, () => calls, regenerate);
     return true;
   }
 }
