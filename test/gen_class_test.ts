@@ -3,7 +3,7 @@ import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { filtered } from "../src/results.ts";
 import { Filtered } from "../src/pickable.ts";
-import { PickList, PickRequest, PlaybackPicker } from "../src/picks.ts";
+import { PickRequest, PlaybackPicker } from "../src/picks.ts";
 import { keep, replace, snip } from "../src/edits.ts";
 import { Script } from "../src/script_class.ts";
 import { Gen, generate } from "../src/gen_class.ts";
@@ -139,20 +139,6 @@ describe("Gen", () => {
       const first = gen.val;
       assertEquals(first, ["mutable!"]);
       assert(gen.val !== first);
-    });
-  });
-
-  describe("groupKeys", () => {
-    it("returns a single key for a non-split script", () => {
-      const gen = Gen.mustBuild(bit, [0]);
-      assertEquals(gen.groupKeys, [0]);
-    });
-  });
-
-  describe("picksAt", () => {
-    it("returns empty for an unknown key", () => {
-      const gen = Gen.mustBuild(twoBits, [0, 1]);
-      assert(gen.picksAt(2) === PickList.empty);
     });
   });
 
@@ -346,7 +332,7 @@ describe("generate", () => {
           replies: expectedReplies,
         });
         assert(gen !== filtered);
-        assertEquals(gen.groupKeys, [0, 1]);
+        assertEquals(gen.toMutable().groupKeys, [0, 1]);
       }
       assertEquals(generate(twoBits, playouts), filtered);
     });
@@ -367,7 +353,7 @@ describe("generate", () => {
         replies: [1, 0],
       });
       assert(gen !== filtered);
-      assertEquals(gen.groupKeys, [0, 1]);
+      assertEquals(gen.toMutable().groupKeys, [0, 1]);
     });
 
     it("regenerates a result that can't be cached", () => {

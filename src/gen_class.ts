@@ -1,6 +1,6 @@
 import type { Failure, Success } from "./results.ts";
 import type { Pickable } from "./pickable.ts";
-import type { PickSink, Range } from "./picks.ts";
+import type { PickSink } from "./picks.ts";
 import type { GroupKey, MultiEdit } from "./edits.ts";
 import type { Backtracker } from "./backtracking.ts";
 import type { Call } from "./calls.ts";
@@ -82,11 +82,14 @@ export class MutableGen<T> {
   }
 
   get groupKeys(): GroupKey[] {
-    return this.#gen.groupKeys;
+    const len = this.#calls.length;
+    return new Array(len).fill(0).map((_, i) => i);
   }
 
   picksAt(key: GroupKey): PickList {
-    return this.#gen.picksAt(key);
+    assert(typeof key === "number");
+    const call = this.#calls[key];
+    return call ? call.group : PickList.empty;
   }
 
   get val(): T {
@@ -114,9 +117,6 @@ export class Gen<T> implements Success<T> {
   readonly #script: Script<T>;
   readonly #getCalls: () => Call[];
   readonly #result: () => T;
-
-  #reqs: Range[] | undefined;
-  #replies: number[] | undefined;
 
   /**
    * Creates a generated value with the given contents.
@@ -148,29 +148,13 @@ export class Gen<T> implements Success<T> {
   }
 
   pushTo(sink: PickSink): boolean {
-    for (const key of this.groupKeys) {
-      const picks = this.picksAt(key);
+    for (const call of this.#getCalls()) {
+      const picks = call.group;
       if (!picks.pushTo(sink)) {
         return false;
       }
     }
     return true;
-  }
-
-  /**
-   * The key of each group of picks used to generate this value, in the order
-   * they were used.
-   */
-  get groupKeys(): GroupKey[] {
-    const len = this.#getCalls().length;
-    return new Array(len).fill(0).map((_, i) => i);
-  }
-
-  /** Returns the picks for the given group, or an empty PickList if not found. */
-  picksAt(key: GroupKey): PickList {
-    assert(typeof key === "number");
-    const call = this.#getCalls()[key];
-    return call ? call.group : PickList.empty;
   }
 
   /**

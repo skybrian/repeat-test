@@ -183,7 +183,7 @@ describe("Shrinker", () => {
       assert(Script.from(rec).splitCalls);
       const seed = Gen.mustBuild(rec, [1, 3, 1, 3, 0, 1, 3, 1, 3, 0]);
       assertEquals(seed.val, { a: "dd", b: "dd" });
-      assertEquals(seed.groupKeys, [0, 1]);
+      assertEquals(seed.toMutable().groupKeys, [0, 1]);
 
       const s = new Shrinker(seed, acceptAll);
       assert(s.shrinkTails());
@@ -304,7 +304,7 @@ describe("Shrinker", () => {
       assert(Script.from(rec).splitCalls);
       const seed = Gen.mustBuild(rec, [1, 3, 1, 3, 0, 1, 3, 1, 3, 0]);
       assertEquals(seed.val, { a: "dd", b: "dd" });
-      assertEquals(seed.groupKeys, [0, 1]);
+      assertEquals(seed.toMutable().groupKeys, [0, 1]);
 
       const s = new Shrinker(seed, acceptAll);
       assert(s.shrinkAllPicks());
