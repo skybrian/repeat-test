@@ -39,7 +39,7 @@ export class MutableGen<T> {
 
   private constructor(origin: Gen<T>) {
     this.#script = origin.script;
-    this.#calls = origin.calls;
+    this.#calls = callsFromGen(origin);
     this.#gen = origin;
   }
 
@@ -114,7 +114,7 @@ export class MutableGen<T> {
     const calls = this.#buf.take();
     const regenerate = makeRegenerateFunction(this.#script, calls, val);
     this.#calls = calls;
-    this.#gen = new Gen(this.#script, () => calls, regenerate);
+    this.#gen = makeGen(this.#script, () => calls, regenerate);
   }
 
   static from<T>(gen: Gen<T>): MutableGen<T> {
@@ -124,19 +124,16 @@ export class MutableGen<T> {
 
 /**
  * A generated value, along with the Script and calls that produced it.
+ *
+ * To create a Gen object, use {@link Gen.build}, {@link Gen.mustBuild},
+ * the {@link generate} function, or a Domain.
  */
 export class Gen<T> implements Success<T> {
   readonly #script: Script<T>;
   readonly #getCalls: () => Call[];
   readonly #result: () => T;
 
-  /**
-   * Creates a generated value with the given contents.
-   *
-   * This constructor should not normally be called directly. Instead, use
-   * the {@link generate} method or a {@link Domain}.
-   */
-  constructor(
+  private constructor(
     script: Script<T>,
     calls: () => Call[],
     result: () => T,
@@ -146,7 +143,7 @@ export class Gen<T> implements Success<T> {
     this.#result = result;
   }
 
-  /** Satisfies the Success interface. */
+  /** Satisfies the {@link Success} interface. */
   get ok(): true {
     return true;
   }
@@ -157,17 +154,10 @@ export class Gen<T> implements Success<T> {
   }
 
   /**
-   * The calls made by this script.
-   */
-  get calls(): Call[] {
-    return this.#getCalls();
-  }
-
-  /**
-   * Returns the value that was generated.
+   * Returns the generated value, or a copy of it.
    *
-   * If not a frozen value, accessing this property will generate a new clone
-   * each time after the first access.
+   * For frozen objects, it might be the same value each time. Otherwise, the value
+   * will be regenerated after the first access.
    */
   get val(): T {
     return this.#result();
@@ -220,7 +210,22 @@ export class Gen<T> implements Success<T> {
     }
     return gen;
   }
+
+  private static makeGen<T>(
+    script: Script<T>,
+    getCalls: () => Call[],
+    getResult: () => T,
+  ): Gen<T> {
+    return new Gen(script, getCalls, getResult);
+  }
+
+  private static callsFromGen(gen: Gen<unknown>): Call[] {
+    return gen.#getCalls();
+  }
 }
+
+const makeGen = Gen["makeGen"];
+const callsFromGen = Gen["callsFromGen"];
 
 export type GenerateOpts = {
   /**
@@ -264,14 +269,16 @@ export function generate<T>(
 
     // Finished!
     let callCache: Call[] | undefined = undefined;
-    const calls = () => {
+    const getCalls = () => {
       if (callCache === undefined) {
         callCache = log.take();
       }
       return callCache;
     };
-    const result = cacheResult(script, calls, val);
-    return new Gen(script, calls, result);
+
+    const getResult = cacheResult(script, getCalls, val);
+
+    return makeGen(script, getCalls, getResult);
   }
   return filtered;
 }
