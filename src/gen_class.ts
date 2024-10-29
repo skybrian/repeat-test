@@ -37,9 +37,9 @@ export class MutableGen<T> {
   #calls: Call[];
   #gen: Gen<T>;
 
-  constructor(script: Script<T>, calls: Call[], origin: Gen<T>) {
-    this.#script = script;
-    this.#calls = calls;
+  private constructor(origin: Gen<T>) {
+    this.#script = origin.script;
+    this.#calls = origin.calls;
     this.#gen = origin;
   }
 
@@ -116,10 +116,14 @@ export class MutableGen<T> {
     this.#calls = calls;
     this.#gen = new Gen(this.#script, () => calls, regenerate);
   }
+
+  static from<T>(gen: Gen<T>): MutableGen<T> {
+    return new MutableGen(gen);
+  }
 }
 
 /**
- * A generated value and the picks that were used to generate it.
+ * A generated value, along with the Script and calls that produced it.
  */
 export class Gen<T> implements Success<T> {
   readonly #script: Script<T>;
@@ -147,22 +151,16 @@ export class Gen<T> implements Success<T> {
     return true;
   }
 
-  get name(): string {
-    return this.#script.name;
+  /** The script that produuced this value. */
+  get script(): Script<T> {
+    return this.#script;
   }
 
-  get replies(): Iterable<number> {
-    return allReplies(this.#getCalls());
-  }
-
-  pushTo(sink: PickSink): boolean {
-    for (const call of this.#getCalls()) {
-      const picks = call.group;
-      if (!picks.pushTo(sink)) {
-        return false;
-      }
-    }
-    return true;
+  /**
+   * The calls made by this script.
+   */
+  get calls(): Call[] {
+    return this.#getCalls();
   }
 
   /**
@@ -175,8 +173,30 @@ export class Gen<T> implements Success<T> {
     return this.#result();
   }
 
-  toMutable(): MutableGen<T> {
-    return new MutableGen(this.#script, this.#getCalls(), this);
+  /**
+   * The replies to the PickRequests sent by the script, in the order they were
+   * sent.
+   */
+  get replies(): Iterable<number> {
+    return allReplies(this.#getCalls());
+  }
+
+  /**
+   * Writes the requests and replies used to generate this value to the given
+   * target.
+   *
+   * (Only includes PickRequests, not calls to other scripts.)
+   *
+   * Returns true if the target accepted every pick.
+   */
+  pushTo(target: PickSink): boolean {
+    for (const call of this.#getCalls()) {
+      const picks = call.group;
+      if (!picks.pushTo(target)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   static mustBuild<T>(arg: Pickable<T>, replies: Iterable<number>): Gen<T> {

@@ -4,15 +4,7 @@ import { filtered } from "./results.ts";
 import { Filtered } from "./pickable.ts";
 
 /**
- * A function that transforms a value, given some picks.
- *
- * (May throw {@link Filtered}.)
- */
-export type ThenFunction<In, Out> = (input: In, pick: PickFunction) => Out;
-
-/**
- * An optional interface that a Pickable can use to give itself a name and set
- * build flags.
+ * An optional interface that a Pickable can use to give itself a name and set flags.
  */
 export interface HasScript<T> extends Pickable<T> {
   /**
@@ -23,21 +15,31 @@ export interface HasScript<T> extends Pickable<T> {
   readonly buildScript: Script<T>;
 }
 
+/**
+ * Flags used to control how a script's pick calls are recorded and replayed.
+ *
+ * (This affects performance when shrinking test output.)
+ */
 export type ScriptOpts = {
   /**
-   * Turns on caching for this script. This will only have an effect if the
-   * script builds values that satisfy `Object.isFrozen`.
+   * Turns on caching for this script's output.
+   *
+   * (Even with this flag on, values that don't satisfy `Object.isFrozen` won't
+   * be cached.)
    */
   readonly cachable?: boolean;
 
   /**
-   * Turns on individual call logging for this script.
+   * Logs (and potentially caches) each pick call that this script makes.
+   *
+   * (Currently this only happens for top-level pick calls, when the script is
+   * run directly.)
    */
   readonly logCalls?: boolean;
 };
 
 /**
- * A Pickable with a name and build options.
+ * Wraps a {@link BuildFunction}, giving it a name and options.
  */
 export class Script<T> implements Pickable<T> {
   readonly #name: string;
@@ -57,18 +59,22 @@ export class Script<T> implements Pickable<T> {
     this.#logCalls = logCalls;
   }
 
+  /** The name used in error messages about this script. */
   get name(): string {
     return this.#name;
   }
 
+  /** If true, the output of this script may be cached. */
   get cachable(): boolean {
     return this.#cachable;
   }
 
+  /** If true, the pick calls made by this script may be logged. */
   get logCalls(): boolean {
     return this.#logCalls;
   }
 
+  /** Returns this script's flags as an object. */
   get opts(): ScriptOpts {
     return {
       cachable: this.#cachable,
@@ -76,6 +82,9 @@ export class Script<T> implements Pickable<T> {
     };
   }
 
+  /**
+   * Calls this script's build function.
+   */
   get directBuild(): BuildFunction<T> {
     return this.#build;
   }

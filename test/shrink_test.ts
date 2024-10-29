@@ -15,7 +15,7 @@ import { Gen } from "@/arbitrary.ts";
 import { CountingTestConsole } from "../src/console.ts";
 
 import { shrink, Shrinker } from "../src/shrink.ts";
-import { generate } from "../src/gen_class.ts";
+import { generate, MutableGen } from "../src/gen_class.ts";
 import { randomPicker } from "../src/random.ts";
 import { onePlayout } from "../src/backtracking.ts";
 import { filtered } from "../src/results.ts";
@@ -183,7 +183,7 @@ describe("Shrinker", () => {
       assert(Script.from(rec).logCalls);
       const seed = Gen.mustBuild(rec, [1, 3, 1, 3, 0, 1, 3, 1, 3, 0]);
       assertEquals(seed.val, { a: "dd", b: "dd" });
-      assertEquals(seed.toMutable().groupKeys, [0, 1]);
+      assertEquals(MutableGen.from(seed).groupKeys, [0, 1]);
 
       const s = new Shrinker(seed, acceptAll);
       assert(s.shrinkTails());
@@ -304,7 +304,7 @@ describe("Shrinker", () => {
       assert(Script.from(rec).logCalls);
       const seed = Gen.mustBuild(rec, [1, 3, 1, 3, 0, 1, 3, 1, 3, 0]);
       assertEquals(seed.val, { a: "dd", b: "dd" });
-      assertEquals(seed.toMutable().groupKeys, [0, 1]);
+      assertEquals(MutableGen.from(seed).groupKeys, [0, 1]);
 
       const s = new Shrinker(seed, acceptAll);
       assert(s.shrinkAllPicks());

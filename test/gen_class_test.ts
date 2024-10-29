@@ -6,7 +6,7 @@ import { Filtered } from "../src/pickable.ts";
 import { PickRequest, PlaybackPicker } from "../src/picks.ts";
 import { keep, replace, snip } from "../src/edits.ts";
 import { Script } from "../src/script_class.ts";
-import { Gen, generate } from "../src/gen_class.ts";
+import { Gen, generate, MutableGen } from "../src/gen_class.ts";
 import { propsFromGen } from "./lib/props.ts";
 import { minPlayout, onePlayout } from "../src/backtracking.ts";
 import { depthFirstPlayouts } from "../src/partial_tracker.ts";
@@ -145,7 +145,7 @@ describe("Gen", () => {
   describe("toMutable", () => {
     it("returns a mutable with the same gen", () => {
       const original = Gen.mustBuild(bit, [1]);
-      const mut = original.toMutable();
+      const mut = MutableGen.from(original);
       assert(mut.gen === original);
     });
   });
@@ -155,7 +155,7 @@ describe("MutableGen", () => {
   describe("tryEdits", () => {
     it("keeps the same gen when there are no edits, for a single-group build", () => {
       const original = Gen.mustBuild(bit, [1]);
-      const mut = original.toMutable();
+      const mut = MutableGen.from(original);
 
       assert(mut.tryEdits(() => keep));
       assert(mut.gen === original);
@@ -166,7 +166,7 @@ describe("MutableGen", () => {
 
     it("keeps the same gen when there are no edits, for a two-group build", () => {
       const original = Gen.mustBuild(twoBits, [0, 0]);
-      const mut = original.toMutable();
+      const mut = MutableGen.from(original);
 
       assert(mut.tryEdits(() => keep));
       assert(mut.gen === original);
@@ -177,7 +177,7 @@ describe("MutableGen", () => {
 
     it("can edit a single-step build", () => {
       const original = Gen.mustBuild(bit, [1]);
-      const mut = original.toMutable();
+      const mut = MutableGen.from(original);
       assert(mut.tryEdits(() => snip));
       assertEquals(propsFromGen(mut.gen), {
         name: "bit",
@@ -191,7 +191,7 @@ describe("MutableGen", () => {
       const original = Gen.mustBuild(twoBits, [1, 1]);
       assertEquals(original.val, `(1, 1)`);
 
-      const mut = original.toMutable();
+      const mut = MutableGen.from(original);
       assert(mut.tryEdits((i) => i === 0 ? snip : keep));
       assertEquals(propsFromGen(mut.gen), {
         name: "twoBits",
@@ -205,7 +205,7 @@ describe("MutableGen", () => {
       const original = Gen.mustBuild(twoBits, [1, 1]);
       assertEquals(original.val, `(1, 1)`);
 
-      const mut = original.toMutable();
+      const mut = MutableGen.from(original);
       assert(mut.tryEdits((i) => i === 1 ? snip : keep));
       assertEquals(propsFromGen(mut.gen), {
         name: "twoBits",
@@ -234,7 +234,7 @@ describe("MutableGen", () => {
 
     it("fails if editing the first group fails", () => {
       const original = Gen.mustBuild(evenDoubles, [2, 2]);
-      const mut = original.toMutable();
+      const mut = MutableGen.from(original);
       assertFalse(
         mut.tryEdits((i) => (i === 0) ? () => replace(0) : keep),
       );
@@ -332,7 +332,7 @@ describe("generate", () => {
           replies: expectedReplies,
         });
         assert(gen !== filtered);
-        assertEquals(gen.toMutable().groupKeys, [0, 1]);
+        assertEquals(MutableGen.from(gen).groupKeys, [0, 1]);
       }
       assertEquals(generate(twoBits, playouts), filtered);
     });
@@ -353,7 +353,7 @@ describe("generate", () => {
         replies: [1, 0],
       });
       assert(gen !== filtered);
-      assertEquals(gen.toMutable().groupKeys, [0, 1]);
+      assertEquals(MutableGen.from(gen).groupKeys, [0, 1]);
     });
 
     it("regenerates a result that can't be cached", () => {

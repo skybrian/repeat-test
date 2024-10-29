@@ -1,10 +1,11 @@
-import type { Gen, MutableGen } from "./gen_class.ts";
+import type { Gen } from "./gen_class.ts";
 import type { GroupKey, MultiEdit } from "./edits.ts";
 import type { SystemConsole } from "./console.ts";
 
 import { assert } from "@std/assert";
 import { removeRange, replaceOnce, trimGroup } from "./edits.ts";
 import { nullConsole } from "./console.ts";
+import { MutableGen } from "./gen_class.ts";
 
 /**
  * Given a generated value, returns a smaller one that satisfies a predicate.
@@ -29,7 +30,7 @@ export class Shrinker<T> {
     private readonly test: (arg: T) => boolean,
     console?: SystemConsole,
   ) {
-    this.seed = seed.toMutable();
+    this.seed = MutableGen.from(seed);
     this.console = console ?? nullConsole;
   }
 

@@ -6,6 +6,7 @@ import * as dom from "@/doms.ts";
 
 import { assertEncoding, assertRoundTrip } from "../lib/asserts.ts";
 import { intRange, invalidIntRange, minMaxVal } from "../lib/ranges.ts";
+import { MutableGen } from "../../src/gen_class.ts";
 
 describe("of", () => {
   describe("for a single-item domain", () => {
@@ -171,7 +172,7 @@ describe("array", () => {
     it("has one more group than the size of the array", () => {
       const gen = arr.regenerate([1, 2, 3]);
       assert(gen.ok);
-      assertEquals(gen.toMutable().groupKeys.length, gen.val.length + 1);
+      assertEquals(MutableGen.from(gen).groupKeys.length, gen.val.length + 1);
     });
   });
 
