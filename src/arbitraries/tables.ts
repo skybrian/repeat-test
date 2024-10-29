@@ -2,13 +2,13 @@ import type { Arbitrary, PickFunction, RecordShape } from "@/arbitrary.ts";
 import type { ArrayOpts, TableOpts } from "../options.ts";
 
 import { assert } from "@std/assert/assert";
-import { Script } from "@/arbitrary.ts";
 import { Domain, Jar } from "@/domain.ts";
 import { PickRequest } from "../picks.ts";
 import { parseArrayOpts } from "../options.ts";
 import { generateAll } from "../ordered.ts";
 import { PickTree } from "../pick_tree.ts";
 import { arrayLengthBiases } from "../math.ts";
+import { Script } from "../script_class.ts";
 
 import * as arb from "./basics.ts";
 

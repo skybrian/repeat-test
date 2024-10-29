@@ -4,7 +4,7 @@ import type { GenProps } from "./lib/props.ts";
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
 
-import { Arbitrary, Filtered, Script } from "@/arbitrary.ts";
+import { Arbitrary, Filtered } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
 
 import { alwaysPick, PickBuffer, PickRequest } from "../src/picks.ts";
@@ -18,6 +18,7 @@ import {
   responderFromReplies,
   usePicks,
 } from "../src/build.ts";
+import { Script } from "../src/script_class.ts";
 
 const bitReq = PickRequest.bit;
 

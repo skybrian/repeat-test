@@ -1,4 +1,4 @@
-import { type Pickable, Script } from "@/arbitrary.ts";
+import type { Pickable } from "@/arbitrary.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals } from "@std/assert";
@@ -16,6 +16,7 @@ import {
 
 import { isWellFormed } from "../../src/workarounds.ts";
 
+import { Script } from "../../src/script_class.ts";
 import { takeAll } from "../../src/ordered.ts";
 
 function assertCharCodeRange(

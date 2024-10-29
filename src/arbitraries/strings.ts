@@ -2,10 +2,11 @@ import type { PickFunction, RandomSource } from "@/arbitrary.ts";
 import type { ArrayOpts } from "../options.ts";
 
 import { assert } from "@std/assert/assert";
-import { Arbitrary, PickRequest, Script } from "@/arbitrary.ts";
+import { Arbitrary, PickRequest } from "@/arbitrary.ts";
 import * as arb from "./basics.ts";
 import { makeItemFunction, off } from "./arrays.ts";
 import { parseArrayOpts } from "../options.ts";
+import { Script } from "../script_class.ts";
 import { pickToAscii } from "../ascii.ts";
 import {
   supplementalPlaneStart,

@@ -1,10 +1,11 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals } from "@std/assert";
 
-import { PickRequest, Script } from "@/arbitrary.ts";
+import { PickRequest } from "@/arbitrary.ts";
 import { CallBuffer } from "../src/calls.ts";
 
 import { replay } from "../src/replay.ts";
+import { Script } from "../src/script_class.ts";
 
 const roll = Script.make("roll", (pick) => {
   return pick(new PickRequest(1, 6));

@@ -25,7 +25,7 @@ export function propsFromGen<T>(
 
   const out: GenProps<T> = {
     val: gen.val,
-    name: gen.script.name,
+    name: gen.sourceName,
     reqs: picks.reqs,
     replies: picks.replies,
   };

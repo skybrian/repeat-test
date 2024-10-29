@@ -1,6 +1,5 @@
 import type { RecordShape } from "./options.ts";
 import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
-import type { HasScript } from "./script_class.ts";
 
 import { assert } from "@std/assert";
 
@@ -33,7 +32,7 @@ function checkRandomGenerate(script: Script<unknown>) {
  * Every Arbitrary contains a {@link default} value. Some Arbitraries define
  * {@link maxSize}, providing an upper bound on how many values they can generate.
  */
-export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
+export class Arbitrary<T> implements Pickable<T> {
   readonly #script: Script<T>;
 
   readonly #examples: T[] | undefined;
@@ -77,7 +76,7 @@ export class Arbitrary<T> implements HasScript<T>, Pickable<T> {
   /**
    * Returns the build script for this Arbitrary.
    *
-   * (Satisfies the {@link HasScript} interface. Not normally called directly.)
+   * (Satisfies the HasScript interface. Not normally called directly.)
    */
   get buildScript(): Script<T> {
     return this.#script;

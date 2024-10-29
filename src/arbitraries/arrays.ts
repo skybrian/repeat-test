@@ -1,9 +1,10 @@
 import type { Pickable, PickFunction } from "@/arbitrary.ts";
 import type { ArrayOpts } from "../options.ts";
 
-import { Arbitrary, Script } from "@/arbitrary.ts";
+import { Arbitrary } from "@/arbitrary.ts";
 import { parseArrayOpts } from "../options.ts";
 import { arrayLengthBiases } from "../math.ts";
+import { Script } from "../script_class.ts";
 import { biased } from "./basics.ts";
 
 export const off = Symbol("off");

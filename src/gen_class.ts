@@ -38,7 +38,7 @@ export class MutableGen<T> {
   #gen: Gen<T>;
 
   private constructor(origin: Gen<T>) {
-    this.#script = origin.script;
+    this.#script = scriptFromGen(origin);
     this.#calls = callsFromGen(origin);
     this.#gen = origin;
   }
@@ -148,9 +148,11 @@ export class Gen<T> implements Success<T> {
     return true;
   }
 
-  /** The script that produuced this value. */
-  get script(): Script<T> {
-    return this.#script;
+  /**
+   * The name of whatever produced this value, for use in error messages.
+   */
+  get sourceName(): string {
+    return this.#script.name;
   }
 
   /**
@@ -219,12 +221,17 @@ export class Gen<T> implements Success<T> {
     return new Gen(script, getCalls, getResult);
   }
 
+  private static scriptFromGen<T>(gen: Gen<T>): Script<T> {
+    return gen.#script;
+  }
+
   private static callsFromGen(gen: Gen<unknown>): Call[] {
     return gen.#getCalls();
   }
 }
 
 const makeGen = Gen["makeGen"];
+const scriptFromGen = Gen["scriptFromGen"];
 const callsFromGen = Gen["callsFromGen"];
 
 export type GenerateOpts = {

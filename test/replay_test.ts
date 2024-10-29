@@ -1,10 +1,11 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
 
-import { Filtered, PickRequest, Script } from "@/arbitrary.ts";
+import { Filtered, PickRequest } from "@/arbitrary.ts";
 import { filtered } from "../src/results.ts";
 import { keep, replaceOnce } from "../src/edits.ts";
 import { CallBuffer } from "../src/calls.ts";
+import { Script } from "../src/script_class.ts";
 
 import {
   replay,
