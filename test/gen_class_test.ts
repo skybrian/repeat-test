@@ -5,7 +5,7 @@ import { filtered } from "../src/results.ts";
 import { Filtered } from "../src/pickable.ts";
 import { PickRequest, PlaybackPicker } from "../src/picks.ts";
 import { keep, replace, snip } from "../src/edits.ts";
-import { Script } from "../src/script_class.ts";
+import { neverReturns, Script } from "../src/script_class.ts";
 import { Gen, generate, MutableGen } from "../src/gen_class.ts";
 import { propsFromGen } from "./lib/props.ts";
 import { minPlayout, onePlayout } from "../src/backtracking.ts";
@@ -49,7 +49,7 @@ describe("Gen", () => {
     });
     it("fails when the script never returns", () => {
       assertEquals(
-        Gen.build(Script.neverReturns, []),
+        Gen.build(neverReturns, []),
         {
           ok: false,
           message: "can't build 'neverReturns': picks not accepted",
@@ -98,7 +98,7 @@ describe("Gen", () => {
       const firstPickFiltered = Script.make(
         "firstPickFiltered",
         (pick) => {
-          const a = pick(Script.neverReturns);
+          const a = pick(neverReturns);
           const b = pick(PickRequest.bit);
           return `(${a}, ${b})`;
         },

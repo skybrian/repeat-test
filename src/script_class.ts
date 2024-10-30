@@ -163,9 +163,9 @@ export class Script<T> implements Pickable<T> {
       return Script.make("untitled", arg.directBuild);
     }
   }
-
-  /** A script that rejects all picks. */
-  static neverReturns = Script.make("neverReturns", () => {
-    throw new Filtered("neverReturns rejects all picks");
-  });
 }
+
+/** A script that rejects all picks. */
+export const neverReturns = Script.make("neverReturns", () => {
+  throw new Filtered("neverReturns rejects all picks");
+});

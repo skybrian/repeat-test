@@ -3,7 +3,7 @@ import type { PickLogger } from "./build.ts";
 
 import { assert } from "@std/assert";
 import { PickBuffer, PickList } from "./picks.ts";
-import { Script } from "./script_class.ts";
+import { neverReturns, Script } from "./script_class.ts";
 
 export const regen = Symbol("regen");
 
@@ -27,7 +27,7 @@ export class Call<T = unknown> {
   }
 
   static none = new Call(
-    Script.neverReturns,
+    neverReturns,
     regen,
     PickList.empty,
   );
