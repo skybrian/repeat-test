@@ -4,7 +4,7 @@
  * The build function should be retried if different picks are available.
  */
 export class Filtered extends Error {
-  readonly ok = false;
+  /** Creates an error with the given message. */
   constructor(msg: string) {
     super(msg);
   }
@@ -72,7 +72,6 @@ export type BuildFunction<T> = (pick: PickFunction) => T;
  * Alternatively, a set of possible values to pick from.
  */
 export type Pickable<T> = {
-
   /**
    * Builds a value from the given source of picks.
    *

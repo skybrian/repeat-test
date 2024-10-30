@@ -191,14 +191,12 @@ export class Gen<T> implements Success<T> {
     return true;
   }
 
-  static mustBuild<T>(arg: Pickable<T>, replies: Iterable<number>): Gen<T> {
-    const gen = Gen.build(arg, replies);
-    if (!gen.ok) {
-      throw new Error(gen.message);
-    }
-    return gen;
-  }
-
+  /**
+   * Builds a pickable with the given reply to each pick request.
+   *
+   * Returns a {@link Failure} if the picks aren't accepted. Each reply must be
+   * valid for the corresponding request, and the number of replies must match.
+   */
   static build<T>(
     arg: Pickable<T>,
     replies: Iterable<number>,
@@ -213,6 +211,21 @@ export class Gen<T> implements Success<T> {
     return gen;
   }
 
+  /**
+   * Builds a pickable with the given reply to each pick request.
+   *
+   * This is just like {@link build} except that it throws an Error if the
+   * picks aren't accepted.
+   */
+  static mustBuild<T>(arg: Pickable<T>, replies: Iterable<number>): Gen<T> {
+    const gen = Gen.build(arg, replies);
+    if (!gen.ok) {
+      throw new Error(gen.message);
+    }
+    return gen;
+  }
+
+  /** Private. */
   private static makeGen<T>(
     script: Script<T>,
     getCalls: () => Call[],
@@ -221,10 +234,12 @@ export class Gen<T> implements Success<T> {
     return new Gen(script, getCalls, getResult);
   }
 
+  /** Private. */
   private static scriptFromGen<T>(gen: Gen<T>): Script<T> {
     return gen.#script;
   }
 
+  /** Private. */
   private static callsFromGen(gen: Gen<unknown>): Call[] {
     return gen.#getCalls();
   }
