@@ -360,4 +360,31 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
 
     return new Arbitrary(build, { maxSize, dryRun: false });
   }
+
+  /**
+   * Returns an Arbitrary that stands for another Arbitrary, which might be
+   * defined later.
+   *
+   * Since the initialization is lazy, it's useful for generating examples of
+   * recursive types.
+   *
+   * Usually, the return type must be declared when definining an alias, because
+   * TypeScript's type inference doesn't work for recursive types.
+   */
+  static alias<T>(init: () => Arbitrary<T>): Arbitrary<T> {
+    let cache: Arbitrary<T> | undefined = undefined;
+
+    function target(): Arbitrary<T> {
+      if (cache === undefined) {
+        cache = init();
+      }
+      return cache;
+    }
+
+    const script = Script.make("alias", (pick) => {
+      return target().directBuild(pick);
+    });
+
+    return new Arbitrary(script, { dryRun: false });
+  }
 }

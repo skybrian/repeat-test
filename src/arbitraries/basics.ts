@@ -19,6 +19,20 @@ export function of<T>(...values: T[]): Arbitrary<T> {
   return Arbitrary.of(...values);
 }
 
+/**
+ * Returns an Arbitrary that stands for another Arbitrary, which might be
+ * defined later.
+ *
+ * Since the initialization is lazy, it's useful for generating examples of
+ * recursive types.
+ *
+ * Usually, the return type must be declared when definining an alias, because
+ * TypeScript's type inference doesn't work for recursive types.
+ */
+export function alias<T>(init: () => Arbitrary<T>): Arbitrary<T> {
+  return Arbitrary.alias(init);
+}
+
 /** Returns an Arbitrary that generates a boolean. */
 export const boolean: () => Arbitrary<boolean> = Arbitrary.of(false, true).with(
   {

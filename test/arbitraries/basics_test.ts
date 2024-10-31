@@ -4,12 +4,28 @@ import { assertGenerated, assertValues } from "../lib/asserts.ts";
 
 import { filtered } from "../../src/results.ts";
 import { repeatTest } from "@/runner.ts";
-import { Arbitrary } from "@/arbitrary.ts";
+import { Arbitrary, PickRequest } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
 import { generate } from "../../src/gen_class.ts";
 import { onePlayout } from "../../src/backtracking.ts";
 import { randomPicker } from "../../src/random.ts";
 import { generateDefault } from "../../src/ordered.ts";
+import { usePicks } from "../../src/build.ts";
+
+describe("alias", () => {
+  const recurse: Arbitrary<number> = arb.alias(() => depth);
+
+  const depth = Arbitrary.from((pick) => {
+    if (pick(PickRequest.bit) === 0) {
+      return 0;
+    }
+    return pick(recurse) + 1;
+  });
+
+  it("generates a value", () => {
+    assertEquals(depth.directBuild(usePicks(1, 1, 1, 0)), 3);
+  });
+});
 
 describe("boolean", () => {
   it("is sometimes true", () => {
