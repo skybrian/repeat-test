@@ -59,24 +59,30 @@ export type RecordShape<T> = {
   [K in keyof T]: Domain<T[K]>;
 };
 
+export type RecordOpts = {
+  /** Indicates that extra fields will be ignored (not parsed). */
+  strip?: boolean;
+};
+
 /**
  * Creates a Domain that accepts records with matching fields.
  */
 export function record<T extends Record<string, unknown>>(
   fields: RecordShape<T>,
+  opts?: RecordOpts,
 ): Domain<T> {
-  const fieldKeys = Object.keys(fields) as (keyof T & string)[];
+  const strip = opts?.strip ?? false;
   const gen = arb.record(fields);
 
   return new Domain(
     gen,
     (val, sendErr) => {
-      if (!checkRecordKeys(val, fields, sendErr)) {
+      if (!checkRecordKeys(val, fields, sendErr, { strip })) {
         return undefined;
       }
 
       const out: number[] = [];
-      for (const key of fieldKeys) {
+      for (const key of Object.keys(fields)) {
         const fieldVal = val[key as keyof typeof val];
         const picks = fields[key].innerPickify(fieldVal, sendErr, key);
         if (picks === undefined) return undefined;
@@ -144,12 +150,18 @@ export function oneOf<T>(...cases: Domain<T>[]): Domain<T> {
   const gen = arb.oneOf(...cases);
 
   return new Domain(gen, (val, sendErr) => {
+    const errors: string[] = [];
     for (const [i, c] of cases.entries()) {
-      const ignore = () => {};
-      const picks = c.innerPickify(val, ignore);
+      const picks = c.innerPickify(val, (err, loc) => {
+        if (loc) {
+          errors.push(`  ${loc.at}: ${err}\n`);
+        } else {
+          errors.push(`  ${err}\n`);
+        }
+      });
       if (picks !== undefined) return [i, ...picks];
     }
-    sendErr("no case matched");
+    sendErr(`no case matched:\n${errors.join("")}`);
     return undefined;
   });
 }

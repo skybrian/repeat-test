@@ -1,0 +1,2344 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "name": "PickRequestOpts",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/picks.ts",
+        "line": 73,
+        "col": 0,
+        "byteIndex": 1842
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "Options on a {@link PickRequest}."
+      },
+      "kind": "typeAlias",
+      "typeAliasDef": {
+        "tsType": {
+          "repr": "",
+          "kind": "typeLiteral",
+          "typeLiteral": {
+            "constructors": [],
+            "methods": [],
+            "properties": [
+              {
+                "name": "bias",
+                "jsDoc": {
+                  "doc": "Overrides the random distribution for this request. The output should be in\nrange for the request."
+                },
+                "location": {
+                  "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/picks.ts",
+                  "line": 78,
+                  "col": 2,
+                  "byteIndex": 1997
+                },
+                "params": [],
+                "computed": false,
+                "optional": true,
+                "tsType": {
+                  "repr": "RandomPicker",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": null,
+                    "typeName": "RandomPicker"
+                  }
+                },
+                "typeParams": []
+              }
+            ],
+            "callSignatures": [],
+            "indexSignatures": []
+          }
+        },
+        "typeParams": []
+      }
+    },
+    {
+      "name": "RandomPicker",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/picks.ts",
+        "line": 46,
+        "col": 0,
+        "byteIndex": 1092
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "Picks an integer, given a source of random numbers.\n\nThe range is unspecified (given by context)."
+      },
+      "kind": "typeAlias",
+      "typeAliasDef": {
+        "tsType": {
+          "repr": "",
+          "kind": "fnOrConstructor",
+          "fnOrConstructor": {
+            "constructor": false,
+            "tsType": {
+              "repr": "number",
+              "kind": "keyword",
+              "keyword": "number"
+            },
+            "params": [
+              {
+                "kind": "identifier",
+                "name": "source",
+                "optional": false,
+                "tsType": {
+                  "repr": "RandomSource",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": null,
+                    "typeName": "RandomSource"
+                  }
+                }
+              }
+            ],
+            "typeParams": []
+          }
+        },
+        "typeParams": []
+      }
+    },
+    {
+      "name": "RandomSource",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/picks.ts",
+        "line": 4,
+        "col": 0,
+        "byteIndex": 54
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "A source of random signed 32-bit integers."
+      },
+      "kind": "typeAlias",
+      "typeAliasDef": {
+        "tsType": {
+          "repr": "",
+          "kind": "fnOrConstructor",
+          "fnOrConstructor": {
+            "constructor": false,
+            "tsType": {
+              "repr": "number",
+              "kind": "keyword",
+              "keyword": "number"
+            },
+            "params": [],
+            "typeParams": []
+          }
+        },
+        "typeParams": []
+      }
+    },
+    {
+      "name": "Generated",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+        "line": 168,
+        "col": 0,
+        "byteIndex": 4827
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "A generated value and the picks that were used to generate it."
+      },
+      "kind": "typeAlias",
+      "typeAliasDef": {
+        "tsType": {
+          "repr": "",
+          "kind": "typeLiteral",
+          "typeLiteral": {
+            "constructors": [],
+            "methods": [],
+            "properties": [
+              {
+                "name": "ok",
+                "location": {
+                  "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+                  "line": 169,
+                  "col": 2,
+                  "byteIndex": 4858
+                },
+                "params": [],
+                "computed": false,
+                "optional": false,
+                "tsType": {
+                  "repr": "true",
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "boolean",
+                    "boolean": true
+                  }
+                },
+                "typeParams": []
+              },
+              {
+                "name": "reqs",
+                "location": {
+                  "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+                  "line": 170,
+                  "col": 2,
+                  "byteIndex": 4870
+                },
+                "params": [],
+                "computed": false,
+                "optional": false,
+                "tsType": {
+                  "repr": "",
+                  "kind": "array",
+                  "array": {
+                    "repr": "PickRequest",
+                    "kind": "typeRef",
+                    "typeRef": {
+                      "typeParams": null,
+                      "typeName": "PickRequest"
+                    }
+                  }
+                },
+                "typeParams": []
+              },
+              {
+                "name": "replies",
+                "location": {
+                  "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+                  "line": 171,
+                  "col": 2,
+                  "byteIndex": 4893
+                },
+                "params": [],
+                "computed": false,
+                "optional": false,
+                "tsType": {
+                  "repr": "",
+                  "kind": "array",
+                  "array": {
+                    "repr": "number",
+                    "kind": "keyword",
+                    "keyword": "number"
+                  }
+                },
+                "typeParams": []
+              },
+              {
+                "name": "val",
+                "location": {
+                  "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+                  "line": 172,
+                  "col": 2,
+                  "byteIndex": 4914
+                },
+                "params": [],
+                "computed": false,
+                "optional": false,
+                "tsType": {
+                  "repr": "T",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": null,
+                    "typeName": "T"
+                  }
+                },
+                "typeParams": []
+              }
+            ],
+            "callSignatures": [],
+            "indexSignatures": []
+          }
+        },
+        "typeParams": [
+          {
+            "name": "T"
+          }
+        ]
+      }
+    },
+    {
+      "name": "IntPickerMiddleware",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+        "line": 33,
+        "col": 0,
+        "byteIndex": 1025
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "Picks an integer in the given range.\n\nA minimum implementation will just call next(), but it can also substitute a\ndifferent PickRequest, such as one with a narrower range."
+      },
+      "kind": "typeAlias",
+      "typeAliasDef": {
+        "tsType": {
+          "repr": "",
+          "kind": "fnOrConstructor",
+          "fnOrConstructor": {
+            "constructor": false,
+            "tsType": {
+              "repr": "number",
+              "kind": "keyword",
+              "keyword": "number"
+            },
+            "params": [
+              {
+                "kind": "identifier",
+                "name": "req",
+                "optional": false,
+                "tsType": {
+                  "repr": "PickRequest",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": null,
+                    "typeName": "PickRequest"
+                  }
+                }
+              },
+              {
+                "kind": "identifier",
+                "name": "next",
+                "optional": false,
+                "tsType": {
+                  "repr": "",
+                  "kind": "fnOrConstructor",
+                  "fnOrConstructor": {
+                    "constructor": false,
+                    "tsType": {
+                      "repr": "number",
+                      "kind": "keyword",
+                      "keyword": "number"
+                    },
+                    "params": [
+                      {
+                        "kind": "identifier",
+                        "name": "req",
+                        "optional": false,
+                        "tsType": {
+                          "repr": "PickRequest",
+                          "kind": "typeRef",
+                          "typeRef": {
+                            "typeParams": null,
+                            "typeName": "PickRequest"
+                          }
+                        }
+                      }
+                    ],
+                    "typeParams": []
+                  }
+                }
+              }
+            ],
+            "typeParams": []
+          }
+        },
+        "typeParams": []
+      }
+    },
+    {
+      "name": "PickCallback",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+        "line": 12,
+        "col": 0,
+        "byteIndex": 388
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "A function that generates a value, given some picks.\n\nThe result should be deterministic, depending only on what `pick` returns.\n\nIt may throw {@link Pruned} to indicate that generation failed for the\ncurrent pick sequence. (For example, due to filtering.)"
+      },
+      "kind": "typeAlias",
+      "typeAliasDef": {
+        "tsType": {
+          "repr": "",
+          "kind": "fnOrConstructor",
+          "fnOrConstructor": {
+            "constructor": false,
+            "tsType": {
+              "repr": "T",
+              "kind": "typeRef",
+              "typeRef": {
+                "typeParams": null,
+                "typeName": "T"
+              }
+            },
+            "params": [
+              {
+                "kind": "identifier",
+                "name": "pick",
+                "optional": false,
+                "tsType": {
+                  "repr": "PickFunction",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": null,
+                    "typeName": "PickFunction"
+                  }
+                }
+              }
+            ],
+            "typeParams": []
+          }
+        },
+        "typeParams": [
+          {
+            "name": "T"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PickFunction",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+        "line": 70,
+        "col": 0,
+        "byteIndex": 1965
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "Generates a value given a PickRequest, an Arbitrary, or some other PickSet.\n\nThrows {@link Pruned} if no value can be generated, perhaps due to filtering."
+      },
+      "kind": "interface",
+      "interfaceDef": {
+        "extends": [],
+        "constructors": [],
+        "methods": [],
+        "properties": [],
+        "callSignatures": [
+          {
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+              "line": 71,
+              "col": 2,
+              "byteIndex": 1999
+            },
+            "params": [
+              {
+                "kind": "identifier",
+                "name": "req",
+                "optional": false,
+                "tsType": {
+                  "repr": "PickRequest",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": null,
+                    "typeName": "PickRequest"
+                  }
+                }
+              }
+            ],
+            "tsType": {
+              "repr": "number",
+              "kind": "keyword",
+              "keyword": "number"
+            },
+            "typeParams": []
+          },
+          {
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+              "line": 72,
+              "col": 2,
+              "byteIndex": 2029
+            },
+            "params": [
+              {
+                "kind": "identifier",
+                "name": "req",
+                "optional": false,
+                "tsType": {
+                  "repr": "PickSet",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": [
+                      {
+                        "repr": "T",
+                        "kind": "typeRef",
+                        "typeRef": {
+                          "typeParams": null,
+                          "typeName": "T"
+                        }
+                      }
+                    ],
+                    "typeName": "PickSet"
+                  }
+                }
+              },
+              {
+                "kind": "identifier",
+                "name": "opts",
+                "optional": true,
+                "tsType": {
+                  "repr": "PickFunctionOpts",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": [
+                      {
+                        "repr": "T",
+                        "kind": "typeRef",
+                        "typeRef": {
+                          "typeParams": null,
+                          "typeName": "T"
+                        }
+                      }
+                    ],
+                    "typeName": "PickFunctionOpts"
+                  }
+                }
+              }
+            ],
+            "tsType": {
+              "repr": "T",
+              "kind": "typeRef",
+              "typeRef": {
+                "typeParams": null,
+                "typeName": "T"
+              }
+            },
+            "typeParams": [
+              {
+                "name": "T"
+              }
+            ]
+          }
+        ],
+        "indexSignatures": [],
+        "typeParams": []
+      }
+    },
+    {
+      "name": "PickFunctionOpts",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+        "line": 41,
+        "col": 0,
+        "byteIndex": 1178
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "Options for {@link PickFunction}."
+      },
+      "kind": "typeAlias",
+      "typeAliasDef": {
+        "tsType": {
+          "repr": "",
+          "kind": "typeLiteral",
+          "typeLiteral": {
+            "constructors": [],
+            "methods": [],
+            "properties": [
+              {
+                "name": "middle",
+                "jsDoc": {
+                  "doc": "A function that initializes middleware to respond to PickRequests.\n\nMultiple attempts may be needed to generate a value. The middle() function\nwill be called once before each attempt."
+                },
+                "location": {
+                  "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+                  "line": 48,
+                  "col": 2,
+                  "byteIndex": 1431
+                },
+                "params": [],
+                "computed": false,
+                "optional": true,
+                "tsType": {
+                  "repr": "",
+                  "kind": "fnOrConstructor",
+                  "fnOrConstructor": {
+                    "constructor": false,
+                    "tsType": {
+                      "repr": "IntPickerMiddleware",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": null,
+                        "typeName": "IntPickerMiddleware"
+                      }
+                    },
+                    "params": [],
+                    "typeParams": []
+                  }
+                },
+                "typeParams": []
+              },
+              {
+                "name": "accept",
+                "jsDoc": {
+                  "doc": "Filters the generated value.\n\nIf it returns false, the pick function may either try a different value or\nthrow {@link Pruned}."
+                },
+                "location": {
+                  "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+                  "line": 56,
+                  "col": 2,
+                  "byteIndex": 1628
+                },
+                "params": [],
+                "computed": false,
+                "optional": true,
+                "tsType": {
+                  "repr": "",
+                  "kind": "fnOrConstructor",
+                  "fnOrConstructor": {
+                    "constructor": false,
+                    "tsType": {
+                      "repr": "boolean",
+                      "kind": "keyword",
+                      "keyword": "boolean"
+                    },
+                    "params": [
+                      {
+                        "kind": "identifier",
+                        "name": "val",
+                        "optional": false,
+                        "tsType": {
+                          "repr": "T",
+                          "kind": "typeRef",
+                          "typeRef": {
+                            "typeParams": null,
+                            "typeName": "T"
+                          }
+                        }
+                      }
+                    ],
+                    "typeParams": []
+                  }
+                },
+                "typeParams": []
+              },
+              {
+                "name": "maxTries",
+                "jsDoc": {
+                  "doc": "The maximum number of times to try to generate a value when filtering.\n(Default: 1000.)"
+                },
+                "location": {
+                  "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+                  "line": 62,
+                  "col": 2,
+                  "byteIndex": 1771
+                },
+                "params": [],
+                "computed": false,
+                "optional": true,
+                "tsType": {
+                  "repr": "number",
+                  "kind": "keyword",
+                  "keyword": "number"
+                },
+                "typeParams": []
+              }
+            ],
+            "callSignatures": [],
+            "indexSignatures": []
+          }
+        },
+        "typeParams": [
+          {
+            "name": "T"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PickSet",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+        "line": 20,
+        "col": 0,
+        "byteIndex": 598
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "A set of possible values that may be generated.\n\n(Or perhaps a multiset. PickSets may generate the same value in more than one\nway.)"
+      },
+      "kind": "interface",
+      "interfaceDef": {
+        "extends": [],
+        "constructors": [],
+        "methods": [],
+        "properties": [
+          {
+            "name": "label",
+            "jsDoc": {
+              "doc": "A short label to use in error messsages about this PickSet"
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+              "line": 22,
+              "col": 2,
+              "byteIndex": 698
+            },
+            "params": [],
+            "readonly": true,
+            "computed": false,
+            "optional": false,
+            "tsType": {
+              "repr": "string",
+              "kind": "keyword",
+              "keyword": "string"
+            },
+            "typeParams": []
+          },
+          {
+            "name": "generateFrom",
+            "jsDoc": {
+              "doc": "Generates a member of this set, given a source of picks."
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/generated.ts",
+              "line": 24,
+              "col": 2,
+              "byteIndex": 790
+            },
+            "params": [],
+            "readonly": true,
+            "computed": false,
+            "optional": false,
+            "tsType": {
+              "repr": "PickCallback",
+              "kind": "typeRef",
+              "typeRef": {
+                "typeParams": [
+                  {
+                    "repr": "T",
+                    "kind": "typeRef",
+                    "typeRef": {
+                      "typeParams": null,
+                      "typeName": "T"
+                    }
+                  }
+                ],
+                "typeName": "PickCallback"
+              }
+            },
+            "typeParams": []
+          }
+        ],
+        "callSignatures": [],
+        "indexSignatures": [],
+        "typeParams": [
+          {
+            "name": "T"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RecordShape",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/options.ts",
+        "line": 16,
+        "col": 0,
+        "byteIndex": 436
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "Specifies a record to be generated.\n\nEach field will be independently generated."
+      },
+      "kind": "typeAlias",
+      "typeAliasDef": {
+        "tsType": {
+          "repr": "",
+          "kind": "mapped",
+          "mappedType": {
+            "typeParam": {
+              "name": "K",
+              "constraint": {
+                "repr": "",
+                "kind": "typeOperator",
+                "typeOperator": {
+                  "operator": "keyof",
+                  "tsType": {
+                    "repr": "T",
+                    "kind": "typeRef",
+                    "typeRef": {
+                      "typeParams": null,
+                      "typeName": "T"
+                    }
+                  }
+                }
+              }
+            },
+            "tsType": {
+              "repr": "PickSet",
+              "kind": "typeRef",
+              "typeRef": {
+                "typeParams": [
+                  {
+                    "repr": "",
+                    "kind": "indexedAccess",
+                    "indexedAccess": {
+                      "readonly": false,
+                      "objType": {
+                        "repr": "T",
+                        "kind": "typeRef",
+                        "typeRef": {
+                          "typeParams": null,
+                          "typeName": "T"
+                        }
+                      },
+                      "indexType": {
+                        "repr": "K",
+                        "kind": "typeRef",
+                        "typeRef": {
+                          "typeParams": null,
+                          "typeName": "K"
+                        }
+                      }
+                    }
+                  }
+                ],
+                "typeName": "PickSet"
+              }
+            }
+          }
+        },
+        "typeParams": [
+          {
+            "name": "T"
+          }
+        ]
+      }
+    },
+    {
+      "name": "biasedBitRequest",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/picks.ts",
+        "line": 148,
+        "col": 0,
+        "byteIndex": 3888
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "Creates a PickRequest where {@link PickRequest.random} chooses 0 or 1\nwith the given probability.\n",
+        "tags": [
+          {
+            "kind": "param",
+            "name": "probOne",
+            "doc": "The probability of picking 1."
+          }
+        ]
+      },
+      "kind": "function",
+      "functionDef": {
+        "params": [
+          {
+            "kind": "identifier",
+            "name": "probOne",
+            "optional": false,
+            "tsType": {
+              "repr": "number",
+              "kind": "keyword",
+              "keyword": "number"
+            }
+          }
+        ],
+        "returnType": {
+          "repr": "PickRequest",
+          "kind": "typeRef",
+          "typeRef": {
+            "typeParams": null,
+            "typeName": "PickRequest"
+          }
+        },
+        "hasBody": true,
+        "isAsync": false,
+        "isGenerator": false,
+        "typeParams": []
+      }
+    },
+    {
+      "name": "PickRequest",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/picks.ts",
+        "line": 90,
+        "col": 0,
+        "byteIndex": 2296
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "Requests a safe, non-negative integer in a given range.\n\nThe reply may be any number within range, chosen either deterministically or\nrandomly.\n\nWhen picking randomly, the {@link random} function implements the requested\nprobability distribution."
+      },
+      "kind": "class",
+      "classDef": {
+        "isAbstract": false,
+        "constructors": [
+          {
+            "jsDoc": {
+              "doc": "Constructs a request an integer in a given range.\n\nThe range must be over non-negative integers and have at at least one\nchoice: min <= max.\n\nIf no bias is provided, {@link random} implements a uniform distribution."
+            },
+            "accessibility": null,
+            "hasBody": true,
+            "name": "constructor",
+            "params": [
+              {
+                "kind": "identifier",
+                "name": "min",
+                "optional": false,
+                "tsType": {
+                  "repr": "number",
+                  "kind": "keyword",
+                  "keyword": "number"
+                },
+                "readonly": true
+              },
+              {
+                "kind": "identifier",
+                "name": "max",
+                "optional": false,
+                "tsType": {
+                  "repr": "number",
+                  "kind": "keyword",
+                  "keyword": "number"
+                },
+                "readonly": true
+              },
+              {
+                "kind": "identifier",
+                "name": "opts",
+                "optional": true,
+                "tsType": {
+                  "repr": "PickRequestOpts",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": null,
+                    "typeName": "PickRequestOpts"
+                  }
+                }
+              }
+            ],
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/picks.ts",
+              "line": 106,
+              "col": 2,
+              "byteIndex": 2748
+            }
+          }
+        ],
+        "properties": [
+          {
+            "jsDoc": {
+              "doc": "The function to call when picking randomly.\n\nThe output is assumed to satisfy {@link PickRequest.inRange}."
+            },
+            "tsType": {
+              "repr": "RandomPicker",
+              "kind": "typeRef",
+              "typeRef": {
+                "typeParams": null,
+                "typeName": "RandomPicker"
+              }
+            },
+            "readonly": true,
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "random",
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/picks.ts",
+              "line": 96,
+              "col": 2,
+              "byteIndex": 2458
+            }
+          }
+        ],
+        "indexSignatures": [],
+        "methods": [
+          {
+            "jsDoc": {
+              "doc": "Returns true if the given number satisfies this request."
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "inRange",
+            "kind": "method",
+            "functionDef": {
+              "params": [
+                {
+                  "kind": "identifier",
+                  "name": "n",
+                  "optional": false,
+                  "tsType": {
+                    "repr": "number",
+                    "kind": "keyword",
+                    "keyword": "number"
+                  }
+                }
+              ],
+              "returnType": {
+                "repr": "boolean",
+                "kind": "keyword",
+                "keyword": "boolean"
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": []
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/picks.ts",
+              "line": 127,
+              "col": 2,
+              "byteIndex": 3366
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Returns the number of possible replies for this request."
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "size",
+            "kind": "getter",
+            "functionDef": {
+              "params": [],
+              "returnType": {
+                "repr": "number",
+                "kind": "keyword",
+                "keyword": "number"
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": []
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/picks.ts",
+              "line": 132,
+              "col": 2,
+              "byteIndex": 3539
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Describes the request's range, for debugging."
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "toString",
+            "kind": "method",
+            "functionDef": {
+              "params": [],
+              "returnType": {
+                "repr": "string",
+                "kind": "keyword",
+                "keyword": "string"
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": []
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/picks.ts",
+              "line": 137,
+              "col": 2,
+              "byteIndex": 3658
+            }
+          }
+        ],
+        "extends": null,
+        "implements": [],
+        "typeParams": [],
+        "superTypeParams": []
+      }
+    },
+    {
+      "name": "Arbitrary",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+        "line": 39,
+        "col": 0,
+        "byteIndex": 1046
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "A set of values that can be generated on demand.\n\nEvery Arbitrary contains a {@link default} value. Some Arbitraries define\n{@link maxSize}, providing an upper bound on how many values they can generate."
+      },
+      "kind": "class",
+      "classDef": {
+        "isAbstract": false,
+        "constructors": [
+          {
+            "jsDoc": {
+              "doc": "Initializer for a subclass that generates the same values as another Arbitrary."
+            },
+            "accessibility": "protected",
+            "name": "constructor",
+            "params": [
+              {
+                "kind": "identifier",
+                "name": "arb",
+                "optional": false,
+                "tsType": {
+                  "repr": "Arbitrary",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": [
+                      {
+                        "repr": "T",
+                        "kind": "typeRef",
+                        "typeRef": {
+                          "typeParams": null,
+                          "typeName": "T"
+                        }
+                      }
+                    ],
+                    "typeName": "Arbitrary"
+                  }
+                }
+              }
+            ],
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 47,
+              "col": 2,
+              "byteIndex": 1335
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Initializes an Arbitrary, given a callback function."
+            },
+            "accessibility": "protected",
+            "name": "constructor",
+            "params": [
+              {
+                "kind": "identifier",
+                "name": "callback",
+                "optional": false,
+                "tsType": {
+                  "repr": "PickCallback",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": [
+                      {
+                        "repr": "T",
+                        "kind": "typeRef",
+                        "typeRef": {
+                          "typeParams": null,
+                          "typeName": "T"
+                        }
+                      }
+                    ],
+                    "typeName": "PickCallback"
+                  }
+                }
+              },
+              {
+                "kind": "identifier",
+                "name": "label",
+                "optional": false,
+                "tsType": {
+                  "repr": "string",
+                  "kind": "keyword",
+                  "keyword": "string"
+                }
+              },
+              {
+                "kind": "identifier",
+                "name": "opts",
+                "optional": true,
+                "tsType": {
+                  "repr": "ConstructorOpts",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": [
+                      {
+                        "repr": "T",
+                        "kind": "typeRef",
+                        "typeRef": {
+                          "typeParams": null,
+                          "typeName": "T"
+                        }
+                      }
+                    ],
+                    "typeName": "ConstructorOpts"
+                  }
+                }
+              }
+            ],
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 49,
+              "col": 2,
+              "byteIndex": 1441
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Initializes a callback or another Arbitrary."
+            },
+            "accessibility": "protected",
+            "hasBody": true,
+            "name": "constructor",
+            "params": [
+              {
+                "kind": "identifier",
+                "name": "arg",
+                "optional": false,
+                "tsType": {
+                  "repr": "",
+                  "kind": "union",
+                  "union": [
+                    {
+                      "repr": "Arbitrary",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": [
+                          {
+                            "repr": "T",
+                            "kind": "typeRef",
+                            "typeRef": {
+                              "typeParams": null,
+                              "typeName": "T"
+                            }
+                          }
+                        ],
+                        "typeName": "Arbitrary"
+                      }
+                    },
+                    {
+                      "repr": "PickCallback",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": [
+                          {
+                            "repr": "T",
+                            "kind": "typeRef",
+                            "typeRef": {
+                              "typeParams": null,
+                              "typeName": "T"
+                            }
+                          }
+                        ],
+                        "typeName": "PickCallback"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "kind": "identifier",
+                "name": "label",
+                "optional": true,
+                "tsType": {
+                  "repr": "string",
+                  "kind": "keyword",
+                  "keyword": "string"
+                }
+              },
+              {
+                "kind": "identifier",
+                "name": "opts",
+                "optional": true,
+                "tsType": {
+                  "repr": "ConstructorOpts",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": [
+                      {
+                        "repr": "T",
+                        "kind": "typeRef",
+                        "typeRef": {
+                          "typeParams": null,
+                          "typeName": "T"
+                        }
+                      }
+                    ],
+                    "typeName": "ConstructorOpts"
+                  }
+                }
+              }
+            ],
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 55,
+              "col": 2,
+              "byteIndex": 1606
+            }
+          }
+        ],
+        "properties": [],
+        "indexSignatures": [],
+        "methods": [
+          {
+            "jsDoc": {
+              "doc": "A short string describing this Arbitrary, for use in error messages."
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "label",
+            "kind": "getter",
+            "functionDef": {
+              "params": [],
+              "returnType": {
+                "repr": "string",
+                "kind": "keyword",
+                "keyword": "string"
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": []
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 82,
+              "col": 2,
+              "byteIndex": 2340
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Returns a bound function that can be used to generate values of this\nArbitrary.\n\n(Satisfies the {@link PickSet} interface. Not normally called directly.)"
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "generateFrom",
+            "kind": "getter",
+            "functionDef": {
+              "params": [],
+              "returnType": {
+                "repr": "PickCallback",
+                "kind": "typeRef",
+                "typeRef": {
+                  "typeParams": [
+                    {
+                      "repr": "T",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": null,
+                        "typeName": "T"
+                      }
+                    }
+                  ],
+                  "typeName": "PickCallback"
+                }
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": []
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 92,
+              "col": 2,
+              "byteIndex": 2578
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "An upper bound on the number of values that this Arbitrary can generate.\n(Only available for some small sets.)"
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "maxSize",
+            "kind": "getter",
+            "functionDef": {
+              "params": [],
+              "returnType": {
+                "repr": "",
+                "kind": "union",
+                "union": [
+                  {
+                    "repr": "number",
+                    "kind": "keyword",
+                    "keyword": "number"
+                  },
+                  {
+                    "repr": "undefined",
+                    "kind": "keyword",
+                    "keyword": "undefined"
+                  }
+                ]
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": []
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 100,
+              "col": 2,
+              "byteIndex": 2783
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Creates a new Arbitrary by mapping each example to a new value. (The\nexamples are in the same order as in the original.)"
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "map",
+            "kind": "method",
+            "functionDef": {
+              "params": [
+                {
+                  "kind": "identifier",
+                  "name": "convert",
+                  "optional": false,
+                  "tsType": {
+                    "repr": "",
+                    "kind": "fnOrConstructor",
+                    "fnOrConstructor": {
+                      "constructor": false,
+                      "tsType": {
+                        "repr": "U",
+                        "kind": "typeRef",
+                        "typeRef": {
+                          "typeParams": null,
+                          "typeName": "U"
+                        }
+                      },
+                      "params": [
+                        {
+                          "kind": "identifier",
+                          "name": "val",
+                          "optional": false,
+                          "tsType": {
+                            "repr": "T",
+                            "kind": "typeRef",
+                            "typeRef": {
+                              "typeParams": null,
+                              "typeName": "T"
+                            }
+                          }
+                        }
+                      ],
+                      "typeParams": []
+                    }
+                  }
+                }
+              ],
+              "returnType": {
+                "repr": "Arbitrary",
+                "kind": "typeRef",
+                "typeRef": {
+                  "typeParams": [
+                    {
+                      "repr": "U",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": null,
+                        "typeName": "U"
+                      }
+                    }
+                  ],
+                  "typeName": "Arbitrary"
+                }
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": [
+                {
+                  "name": "U"
+                }
+              ]
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 108,
+              "col": 2,
+              "byteIndex": 2995
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Creates a new Arbitrary by filtering out values.\n",
+              "tags": [
+                {
+                  "kind": "param",
+                  "name": "accept",
+                  "doc": "a function that returns true if the value should be kept. It\nmust allow at least one value through.\n"
+                },
+                {
+                  "kind": "throws",
+                  "type": null,
+                  "doc": "if no value can be found that passes the filter."
+                }
+              ]
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "filter",
+            "kind": "method",
+            "functionDef": {
+              "params": [
+                {
+                  "kind": "identifier",
+                  "name": "accept",
+                  "optional": false,
+                  "tsType": {
+                    "repr": "",
+                    "kind": "fnOrConstructor",
+                    "fnOrConstructor": {
+                      "constructor": false,
+                      "tsType": {
+                        "repr": "boolean",
+                        "kind": "keyword",
+                        "keyword": "boolean"
+                      },
+                      "params": [
+                        {
+                          "kind": "identifier",
+                          "name": "val",
+                          "optional": false,
+                          "tsType": {
+                            "repr": "T",
+                            "kind": "typeRef",
+                            "typeRef": {
+                              "typeParams": null,
+                              "typeName": "T"
+                            }
+                          }
+                        }
+                      ],
+                      "typeParams": []
+                    }
+                  }
+                }
+              ],
+              "returnType": {
+                "repr": "Arbitrary",
+                "kind": "typeRef",
+                "typeRef": {
+                  "typeParams": [
+                    {
+                      "repr": "T",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": null,
+                        "typeName": "T"
+                      }
+                    }
+                  ],
+                  "typeName": "Arbitrary"
+                }
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": []
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 125,
+              "col": 2,
+              "byteIndex": 3521
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Creates a new Arbitrary that maps each example to another Arbitrary and\nthen picks from it.\n\n(This method is provided because it's traditional, but in most cases,\n{@link Arbitrary.from} with a callback is more flexible.)"
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "chain",
+            "kind": "method",
+            "functionDef": {
+              "params": [
+                {
+                  "kind": "identifier",
+                  "name": "convert",
+                  "optional": false,
+                  "tsType": {
+                    "repr": "",
+                    "kind": "fnOrConstructor",
+                    "fnOrConstructor": {
+                      "constructor": false,
+                      "tsType": {
+                        "repr": "Arbitrary",
+                        "kind": "typeRef",
+                        "typeRef": {
+                          "typeParams": [
+                            {
+                              "repr": "U",
+                              "kind": "typeRef",
+                              "typeRef": {
+                                "typeParams": null,
+                                "typeName": "U"
+                              }
+                            }
+                          ],
+                          "typeName": "Arbitrary"
+                        }
+                      },
+                      "params": [
+                        {
+                          "kind": "identifier",
+                          "name": "val",
+                          "optional": false,
+                          "tsType": {
+                            "repr": "T",
+                            "kind": "typeRef",
+                            "typeRef": {
+                              "typeParams": null,
+                              "typeName": "T"
+                            }
+                          }
+                        }
+                      ],
+                      "typeParams": []
+                    }
+                  }
+                }
+              ],
+              "returnType": {
+                "repr": "Arbitrary",
+                "kind": "typeRef",
+                "typeRef": {
+                  "typeParams": [
+                    {
+                      "repr": "U",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": null,
+                        "typeName": "U"
+                      }
+                    }
+                  ],
+                  "typeName": "Arbitrary"
+                }
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": [
+                {
+                  "name": "U"
+                }
+              ]
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 183,
+              "col": 2,
+              "byteIndex": 5193
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Returns a new Arbitrary with a different label."
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "with",
+            "kind": "method",
+            "functionDef": {
+              "params": [
+                {
+                  "kind": "identifier",
+                  "name": "opts",
+                  "optional": false,
+                  "tsType": {
+                    "repr": "",
+                    "kind": "typeLiteral",
+                    "typeLiteral": {
+                      "constructors": [],
+                      "methods": [],
+                      "properties": [
+                        {
+                          "name": "label",
+                          "location": {
+                            "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+                            "line": 197,
+                            "col": 15,
+                            "byteIndex": 5543
+                          },
+                          "params": [],
+                          "computed": false,
+                          "optional": false,
+                          "tsType": {
+                            "repr": "string",
+                            "kind": "keyword",
+                            "keyword": "string"
+                          },
+                          "typeParams": []
+                        }
+                      ],
+                      "callSignatures": [],
+                      "indexSignatures": []
+                    }
+                  }
+                }
+              ],
+              "returnType": {
+                "repr": "Arbitrary",
+                "kind": "typeRef",
+                "typeRef": {
+                  "typeParams": [
+                    {
+                      "repr": "T",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": null,
+                        "typeName": "T"
+                      }
+                    }
+                  ],
+                  "typeName": "Arbitrary"
+                }
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": []
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 197,
+              "col": 2,
+              "byteIndex": 5530
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Creates a function that always returns this Arbitrary.\n\n(Useful when optional arguments might be added later.)"
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "asFunction",
+            "kind": "method",
+            "functionDef": {
+              "params": [],
+              "returnType": {
+                "repr": "",
+                "kind": "fnOrConstructor",
+                "fnOrConstructor": {
+                  "constructor": false,
+                  "tsType": {
+                    "repr": "Arbitrary",
+                    "kind": "typeRef",
+                    "typeRef": {
+                      "typeParams": [
+                        {
+                          "repr": "T",
+                          "kind": "typeRef",
+                          "typeRef": {
+                            "typeParams": null,
+                            "typeName": "T"
+                          }
+                        }
+                      ],
+                      "typeName": "Arbitrary"
+                    }
+                  },
+                  "params": [],
+                  "typeParams": []
+                }
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": []
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 210,
+              "col": 2,
+              "byteIndex": 5866
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "A short string describing this Arbitrary, for debugging."
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "toString",
+            "kind": "method",
+            "functionDef": {
+              "params": [],
+              "returnType": {
+                "repr": "string",
+                "kind": "keyword",
+                "keyword": "string"
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": []
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 217,
+              "col": 2,
+              "byteIndex": 6005
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Converts a {@link PickRequest} to an Arbitrary."
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": true,
+            "name": "from",
+            "kind": "method",
+            "functionDef": {
+              "params": [
+                {
+                  "kind": "identifier",
+                  "name": "req",
+                  "optional": false,
+                  "tsType": {
+                    "repr": "PickRequest",
+                    "kind": "typeRef",
+                    "typeRef": {
+                      "typeParams": null,
+                      "typeName": "PickRequest"
+                    }
+                  }
+                }
+              ],
+              "returnType": {
+                "repr": "Arbitrary",
+                "kind": "typeRef",
+                "typeRef": {
+                  "typeParams": [
+                    {
+                      "repr": "number",
+                      "kind": "keyword",
+                      "keyword": "number"
+                    }
+                  ],
+                  "typeName": "Arbitrary"
+                }
+              },
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": []
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 224,
+              "col": 2,
+              "byteIndex": 6137
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Creates an Arbitrary from a {@link PickCallback}, or an array of examples."
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": true,
+            "name": "from",
+            "kind": "method",
+            "functionDef": {
+              "params": [
+                {
+                  "kind": "identifier",
+                  "name": "callback",
+                  "optional": false,
+                  "tsType": {
+                    "repr": "",
+                    "kind": "union",
+                    "union": [
+                      {
+                        "repr": "PickCallback",
+                        "kind": "typeRef",
+                        "typeRef": {
+                          "typeParams": [
+                            {
+                              "repr": "T",
+                              "kind": "typeRef",
+                              "typeRef": {
+                                "typeParams": null,
+                                "typeName": "T"
+                              }
+                            }
+                          ],
+                          "typeName": "PickCallback"
+                        }
+                      },
+                      {
+                        "repr": "PickSet",
+                        "kind": "typeRef",
+                        "typeRef": {
+                          "typeParams": [
+                            {
+                              "repr": "T",
+                              "kind": "typeRef",
+                              "typeRef": {
+                                "typeParams": null,
+                                "typeName": "T"
+                              }
+                            }
+                          ],
+                          "typeName": "PickSet"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ],
+              "returnType": {
+                "repr": "Arbitrary",
+                "kind": "typeRef",
+                "typeRef": {
+                  "typeParams": [
+                    {
+                      "repr": "T",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": null,
+                        "typeName": "T"
+                      }
+                    }
+                  ],
+                  "typeName": "Arbitrary"
+                }
+              },
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": [
+                {
+                  "name": "T"
+                }
+              ]
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 228,
+              "col": 2,
+              "byteIndex": 6281
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Creates an Arbitrary from a {@link PickRequest}, a {@link PickCallback}, or an array of examples."
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": true,
+            "name": "from",
+            "kind": "method",
+            "functionDef": {
+              "params": [
+                {
+                  "kind": "identifier",
+                  "name": "arg",
+                  "optional": false,
+                  "tsType": {
+                    "repr": "",
+                    "kind": "union",
+                    "union": [
+                      {
+                        "repr": "PickRequest",
+                        "kind": "typeRef",
+                        "typeRef": {
+                          "typeParams": null,
+                          "typeName": "PickRequest"
+                        }
+                      },
+                      {
+                        "repr": "PickCallback",
+                        "kind": "typeRef",
+                        "typeRef": {
+                          "typeParams": [
+                            {
+                              "repr": "T",
+                              "kind": "typeRef",
+                              "typeRef": {
+                                "typeParams": null,
+                                "typeName": "T"
+                              }
+                            }
+                          ],
+                          "typeName": "PickCallback"
+                        }
+                      },
+                      {
+                        "repr": "PickSet",
+                        "kind": "typeRef",
+                        "typeRef": {
+                          "typeParams": [
+                            {
+                              "repr": "T",
+                              "kind": "typeRef",
+                              "typeRef": {
+                                "typeParams": null,
+                                "typeName": "T"
+                              }
+                            }
+                          ],
+                          "typeName": "PickSet"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ],
+              "returnType": {
+                "repr": "",
+                "kind": "union",
+                "union": [
+                  {
+                    "repr": "Arbitrary",
+                    "kind": "typeRef",
+                    "typeRef": {
+                      "typeParams": [
+                        {
+                          "repr": "T",
+                          "kind": "typeRef",
+                          "typeRef": {
+                            "typeParams": null,
+                            "typeName": "T"
+                          }
+                        }
+                      ],
+                      "typeName": "Arbitrary"
+                    }
+                  },
+                  {
+                    "repr": "Arbitrary",
+                    "kind": "typeRef",
+                    "typeRef": {
+                      "typeParams": [
+                        {
+                          "repr": "number",
+                          "kind": "keyword",
+                          "keyword": "number"
+                        }
+                      ],
+                      "typeName": "Arbitrary"
+                    }
+                  }
+                ]
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": [
+                {
+                  "name": "T"
+                }
+              ]
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 234,
+              "col": 2,
+              "byteIndex": 6477
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Creates an Arbitrary that returns one of the given items. The first one\nwill be the default.\n\nThe items are returned as-is, without being cloned. If they are mutable,\nthis might result in unexpected side effects.\n\nConsider using {@link from} to generate a new instance of mutable objects\neach time."
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": true,
+            "name": "of",
+            "kind": "method",
+            "functionDef": {
+              "params": [
+                {
+                  "kind": "rest",
+                  "arg": {
+                    "kind": "identifier",
+                    "name": "examples",
+                    "optional": false,
+                    "tsType": null
+                  },
+                  "tsType": {
+                    "repr": "",
+                    "kind": "array",
+                    "array": {
+                      "repr": "T",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": null,
+                        "typeName": "T"
+                      }
+                    }
+                  }
+                }
+              ],
+              "returnType": {
+                "repr": "Arbitrary",
+                "kind": "typeRef",
+                "typeRef": {
+                  "typeParams": [
+                    {
+                      "repr": "T",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": null,
+                        "typeName": "T"
+                      }
+                    }
+                  ],
+                  "typeName": "Arbitrary"
+                }
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": [
+                {
+                  "name": "T"
+                }
+              ]
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 271,
+              "col": 2,
+              "byteIndex": 7701
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Creates an arbitrary that picks one of the given arbitaries and then returns it."
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": true,
+            "name": "oneOf",
+            "kind": "method",
+            "functionDef": {
+              "params": [
+                {
+                  "kind": "rest",
+                  "arg": {
+                    "kind": "identifier",
+                    "name": "cases",
+                    "optional": false,
+                    "tsType": null
+                  },
+                  "tsType": {
+                    "repr": "",
+                    "kind": "array",
+                    "array": {
+                      "repr": "PickSet",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": [
+                          {
+                            "repr": "T",
+                            "kind": "typeRef",
+                            "typeRef": {
+                              "typeParams": null,
+                              "typeName": "T"
+                            }
+                          }
+                        ],
+                        "typeName": "PickSet"
+                      }
+                    }
+                  }
+                }
+              ],
+              "returnType": {
+                "repr": "Arbitrary",
+                "kind": "typeRef",
+                "typeRef": {
+                  "typeParams": [
+                    {
+                      "repr": "T",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": null,
+                        "typeName": "T"
+                      }
+                    }
+                  ],
+                  "typeName": "Arbitrary"
+                }
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": [
+                {
+                  "name": "T"
+                }
+              ]
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 299,
+              "col": 2,
+              "byteIndex": 8489
+            }
+          },
+          {
+            "jsDoc": {
+              "doc": "Creates an Arbitrary for a record with the given shape."
+            },
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": true,
+            "name": "record",
+            "kind": "method",
+            "functionDef": {
+              "params": [
+                {
+                  "kind": "identifier",
+                  "name": "shape",
+                  "optional": false,
+                  "tsType": {
+                    "repr": "RecordShape",
+                    "kind": "typeRef",
+                    "typeRef": {
+                      "typeParams": [
+                        {
+                          "repr": "T",
+                          "kind": "typeRef",
+                          "typeRef": {
+                            "typeParams": null,
+                            "typeName": "T"
+                          }
+                        }
+                      ],
+                      "typeName": "RecordShape"
+                    }
+                  }
+                }
+              ],
+              "returnType": {
+                "repr": "Arbitrary",
+                "kind": "typeRef",
+                "typeRef": {
+                  "typeParams": [
+                    {
+                      "repr": "T",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": null,
+                        "typeName": "T"
+                      }
+                    }
+                  ],
+                  "typeName": "Arbitrary"
+                }
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": [
+                {
+                  "name": "T",
+                  "constraint": {
+                    "repr": "Record",
+                    "kind": "typeRef",
+                    "typeRef": {
+                      "typeParams": [
+                        {
+                          "repr": "string",
+                          "kind": "keyword",
+                          "keyword": "string"
+                        },
+                        {
+                          "repr": "unknown",
+                          "kind": "keyword",
+                          "keyword": "unknown"
+                        }
+                      ],
+                      "typeName": "Record"
+                    }
+                  }
+                }
+              ]
+            },
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/arbitrary_class.ts",
+              "line": 331,
+              "col": 2,
+              "byteIndex": 9357
+            }
+          }
+        ],
+        "extends": null,
+        "implements": [
+          {
+            "repr": "PickSet",
+            "kind": "typeRef",
+            "typeRef": {
+              "typeParams": [
+                {
+                  "repr": "T",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": null,
+                    "typeName": "T"
+                  }
+                }
+              ],
+              "typeName": "PickSet"
+            }
+          }
+        ],
+        "typeParams": [
+          {
+            "name": "T"
+          }
+        ],
+        "superTypeParams": []
+      }
+    },
+    {
+      "name": "",
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/entrypoints/arbitrary.ts",
+        "line": 1,
+        "col": 0,
+        "byteIndex": 0
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "The symbols needed to define a new {@linkcode Arbitrary}.\n",
+        "tags": [
+          {
+            "kind": "module",
+            "name": "arbitrary"
+          }
+        ]
+      },
+      "kind": "moduleDoc"
+    }
+  ]
+}

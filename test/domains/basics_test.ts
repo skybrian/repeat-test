@@ -108,13 +108,17 @@ describe("record", () => {
       Error,
     );
   });
+
   const empty = dom.record({});
+
   it("rejects a non-record", () => {
     assertThrows(() => empty.parse(undefined), Error, "not an object");
   });
+
   it("rejects a record with an extra field", () => {
     assertThrows(() => empty.parse({ a: 0 }), Error, "extra field: a");
   });
+
   it("rejects a record with a missing field", () => {
     const pair = dom.record({ a: dom.int(0, 1), b: dom.int(0, 1) });
     assertThrows(
@@ -123,10 +127,12 @@ describe("record", () => {
       "b: not a safe integer",
     );
   });
+
   it("rejects a record with an invalid field", () => {
     const rec = dom.record({ a: dom.int(0, 1) });
     assertThrows(() => rec.parse({ a: 2 }), Error, "a: not in range");
   });
+
   it("round-trips records", () => {
     const shape = {
       a: dom.int(0, 1),
@@ -137,6 +143,7 @@ describe("record", () => {
       assertRoundTrip(rec, val);
     });
   });
+
   it("encodes records as a sequence of encoded fields", () => {
     const shape = {
       a: dom.int(0, 1),
@@ -144,6 +151,18 @@ describe("record", () => {
     };
     const rec = dom.record(shape);
     assertEncoding(rec, [1, 6], { a: 1, b: 6 });
+  });
+
+  describe("with the strip flag set", () => {
+    const shape = {
+      a: dom.int(0, 1),
+      b: dom.int(1, 6),
+    };
+    const rec = dom.record(shape, { strip: true });
+    it("ignores extra fields", () => {
+      const val = rec.parse({ a: 0, b: 6, c: 1 });
+      assertEquals(val, { a: 0, b: 6 });
+    });
   });
 });
 
@@ -246,7 +265,22 @@ describe("oneOf", () => {
       assertEncoding(multiWay, [1, 5], 5);
     });
     it("rejects values that don't match any case", () => {
-      assertThrows(() => multiWay.parse(0), Error, "no case matched");
+      assertThrows(
+        () => multiWay.parse(0),
+        Error,
+        "no case matched:\n  not in range [1, 3]\n  not in range [4, 6]\n",
+      );
+    });
+    it("prints error locations when no case matches", () => {
+      const example = dom.oneOf(
+        dom.array(dom.int(1, 3)),
+        dom.array(dom.int(4, 5)),
+      );
+      assertThrows(
+        () => example.parse([0]),
+        Error,
+        "no case matched:\n  0: not in range [1, 3]\n  0: not in range [4, 5]\n",
+      );
     });
   });
 });

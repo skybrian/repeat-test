@@ -21,16 +21,21 @@ export function checkRecordKeys<T extends Record<string, unknown>>(
   val: unknown,
   fields: RecordShape<T>,
   sendErr: SendErr,
-  opts?: { at: string | number },
+  opts?: { at?: string | number; strip?: boolean },
 ): val is Partial<T> {
+  const at = opts?.at ?? "";
+
   if (val === null || typeof val !== "object") {
-    sendErr("not an object", opts);
+    sendErr("not an object", { at });
     return false;
   }
-  for (const key of Object.keys(val)) {
-    if (!(key in fields)) {
-      sendErr(`extra field: ${key}`, opts);
-      return false;
+
+  if (!opts?.strip) {
+    for (const key of Object.keys(val)) {
+      if (!(key in fields)) {
+        sendErr(`extra field: ${key}`, { at });
+        return false;
+      }
     }
   }
   return true;
