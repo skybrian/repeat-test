@@ -94,6 +94,14 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
     return this.#maxSize();
   }
 
+  /** Returns the options needed to make a copy of this Arbitrary. */
+  get arbOpts(): ConstructorOpts<T> {
+    return {
+      maxSize: this.#maxSize,
+      dryRun: false,
+    };
+  }
+
   /**
    * Creates a new Arbitrary by mapping each example to a new value. (The
    * examples are in the same order as in the original.)

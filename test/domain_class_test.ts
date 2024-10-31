@@ -6,7 +6,19 @@ import { Arbitrary } from "../src/arbitrary_class.ts";
 import { Domain, type PickifyCallback } from "../src/domain_class.ts";
 
 describe("Domain", () => {
-  describe("constructor", () => {
+  describe("make", () => {
+    it("preserves maxSize from a copied Arbitrary", () => {
+      const arb = Arbitrary.from(new PickRequest(1, 6));
+
+      const dom = Domain.make(arb, (val) => {
+        if (typeof val !== "number") return undefined;
+        if (val < 1 || val > 6) return undefined;
+        return [val];
+      });
+
+      assertEquals(dom.maxSize, arb.maxSize);
+    });
+
     it("throws an Error if the callback returns undefined with no error", () => {
       const arb = Arbitrary.from(new PickRequest(1, 6));
       assertThrows(
@@ -15,6 +27,7 @@ describe("Domain", () => {
         "can't pickify default of 1..6: callback returned undefined",
       );
     });
+
     it("throws an Error if the callback returns undefined with an error", () => {
       const arb = Arbitrary.from(new PickRequest(1, 6));
       const callback: PickifyCallback = (_, sendErr) => {
@@ -27,6 +40,7 @@ describe("Domain", () => {
         "can't pickify default of 1..6: oops",
       );
     });
+
     it("throws an Error if the callback returns picks that don't match the generated default", () => {
       const arb = Arbitrary.from(new PickRequest(1, 6));
       const callback: PickifyCallback = (v) => {

@@ -2,7 +2,7 @@ import type { Pickable } from "@/arbitrary.ts";
 import type { Failure, Success } from "./results.ts";
 
 import { assertEquals } from "@std/assert";
-import { Arbitrary, Gen } from "@/arbitrary.ts";
+import { Arbitrary, Gen, Script } from "@/arbitrary.ts";
 import { failure, success } from "./results.ts";
 import { generateDefault } from "./ordered.ts";
 
@@ -42,29 +42,30 @@ export class Domain<T> extends Arbitrary<T> {
   #callback: PickifyCallback;
 
   private constructor(
-    arb: Arbitrary<T>,
+    script: Script<T>,
+    arbOpts: { maxSize?: () => number | undefined; dryRun?: boolean },
     callback: PickifyCallback,
-    opts?: { dryRun?: boolean },
+    dryRun: boolean,
   ) {
-    super(arb);
+    super(script, arbOpts);
     this.#callback = callback;
 
-    if (opts?.dryRun !== false) {
+    if (dryRun !== false) {
       // Verify that we can round-trip the default value.
-      const def = generateDefault(arb);
+      const def = generateDefault(script);
       const picks = this.pickify(
         def.val,
         "callback returned undefined",
       );
       if (!picks.ok) {
         throw new Error(
-          `can't pickify default of ${arb.name}: ${picks.message}`,
+          `can't pickify default of ${script.name}: ${picks.message}`,
         );
       }
       assertEquals(
         Array.from(def.replies),
         picks.val,
-        `callback's picks don't match for the default value of ${arb.name}`,
+        `callback's picks don't match for the default value of ${script.name}`,
       );
     }
   }
@@ -180,7 +181,8 @@ export class Domain<T> extends Arbitrary<T> {
    * Returns a copy of the Domain with a different name.
    */
   override with(opts: { name: string }): Domain<T> {
-    return new Domain(super.with(opts), this.#callback, { dryRun: false });
+    const script = this.buildScript.with(opts);
+    return new Domain(script, this.arbOpts, this.#callback, false);
   }
 
   /**
@@ -203,7 +205,8 @@ export class Domain<T> extends Arbitrary<T> {
    * A property test can be used to verify that the callback is correct.
    */
   static make<T>(gen: Pickable<T>, pickify: PickifyCallback): Domain<T> {
-    return new Domain(Arbitrary.from(gen), pickify);
+    const opts = (gen instanceof Arbitrary) ? gen.arbOpts : {};
+    return new Domain(Script.from(gen), opts, pickify, true);
   }
 
   /**
