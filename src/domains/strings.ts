@@ -8,7 +8,7 @@ import { asciiToPick } from "../ascii.ts";
 
 const arbAscii = arb.asciiChar();
 
-const asciiDom = new Domain(arbAscii, (val, sendErr) => {
+const asciiDom = Domain.make(arbAscii, (val, sendErr) => {
   if (typeof val !== "string") {
     sendErr("not a string");
     return undefined;
@@ -42,7 +42,7 @@ export const asciiLetter: () => Domain<string> = asciiChar(/[a-zA-Z]/)
  *
  * (That is, it accepts 16-bit code units, including unpaired surrogates.)
  */
-export const char16: () => Domain<string> = new Domain(
+export const char16: () => Domain<string> = Domain.make(
   arb.char16(),
   (val, sendErr) => {
     if (typeof val !== "string") {
@@ -73,7 +73,7 @@ export const char16: () => Domain<string> = new Domain(
  */
 export function string(opts?: arb.ArrayOpts): Domain<string> {
   const { min, max } = parseArrayOpts(opts);
-  return new Domain(arb.string(opts), (val, sendErr) => {
+  return Domain.make(arb.string(opts), (val, sendErr) => {
     if (typeof val !== "string") {
       sendErr("not a string");
       return undefined;
@@ -107,7 +107,7 @@ export function string(opts?: arb.ArrayOpts): Domain<string> {
  */
 export function wellFormedString(opts?: arb.ArrayOpts): Domain<string> {
   const { min, max } = parseArrayOpts(opts);
-  return new Domain(
+  return Domain.make(
     arb.wellFormedString(opts),
     (val, sendErr) => {
       if (typeof val !== "string") {

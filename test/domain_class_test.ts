@@ -10,7 +10,7 @@ describe("Domain", () => {
     it("throws an Error if the callback returns undefined with no error", () => {
       const arb = Arbitrary.from(new PickRequest(1, 6));
       assertThrows(
-        () => new Domain(arb, () => undefined),
+        () => Domain.make(arb, () => undefined),
         Error,
         "can't pickify default of 1..6: callback returned undefined",
       );
@@ -22,7 +22,7 @@ describe("Domain", () => {
         return undefined;
       };
       assertThrows(
-        () => new Domain(arb, callback),
+        () => Domain.make(arb, callback),
         Error,
         "can't pickify default of 1..6: oops",
       );
@@ -36,21 +36,21 @@ describe("Domain", () => {
         return undefined;
       };
       assertThrows(
-        () => new Domain(arb, callback),
+        () => Domain.make(arb, callback),
         Error,
         "callback's picks don't match for the default value of 1..6",
       );
     });
   });
 
-  const bit = new Domain(
+  const bit = Domain.make(
     Arbitrary.from(new PickRequest(0, 1)),
     (v) => {
       return (v === 0 || v === 1) ? [v] : undefined;
     },
   );
 
-  const roll = new Domain(
+  const roll = Domain.make(
     Arbitrary.from(new PickRequest(1, 6)),
     (v, sendErr) => {
       if (typeof v !== "number") {
@@ -127,7 +127,7 @@ describe("Domain", () => {
 
     it("prepends a location to an inner error", () => {
       const arb = Arbitrary.from(new PickRequest(1, 6));
-      const dom = new Domain(arb, (v, sendErr) => {
+      const dom = Domain.make(arb, (v, sendErr) => {
         if (v !== 1) {
           sendErr("oops!", { at: "inner" });
           return undefined;
@@ -141,7 +141,7 @@ describe("Domain", () => {
 
   describe("generate", () => {
     it("throws due to being filtered out", () => {
-      const weird = new Domain(roll.filter((v) => v === 1), (val) => {
+      const weird = Domain.make(roll.filter((v) => v === 1), (val) => {
         if (val !== 1) throw "oops";
         return [val];
       });
@@ -154,7 +154,7 @@ describe("Domain", () => {
       );
     });
     it("throws due to being filtered out, and without reading all picks", () => {
-      const weird = new Domain(roll.filter((v) => v === 1), (val) => {
+      const weird = Domain.make(roll.filter((v) => v === 1), (val) => {
         if (val !== 1) throw "oops";
         return [val];
       });

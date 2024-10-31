@@ -41,11 +41,11 @@ export function int(min: number, max: number): Domain<number> {
   };
 
   if (min >= 0) {
-    return new Domain(gen, (val, e) => accept(val, e) ? [val] : undefined);
+    return Domain.make(gen, (val, e) => accept(val, e) ? [val] : undefined);
   } else if (max <= 0) {
-    return new Domain(gen, (val, e) => accept(val, e) ? [-val] : undefined);
+    return Domain.make(gen, (val, e) => accept(val, e) ? [-val] : undefined);
   } else {
-    return new Domain(
+    return Domain.make(
       gen,
       (val, e) => accept(val, e) ? [val < 0 ? 1 : 0, Math.abs(val)] : undefined,
     );
@@ -74,7 +74,7 @@ export function record<T extends Record<string, unknown>>(
   const strip = opts?.strip ?? false;
   const gen = arb.record(fields);
 
-  return new Domain(
+  return Domain.make(
     gen,
     (val, sendErr) => {
       if (!checkRecordKeys(val, fields, sendErr, { strip })) {
@@ -103,7 +103,7 @@ export function array<T>(
   const gen = arb.array(item, opts);
   const { min, max } = parseArrayOpts(opts);
 
-  return new Domain(gen, (val, sendErr) => {
+  return Domain.make(gen, (val, sendErr) => {
     if (!checkArray(val, min, max, sendErr)) return undefined;
     const out: number[] = [];
 
@@ -149,7 +149,7 @@ export function oneOf<T>(...cases: Domain<T>[]): Domain<T> {
 
   const gen = arb.oneOf(...cases);
 
-  return new Domain(gen, (val, sendErr) => {
+  return Domain.make(gen, (val, sendErr) => {
     const errors: string[] = [];
     for (const [i, c] of cases.entries()) {
       const picks = c.innerPickify(val, (err, loc) => {

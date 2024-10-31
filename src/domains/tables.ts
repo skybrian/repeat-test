@@ -18,7 +18,7 @@ export function uniqueArray<T>(
   const generator = arb.uniqueArray(item, opts);
   const { min, max } = parseArrayOpts(opts);
 
-  return new Domain(generator, (val, sendErr) => {
+  return Domain.make(generator, (val, sendErr) => {
     if (!checkArray(val, min, max, sendErr)) {
       return undefined;
     }
@@ -67,7 +67,7 @@ export function table<R extends Record<string, unknown>>(
   const { min, max } = parseArrayOpts(opts);
   const generator = arb.table(shape, opts);
 
-  return new Domain(generator, (rows, sendErr) => {
+  return Domain.make(generator, (rows, sendErr) => {
     if (!checkArray(rows, min, max, sendErr)) {
       return undefined;
     }
