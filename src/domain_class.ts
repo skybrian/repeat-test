@@ -15,7 +15,7 @@ import type { SendErr } from "./options.ts";
  * If the value is valid, returns an array of picks. Otherwise, returns
  * undefined. Validation errors can be reported using sendErr.
  */
-export type PickifyCallback = (
+export type PickifyFunction = (
   val: unknown,
   sendErr: SendErr,
   name: string,
@@ -39,16 +39,16 @@ export type PickifyCallback = (
  * the Domain.
  */
 export class Domain<T> extends Arbitrary<T> {
-  #callback: PickifyCallback;
+  #pickify: PickifyFunction;
 
   private constructor(
     script: Script<T>,
     arbOpts: { maxSize?: () => number | undefined; dryRun?: boolean },
-    callback: PickifyCallback,
+    pickify: PickifyFunction,
     dryRun: boolean,
   ) {
     super(script, arbOpts);
-    this.#callback = callback;
+    this.#pickify = pickify;
 
     if (dryRun !== false) {
       // Verify that we can round-trip the default value.
@@ -141,7 +141,7 @@ export class Domain<T> extends Arbitrary<T> {
         firstError = at !== undefined ? `${at}: ${msg}` : msg;
       }
     };
-    const picks = this.#callback(val, sendErr, this.name);
+    const picks = this.#pickify(val, sendErr, this.name);
     if (picks === undefined) {
       const err = firstError ?? defaultMessage ?? "not in domain";
       return failure(err);
@@ -159,7 +159,7 @@ export class Domain<T> extends Arbitrary<T> {
    * If a location is supplied, it will be prepended to inner locations.
    *
    * (This function is designed to be convenient to use within a
-   * {@link PickifyCallback}.)
+   * {@link PickifyFunction}.)
    */
   innerPickify(
     val: unknown,
@@ -174,7 +174,7 @@ export class Domain<T> extends Arbitrary<T> {
         sendErr(msg, { at });
       };
     }
-    return this.#callback(val, innerErr, this.name);
+    return this.#pickify(val, innerErr, this.name);
   }
 
   /**
@@ -182,7 +182,7 @@ export class Domain<T> extends Arbitrary<T> {
    */
   override with(opts: { name: string }): Domain<T> {
     const script = this.buildScript.with(opts);
-    return new Domain(script, this.arbOpts, this.#callback, false);
+    return new Domain(script, this.arbOpts, this.#pickify, false);
   }
 
   /**
@@ -204,7 +204,7 @@ export class Domain<T> extends Arbitrary<T> {
    *
    * A property test can be used to verify that the callback is correct.
    */
-  static make<T>(gen: Pickable<T>, pickify: PickifyCallback): Domain<T> {
+  static make<T>(gen: Pickable<T>, pickify: PickifyFunction): Domain<T> {
     const opts = (gen instanceof Arbitrary) ? gen.arbOpts : {};
     return new Domain(Script.from(gen), opts, pickify, true);
   }
@@ -236,5 +236,46 @@ export class Domain<T> extends Arbitrary<T> {
       }
       return [pick];
     });
+  }
+
+  /**
+   * Returns a Domain that stands for another Domain, which might be
+   * defined later.
+   *
+   * Since initialization is lazy, this is useful for parsing recursive types.
+   *
+   * Usually, the return type must be declared when definining an alias, because
+   * TypeScript's type inference doesn't work for recursive types.
+   */
+  static override alias<T>(
+    init: () => Domain<T>,
+  ): Domain<T> {
+    let cache: Domain<T> | undefined;
+
+    function target() {
+      if (cache === undefined) {
+        cache = init();
+      }
+      return cache;
+    }
+
+    const script = Script.make("alias", (pick) => {
+      return target().directBuild(pick);
+    });
+
+    const arbOpts = {
+      maxSize: () => target().maxSize,
+      dryRun: false,
+    };
+
+    function pickify(
+      val: unknown,
+      sendErr: SendErr,
+    ): Iterable<number> | undefined {
+      const dom = target();
+      return dom.#pickify(val, sendErr, dom.name);
+    }
+
+    return new Domain(script, arbOpts, pickify, false);
   }
 }

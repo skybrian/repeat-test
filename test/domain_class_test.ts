@@ -3,7 +3,7 @@ import { assertEquals, assertThrows, fail } from "@std/assert";
 
 import { PickRequest } from "../src/picks.ts";
 import { Arbitrary } from "../src/arbitrary_class.ts";
-import { Domain, type PickifyCallback } from "../src/domain_class.ts";
+import { Domain, type PickifyFunction } from "../src/domain_class.ts";
 
 describe("Domain", () => {
   describe("make", () => {
@@ -30,7 +30,7 @@ describe("Domain", () => {
 
     it("throws an Error if the callback returns undefined with an error", () => {
       const arb = Arbitrary.from(new PickRequest(1, 6));
-      const callback: PickifyCallback = (_, sendErr) => {
+      const callback: PickifyFunction = (_, sendErr) => {
         sendErr("oops!");
         return undefined;
       };
@@ -43,7 +43,7 @@ describe("Domain", () => {
 
     it("throws an Error if the callback returns picks that don't match the generated default", () => {
       const arb = Arbitrary.from(new PickRequest(1, 6));
-      const callback: PickifyCallback = (v) => {
+      const callback: PickifyFunction = (v) => {
         if (v === 1) {
           return [123];
         }

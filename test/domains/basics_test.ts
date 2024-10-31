@@ -7,6 +7,7 @@ import * as dom from "@/doms.ts";
 import { assertEncoding, assertRoundTrip } from "../lib/asserts.ts";
 import { intRange, invalidIntRange, minMaxVal } from "../lib/ranges.ts";
 import { MutableGen } from "../../src/gen_class.ts";
+import { Domain } from "@/domain.ts";
 
 describe("of", () => {
   describe("for a single-item domain", () => {
@@ -29,6 +30,26 @@ describe("of", () => {
   it("uses a name added later in error messages", () => {
     const items = dom.of(1, 2, 3).with({ name: "digit" });
     assertThrows(() => items.parse(4), Error, "not a member of 'digit'");
+  });
+});
+
+describe("alias", () => {
+  type Child = string | Tree;
+  type Tree = { left: Child; right: Child };
+
+  const child: Domain<Tree> = Domain.alias(() => tree);
+
+  const tree: Domain<Tree> = dom.record({
+    left: dom.oneOf<Child>(dom.string(), child),
+    right: dom.oneOf<Child>(dom.string(), child),
+  });
+
+  it("round-trips trees", () => {
+    const tree = {
+      left: { left: "a", right: "b" },
+      right: { left: "c", right: "d" },
+    };
+    assertRoundTrip(child, tree);
   });
 });
 

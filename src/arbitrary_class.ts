@@ -367,7 +367,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
    * Returns an Arbitrary that stands for another Arbitrary, which might be
    * defined later.
    *
-   * Since the initialization is lazy, it's useful for generating examples of
+   * Since initialization is lazy, this is useful for generating examples of
    * recursive types.
    *
    * Usually, the return type must be declared when definining an alias, because

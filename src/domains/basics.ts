@@ -13,6 +13,19 @@ export function of<T>(...values: T[]): Domain<T> {
   return Domain.of(...values);
 }
 
+/**
+ * Returns a Domain that stands for another Domain, which might be
+ * defined later.
+ *
+ * Since initialization is lazy, this is useful for parsing recursive types.
+ *
+ * Usually, the return type must be declared when definining an alias, because
+ * TypeScript's type inference doesn't work for recursive types.
+ */
+export function alias<T>(init: () => Domain<T>): Domain<T> {
+  return Domain.alias(init);
+}
+
 /** A domain that accepts only booleans. */
 export const boolean: () => Domain<boolean> = Domain.of(false, true).with({
   name: "boolean",
