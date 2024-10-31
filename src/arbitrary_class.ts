@@ -12,7 +12,6 @@ import { generateDefault } from "./ordered.ts";
 import { randomPlayouts } from "./random.ts";
 
 type ConstructorOpts<T> = {
-  examples?: T[];
   maxSize?: number;
   dryRun?: boolean;
 };
@@ -35,8 +34,6 @@ function checkRandomGenerate(script: Script<unknown>) {
  */
 export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
   readonly #script: Script<T>;
-
-  readonly #examples: T[] | undefined;
   readonly #maxSize: number | undefined;
 
   /** Initializer for a subclass that generates the same values as another Arbitrary. */
@@ -53,12 +50,10 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
   ) {
     if (arg instanceof Arbitrary) {
       this.#script = arg.#script;
-      this.#examples = arg.#examples;
       this.#maxSize = arg.#maxSize;
     } else {
       assert(arg instanceof Script);
       this.#script = arg;
-      this.#examples = opts?.examples;
       this.#maxSize = opts?.maxSize;
       if (opts?.dryRun !== false) {
         checkRandomGenerate(arg);
@@ -193,7 +188,6 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
     const script = this.#script.with(opts);
 
     return new Arbitrary(script, {
-      examples: this.#examples,
       maxSize: this.#maxSize,
       dryRun: false,
     });
@@ -280,7 +274,6 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
       return examples[i];
     });
     return new Arbitrary(build, {
-      examples,
       maxSize: examples.length,
       dryRun: false,
     });
