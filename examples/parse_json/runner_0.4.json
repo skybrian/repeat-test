@@ -1,0 +1,658 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "name": "repeatTest",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/runner.ts",
+        "line": 314,
+        "col": 0,
+        "byteIndex": 8706
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "Runs a test function repeatedly.\n\nAfter running each example (or the default of each Arbitrary), a thousand\nexamples will be chosen randomly. The number of random repetitions can be\noverridden using {@link RepeatOpts.reps}.\n\nA test is considered to have failed if the test function throws or it logs an\nerror using the supplied {@link TestConsole}. In that case, the test will be\nrun repeatedly to find the smallest input that causes the failure (this is\ncalled shrinking).\n\nInformation about the test failure and how to rerun the test will be printed\nto the console.\n",
+        "tags": [
+          {
+            "kind": "param",
+            "name": "input",
+            "doc": "A source of examples to run."
+          },
+          {
+            "kind": "param",
+            "name": "test",
+            "doc": "A test function that requires input."
+          }
+        ]
+      },
+      "kind": "function",
+      "functionDef": {
+        "params": [
+          {
+            "kind": "identifier",
+            "name": "input",
+            "optional": false,
+            "tsType": {
+              "repr": "Examples",
+              "kind": "typeRef",
+              "typeRef": {
+                "typeParams": [
+                  {
+                    "repr": "T",
+                    "kind": "typeRef",
+                    "typeRef": {
+                      "typeParams": null,
+                      "typeName": "T"
+                    }
+                  }
+                ],
+                "typeName": "Examples"
+              }
+            }
+          },
+          {
+            "kind": "identifier",
+            "name": "test",
+            "optional": false,
+            "tsType": {
+              "repr": "TestFunction",
+              "kind": "typeRef",
+              "typeRef": {
+                "typeParams": [
+                  {
+                    "repr": "T",
+                    "kind": "typeRef",
+                    "typeRef": {
+                      "typeParams": null,
+                      "typeName": "T"
+                    }
+                  }
+                ],
+                "typeName": "TestFunction"
+              }
+            }
+          },
+          {
+            "kind": "identifier",
+            "name": "opts",
+            "optional": true,
+            "tsType": {
+              "repr": "RepeatOpts",
+              "kind": "typeRef",
+              "typeRef": {
+                "typeParams": null,
+                "typeName": "RepeatOpts"
+              }
+            }
+          }
+        ],
+        "returnType": {
+          "repr": "void",
+          "kind": "keyword",
+          "keyword": "void"
+        },
+        "hasBody": true,
+        "isAsync": false,
+        "isGenerator": false,
+        "typeParams": [
+          {
+            "name": "T"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SystemConsole",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/console.ts",
+        "line": 9,
+        "col": 0,
+        "byteIndex": 255
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "The global console methods that are used in a {@link TestConsole}.\n\nSee {@link https://developer.mozilla.org/en-US/docs/Web/API/console} MDN for\nmore about the console object."
+      },
+      "kind": "interface",
+      "interfaceDef": {
+        "extends": [],
+        "constructors": [],
+        "methods": [
+          {
+            "name": "log",
+            "jsDoc": {
+              "doc": "Writes a message to the console at \"log\" log level."
+            },
+            "kind": "method",
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/console.ts",
+              "line": 13,
+              "col": 2,
+              "byteIndex": 359
+            },
+            "params": [
+              {
+                "kind": "rest",
+                "arg": {
+                  "kind": "identifier",
+                  "name": "data",
+                  "optional": false,
+                  "tsType": null
+                },
+                "tsType": {
+                  "repr": "",
+                  "kind": "array",
+                  "array": {
+                    "repr": "unknown",
+                    "kind": "keyword",
+                    "keyword": "unknown"
+                  }
+                }
+              }
+            ],
+            "optional": false,
+            "returnType": {
+              "repr": "void",
+              "kind": "keyword",
+              "keyword": "void"
+            },
+            "typeParams": []
+          },
+          {
+            "name": "error",
+            "jsDoc": {
+              "doc": "Writes a message to the console at \"error\" log level."
+            },
+            "kind": "method",
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/console.ts",
+              "line": 18,
+              "col": 2,
+              "byteIndex": 464
+            },
+            "params": [
+              {
+                "kind": "rest",
+                "arg": {
+                  "kind": "identifier",
+                  "name": "data",
+                  "optional": false,
+                  "tsType": null
+                },
+                "tsType": {
+                  "repr": "",
+                  "kind": "array",
+                  "array": {
+                    "repr": "unknown",
+                    "kind": "keyword",
+                    "keyword": "unknown"
+                  }
+                }
+              }
+            ],
+            "optional": false,
+            "returnType": {
+              "repr": "void",
+              "kind": "keyword",
+              "keyword": "void"
+            },
+            "typeParams": []
+          }
+        ],
+        "properties": [],
+        "callSignatures": [],
+        "indexSignatures": [],
+        "typeParams": []
+      }
+    },
+    {
+      "name": "TestConsole",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/console.ts",
+        "line": 24,
+        "col": 0,
+        "byteIndex": 577
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "Provides methods to property tests that are useful for debugging."
+      },
+      "kind": "interface",
+      "interfaceDef": {
+        "extends": [
+          {
+            "repr": "SystemConsole",
+            "kind": "typeRef",
+            "typeRef": {
+              "typeParams": null,
+              "typeName": "SystemConsole"
+            }
+          }
+        ],
+        "constructors": [],
+        "methods": [
+          {
+            "name": "log",
+            "jsDoc": {
+              "doc": "If the test is expected to fail, writes a message to console at \"error\" log level."
+            },
+            "kind": "method",
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/console.ts",
+              "line": 28,
+              "col": 2,
+              "byteIndex": 732
+            },
+            "params": [
+              {
+                "kind": "rest",
+                "arg": {
+                  "kind": "identifier",
+                  "name": "data",
+                  "optional": false,
+                  "tsType": null
+                },
+                "tsType": {
+                  "repr": "",
+                  "kind": "array",
+                  "array": {
+                    "repr": "unknown",
+                    "kind": "keyword",
+                    "keyword": "unknown"
+                  }
+                }
+              }
+            ],
+            "optional": false,
+            "returnType": {
+              "repr": "void",
+              "kind": "keyword",
+              "keyword": "void"
+            },
+            "typeParams": []
+          },
+          {
+            "name": "error",
+            "jsDoc": {
+              "doc": "If the test is expected to fail, writes a message to console at \"error\" log level.\n\nAlso forces the test to fail."
+            },
+            "kind": "method",
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/console.ts",
+              "line": 35,
+              "col": 2,
+              "byteIndex": 906
+            },
+            "params": [
+              {
+                "kind": "rest",
+                "arg": {
+                  "kind": "identifier",
+                  "name": "data",
+                  "optional": false,
+                  "tsType": null
+                },
+                "tsType": {
+                  "repr": "",
+                  "kind": "array",
+                  "array": {
+                    "repr": "unknown",
+                    "kind": "keyword",
+                    "keyword": "unknown"
+                  }
+                }
+              }
+            ],
+            "optional": false,
+            "returnType": {
+              "repr": "void",
+              "kind": "keyword",
+              "keyword": "void"
+            },
+            "typeParams": []
+          },
+          {
+            "name": "sometimes",
+            "jsDoc": {
+              "doc": "Records a key-value pair and asserts that it is sometimes true and\nsometimes false in a test.\n\nThat is, `sometimes` must be called more than once with the given key, and\ntrue and false must be passed at different times for that key's value.\n\nIf the test is expected to fail, `sometimes` also writes a log message with\nthe key and its value.\n\nReturns the value passed in."
+            },
+            "kind": "method",
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/console.ts",
+              "line": 49,
+              "col": 2,
+              "byteIndex": 1372
+            },
+            "params": [
+              {
+                "kind": "identifier",
+                "name": "key",
+                "optional": false,
+                "tsType": {
+                  "repr": "string",
+                  "kind": "keyword",
+                  "keyword": "string"
+                }
+              },
+              {
+                "kind": "identifier",
+                "name": "val",
+                "optional": false,
+                "tsType": {
+                  "repr": "boolean",
+                  "kind": "keyword",
+                  "keyword": "boolean"
+                }
+              }
+            ],
+            "optional": false,
+            "returnType": {
+              "repr": "boolean",
+              "kind": "keyword",
+              "keyword": "boolean"
+            },
+            "typeParams": []
+          },
+          {
+            "name": "debugger",
+            "jsDoc": {
+              "doc": "If the test is expected to fail, executes a debugger statement."
+            },
+            "kind": "method",
+            "location": {
+              "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/console.ts",
+              "line": 54,
+              "col": 2,
+              "byteIndex": 1503
+            },
+            "params": [],
+            "optional": false,
+            "returnType": {
+              "repr": "void",
+              "kind": "keyword",
+              "keyword": "void"
+            },
+            "typeParams": []
+          }
+        ],
+        "properties": [],
+        "callSignatures": [],
+        "indexSignatures": [],
+        "typeParams": []
+      }
+    },
+    {
+      "name": "Examples",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/runner.ts",
+        "line": 294,
+        "col": 0,
+        "byteIndex": 7932
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "Some examples to run using {@link repeatTest}."
+      },
+      "kind": "typeAlias",
+      "typeAliasDef": {
+        "tsType": {
+          "repr": "",
+          "kind": "union",
+          "union": [
+            {
+              "repr": "PickSet",
+              "kind": "typeRef",
+              "typeRef": {
+                "typeParams": [
+                  {
+                    "repr": "T",
+                    "kind": "typeRef",
+                    "typeRef": {
+                      "typeParams": null,
+                      "typeName": "T"
+                    }
+                  }
+                ],
+                "typeName": "PickSet"
+              }
+            },
+            {
+              "repr": "",
+              "kind": "array",
+              "array": {
+                "repr": "",
+                "kind": "parenthesized",
+                "parenthesized": {
+                  "repr": "",
+                  "kind": "union",
+                  "union": [
+                    {
+                      "repr": "T",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": null,
+                        "typeName": "T"
+                      }
+                    },
+                    {
+                      "repr": "Arbitrary",
+                      "kind": "typeRef",
+                      "typeRef": {
+                        "typeParams": [
+                          {
+                            "repr": "T",
+                            "kind": "typeRef",
+                            "typeRef": {
+                              "typeParams": null,
+                              "typeName": "T"
+                            }
+                          }
+                        ],
+                        "typeName": "Arbitrary"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "typeParams": [
+          {
+            "name": "T"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RepeatOpts",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/runner.ts",
+        "line": 265,
+        "col": 0,
+        "byteIndex": 7247
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "Options to {@link repeatTest}."
+      },
+      "kind": "typeAlias",
+      "typeAliasDef": {
+        "tsType": {
+          "repr": "",
+          "kind": "typeLiteral",
+          "typeLiteral": {
+            "constructors": [],
+            "methods": [],
+            "properties": [
+              {
+                "name": "reps",
+                "jsDoc": {
+                  "doc": "The number of times to run the test with random input. If not specified,\ndefaults to 1000."
+                },
+                "location": {
+                  "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/runner.ts",
+                  "line": 270,
+                  "col": 2,
+                  "byteIndex": 7389
+                },
+                "params": [],
+                "computed": false,
+                "optional": true,
+                "tsType": {
+                  "repr": "number",
+                  "kind": "keyword",
+                  "keyword": "number"
+                },
+                "typeParams": []
+              },
+              {
+                "name": "only",
+                "jsDoc": {
+                  "doc": "If specified, repeatTest will rerun a single rep."
+                },
+                "location": {
+                  "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/runner.ts",
+                  "line": 273,
+                  "col": 2,
+                  "byteIndex": 7466
+                },
+                "params": [],
+                "computed": false,
+                "optional": true,
+                "tsType": {
+                  "repr": "string",
+                  "kind": "keyword",
+                  "keyword": "string"
+                },
+                "typeParams": []
+              },
+              {
+                "name": "console",
+                "jsDoc": {
+                  "doc": "If specified, repeatTest will send output to an alternate console."
+                },
+                "location": {
+                  "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/runner.ts",
+                  "line": 276,
+                  "col": 2,
+                  "byteIndex": 7560
+                },
+                "params": [],
+                "computed": false,
+                "optional": true,
+                "tsType": {
+                  "repr": "SystemConsole",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": null,
+                    "typeName": "SystemConsole"
+                  }
+                },
+                "typeParams": []
+              }
+            ],
+            "callSignatures": [],
+            "indexSignatures": []
+          }
+        },
+        "typeParams": []
+      }
+    },
+    {
+      "name": "TestFunction",
+      "isDefault": false,
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/runner.ts",
+        "line": 24,
+        "col": 0,
+        "byteIndex": 808
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "A function that runs a test, using generated input.\n",
+        "tags": [
+          {
+            "kind": "param",
+            "name": "console",
+            "doc": "Tests can log output using this interface and they will only\nbe written to the actual console when the test fails."
+          }
+        ]
+      },
+      "kind": "typeAlias",
+      "typeAliasDef": {
+        "tsType": {
+          "repr": "",
+          "kind": "fnOrConstructor",
+          "fnOrConstructor": {
+            "constructor": false,
+            "tsType": {
+              "repr": "void",
+              "kind": "keyword",
+              "keyword": "void"
+            },
+            "params": [
+              {
+                "kind": "identifier",
+                "name": "arg",
+                "optional": false,
+                "tsType": {
+                  "repr": "T",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": null,
+                    "typeName": "T"
+                  }
+                }
+              },
+              {
+                "kind": "identifier",
+                "name": "console",
+                "optional": false,
+                "tsType": {
+                  "repr": "TestConsole",
+                  "kind": "typeRef",
+                  "typeRef": {
+                    "typeParams": null,
+                    "typeName": "TestConsole"
+                  }
+                }
+              }
+            ],
+            "typeParams": []
+          }
+        },
+        "typeParams": [
+          {
+            "name": "T"
+          }
+        ]
+      }
+    },
+    {
+      "name": "",
+      "location": {
+        "filename": "https://jsr.io/@skybrian/repeat-test/0.4.0/src/entrypoints/runner.ts",
+        "line": 1,
+        "col": 0,
+        "byteIndex": 0
+      },
+      "declarationKind": "export",
+      "jsDoc": {
+        "doc": "The symbols needed when writing tests. See {@linkcode repeatTest}.\n",
+        "tags": [
+          {
+            "kind": "module",
+            "name": "runner"
+          }
+        ]
+      },
+      "kind": "moduleDoc"
+    }
+  ]
+}

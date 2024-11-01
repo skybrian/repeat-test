@@ -1,6 +1,7 @@
 import type {
   Constructor,
   FnOrConstructor,
+  InterfaceMethod,
   Method,
   Property,
   Schema,
@@ -115,6 +116,14 @@ function lineFromMethod({ name, functionDef }: Method) {
   return `  ${name}(${params}) : ${retType}`;
 }
 
+function lineFromInterfaceMethod(
+  { name, params, returnType }: InterfaceMethod,
+) {
+  const pars = params.map((p) => p.name ?? "?").join(", ");
+  const retType = stringFromType(returnType, 1);
+  return `  ${name}(${pars}) : ${retType}`;
+}
+
 export function* linesFromSchema({ nodes }: Schema) {
   let i = 0;
   for (const node of nodes) {
@@ -154,7 +163,7 @@ export function* linesFromSchema({ nodes }: Schema) {
           "  " + stringFromFnOrConstructor(sig, 1)
         );
         yield* def.properties.map(lineFromProperty);
-        yield* def.methods.map(lineFromMethod);
+        yield* def.methods.map(lineFromInterfaceMethod);
         yield "}";
         break;
       }

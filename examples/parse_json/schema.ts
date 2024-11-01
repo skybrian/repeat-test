@@ -117,6 +117,16 @@ export const constructor: Domain<Constructor> = dom.record({
   params: dom.array(param),
 }, { strip: true });
 
+export type FunctionDef = {
+  params: Param[];
+  returnType: TsType;
+};
+
+export const functionDef: Domain<FunctionDef> = dom.record({
+  params: dom.array(param),
+  returnType: tsType,
+}, { strip: true });
+
 export type Method = {
   name: string;
   functionDef: {
@@ -127,10 +137,7 @@ export type Method = {
 
 export const method: Domain<Method> = dom.record({
   name: dom.string(),
-  functionDef: dom.record({
-    params: dom.array(param),
-    returnType: tsType,
-  }, { strip: true }),
+  functionDef,
 }, { strip: true });
 
 export const classDef = dom.record({
@@ -143,16 +150,23 @@ export const classDef = dom.record({
   methods: dom.array(method),
 }, { strip: true });
 
+export type InterfaceMethod = {
+  name: string;
+  params: Param[];
+  returnType: TsType;
+};
+
+export const interfaceMethod: Domain<InterfaceMethod> = dom.record({
+  name: dom.string(),
+  params: dom.array(param),
+  returnType: tsType,
+}, { strip: true });
+
 export const interfaceDef = dom.record({
   typeParams: dom.array(dom.record({ name: dom.string() })),
   callSignatures: dom.array(fnOrConstructor),
   properties: dom.array(property),
-  methods: dom.array(method),
-}, { strip: true });
-
-export const functionDef = dom.record({
-  params: dom.array(param),
-  returnType: tsType,
+  methods: dom.array(interfaceMethod),
 }, { strip: true });
 
 export const variableDef = dom.record({

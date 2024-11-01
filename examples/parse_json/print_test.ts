@@ -2,10 +2,25 @@ import { describe, it } from "@std/testing/bdd";
 import { schema } from "./schema.ts";
 import { linesFromSchema } from "./print.ts";
 
-import denoDocOutput from "./arbitrary_0.4.json" with { type: "json" };
+import arbEntry from "./arbitrary_0.4.json" with { type: "json" };
+import runnerEntry from "./runner_0.4.json" with { type: "json" };
+
 import { assertEquals } from "@std/assert/equals";
 
-const expected = `type PickRequestOpts = {
+describe("linesFromSchema", () => {
+  it("prints the docs for for arbitrary entrypoint", () => {
+    const parsed = schema.parse(arbEntry);
+    const lines = Array.from(linesFromSchema(parsed)).join("\n");
+    assertEquals(lines, expectedArbEntry);
+  });
+  it("prints the docs for for arbitrary entrypoint", () => {
+    const parsed = schema.parse(runnerEntry);
+    const lines = Array.from(linesFromSchema(parsed)).join("\n");
+    assertEquals(lines, expectedRunnerEntry);
+  });
+});
+
+const expectedArbEntry = `type PickRequestOpts = {
   bias : RandomPicker
 }
 
@@ -74,10 +89,27 @@ class Arbitrary<T> {
 }
 `;
 
-describe("linesFromSchema", () => {
-  it("converts the schema to the lines to print", () => {
-    const parsed = schema.parse(denoDocOutput);
-    const lines = Array.from(linesFromSchema(parsed)).join("\n");
-    assertEquals(lines, expected);
-  });
-});
+const expectedRunnerEntry = `repeatTest : (input, test, opts) => void
+
+interface SystemConsole {
+  log(?) : void
+  error(?) : void
+}
+
+interface TestConsole {
+  log(?) : void
+  error(?) : void
+  sometimes(key, val) : boolean
+  debugger() : void
+}
+
+type Examples<T> = PickSet<T> | (array)
+
+type RepeatOpts = {
+  reps : number
+  only : string
+  console : SystemConsole
+}
+
+type TestFunction<T> = (arg, console) => void
+`;
