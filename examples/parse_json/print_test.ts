@@ -42,7 +42,7 @@ interface PickSet<T> {
 
 type RecordShape<T> = [K ...]: PickSet<...>
 
-biasedBitRequest -> function
+biasedBitRequest : (probOne) => PickRequest
 
 class PickRequest {
   constructor(min, max, opts)
@@ -58,7 +58,7 @@ class Arbitrary<T> {
   constructor(arg, label, opts)
   label() : string
   generateFrom() : PickCallback<T>
-  maxSize() : (union)
+  maxSize() : number | undefined
   map(convert) : Arbitrary<U>
   filter(accept) : Arbitrary<T>
   chain(convert) : Arbitrary<U>
@@ -67,7 +67,7 @@ class Arbitrary<T> {
   toString() : string
   from(req) : Arbitrary<number>
   from(callback) : Arbitrary<T>
-  from(arg) : (union)
+  from(arg) : Arbitrary<T> | Arbitrary<number>
   of(?) : Arbitrary<T>
   oneOf(?) : Arbitrary<T>
   record(shape) : Arbitrary<T>

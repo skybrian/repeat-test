@@ -85,6 +85,8 @@ export type TsType = {
   fnOrConstructor?: FnOrConstructor;
   mappedType?: MappedType;
   typeLiteral?: TypeLiteral;
+  union?: TsType[];
+  intersection?: TsType[];
 };
 
 export const tsType: Domain<TsType> = dom.record({
@@ -94,13 +96,15 @@ export const tsType: Domain<TsType> = dom.record({
   fnOrConstructor: maybe(fnOrConstructor),
   mappedType: maybe(mappedType),
   typeLiteral: maybe(typeLiteral),
+  union: maybe(dom.array(innerType)),
+  intersection: maybe(dom.array(innerType)),
 }, { strip: true });
 
 export const typeAliasDef = dom.record({
   tsType: tsType,
   typeParams: dom.array(dom.record({
     name: dom.string(),
-  })),
+  }, { strip: true })),
 });
 
 export type Constructor = {
@@ -146,12 +150,23 @@ export const interfaceDef = dom.record({
   methods: dom.array(method),
 }, { strip: true });
 
+export const functionDef = dom.record({
+  params: dom.array(param),
+  returnType: tsType,
+}, { strip: true });
+
+export const variableDef = dom.record({
+  tsType,
+}, { strip: true });
+
 export const node = dom.record({
   name: dom.string(),
   kind: dom.string(),
   typeAliasDef: maybe(typeAliasDef),
   classDef: maybe(classDef),
   interfaceDef: maybe(interfaceDef),
+  functionDef: maybe(functionDef),
+  variableDef: maybe(variableDef),
 }, { strip: true });
 
 /**

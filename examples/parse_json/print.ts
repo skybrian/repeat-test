@@ -12,13 +12,16 @@ import type {
 
 import { assert } from "@std/assert/assert";
 
-function stringFromProperty({ name, tsType }: Property) {
-  return `${name} : ${stringFromType(tsType as TsType)}`;
+function stringFromProperty({ name, tsType }: Property, indent: number) {
+  return `${name} : ${stringFromType(tsType, indent)}`;
 }
 
-function stringFromTypeLiteral(lit: TypeLiteral) {
-  const propNames = lit.properties.map((p) => `  ${stringFromProperty(p)}\n`);
-  return `{\n${propNames.join("")}}`;
+function stringFromTypeLiteral(lit: TypeLiteral, indent: number) {
+  const ind = "  ".repeat(indent);
+  const propNames = lit.properties.map((p) =>
+    `${ind}  ${stringFromProperty(p, indent + 1)}\n`
+  );
+  return `{\n${propNames.join("")}${ind}}`;
 }
 
 function stringFromTypeParam({ repr }: TypeParam): string {
@@ -33,16 +36,27 @@ function stringFromTypeRef({ typeName, typeParams }: TypeRef) {
   return typeName;
 }
 
-function stringFromFnOrConstructor({ params, tsType }: FnOrConstructor) {
+function stringFromFnOrConstructor(
+  { params, tsType }: FnOrConstructor,
+  indent: number,
+) {
   const names = params.map((p) => p.name ?? "?").join(", ");
-  const ret = tsType.kind === "keyword"
-    ? tsType.keyword
-    : `${stringFromType(tsType as TsType)}`;
+  const ret = stringFromType(tsType, indent + 1);
   return `(${names}) => ${ret}`;
 }
 
 function stringFromType(
-  { kind, keyword, typeRef, fnOrConstructor, mappedType, typeLiteral }: TsType,
+  {
+    kind,
+    keyword,
+    typeRef,
+    fnOrConstructor,
+    mappedType,
+    typeLiteral,
+    union,
+    intersection,
+  }: TsType,
+  indent: number,
 ): string {
   switch (kind) {
     case "keyword": {
@@ -55,16 +69,26 @@ function stringFromType(
     }
     case "fnOrConstructor": {
       assert(fnOrConstructor);
-      return stringFromFnOrConstructor(fnOrConstructor);
+      return stringFromFnOrConstructor(fnOrConstructor, indent);
     }
     case "mapped": {
       assert(mappedType);
-      const valType = stringFromType(mappedType.tsType as TsType);
+      const valType = stringFromType(mappedType.tsType, indent);
       return `[${mappedType.typeParam.name} ...]: ${valType}`;
     }
     case "typeLiteral": {
       assert(typeLiteral);
-      return stringFromTypeLiteral(typeLiteral);
+      return stringFromTypeLiteral(typeLiteral, indent);
+    }
+    case "union": {
+      assert(union);
+      const types = union.map((t) => stringFromType(t, indent));
+      return types.join(" | ");
+    }
+    case "intersection": {
+      assert(intersection);
+      const types = intersection.map((t) => stringFromType(t, indent));
+      return types.join(" & ");
     }
     default:
       return `(${kind})`;
@@ -82,12 +106,12 @@ function lineFromConstructor({ name, params }: Constructor) {
 }
 
 function lineFromProperty({ name, tsType }: Property) {
-  return `  ${name}: ${stringFromType(tsType as TsType)}`;
+  return `  ${name}: ${stringFromType(tsType, 1)}`;
 }
 
 function lineFromMethod({ name, functionDef }: Method) {
   const params = functionDef.params.map((p) => p.name ?? "?").join(", ");
-  const retType = stringFromType(functionDef.returnType);
+  const retType = stringFromType(functionDef.returnType, 1);
   return `  ${name}(${params}) : ${retType}`;
 }
 
@@ -107,7 +131,7 @@ export function* linesFromSchema({ nodes }: Schema) {
         const name = typeParams.length > 0
           ? `${node.name}<${typeParams.join(", ")}>`
           : node.name;
-        yield `type ${name} = ${stringFromType(def.tsType)}`;
+        yield `type ${name} = ${stringFromType(def.tsType, 0)}`;
         break;
       }
       case "class": {
@@ -126,12 +150,27 @@ export function* linesFromSchema({ nodes }: Schema) {
         assert(def !== undefined);
         const typeParams = stringFromTypeParams(def.typeParams);
         yield `interface ${node.name}${typeParams} {`;
-        for (const sig of def.callSignatures) {
-          yield `  ${stringFromFnOrConstructor(sig)}`;
-        }
+        yield* def.callSignatures.map((sig) =>
+          "  " + stringFromFnOrConstructor(sig, 1)
+        );
         yield* def.properties.map(lineFromProperty);
         yield* def.methods.map(lineFromMethod);
         yield "}";
+        break;
+      }
+      case "function": {
+        const def = node.functionDef;
+        assert(def !== undefined);
+        const params = def.params.map((p) => p.name ?? "?").join(", ");
+        const retType = stringFromType(def.returnType, 0);
+        yield `${node.name} : (${params}) => ${retType}`;
+        break;
+      }
+      case "variable": {
+        const def = node.variableDef;
+        assert(def !== undefined);
+        const type = stringFromType(def.tsType, 0);
+        yield `${node.name} : ${type}`;
         break;
       }
       default:
