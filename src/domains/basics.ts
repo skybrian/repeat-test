@@ -103,6 +103,7 @@ export function record<T extends Record<string, unknown>>(
       }
       return out;
     },
+    { dryRun: false },
   );
 }
 
@@ -142,7 +143,7 @@ export function array<T>(
       out.push(0);
     }
     return out;
-  });
+  }, { dryRun: false });
 }
 
 /**

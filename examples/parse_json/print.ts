@@ -1,37 +1,31 @@
 import type {
-  constructor,
-  fnOrConstructor,
-  method,
-  property,
-  schema,
+  Constructor,
+  FnOrConstructor,
+  Method,
+  Property,
+  Schema,
   TsType,
-  typeLiteral,
-  typeParam,
-  typeRef,
+  TypeLiteral,
+  TypeParam,
+  TypeRef,
 } from "./schema.ts";
 
 import { assert } from "@std/assert/assert";
 
-function stringFromProperty(
-  { name, tsType }: ReturnType<typeof property.parse>,
-): string {
+function stringFromProperty({ name, tsType }: Property) {
   return `${name} : ${stringFromType(tsType as TsType)}`;
 }
 
-function stringFromTypeLiteral(lit: ReturnType<typeof typeLiteral.parse>) {
+function stringFromTypeLiteral(lit: TypeLiteral) {
   const propNames = lit.properties.map((p) => `  ${stringFromProperty(p)}\n`);
   return `{\n${propNames.join("")}}`;
 }
 
-function stringFromTypeParam(
-  { repr }: ReturnType<typeof typeParam.parse>,
-): string {
+function stringFromTypeParam({ repr }: TypeParam): string {
   return repr === "" ? "..." : repr;
 }
 
-function stringFromTypeRef(
-  { typeName, typeParams }: ReturnType<typeof typeRef.parse>,
-) {
+function stringFromTypeRef({ typeName, typeParams }: TypeRef) {
   if (typeParams !== null) {
     const params = typeParams.map(stringFromTypeParam).join(", ");
     return `${typeName}<${params}>`;
@@ -39,9 +33,7 @@ function stringFromTypeRef(
   return typeName;
 }
 
-function stringFromFnOrConstructor(
-  { params, tsType }: ReturnType<typeof fnOrConstructor.parse>,
-) {
+function stringFromFnOrConstructor({ params, tsType }: FnOrConstructor) {
   const names = params.map((p) => p.name ?? "?").join(", ");
   const ret = tsType.kind === "keyword"
     ? tsType.keyword
@@ -85,27 +77,21 @@ function stringFromTypeParams(typeParams: { name: string }[]): string {
     : `<${typeParams.map((v) => v.name).join(", ")}>`;
 }
 
-function lineFromConstructor(
-  { name, params }: ReturnType<typeof constructor.parse>,
-) {
+function lineFromConstructor({ name, params }: Constructor) {
   return `  ${name}(${params.map((p) => p.name).join(", ")})`;
 }
 
-function lineFromProperty(
-  { name, tsType }: ReturnType<typeof property.parse>,
-) {
+function lineFromProperty({ name, tsType }: Property) {
   return `  ${name}: ${stringFromType(tsType as TsType)}`;
 }
 
-function lineFromMethod(
-  { name, functionDef }: ReturnType<typeof method.parse>,
-) {
+function lineFromMethod({ name, functionDef }: Method) {
   const params = functionDef.params.map((p) => p.name ?? "?").join(", ");
   const retType = stringFromType(functionDef.returnType);
   return `  ${name}(${params}) : ${retType}`;
 }
 
-export function* linesFromSchema({ nodes }: ReturnType<typeof schema.parse>) {
+export function* linesFromSchema({ nodes }: Schema) {
   let i = 0;
   for (const node of nodes) {
     if (i > 0) {

@@ -43,14 +43,13 @@ export class Domain<T> extends Arbitrary<T> {
 
   private constructor(
     script: Script<T>,
-    arbOpts: { maxSize?: () => number | undefined; dryRun?: boolean },
     pickify: PickifyFunction,
-    dryRun: boolean,
+    opts: { maxSize?: number; dryRun?: boolean },
   ) {
-    super(script, arbOpts);
+    super(script, opts);
     this.#pickify = pickify;
 
-    if (dryRun !== false) {
+    if (opts.dryRun !== false) {
       // Verify that we can round-trip the default value.
       const def = generateDefault(script);
       const picks = this.pickify(
@@ -182,7 +181,8 @@ export class Domain<T> extends Arbitrary<T> {
    */
   override with(opts: { name: string }): Domain<T> {
     const script = this.buildScript.with(opts);
-    return new Domain(script, this.arbOpts, this.#pickify, false);
+    const maxSize = this.maxSize;
+    return new Domain(script, this.#pickify, { maxSize, dryRun: false });
   }
 
   /**
@@ -204,9 +204,14 @@ export class Domain<T> extends Arbitrary<T> {
    *
    * A property test can be used to verify that the callback is correct.
    */
-  static make<T>(gen: Pickable<T>, pickify: PickifyFunction): Domain<T> {
-    const opts = (gen instanceof Arbitrary) ? gen.arbOpts : {};
-    return new Domain(Script.from(gen), opts, pickify, true);
+  static make<T>(
+    gen: Pickable<T>,
+    pickify: PickifyFunction,
+    opts?: { dryRun?: boolean },
+  ): Domain<T> {
+    const maxSize = (gen instanceof Arbitrary) ? gen.maxSize : undefined;
+    const dryRun = opts?.dryRun ?? true;
+    return new Domain(Script.from(gen), pickify, { maxSize, dryRun });
   }
 
   /**
@@ -263,11 +268,6 @@ export class Domain<T> extends Arbitrary<T> {
       return target().directBuild(pick);
     });
 
-    const arbOpts = {
-      maxSize: () => target().maxSize,
-      dryRun: false,
-    };
-
     function pickify(
       val: unknown,
       sendErr: SendErr,
@@ -276,6 +276,6 @@ export class Domain<T> extends Arbitrary<T> {
       return dom.#pickify(val, sendErr, dom.name);
     }
 
-    return new Domain(script, arbOpts, pickify, false);
+    return new Domain(script, pickify, { dryRun: false });
   }
 }

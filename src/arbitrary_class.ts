@@ -12,7 +12,7 @@ import { generateDefault } from "./ordered.ts";
 import { randomPlayouts } from "./random.ts";
 
 type ConstructorOpts<T> = {
-  maxSize?: () => number | undefined;
+  maxSize?: number;
   dryRun?: boolean;
 };
 
@@ -34,7 +34,7 @@ function checkRandomGenerate(script: Script<unknown>) {
  */
 export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
   readonly #script: Script<T>;
-  readonly #maxSize: () => number | undefined;
+  readonly #maxSize: number | undefined;
 
   /** Initializer for a subclass that generates the same values as another Arbitrary. */
   protected constructor(arb: Arbitrary<T>);
@@ -54,7 +54,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
     } else {
       assert(arg instanceof Script);
       this.#script = arg;
-      this.#maxSize = opts?.maxSize ?? (() => undefined);
+      this.#maxSize = opts?.maxSize;
       if (opts?.dryRun !== false) {
         checkRandomGenerate(arg);
         generateDefault(this);
@@ -91,15 +91,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
    * (Only available for some small sets.)
    */
   get maxSize(): number | undefined {
-    return this.#maxSize();
-  }
-
-  /** Returns the options needed to make a copy of this Arbitrary. */
-  get arbOpts(): ConstructorOpts<T> {
-    return {
-      maxSize: this.#maxSize,
-      dryRun: false,
-    };
+    return this.#maxSize;
   }
 
   /**
@@ -222,6 +214,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
    */
   static from<T>(
     arg: Pickable<T> | BuildFunction<T>,
+    opts?: { dryRun?: boolean },
   ): Arbitrary<T> {
     if (typeof arg === "function") {
       return new Arbitrary(Script.make("untitled", arg));
@@ -232,13 +225,13 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
         return pick(arg);
       }, { cachable: true, logCalls: true });
       return new Arbitrary(script, {
-        maxSize: () => maxSize,
+        maxSize,
         dryRun: false,
       }) as Arbitrary<T>;
     } else if (arg instanceof Arbitrary) {
       return arg;
     }
-    return new Arbitrary(Script.from(arg, { caller: "Arbitrary.from" }));
+    return new Arbitrary(Script.from(arg, { caller: "Arbitrary.from" }), opts);
   }
 
   /**
@@ -269,7 +262,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
         return constant;
       });
       return new Arbitrary(build, {
-        maxSize: () => 1,
+        maxSize: 1,
         dryRun: false,
       });
     }
@@ -283,7 +276,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
     });
     const maxSize = examples.length;
     return new Arbitrary(build, {
-      maxSize: () => maxSize,
+      maxSize: maxSize,
       dryRun: false,
     });
   }
@@ -321,7 +314,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
       const index = pick(req);
       return scripts[index].directBuild(pick);
     }, { cachable: true });
-    return new Arbitrary(script, { maxSize: () => maxSize, dryRun: false });
+    return new Arbitrary(script, { maxSize, dryRun: false });
   }
 
   /**
@@ -347,7 +340,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
         return {} as T;
       });
       return new Arbitrary(build, {
-        maxSize: () => maxSize,
+        maxSize,
         dryRun: false,
       });
     }
@@ -360,7 +353,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
       return result as T;
     }, { logCalls: keys.length > 1 });
 
-    return new Arbitrary(build, { maxSize: () => maxSize, dryRun: false });
+    return new Arbitrary(build, { maxSize, dryRun: false });
   }
 
   /**

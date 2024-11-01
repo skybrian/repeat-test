@@ -185,6 +185,19 @@ describe("record", () => {
       assertEquals(val, { a: 0, b: 6 });
     });
   });
+
+  describe("for a record with a field that's an alias", () => {
+    const alias = dom.alias(() => {
+      throw new Error("should not be called");
+    });
+
+    it("shouldn't call the alias when defined", () => {
+      dom.record({
+        a: dom.int(1, 2),
+        b: alias,
+      });
+    });
+  });
 });
 
 describe("array", () => {

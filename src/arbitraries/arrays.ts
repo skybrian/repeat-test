@@ -91,5 +91,5 @@ export function array<T>(
     return result;
   }, { logCalls: true });
 
-  return Arbitrary.from(script);
+  return Arbitrary.from(script, { dryRun: false });
 }

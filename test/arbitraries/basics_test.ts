@@ -174,6 +174,19 @@ describe("record", () => {
       ]);
     });
   });
+
+  describe("for a record with a field that's an alias", () => {
+    const alias = arb.alias(() => {
+      throw new Error("should not be called");
+    });
+
+    it("shouldn't call the alias when defined", () => {
+      arb.record({
+        a: arb.int(1, 2),
+        b: alias,
+      });
+    });
+  });
 });
 
 describe("oneOf", () => {
