@@ -2,8 +2,8 @@ import { describe, it } from "@std/testing/bdd";
 import { schema } from "./schema.ts";
 import { linesFromSchema } from "./print.ts";
 
-import arbEntry from "./arbitrary_0.4.json" with { type: "json" };
-import runnerEntry from "./runner_0.4.json" with { type: "json" };
+import arbEntry from "./data/arbitrary_0.4.json" with { type: "json" };
+import runnerEntry from "./data/runner_0.4.json" with { type: "json" };
 
 import { assertEquals } from "@std/assert/equals";
 
