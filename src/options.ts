@@ -3,10 +3,16 @@ import type { Pickable } from "./pickable.ts";
 /**
  * A callback for reporting errors while validating a value.
  *
- * The 'at' argument is an optional string or number that identifies where the
- * error occurred, such as an array index or a property name.
+ * The `actual` parameter is the invalid value.
+ *
+ * The 'at' parameter is an optional string or number that identifies the
+ * location of the invalid value, such as an array index or a property name.
  */
-export type SendErr = (msg: string, opts?: { at: string | number }) => void;
+export type SendErr = (
+  msg: string,
+  actual: unknown,
+  opts?: { at: string | number },
+) => void;
 
 /**
  * Specifies a record to be generated.
@@ -26,14 +32,14 @@ export function checkRecordKeys<T extends Record<string, unknown>>(
   const at = opts?.at ?? "";
 
   if (val === null || typeof val !== "object") {
-    sendErr("not an object", { at });
+    sendErr("not an object", val, { at });
     return false;
   }
 
   if (!opts?.strip) {
     for (const key of Object.keys(val)) {
       if (!(key in fields)) {
-        sendErr(`extra field: ${key}`, { at });
+        sendErr(`extra field: ${key}`, val, { at });
         return false;
       }
     }
@@ -75,13 +81,13 @@ export function checkArray(
   sendErr: SendErr,
 ): val is unknown[] {
   if (!Array.isArray(val)) {
-    sendErr("not an array");
+    sendErr("not an array", val);
     return false;
   } else if (val.length < min) {
-    sendErr(`array too short; want len >= ${min}, got: ${val.length}`);
+    sendErr(`array too short; want len >= ${min}, got: ${val.length}`, val);
     return false;
   } else if (val.length > max) {
-    sendErr(`array too long; want len <= ${max}, got: ${val.length}`);
+    sendErr(`array too long; want len <= ${max}, got: ${val.length}`, val);
     return false;
   }
   return true;

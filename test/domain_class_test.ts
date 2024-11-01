@@ -19,6 +19,15 @@ describe("Domain", () => {
       assertEquals(dom.maxSize, arb.maxSize);
     });
 
+    it("creates a Domain from a non-Arbitrary", () => {
+      const dom = Domain.make(new PickRequest(1, 6), (val) => {
+        if (typeof val !== "number") return undefined;
+        if (val < 1 || val > 6) return undefined;
+        return [val];
+      });
+      assertEquals(dom.innerPickify(2, fail), [2]);
+    });
+
     it("throws an Error if the callback returns undefined with no error", () => {
       const arb = Arbitrary.from(new PickRequest(1, 6));
       assertThrows(
@@ -30,8 +39,8 @@ describe("Domain", () => {
 
     it("throws an Error if the callback returns undefined with an error", () => {
       const arb = Arbitrary.from(new PickRequest(1, 6));
-      const callback: PickifyFunction = (_, sendErr) => {
-        sendErr("oops!");
+      const callback: PickifyFunction = (val, sendErr) => {
+        sendErr("oops!", val);
         return undefined;
       };
       assertThrows(
@@ -68,10 +77,10 @@ describe("Domain", () => {
     Arbitrary.from(new PickRequest(1, 6)),
     (v, sendErr) => {
       if (typeof v !== "number") {
-        sendErr("not a number");
+        sendErr("not a number", v);
         return undefined;
       } else if (v < 1 || v > 6) {
-        sendErr("not in range");
+        sendErr("not in range", v);
         return undefined;
       }
       return [v];
@@ -80,10 +89,18 @@ describe("Domain", () => {
 
   describe("parse", () => {
     it("throws a default error if the callback didn't supply a message", () => {
-      assertThrows(() => bit.parse("hello"), Error, "not in domain");
+      assertThrows(
+        () => bit.parse("hello"),
+        Error,
+        `not in domain\n\n"hello"\n`,
+      );
     });
     it("throws a custom error if the callback called sendErr", () => {
-      assertThrows(() => roll.parse("hello"), Error, "not a number");
+      assertThrows(
+        () => roll.parse("hello"),
+        Error,
+        `not a number\n\n"hello"\n`,
+      );
     });
   });
 
@@ -109,24 +126,36 @@ describe("Domain", () => {
 
   describe("regenerate", () => {
     it("returns a default error if the callback didn't supply one", () => {
-      assertEquals(bit.regenerate(2), { ok: false, message: "not in domain" });
+      assertEquals(bit.regenerate(2), {
+        ok: false,
+        message: "not in domain",
+        actual: 2,
+      });
     });
   });
 
   describe("pickify", () => {
     it("returns a default error if the callback didn't supply one", () => {
-      assertEquals(bit.pickify(2), { ok: false, message: "not in domain" });
+      assertEquals(bit.pickify(2), {
+        ok: false,
+        message: "not in domain",
+        actual: 2,
+      });
     });
   });
 
   describe("innerPickify", () => {
     const errs: string[] = [];
 
-    const sendErr = (err: string, opts?: { at: string | number }) => {
+    const sendErr = (
+      err: string,
+      val: unknown,
+      opts?: { at: string | number },
+    ) => {
       if (opts?.at) {
-        errs.push(`${opts.at}: ${err}`);
+        errs.push(`${opts.at}: ${err} (${val})`);
       } else {
-        errs.push(err);
+        errs.push(`${err} (${val})`);
       }
     };
 
@@ -143,13 +172,13 @@ describe("Domain", () => {
       const arb = Arbitrary.from(new PickRequest(1, 6));
       const dom = Domain.make(arb, (v, sendErr) => {
         if (v !== 1) {
-          sendErr("oops!", { at: "inner" });
+          sendErr("oops!", v, { at: "inner" });
           return undefined;
         }
         return [v];
       });
       assertEquals(dom.innerPickify(2, sendErr, "outer"), undefined);
-      assertEquals(errs, ["outer.inner: oops!"]);
+      assertEquals(errs, ["outer.inner: oops! (2)"]);
     });
   });
 
@@ -164,6 +193,7 @@ describe("Domain", () => {
         {
           ok: false,
           message: "can't build '1..6 (filtered)': picks not accepted",
+          actual: [2],
         },
       );
     });
@@ -178,6 +208,7 @@ describe("Domain", () => {
           ok: false,
           message:
             "can't build '1..6 (filtered)': read only 1 of 2 available picks",
+          actual: [2, 3],
         },
       );
     });

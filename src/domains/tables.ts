@@ -35,7 +35,7 @@ export function uniqueArray<T>(
       assert(gen.ok, "can't regenerate an accepted value");
 
       if (!seen.prune(gen)) {
-        sendErr("duplicate item", { at: i });
+        sendErr("duplicate item", v, { at: i });
         return undefined;
       }
       if (i >= min) {
@@ -99,7 +99,7 @@ export function table<R extends Record<string, unknown>>(
         const seen = trees[key];
         if (seen) {
           if (!seen.prune(gen)) {
-            sendErr("duplicate field value", { at: `${i}.${key}` });
+            sendErr("duplicate field value", field, { at: `${i}.${key}` });
             return undefined;
           }
         }

@@ -36,29 +36,17 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
   readonly #script: Script<T>;
   readonly #maxSize: number | undefined;
 
-  /** Initializer for a subclass that generates the same values as another Arbitrary. */
-  protected constructor(arb: Arbitrary<T>);
   /** Initializes an Arbitrary, given a callback function. */
   protected constructor(
-    buildScript: Script<T>,
-    opts?: ConstructorOpts<T>,
-  );
-  /** Initializes a callback or another Arbitrary. */
-  protected constructor(
-    arg: Arbitrary<T> | Script<T>,
+    arg: Script<T>,
     opts?: ConstructorOpts<T>,
   ) {
-    if (arg instanceof Arbitrary) {
-      this.#script = arg.#script;
-      this.#maxSize = arg.#maxSize;
-    } else {
-      assert(arg instanceof Script);
-      this.#script = arg;
-      this.#maxSize = opts?.maxSize;
-      if (opts?.dryRun !== false) {
-        checkRandomGenerate(arg);
-        generateDefault(this);
-      }
+    assert(arg instanceof Script);
+    this.#script = arg;
+    this.#maxSize = opts?.maxSize;
+    if (opts?.dryRun !== false) {
+      checkRandomGenerate(arg);
+      generateDefault(this);
     }
   }
 

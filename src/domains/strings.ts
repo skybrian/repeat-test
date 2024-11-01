@@ -10,12 +10,12 @@ const arbAscii = arb.asciiChar();
 
 const asciiDom = Domain.make(arbAscii, (val, sendErr) => {
   if (typeof val !== "string") {
-    sendErr("not a string");
+    sendErr("not a string", val);
     return undefined;
   }
   const code = val.charCodeAt(0);
   if (code < 0 || code >= 128 || val.length !== 1) {
-    sendErr("not an ascii character");
+    sendErr("not an ascii character", val);
     return undefined;
   }
   return [asciiToPick[code]];
@@ -46,16 +46,16 @@ export const char16: () => Domain<string> = Domain.make(
   arb.char16(),
   (val, sendErr) => {
     if (typeof val !== "string") {
-      sendErr("not a string");
+      sendErr("not a string", val);
       return undefined;
     }
     if (val.length > 1) {
-      sendErr("not a single character");
+      sendErr("not a single character", val);
       return undefined;
     }
     const code = val.charCodeAt(0);
     if (Number.isNaN(code)) {
-      sendErr("not a single character");
+      sendErr("not a single character", val);
       return undefined;
     }
 
@@ -75,13 +75,19 @@ export function string(opts?: arb.ArrayOpts): Domain<string> {
   const { min, max } = parseArrayOpts(opts);
   return Domain.make(arb.string(opts), (val, sendErr) => {
     if (typeof val !== "string") {
-      sendErr("not a string");
+      sendErr("not a string", val);
       return undefined;
     } else if (val.length < min) {
-      sendErr(`string too short; want length >= ${min}, got: ${val.length}`);
+      sendErr(
+        `string too short; want length >= ${min}, got: ${val.length}`,
+        val,
+      );
       return undefined;
     } else if (val.length > max) {
-      sendErr(`string too long; want length <= ${max}, got: ${val.length}`);
+      sendErr(
+        `string too long; want length <= ${max}, got: ${val.length}`,
+        val,
+      );
       return undefined;
     }
     const out: number[] = [];
@@ -111,13 +117,19 @@ export function wellFormedString(opts?: arb.ArrayOpts): Domain<string> {
     arb.wellFormedString(opts),
     (val, sendErr) => {
       if (typeof val !== "string") {
-        sendErr("not a string");
+        sendErr("not a string", val);
         return undefined;
       } else if (val.length < min) {
-        sendErr(`string too short; want length >= ${min}, got: ${val.length}`);
+        sendErr(
+          `string too short; want length >= ${min}, got: ${val.length}`,
+          val,
+        );
         return undefined;
       } else if (val.length > max) {
-        sendErr(`string too long; want length <= ${max}, got: ${val.length}`);
+        sendErr(
+          `string too long; want length <= ${max}, got: ${val.length}`,
+          val,
+        );
         return undefined;
       }
 
@@ -127,7 +139,7 @@ export function wellFormedString(opts?: arb.ArrayOpts): Domain<string> {
         const code = char.codePointAt(0);
         assert(code !== undefined, "for loop should return code points");
         if (unicode.isSurrogate(code)) {
-          sendErr("unpaired surrogate", { at: i });
+          sendErr("unpaired surrogate", val, { at: i });
           return undefined;
         }
         if (i >= min) {

@@ -8,6 +8,8 @@ export type Success<T> = {
 export type Failure = {
   readonly ok: false;
   readonly message: string;
+  /** For a validation error, the value that had the error. */
+  readonly actual?: unknown;
 };
 
 export function success(): Success<undefined>;
@@ -16,8 +18,8 @@ export function success<T>(val?: T): Success<T | undefined> {
   return { ok: true, val };
 }
 
-export function failure(message: string): Failure {
-  return { ok: false, message };
+export function failure(message: string, actual?: unknown): Failure {
+  return { ok: false, message, actual };
 }
 
 /**

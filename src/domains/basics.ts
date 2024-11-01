@@ -36,32 +36,35 @@ export const boolean: () => Domain<boolean> = Domain.of(false, true).with({
  * A domain that accepts safe integers within the given range (inclusive).
  */
 export function int(min: number, max: number): Domain<number> {
-  const gen = arb.int(min, max);
-
-  const accept = (
-    val: unknown,
-    sendErr: (msg: string) => void,
-  ): val is number => {
-    if (typeof val !== "number" || !Number.isSafeInteger(val)) {
-      sendErr("not a safe integer");
-      return false;
-    }
-    if (val < min || val > max) {
-      sendErr(`not in range [${min}, ${max}]`);
-      return false;
-    }
-    return true;
-  };
+  function intDomain(pickify: (val: number) => number[]) {
+    return Domain.make(
+      arb.int(min, max),
+      (val, sendErr) => {
+        if (typeof val !== "number" || !Number.isSafeInteger(val)) {
+          sendErr("not a safe integer", val);
+          return undefined;
+        }
+        if (val < min || val > max) {
+          sendErr(`not in range [${min}, ${max}]`, val);
+          return undefined;
+        }
+        return pickify(val);
+      },
+    );
+  }
 
   if (min >= 0) {
-    return Domain.make(gen, (val, e) => accept(val, e) ? [val] : undefined);
+    return intDomain((val) => [val]);
   } else if (max <= 0) {
-    return Domain.make(gen, (val, e) => accept(val, e) ? [-val] : undefined);
+    return intDomain((val) => [-val]);
   } else {
-    return Domain.make(
-      gen,
-      (val, e) => accept(val, e) ? [val < 0 ? 1 : 0, Math.abs(val)] : undefined,
-    );
+    return intDomain((val) => {
+      if (val < 0) {
+        return [1, -val];
+      } else {
+        return [0, val];
+      }
+    });
   }
 }
 
@@ -166,7 +169,7 @@ export function oneOf<T>(...cases: Domain<T>[]): Domain<T> {
   return Domain.make(gen, (val, sendErr) => {
     const errors: string[] = [];
     for (const [i, c] of cases.entries()) {
-      const picks = c.innerPickify(val, (err, loc) => {
+      const picks = c.innerPickify(val, (err, _val, loc) => {
         if (loc) {
           errors.push(`  ${loc.at}: ${err}\n`);
         } else {
@@ -175,7 +178,7 @@ export function oneOf<T>(...cases: Domain<T>[]): Domain<T> {
       });
       if (picks !== undefined) return [i, ...picks];
     }
-    sendErr(`no case matched:\n${errors.join("")}`);
+    sendErr(`no case matched:\n${errors.join("")}`, val);
     return undefined;
   });
 }

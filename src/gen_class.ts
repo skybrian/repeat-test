@@ -206,7 +206,7 @@ export class Gen<T> implements Success<T> {
     const gen = generate(script, onePlayout(picker));
     if (gen === filtered || picker.error !== undefined) {
       const err = picker.error ?? "picks not accepted";
-      return failure(`can't build '${script.name}': ${err}`);
+      return failure(`can't build '${script.name}': ${err}`, replies);
     }
     return gen;
   }

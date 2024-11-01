@@ -44,6 +44,7 @@ describe("Gen", () => {
         {
           ok: false,
           message: "can't build 'bit': ran out of picks",
+          actual: [],
         },
       );
     });
@@ -53,6 +54,7 @@ describe("Gen", () => {
         {
           ok: false,
           message: "can't build 'neverReturns': picks not accepted",
+          actual: [],
         },
       );
     });
@@ -62,6 +64,7 @@ describe("Gen", () => {
         {
           ok: false,
           message: "can't build 'bit': read only 1 of 2 available picks",
+          actual: [1, 1],
         },
       );
     });
@@ -72,6 +75,7 @@ describe("Gen", () => {
           ok: false,
           message:
             "can't build 'roll': pick 0 didn't satisfy the request. Want: [1, 6]. Got: 7",
+          actual: [7],
         },
       );
     });

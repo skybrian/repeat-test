@@ -77,7 +77,12 @@ export class Domain<T> extends Arbitrary<T> {
   parse(val: unknown): T {
     const gen = this.regenerate(val);
     if (!gen.ok) {
-      throw new Error(gen.message);
+      let msg = gen.message;
+      if (!msg.endsWith("\n")) {
+        msg += "\n";
+      }
+      const actual = Deno.inspect(gen.actual);
+      throw new Error(`${msg}\n${actual}\n`);
     }
     return gen.val;
   }
@@ -89,11 +94,11 @@ export class Domain<T> extends Arbitrary<T> {
     return Domain.make<T>(super.filter(accept), (val, sendErr) => {
       const gen = this.regenerate(val);
       if (!gen.ok) {
-        sendErr(gen.message);
+        sendErr(gen.message, val);
         return undefined;
       }
       if (!accept(gen.val)) {
-        sendErr("filter rejected value");
+        sendErr("filter rejected value", val);
         return undefined;
       }
       return gen.replies;
@@ -133,17 +138,17 @@ export class Domain<T> extends Arbitrary<T> {
     val: unknown,
     defaultMessage?: string,
   ): Success<number[]> | Failure {
-    let firstError: string | undefined = undefined;
-    const sendErr: SendErr = (msg, opts) => {
-      if (firstError === undefined) {
+    let firstFailure: Failure | undefined;
+    const sendErr: SendErr = (msg, actual, opts) => {
+      if (firstFailure === undefined) {
         const at = opts?.at;
-        firstError = at !== undefined ? `${at}: ${msg}` : msg;
+        const firstMsg = at !== undefined ? `${at}: ${msg}` : msg;
+        firstFailure = failure(firstMsg, actual);
       }
     };
     const picks = this.#pickify(val, sendErr, this.name);
     if (picks === undefined) {
-      const err = firstError ?? defaultMessage ?? "not in domain";
-      return failure(err);
+      return firstFailure ?? failure(defaultMessage ?? "not in domain", val);
     }
     return success(Array.from(picks));
   }
@@ -167,10 +172,10 @@ export class Domain<T> extends Arbitrary<T> {
   ): Iterable<number> | undefined {
     let innerErr: SendErr = sendErr;
     if (location !== undefined) {
-      innerErr = (msg, opts) => {
+      innerErr = (msg, val, opts) => {
         const innerAt = opts?.at;
         const at = innerAt ? `${location}.${innerAt}` : "" + location;
-        sendErr(msg, { at });
+        sendErr(msg, val, { at });
       };
     }
     return this.#pickify(val, innerErr, this.name);
@@ -226,7 +231,7 @@ export class Domain<T> extends Arbitrary<T> {
     if (values.length === 1) {
       return Domain.make(generator, (val, sendErr, name) => {
         if (val !== values[0]) {
-          sendErr(`doesn't match '${name}'`);
+          sendErr(`doesn't match '${name}'`, val);
           return undefined;
         }
         return []; // constant
@@ -236,7 +241,7 @@ export class Domain<T> extends Arbitrary<T> {
     return Domain.make(generator, (val, sendErr, name) => {
       const pick = values.indexOf(val as T);
       if (pick === -1) {
-        sendErr(`not a member of '${name}'`);
+        sendErr(`not a member of '${name}'`, val);
         return undefined;
       }
       return [pick];
