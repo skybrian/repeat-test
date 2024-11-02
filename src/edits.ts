@@ -46,6 +46,7 @@ export class EditResponder implements PickResponder {
   #offset = 0;
   #edits = 0;
   #deletes = 0;
+  #tries = 0;
 
   constructor(
     before: Iterable<number>,
@@ -68,7 +69,8 @@ export class EditResponder implements PickResponder {
   }
 
   startAt(depth: number): boolean {
-    return depth === this.depth;
+    this.#tries++;
+    return this.#tries === 1 && depth === this.depth;
   }
 
   nextPick(req: Range): number {
