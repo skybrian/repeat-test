@@ -8,6 +8,15 @@ import { generateDefault } from "./ordered.ts";
 
 import type { SendErr } from "./options.ts";
 
+/** Thrown for validation errors. */
+export class ParseError<T> extends Error {
+  /** Creates a ParseError with the actual value attached. */
+  constructor(message: string, readonly actual: T) {
+    super(message);
+    this.name = "ParseError";
+  }
+}
+
 /**
  * Validates a value, converting it to a pick sequence that can be used to make
  * a copy of it.
@@ -82,7 +91,7 @@ export class Domain<T> extends Arbitrary<T> {
         msg += "\n";
       }
       const actual = Deno.inspect(gen.actual);
-      throw new Error(`${msg}\n${actual}\n`);
+      throw new ParseError(`${msg}\n${actual}\n`, val);
     }
     return gen.val;
   }

@@ -75,6 +75,7 @@ export type RecordShape<T> = {
   [K in keyof T]: Domain<T[K]>;
 };
 
+/** Options for {@link record}. */
 export type RecordOpts = {
   /** Indicates that extra fields will be ignored (not parsed). */
   strip?: boolean;

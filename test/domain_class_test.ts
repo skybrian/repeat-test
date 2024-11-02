@@ -1,9 +1,40 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
-import { assertEquals, assertThrows, fail } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertStringIncludes,
+  assertThrows,
+  fail,
+} from "@std/assert";
 
 import { PickRequest } from "../src/picks.ts";
 import { Arbitrary } from "../src/arbitrary_class.ts";
-import { Domain, type PickifyFunction } from "../src/domain_class.ts";
+import {
+  Domain,
+  ParseError,
+  type PickifyFunction,
+} from "../src/domain_class.ts";
+
+describe("ParseError", () => {
+  const err = new ParseError("oops", 123);
+
+  it("has the expected properties", () => {
+    const err = new ParseError("oops", 123);
+    assertEquals(Object.keys(err), ["actual", "name"]);
+    assertEquals(err.name, "ParseError");
+    assertEquals(err.message, "oops");
+    assertEquals(err.actual, 123);
+  });
+
+  it("works with instanceof", () => {
+    assert(err instanceof ParseError);
+  });
+
+  it("pretty-prints the actual value", () => {
+    const err = new ParseError("oops", { a: 123 });
+    assertStringIncludes(Deno.inspect(err), `{ a: 123 }`);
+  });
+});
 
 describe("Domain", () => {
   describe("make", () => {
@@ -91,14 +122,14 @@ describe("Domain", () => {
     it("throws a default error if the callback didn't supply a message", () => {
       assertThrows(
         () => bit.parse("hello"),
-        Error,
+        ParseError,
         `not in domain\n\n"hello"\n`,
       );
     });
     it("throws a custom error if the callback called sendErr", () => {
       assertThrows(
         () => roll.parse("hello"),
-        Error,
+        ParseError,
         `not a number\n\n"hello"\n`,
       );
     });
@@ -106,19 +137,19 @@ describe("Domain", () => {
 
   describe("filter", () => {
     it("rejects values outside the domain with a default error", () => {
-      assertThrows(() => bit.parse("hello"), Error, "not in domain");
+      assertThrows(() => bit.parse("hello"), ParseError, "not in domain");
     });
     it("rejects values outside the domain with a custom error", () => {
       assertThrows(
         () => roll.filter((v) => v === 1).parse(7),
-        Error,
+        ParseError,
         "not in range",
       );
     });
     it("rejects values that have been filtered out", () => {
       assertThrows(
         () => roll.filter((v) => v === 1).parse(2),
-        Error,
+        ParseError,
         "filter rejected value",
       );
     });
