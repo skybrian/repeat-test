@@ -7,7 +7,7 @@ import * as dom from "@/doms.ts";
 import { assertEncoding, assertRoundTrip } from "../lib/asserts.ts";
 import { intRange, invalidIntRange, minMaxVal } from "../lib/ranges.ts";
 import { MutableGen } from "../../src/gen_class.ts";
-import { Domain } from "@/domain.ts";
+import { Domain, ParseError } from "@/domain.ts";
 
 describe("of", () => {
   describe("for a single-item domain", () => {
@@ -18,8 +18,8 @@ describe("of", () => {
     it("rejects items not passed in as arguments", () => {
       assertThrows(
         () => one.parse(2),
-        Error,
-        "doesn't match 'untitled constant'",
+        ParseError,
+        "doesn't match '1 (constant)'",
       );
     });
   });
@@ -30,6 +30,11 @@ describe("of", () => {
   it("uses a name added later in error messages", () => {
     const items = dom.of(1, 2, 3).with({ name: "digit" });
     assertThrows(() => items.parse(4), Error, "not a member of 'digit'");
+  });
+
+  it("automatically names simple constants", () => {
+    assertEquals(dom.of(undefined).name, "undefined (constant)");
+    assertEquals(dom.of(1).name, "1 (constant)");
   });
 });
 
@@ -62,7 +67,7 @@ describe("boolean", () => {
   it("rejects non-booleans", () => {
     assertThrows(
       () => bool.parse(undefined),
-      Error,
+      ParseError,
       "not a member of 'boolean'",
     );
   });
@@ -144,7 +149,7 @@ describe("record", () => {
     const pair = dom.record({ a: dom.int(0, 1), b: dom.int(0, 1) });
     assertThrows(
       () => pair.parse({ a: 0 }),
-      Error,
+      ParseError,
       "b: not a safe integer",
     );
   });
@@ -214,12 +219,12 @@ describe("array", () => {
     });
 
     it("rejects non-arrays", () => {
-      assertThrows(() => arr.parse(undefined), Error, "not an array");
-      assertThrows(() => arr.parse(0), Error, "not an array");
+      assertThrows(() => arr.parse(undefined), ParseError, "not an array");
+      assertThrows(() => arr.parse(0), ParseError, "not an array");
     });
 
     it("rejects arrays with an invalid item", () => {
-      assertThrows(() => arr.parse([1, 0]), Error, "1: not in range");
+      assertThrows(() => arr.parse([1, 0]), ParseError, "1: not in range");
     });
 
     it("has one more group than the size of the array", () => {
@@ -234,7 +239,7 @@ describe("array", () => {
     it("rejects arrays that are too short", () => {
       assertThrows(
         () => arr.parse([1]),
-        Error,
+        ParseError,
         "array too short; want len >= 2, got: 1",
       );
     });
@@ -246,7 +251,7 @@ describe("array", () => {
     it("rejects arrays that are too long", () => {
       assertThrows(
         () => arr.parse([1, 2, 3]),
-        Error,
+        ParseError,
         "array too long; want len <= 2, got: 3",
       );
     });
@@ -262,11 +267,11 @@ describe("array", () => {
       assertEncoding(arr, [2, 3], [2, 3]);
     });
     it("rejects arrays of the wrong length", () => {
-      assertThrows(() => arr.parse([]), Error, "array too short");
-      assertThrows(() => arr.parse([1, 2, 3]), Error, "array too long");
+      assertThrows(() => arr.parse([]), ParseError, "array too short");
+      assertThrows(() => arr.parse([1, 2, 3]), ParseError, "array too long");
     });
     it("rejects arrays with an invalid item", () => {
-      assertThrows(() => arr.parse([2, 0]), Error, "1: not in range");
+      assertThrows(() => arr.parse([2, 0]), ParseError, "1: not in range");
     });
   });
 });
@@ -275,6 +280,7 @@ describe("oneOf", () => {
   it("throws when given an empty array", () => {
     assertThrows(() => dom.oneOf(), Error);
   });
+
   describe("for a single-case oneOf", () => {
     it("encodes it the same way as the child domain", () => {
       repeatTest(minMaxVal(), ({ min, max, val }) => {
@@ -286,34 +292,72 @@ describe("oneOf", () => {
         assertEncoding(oneWay, expected, val);
       });
     });
+
     it("rejects values that don't match", () => {
       const child = dom.int(1, 3);
       const oneWay = dom.oneOf(child);
-      assertThrows(() => oneWay.parse(0), Error, "not in range");
+      assertThrows(() => oneWay.parse(0), ParseError, "not in range");
     });
   });
+
   describe("for a multi-case oneOf", () => {
     const multiWay = dom.oneOf(dom.int(1, 3), dom.int(4, 6));
+
     it("encodes distinct cases by putting the case index first", () => {
       assertEncoding(multiWay, [0, 2], 2);
       assertEncoding(multiWay, [1, 5], 5);
     });
-    it("rejects values that don't match any case", () => {
+    it("throws a ParseError with a nice message", () => {
       assertThrows(
         () => multiWay.parse(0),
-        Error,
-        "no case matched:\n  not in range [1, 3]\n  not in range [4, 6]\n",
+        ParseError,
+        `no case matched:
+  not in range [1, 3]
+  not in range [4, 6]
+`,
       );
     });
-    it("prints error locations when no case matches", () => {
+
+    it("prints error locations when the mismatch is in a nested domain", () => {
       const example = dom.oneOf(
         dom.array(dom.int(1, 3)),
         dom.array(dom.int(4, 5)),
       );
       assertThrows(
         () => example.parse([0]),
-        Error,
-        "no case matched:\n  0: not in range [1, 3]\n  0: not in range [4, 5]\n",
+        ParseError,
+        `no case matched:
+  0: not in range [1, 3]
+  0: not in range [4, 5]
+`,
+      );
+    });
+  });
+
+  describe("for a nested oneOf", () => {
+    const undef = dom.of(undefined).with({ name: "undefined" });
+
+    const nested = dom.oneOf(
+      dom.int(1, 3),
+      dom.oneOf(undef, dom.int(4, 5)),
+    );
+
+    it("encodes the choices made in order", () => {
+      assertEncoding(nested, [0, 1], 1);
+      assertEncoding(nested, [1, 0], undefined);
+      assertEncoding(nested, [1, 1, 5], 5);
+    });
+
+    it("prints nested error locations when no case matches", () => {
+      assertThrows(
+        () => nested.parse(42),
+        ParseError,
+        `no case matched:
+  not in range [1, 3]
+  no case matched:
+    doesn't match 'undefined'
+    not in range [4, 5]
+`,
       );
     });
   });

@@ -1,7 +1,7 @@
 import { dom, type Domain } from "@/mod.ts";
 
 function maybe<T>(d: Domain<T>) {
-  return dom.oneOf(dom.of(undefined).with({ name: "undefined" }), d);
+  return dom.oneOf(dom.of(undefined), d);
 }
 
 // Types are defined separately from Domains because type inference doesn't work

@@ -1,7 +1,12 @@
 import { Domain } from "@/domain.ts";
 import * as arb from "@/arbs.ts";
 
-import { checkArray, checkRecordKeys, parseArrayOpts } from "../options.ts";
+import {
+  checkArray,
+  checkRecordKeys,
+  parseArrayOpts,
+  type SendErr,
+} from "../options.ts";
 
 /**
  * A domain that accepts only values equal to the given arguments.
@@ -169,14 +174,23 @@ export function oneOf<T>(...cases: Domain<T>[]): Domain<T> {
 
   return Domain.make(gen, (val, sendErr) => {
     const errors: string[] = [];
+
+    const nestedErr: SendErr = (err, _val, loc) => {
+      if (err.includes("\n")) {
+        // indent non-blank lines in the nested error message
+        err = err.split("\n").map((line, i) =>
+          i === 0 || !line ? line : "  " + line
+        ).join("\n");
+      }
+      if (loc) {
+        errors.push(`  ${loc.at}: ${err}\n`);
+      } else {
+        errors.push(`  ${err}\n`);
+      }
+    };
+
     for (const [i, c] of cases.entries()) {
-      const picks = c.innerPickify(val, (err, _val, loc) => {
-        if (loc) {
-          errors.push(`  ${loc.at}: ${err}\n`);
-        } else {
-          errors.push(`  ${err}\n`);
-        }
-      });
+      const picks = c.innerPickify(val, nestedErr);
       if (picks !== undefined) return [i, ...picks];
     }
     sendErr(`no case matched:\n${errors.join("")}`, val);

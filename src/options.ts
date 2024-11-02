@@ -29,17 +29,18 @@ export function checkRecordKeys<T extends Record<string, unknown>>(
   sendErr: SendErr,
   opts?: { at?: string | number; strip?: boolean },
 ): val is Partial<T> {
-  const at = opts?.at ?? "";
+  const at = opts?.at;
+  const errOpts = (at !== undefined) ? { at } : undefined;
 
   if (val === null || typeof val !== "object") {
-    sendErr("not an object", val, { at });
+    sendErr("not an object", val, errOpts);
     return false;
   }
 
   if (!opts?.strip) {
     for (const key of Object.keys(val)) {
       if (!(key in fields)) {
-        sendErr(`extra field: ${key}`, val, { at });
+        sendErr(`extra field: ${key}`, val, errOpts);
         return false;
       }
     }

@@ -236,6 +236,14 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
    * each time.
    */
   static of<T>(...examples: T[]): Arbitrary<T> {
+    function nameConstant(val: unknown): string {
+      if (val === undefined || typeof val === "number") {
+        return `${val} (constant)`;
+      } else {
+        return `untitled constant`;
+      }
+    }
+
     for (const example of examples) {
       if (!Object.isFrozen(example)) {
         throw new Error("Arbitrary.of() requires frozen objects");
@@ -246,7 +254,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
       throw new Error("Arbitrary.of() requires at least one argument");
     } else if (examples.length === 1) {
       const constant = examples[0];
-      const build = Script.make("untitled constant", () => {
+      const build = Script.make(nameConstant(constant), () => {
         return constant;
       });
       return new Arbitrary(build, {
