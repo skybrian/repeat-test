@@ -40,7 +40,7 @@ export function replayWithEdits<T>(
   edits: MultiEdit,
   log?: CallBuffer,
 ): T | typeof unchanged | typeof filtered {
-  if (!target.logCalls) {
+  if (!target.opts.logCalls) {
     // Record a single call.
     const picks = new EditResponder(allReplies(calls), edits(0));
     const pick = makePickFunction(picks, { logPicks: log });

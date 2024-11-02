@@ -183,7 +183,7 @@ describe("string", () => {
   });
 
   it("has the cachable flag set", () => {
-    assertEquals(Script.from(arb.string()).cachable, true);
+    assertEquals(Script.from(arb.string()).opts.cachable, true);
   });
 });
 

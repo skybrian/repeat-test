@@ -55,12 +55,12 @@ export class Domain<T> extends Arbitrary<T> {
   private constructor(
     script: Script<T>,
     pickify: PickifyFunction,
-    opts: { maxSize?: number; dryRun?: boolean },
+    lazyInit: boolean,
   ) {
-    super(script, opts);
+    super(script);
     this.#pickify = pickify;
 
-    if (opts.dryRun !== false) {
+    if (!lazyInit) {
       // Verify that we can round-trip the default value.
       const def = generateDefault(script);
       const picks = this.pickify(
@@ -197,8 +197,7 @@ export class Domain<T> extends Arbitrary<T> {
    */
   override with(opts: { name: string }): Domain<T> {
     const script = this.buildScript.with(opts);
-    const maxSize = this.maxSize;
-    return new Domain(script, this.#pickify, { maxSize, dryRun: false });
+    return new Domain(script, this.#pickify, true);
   }
 
   /**
@@ -223,11 +222,9 @@ export class Domain<T> extends Arbitrary<T> {
   static make<T>(
     gen: Pickable<T>,
     pickify: PickifyFunction,
-    opts?: { dryRun?: boolean },
+    opts?: { lazyInit?: boolean },
   ): Domain<T> {
-    const maxSize = (gen instanceof Arbitrary) ? gen.maxSize : undefined;
-    const dryRun = opts?.dryRun ?? true;
-    return new Domain(Script.from(gen), pickify, { maxSize, dryRun });
+    return new Domain(Script.from(gen), pickify, opts?.lazyInit ?? false);
   }
 
   /**
@@ -282,7 +279,7 @@ export class Domain<T> extends Arbitrary<T> {
 
     const script = Script.make("alias", (pick) => {
       return target().directBuild(pick);
-    });
+    }, { lazyInit: true });
 
     function pickify(
       val: unknown,
@@ -292,6 +289,6 @@ export class Domain<T> extends Arbitrary<T> {
       return dom.#pickify(val, sendErr, dom.name);
     }
 
-    return new Domain(script, pickify, { dryRun: false });
+    return new Domain(script, pickify, true);
   }
 }

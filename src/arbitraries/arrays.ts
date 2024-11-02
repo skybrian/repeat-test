@@ -17,7 +17,7 @@ function option<T>(bias: number, item: Pickable<T>): Script<T | typeof off> {
     } else {
       return off;
     }
-  }, { cachable: Script.from(item).cachable });
+  }, { cachable: Script.from(item).opts.cachable });
 }
 
 export type ItemFunction<T> = (i: number, pick: PickFunction) => T | typeof off;
@@ -89,7 +89,7 @@ export function array<T>(
       i++;
     }
     return result;
-  }, { logCalls: true });
+  }, { lazyInit: true, logCalls: true });
 
-  return Arbitrary.from(script, { dryRun: false });
+  return Arbitrary.from(script);
 }

@@ -34,17 +34,13 @@ function checkRandomGenerate(script: Script<unknown>) {
  */
 export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
   readonly #script: Script<T>;
-  readonly #maxSize: number | undefined;
 
   /** Initializes an Arbitrary, given a callback function. */
   protected constructor(
     arg: Script<T>,
-    opts?: ConstructorOpts<T>,
   ) {
-    assert(arg instanceof Script);
     this.#script = arg;
-    this.#maxSize = opts?.maxSize;
-    if (opts?.dryRun !== false) {
+    if (arg.opts.lazyInit !== true) {
       checkRandomGenerate(arg);
       generateDefault(this);
     }
@@ -79,7 +75,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
    * (Only available for some small sets.)
    */
   get maxSize(): number | undefined {
-    return this.#maxSize;
+    return this.#script.opts.maxSize;
   }
 
   /**
@@ -92,8 +88,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
       return convert(val);
     }, this.#script.opts);
 
-    const maxSize = this.#maxSize;
-    return new Arbitrary(script, { maxSize });
+    return new Arbitrary(script);
   }
 
   /**
@@ -145,13 +140,12 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
 
     const script = Script.make(name, (pick) => {
       return pick(this, { accept });
-    }, { cachable: true });
+    }, { ...this.#script.opts, cachable: true });
 
     // Check that a default exists
     generateDefault(script);
 
-    const maxSize = this.#maxSize;
-    return new Arbitrary(script, { maxSize, dryRun: false });
+    return new Arbitrary(script);
   }
 
   /**
@@ -174,11 +168,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
    */
   with(opts: { name?: string; cachable?: boolean }): Arbitrary<T> {
     const script = this.#script.with(opts);
-
-    return new Arbitrary(script, {
-      maxSize: this.#maxSize,
-      dryRun: false,
-    });
+    return new Arbitrary(script);
   }
 
   /**
@@ -200,26 +190,22 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
   /**
    * Creates an Arbitrary from a {@link Pickable} or {@link BuildFunction}.
    */
-  static from<T>(
-    arg: Pickable<T> | BuildFunction<T>,
-    opts?: { dryRun?: boolean },
-  ): Arbitrary<T> {
+  static from<T>(arg: Pickable<T> | BuildFunction<T>): Arbitrary<T> {
     if (typeof arg === "function") {
       return new Arbitrary(Script.make("untitled", arg));
     } else if (arg instanceof PickRequest) {
       const name = `${arg.min}..${arg.max}`;
       const maxSize = arg.max - arg.min + 1;
+
       const script = Script.make(name, (pick: PickFunction) => {
         return pick(arg);
-      }, { cachable: true, logCalls: true });
-      return new Arbitrary(script, {
-        maxSize,
-        dryRun: false,
-      }) as Arbitrary<T>;
+      }, { cachable: true, logCalls: true, maxSize, lazyInit: true });
+
+      return new Arbitrary(script) as Arbitrary<T>;
     } else if (arg instanceof Arbitrary) {
       return arg;
     }
-    return new Arbitrary(Script.from(arg, { caller: "Arbitrary.from" }), opts);
+    return new Arbitrary(Script.from(arg, { caller: "Arbitrary.from" }));
   }
 
   /**
@@ -256,25 +242,19 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
       const constant = examples[0];
       const build = Script.make(nameConstant(constant), () => {
         return constant;
-      });
-      return new Arbitrary(build, {
-        maxSize: 1,
-        dryRun: false,
-      });
+      }, { maxSize: 1, lazyInit: true });
+      return new Arbitrary(build);
     }
 
     const req = new PickRequest(0, examples.length - 1);
+    const maxSize = examples.length;
 
     const name = `${examples.length} examples`;
     const build = Script.make(name, (pick) => {
       const i = pick(req);
       return examples[i];
-    });
-    const maxSize = examples.length;
-    return new Arbitrary(build, {
-      maxSize: maxSize,
-      dryRun: false,
-    });
+    }, { maxSize, lazyInit: true });
+    return new Arbitrary(build);
   }
 
   /**
@@ -309,8 +289,8 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
     const script = Script.make("oneOf", (pick) => {
       const index = pick(req);
       return scripts[index].directBuild(pick);
-    }, { cachable: true });
-    return new Arbitrary(script, { maxSize, dryRun: false });
+    }, { maxSize, lazyInit: true, cachable: true });
+    return new Arbitrary(script);
   }
 
   /**
@@ -334,11 +314,8 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
     if (keys.length === 0) {
       const build = Script.make("empty record", () => {
         return {} as T;
-      });
-      return new Arbitrary(build, {
-        maxSize,
-        dryRun: false,
-      });
+      }, { maxSize, lazyInit: true });
+      return new Arbitrary(build);
     }
 
     const build = Script.make("record", (pick: PickFunction) => {
@@ -347,9 +324,8 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
         result[key] = pick(shape[key]);
       }
       return result as T;
-    }, { logCalls: keys.length > 1 });
-
-    return new Arbitrary(build, { maxSize, dryRun: false });
+    }, { maxSize, lazyInit: true, logCalls: keys.length > 1 });
+    return new Arbitrary(build);
   }
 
   /**
@@ -374,8 +350,8 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
 
     const script = Script.make("alias", (pick) => {
       return target().directBuild(pick);
-    });
+    }, { lazyInit: true });
 
-    return new Arbitrary(script, { dryRun: false });
+    return new Arbitrary(script);
   }
 }

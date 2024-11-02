@@ -19,7 +19,7 @@ export class Call<T = unknown> {
     readonly group: PickList,
   ) {
     if (arg instanceof Script) {
-      const shouldCache = arg.cachable && Object.isFrozen(val);
+      const shouldCache = arg.opts.cachable && Object.isFrozen(val);
       this.val = shouldCache ? val : regen;
     } else {
       this.val = val;

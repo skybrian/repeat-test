@@ -22,6 +22,22 @@ export interface HasScript<T> extends Pickable<T> {
  */
 export type ScriptOpts = {
   /**
+   * An upper bound on the number of possible values that this script can
+   * generate.
+   *
+   * If set, it may be feasible to iterate over all possible outputs from this
+   * script.
+   */
+  readonly maxSize?: number;
+
+  /**
+   * If true, this script isn't immediately ready to run on startup, perhaps due
+   * to a cyclic dependency. The script shouldn't be called until initailization
+   * is complete.
+   */
+  readonly lazyInit?: boolean;
+
+  /**
    * Turns on caching for this script's output.
    *
    * (Even with this flag on, values that don't satisfy `Object.isFrozen` won't
@@ -44,19 +60,16 @@ export type ScriptOpts = {
 export class Script<T> implements Pickable<T> {
   readonly #name: string;
   readonly #build: BuildFunction<T>;
-  readonly #cachable: boolean;
-  readonly #logCalls: boolean;
+  readonly #opts: ScriptOpts;
 
   private constructor(
     name: string,
     build: BuildFunction<T>,
-    cachable: boolean,
-    logCalls: boolean,
+    opts: ScriptOpts,
   ) {
     this.#name = name;
     this.#build = build;
-    this.#cachable = cachable;
-    this.#logCalls = logCalls;
+    this.#opts = opts;
   }
 
   /** The name used in error messages about this script. */
@@ -64,22 +77,9 @@ export class Script<T> implements Pickable<T> {
     return this.#name;
   }
 
-  /** If true, the output of this script may be cached. */
-  get cachable(): boolean {
-    return this.#cachable;
-  }
-
-  /** If true, the pick calls made by this script may be logged. */
-  get logCalls(): boolean {
-    return this.#logCalls;
-  }
-
   /** Returns this script's flags as an object. */
   get opts(): ScriptOpts {
-    return {
-      cachable: this.#cachable,
-      logCalls: this.#logCalls,
-    };
+    return this.#opts;
   }
 
   /**
@@ -110,10 +110,11 @@ export class Script<T> implements Pickable<T> {
    */
   with(opts: { name?: string; cachable?: boolean }): Script<T> {
     const name = opts.name ?? this.#name;
-    const cachable = opts.cachable !== undefined
-      ? opts.cachable
-      : this.#cachable;
-    return new Script(name, this.#build, cachable, this.#logCalls);
+    const newOpts = { ...this.#opts };
+    if (opts.cachable !== undefined) {
+      newOpts.cachable = opts.cachable;
+    }
+    return new Script(name, this.#build, newOpts);
   }
 
   /**
@@ -127,8 +128,7 @@ export class Script<T> implements Pickable<T> {
     return new Script(
       name,
       build,
-      opts?.cachable === true,
-      opts?.logCalls === true,
+      opts ?? {},
     );
   }
 

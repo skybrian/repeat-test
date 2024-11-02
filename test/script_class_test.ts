@@ -51,9 +51,9 @@ describe("Script", () => {
 
     it("returns a new script with cachable set to true", () => {
       const original = Script.make("original", () => true);
-      assertFalse(original.cachable);
+      assertFalse(original.opts.cachable);
       const cached = original.with({ cachable: true });
-      assert(cached.cachable);
+      assert(cached.opts.cachable);
     });
   });
 });

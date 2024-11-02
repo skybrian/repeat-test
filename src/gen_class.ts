@@ -277,14 +277,14 @@ export function generate<T>(
     const pick = makePickFunction(playouts, {
       ...opts,
       logPicks: log,
-      logCalls: script.logCalls ? log : undefined,
+      logCalls: script.opts.logCalls ? log : undefined,
     });
 
     const val = script.run(pick);
     if (val === filtered) {
       continue;
     }
-    if (!script.logCalls) {
+    if (!script.opts.logCalls) {
       // Treat it as a single call.
       log.endScript(script, val);
     }
