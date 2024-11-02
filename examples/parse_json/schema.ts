@@ -10,13 +10,15 @@ function maybe<T>(d: Domain<T>) {
 /** A recursive (non-toplevel) reference to a tsType. */
 const innerType: Domain<TsType> = dom.alias(() => tsType);
 
+const typeParamKinds = ["typeRef", "indexedAccess", "keyword"] as const;
+
 export type TypeParam = {
-  kind: string;
+  kind: (typeof typeParamKinds)[number];
   repr: string;
 };
 
 export const typeParam = dom.record({
-  kind: dom.string(),
+  kind: dom.of(...typeParamKinds),
   repr: dom.string(),
 }, { strip: true });
 
@@ -78,8 +80,22 @@ export const typeLiteral: Domain<TypeLiteral> = dom.record({
   properties: dom.array(property),
 }, { strip: true });
 
+const typeKinds = [
+  "literal",
+  "keyword",
+  "typeRef",
+  "fnOrConstructor",
+  "mapped",
+  "mappedType",
+  "typeOperator",
+  "typeLiteral",
+  "union",
+  "intersection",
+  "array",
+] as const;
+
 export type TsType = {
-  kind: string;
+  kind: (typeof typeKinds)[number];
   keyword?: string;
   typeRef?: TypeRef;
   fnOrConstructor?: FnOrConstructor;
@@ -90,7 +106,7 @@ export type TsType = {
 };
 
 export const tsType: Domain<TsType> = dom.record({
-  kind: dom.string(),
+  kind: dom.of(...typeKinds),
   keyword: maybe(dom.string()),
   typeRef: maybe(typeRef),
   fnOrConstructor: maybe(fnOrConstructor),
@@ -173,9 +189,18 @@ export const variableDef = dom.record({
   tsType,
 }, { strip: true });
 
+const nodeKinds = [
+  "typeAlias",
+  "class",
+  "interface",
+  "function",
+  "variable",
+  "moduleDoc",
+] as const;
+
 export const node = dom.record({
   name: dom.string(),
-  kind: dom.string(),
+  kind: dom.of(...nodeKinds),
   typeAliasDef: maybe(typeAliasDef),
   classDef: maybe(classDef),
   interfaceDef: maybe(interfaceDef),

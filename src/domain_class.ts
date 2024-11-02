@@ -23,6 +23,8 @@ export class ParseError<T> extends Error {
  *
  * If the value is valid, returns an array of picks. Otherwise, returns
  * undefined. Validation errors can be reported using sendErr.
+ *
+ * The third argument is the name of the Domain.
  */
 export type PickifyFunction = (
   val: unknown,
@@ -250,7 +252,7 @@ export class Domain<T> extends Arbitrary<T> {
     return Domain.make(generator, (val, sendErr, name) => {
       const pick = values.indexOf(val as T);
       if (pick === -1) {
-        sendErr(`not a member of '${name}'`, val);
+        sendErr(`not a member of '${name}': ${Deno.inspect(val)}`, val);
         return undefined;
       }
       return [pick];

@@ -172,7 +172,7 @@ export function oneOf<T>(...cases: Domain<T>[]): Domain<T> {
 
   const gen = arb.oneOf(...cases);
 
-  return Domain.make(gen, (val, sendErr) => {
+  return Domain.make(gen, (val, sendErr, name) => {
     const errors: string[] = [];
 
     const nestedErr: SendErr = (err, _val, loc) => {
@@ -193,7 +193,12 @@ export function oneOf<T>(...cases: Domain<T>[]): Domain<T> {
       const picks = c.innerPickify(val, nestedErr);
       if (picks !== undefined) return [i, ...picks];
     }
-    sendErr(`no case matched:\n${errors.join("")}`, val);
+    sendErr(
+      `no case matched${name === "oneOf" ? "" : ` '${name}'`}:\n${
+        errors.join("")
+      }`,
+      val,
+    );
     return undefined;
   });
 }

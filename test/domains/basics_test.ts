@@ -307,11 +307,26 @@ describe("oneOf", () => {
       assertEncoding(multiWay, [0, 2], 2);
       assertEncoding(multiWay, [1, 5], 5);
     });
+
     it("throws a ParseError with a nice message", () => {
       assertThrows(
         () => multiWay.parse(0),
         ParseError,
         `no case matched:
+  not in range [1, 3]
+  not in range [4, 6]
+`,
+      );
+    });
+
+    it("uses the oneOf's name if it's not unnamed", () => {
+      const named = dom.oneOf(dom.int(1, 3), dom.int(4, 6)).with({
+        name: "named",
+      });
+      assertThrows(
+        () => named.parse(0),
+        ParseError,
+        `no case matched 'named':
   not in range [1, 3]
   not in range [4, 6]
 `,
