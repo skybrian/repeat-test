@@ -1,4 +1,4 @@
-import type { Pickable } from "@/arbitrary.ts";
+import type { BuildFunction, HasScript, Pickable } from "@/arbitrary.ts";
 import type { Failure, Success } from "./results.ts";
 
 import { assertEquals } from "@std/assert";
@@ -49,7 +49,8 @@ export type PickifyFunction = (
  * but only values that it both accepts and generates are considered members of
  * the Domain.
  */
-export class Domain<T> extends Arbitrary<T> {
+export class Domain<T> implements Pickable<T>, HasScript<T> {
+  #script: Script<T>;
   #pickify: PickifyFunction;
 
   private constructor(
@@ -57,7 +58,7 @@ export class Domain<T> extends Arbitrary<T> {
     pickify: PickifyFunction,
     lazyInit: boolean,
   ) {
-    super(script);
+    this.#script = script;
     this.#pickify = pickify;
 
     if (!lazyInit) {
@@ -78,6 +79,18 @@ export class Domain<T> extends Arbitrary<T> {
         `callback's picks don't match for the default value of ${script.name}`,
       );
     }
+  }
+
+  get name(): string {
+    return this.#script.name;
+  }
+
+  get directBuild(): BuildFunction<T> {
+    return this.#script.directBuild;
+  }
+
+  get buildScript(): Script<T> {
+    return this.#script;
   }
 
   /**
@@ -101,8 +114,10 @@ export class Domain<T> extends Arbitrary<T> {
   /**
    * Returns a new domain with only the values accepted by a predicate.
    */
-  override filter(accept: (val: T) => boolean): Domain<T> {
-    return Domain.make<T>(super.filter(accept), (val, sendErr) => {
+  filter(accept: (val: T) => boolean): Domain<T> {
+    const gen = Arbitrary.from(this).filter(accept);
+
+    return Domain.make<T>(gen, (val, sendErr) => {
       const gen = this.regenerate(val);
       if (!gen.ok) {
         sendErr(gen.message, val);
@@ -195,7 +210,7 @@ export class Domain<T> extends Arbitrary<T> {
   /**
    * Returns a copy of the Domain with a different name.
    */
-  override with(opts: { name: string }): Domain<T> {
+  with(opts: { name: string }): Domain<T> {
     const script = this.buildScript.with(opts);
     return new Domain(script, this.#pickify, true);
   }
@@ -206,8 +221,15 @@ export class Domain<T> extends Arbitrary<T> {
    * (Defining a function instead of a constant is useful for forward
    * compatibility, in case you might want to add optional arguments later.)
    */
-  override asFunction(): () => Domain<T> {
+  asFunction(): () => Domain<T> {
     return () => this;
+  }
+
+  /**
+   * A short string describing this Arbitrary, for debugging.
+   */
+  toString(): string {
+    return `${this.constructor.name}('${this.name}')`;
   }
 
   /**
@@ -233,7 +255,7 @@ export class Domain<T> extends Arbitrary<T> {
    * Comparisons are done using strict equality, the same algorithm used by
    * `===`.
    */
-  static override of<T>(...values: T[]): Domain<T> {
+  static of<T>(...values: T[]): Domain<T> {
     const generator = Arbitrary.of(...values);
 
     if (values.length === 1) {
@@ -265,7 +287,7 @@ export class Domain<T> extends Arbitrary<T> {
    * Usually, the return type must be declared when definining an alias, because
    * TypeScript's type inference doesn't work for recursive types.
    */
-  static override alias<T>(
+  static alias<T>(
     init: () => Domain<T>,
   ): Domain<T> {
     let cache: Domain<T> | undefined;

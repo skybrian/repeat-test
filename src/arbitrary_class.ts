@@ -2,19 +2,12 @@ import type { RecordShape } from "./options.ts";
 import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
 import type { HasScript } from "./script_class.ts";
 
-import { assert } from "@std/assert";
-
 import { filtered } from "./results.ts";
 import { PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
 import { generate } from "./gen_class.ts";
 import { generateDefault } from "./ordered.ts";
 import { randomPlayouts } from "./random.ts";
-
-type ConstructorOpts<T> = {
-  maxSize?: number;
-  dryRun?: boolean;
-};
 
 function checkRandomGenerate(script: Script<unknown>) {
   const gen = generate(script, randomPlayouts(123), { limit: 1000 });

@@ -50,7 +50,7 @@ describe("uniqueArray", () => {
     });
   });
   it("rejects an array with a duplicate item", () => {
-    const badList = bools.filter((v) => v.length > 0).map((
+    const badList = Arbitrary.from(bools).filter((v) => v.length > 0).map((
       v,
     ) => [
       ...v,

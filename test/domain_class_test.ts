@@ -47,7 +47,7 @@ describe("Domain", () => {
         return [val];
       });
 
-      assertEquals(dom.maxSize, arb.maxSize);
+      assertEquals(dom.buildScript.opts.maxSize, arb.maxSize);
     });
 
     it("creates a Domain from a non-Arbitrary", () => {
