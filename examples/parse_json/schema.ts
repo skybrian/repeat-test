@@ -10,17 +10,18 @@ function maybe<T>(d: Domain<T>) {
 /** A recursive (non-toplevel) reference to a tsType. */
 const innerType: Domain<TsType> = dom.alias(() => tsType);
 
-const typeParamKinds = ["typeRef", "indexedAccess", "keyword"] as const;
+export type TypeParam =
+  | { kind: "typeRef"; repr: string }
+  | { kind: "indexedAccess"; repr: string }
+  | { kind: "keyword"; repr: string };
 
-export type TypeParam = {
-  kind: (typeof typeParamKinds)[number];
-  repr: string;
-};
-
-export const typeParam = dom.record({
-  kind: dom.of(...typeParamKinds),
-  repr: dom.string(),
-}, { strip: true });
+export const typeParam = dom.taggedUnion<TypeParam>("kind", [
+  dom.record({ kind: dom.of("typeRef"), repr: dom.string() }, { strip: true }),
+  dom.record({ kind: dom.of("indexedAccess"), repr: dom.string() }, {
+    strip: true,
+  }),
+  dom.record({ kind: dom.of("keyword"), repr: dom.string() }, { strip: true }),
+]);
 
 export type TypeRef = {
   typeName: string;
@@ -127,6 +128,7 @@ export const typeAliasDef = dom.record({
     name: dom.string(),
   }, { strip: true })),
 });
+export type TypeAliasDef = ReturnType<typeof typeAliasDef.parse>;
 
 export type Constructor = {
   name: string;
@@ -171,6 +173,8 @@ export const classDef = dom.record({
   methods: dom.array(method),
 }, { strip: true });
 
+export type ClassDef = ReturnType<typeof classDef.parse>;
+
 export type InterfaceMethod = {
   name: string;
   params: Param[];
@@ -190,28 +194,78 @@ export const interfaceDef = dom.record({
   methods: dom.array(interfaceMethod),
 }, { strip: true });
 
+export type InterfaceDef = ReturnType<typeof interfaceDef.parse>;
+
 export const variableDef = dom.record({
   tsType,
 }, { strip: true });
 
-const nodeKinds = [
-  "typeAlias",
-  "class",
-  "interface",
-  "function",
-  "variable",
-  "moduleDoc",
-] as const;
+export type VariableDef = ReturnType<typeof variableDef.parse>;
 
-export const node = dom.record({
-  name: dom.string(),
-  kind: dom.of(...nodeKinds),
-  typeAliasDef: maybe(typeAliasDef),
-  classDef: maybe(classDef),
-  interfaceDef: maybe(interfaceDef),
-  functionDef: maybe(functionDef),
-  variableDef: maybe(variableDef),
-}, { strip: true });
+export type Node =
+  | {
+    kind: "typeAlias";
+    name: string;
+    typeAliasDef: TypeAliasDef;
+  }
+  | {
+    kind: "class";
+    name: string;
+    classDef: ClassDef;
+  }
+  | {
+    kind: "interface";
+    name: string;
+    interfaceDef: InterfaceDef;
+  }
+  | {
+    kind: "function";
+    name: string;
+    functionDef: FunctionDef;
+  }
+  | {
+    kind: "variable";
+    name: string;
+    variableDef: VariableDef;
+  }
+  | {
+    kind: "moduleDoc";
+    name: string;
+    moduleDoc?: string;
+  };
+
+export const node = dom.taggedUnion<Node>("kind", [
+  dom.record({
+    kind: dom.of("typeAlias"),
+    name: dom.string(),
+    typeAliasDef: typeAliasDef,
+  }, { strip: true }),
+  dom.record({
+    kind: dom.of("class"),
+    name: dom.string(),
+    classDef: classDef,
+  }, { strip: true }),
+  dom.record({
+    kind: dom.of("interface"),
+    name: dom.string(),
+    interfaceDef: interfaceDef,
+  }, { strip: true }),
+  dom.record({
+    kind: dom.of("function"),
+    name: dom.string(),
+    functionDef: functionDef,
+  }, { strip: true }),
+  dom.record({
+    kind: dom.of("variable"),
+    name: dom.string(),
+    variableDef: variableDef,
+  }, { strip: true }),
+  dom.record({
+    kind: dom.of("moduleDoc"),
+    name: dom.string(),
+    moduleDoc: maybe(dom.string()),
+  }, { strip: true }),
+]);
 
 /**
  * A partial schema for the JSON printed by `deno doc --json`.

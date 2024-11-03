@@ -163,7 +163,7 @@ export function* linesFromSchema({ nodes }: Schema) {
         break;
       }
       default:
-        yield `${node.name} -> ${node.kind}`;
+        throw new Error(`unknown node: ${node}`);
     }
     i++;
   }
