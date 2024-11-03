@@ -314,3 +314,10 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
     return new Domain(script, pickify, true);
   }
 }
+
+/**
+ * Specifies the values accepted for each field of a record.
+ */
+export type Fields<T> = {
+  [K in keyof T]: Domain<T[K]>;
+};

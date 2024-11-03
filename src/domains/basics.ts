@@ -1,3 +1,5 @@
+import type { Fields } from "@/domain.ts";
+
 import { Domain } from "@/domain.ts";
 import * as arb from "@/arbs.ts";
 
@@ -73,13 +75,6 @@ export function int(min: number, max: number): Domain<number> {
   }
 }
 
-/**
- * Specifies the values accepted for each field of a record.
- */
-export type RecordShape<T> = {
-  [K in keyof T]: Domain<T[K]>;
-};
-
 /** Options for {@link record}. */
 export type RecordOpts = {
   /** Indicates that extra fields will be ignored (not parsed). */
@@ -90,7 +85,7 @@ export type RecordOpts = {
  * Creates a Domain that accepts records with matching fields.
  */
 export function record<T extends Record<string, unknown>>(
-  fields: RecordShape<T>,
+  fields: Fields<T>,
   opts?: RecordOpts,
 ): Domain<T> {
   const strip = opts?.strip ?? false;

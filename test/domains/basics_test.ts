@@ -1,3 +1,5 @@
+import type { Fields } from "@/domain.ts";
+
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 
@@ -124,39 +126,55 @@ describe("int", () => {
 });
 
 describe("record", () => {
-  it("throws an error for a non-record shape", () => {
-    assertThrows(
-      () => dom.record(undefined as unknown as dom.RecordShape<unknown>),
-      Error,
-    );
-    assertThrows(
-      () => dom.record({ a: "b" } as dom.RecordShape<unknown>),
-      Error,
-    );
+  describe("constructor", () => {
+    it("throws errors for bad arguments", () => {
+      assertThrows(
+        () => dom.record(undefined as unknown as Fields<unknown>),
+        Error,
+      );
+      assertThrows(
+        () => dom.record({ a: "b" } as Fields<unknown>),
+        Error,
+      );
+    });
   });
 
-  const empty = dom.record({});
+  describe("parse", () => {
+    const empty = dom.record({});
 
-  it("rejects a non-record", () => {
-    assertThrows(() => empty.parse(undefined), Error, "not an object");
-  });
+    it("rejects a non-record", () => {
+      assertThrows(() => empty.parse(undefined), Error, "not an object");
+    });
 
-  it("rejects a record with an extra field", () => {
-    assertThrows(() => empty.parse({ a: 0 }), Error, "extra field: a");
-  });
+    it("rejects a record with an extra field", () => {
+      assertThrows(() => empty.parse({ a: 0 }), Error, "extra field: a");
+    });
 
-  it("rejects a record with a missing field", () => {
-    const pair = dom.record({ a: dom.int(0, 1), b: dom.int(0, 1) });
-    assertThrows(
-      () => pair.parse({ a: 0 }),
-      ParseError,
-      "b: not a safe integer",
-    );
-  });
+    it("rejects a record with a missing field", () => {
+      const pair = dom.record({ a: dom.int(0, 1), b: dom.int(0, 1) });
+      assertThrows(
+        () => pair.parse({ a: 0 }),
+        ParseError,
+        "b: not a safe integer",
+      );
+    });
 
-  it("rejects a record with an invalid field", () => {
-    const rec = dom.record({ a: dom.int(0, 1) });
-    assertThrows(() => rec.parse({ a: 2 }), Error, "a: not in range");
+    it("rejects a record with an invalid field", () => {
+      const rec = dom.record({ a: dom.int(0, 1) });
+      assertThrows(() => rec.parse({ a: 2 }), Error, "a: not in range");
+    });
+
+    describe("with the strip flag set", () => {
+      const shape = {
+        a: dom.int(0, 1),
+        b: dom.int(1, 6),
+      };
+      const rec = dom.record(shape, { strip: true });
+      it("ignores extra fields", () => {
+        const val = rec.parse({ a: 0, b: 6, c: 1 });
+        assertEquals(val, { a: 0, b: 6 });
+      });
+    });
   });
 
   it("round-trips records", () => {
@@ -177,18 +195,6 @@ describe("record", () => {
     };
     const rec = dom.record(shape);
     assertEncoding(rec, [1, 6], { a: 1, b: 6 });
-  });
-
-  describe("with the strip flag set", () => {
-    const shape = {
-      a: dom.int(0, 1),
-      b: dom.int(1, 6),
-    };
-    const rec = dom.record(shape, { strip: true });
-    it("ignores extra fields", () => {
-      const val = rec.parse({ a: 0, b: 6, c: 1 });
-      assertEquals(val, { a: 0, b: 6 });
-    });
   });
 
   describe("for a record with a field that's an alias", () => {
