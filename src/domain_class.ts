@@ -6,7 +6,7 @@ import { Arbitrary, Gen, Script } from "@/arbitrary.ts";
 import { failure, success } from "./results.ts";
 import { generateDefault } from "./ordered.ts";
 
-import type { SendErr } from "./options.ts";
+import { checkRecordKeys, type SendErr } from "./options.ts";
 
 /** Thrown for validation errors. */
 export class ParseError<T> extends Error {
@@ -255,10 +255,10 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
    * `===`.
    */
   static of<T>(...values: T[]): Domain<T> {
-    const generator = Arbitrary.of(...values);
+    const build = Arbitrary.of(...values);
 
     if (values.length === 1) {
-      return Domain.make(generator, (val, sendErr, name) => {
+      return Domain.make(build, (val, sendErr, name) => {
         if (val !== values[0]) {
           sendErr(`doesn't match '${name}'`, val);
           return undefined;
@@ -267,7 +267,7 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
       });
     }
 
-    return Domain.make(generator, (val, sendErr, name) => {
+    return Domain.make(build, (val, sendErr, name) => {
       const pick = values.indexOf(val as T);
       if (pick === -1) {
         sendErr(`not a member of '${name}': ${Deno.inspect(val)}`, val);
@@ -320,3 +320,46 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
 export type Fields<T> = {
   [K in keyof T]: Domain<T[K]>;
 };
+
+/** Options for {@link record}. */
+export type RecordOpts = {
+  /** Indicates that extra fields will be ignored (not parsed). */
+  strip?: boolean;
+};
+
+/** A domain representing a record. */
+export class RecordDomain<T extends Record<string, unknown>> extends Domain<T> {
+  readonly #fields: Fields<T>;
+
+  constructor(
+    fields: Fields<T>,
+    opts?: RecordOpts,
+  ) {
+    const pickify: PickifyFunction = (val, sendErr) => {
+      if (!checkRecordKeys(val, fields, sendErr, opts)) {
+        return undefined;
+      }
+
+      const out: number[] = [];
+      for (const key of Object.keys(fields)) {
+        const fieldVal = val[key as keyof typeof val];
+        const picks = fields[key].innerPickify(fieldVal, sendErr, key);
+        if (picks === undefined) return undefined;
+        out.push(...picks);
+      }
+      return out;
+    };
+
+    const build = Arbitrary.record<T>(fields).buildScript;
+
+    super(pickify, build);
+    this.#fields = fields;
+  }
+
+  /**
+   * Returns the domain for each field.
+   */
+  get fields(): Fields<T> {
+    return this.#fields;
+  }
+}

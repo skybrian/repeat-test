@@ -1,14 +1,10 @@
-import type { Fields } from "@/domain.ts";
+import type { Fields, RecordOpts } from "@/domain.ts";
 
 import { Domain } from "@/domain.ts";
 import * as arb from "@/arbs.ts";
 
-import {
-  checkArray,
-  checkRecordKeys,
-  parseArrayOpts,
-  type SendErr,
-} from "../options.ts";
+import { checkArray, parseArrayOpts, type SendErr } from "../options.ts";
+import { RecordDomain } from "../domain_class.ts";
 
 /**
  * A domain that accepts only values equal to the given arguments.
@@ -75,12 +71,6 @@ export function int(min: number, max: number): Domain<number> {
   }
 }
 
-/** Options for {@link record}. */
-export type RecordOpts = {
-  /** Indicates that extra fields will be ignored (not parsed). */
-  strip?: boolean;
-};
-
 /**
  * Creates a Domain that accepts records with matching fields.
  */
@@ -88,27 +78,7 @@ export function record<T extends Record<string, unknown>>(
   fields: Fields<T>,
   opts?: RecordOpts,
 ): Domain<T> {
-  const strip = opts?.strip ?? false;
-  const gen = arb.record(fields);
-
-  return Domain.make(
-    gen,
-    (val, sendErr) => {
-      if (!checkRecordKeys(val, fields, sendErr, { strip })) {
-        return undefined;
-      }
-
-      const out: number[] = [];
-      for (const key of Object.keys(fields)) {
-        const fieldVal = val[key as keyof typeof val];
-        const picks = fields[key].innerPickify(fieldVal, sendErr, key);
-        if (picks === undefined) return undefined;
-        out.push(...picks);
-      }
-      return out;
-    },
-    { lazyInit: true },
-  );
+  return new RecordDomain(fields, opts);
 }
 
 /**

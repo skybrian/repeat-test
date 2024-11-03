@@ -6,7 +6,7 @@
 
 export type { Failure, Success } from "../results.ts";
 export type { SendErr } from "../options.ts";
-export type { Fields, PickifyFunction } from "../domain_class.ts";
+export type { Fields, PickifyFunction, RecordOpts } from "../domain_class.ts";
 
-export { Domain, ParseError } from "../domain_class.ts";
+export { Domain, ParseError, RecordDomain } from "../domain_class.ts";
 export { Jar } from "../jar_class.ts";
