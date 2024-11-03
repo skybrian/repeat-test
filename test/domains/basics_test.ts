@@ -37,6 +37,7 @@ describe("of", () => {
   it("automatically names simple constants", () => {
     assertEquals(dom.of(undefined).name, "undefined (constant)");
     assertEquals(dom.of(1).name, "1 (constant)");
+    assertEquals(dom.of("hello").name, `"hello" (constant)`);
   });
 });
 
@@ -445,7 +446,7 @@ describe("oneOf", () => {
       assertThrows(
         () => tagged.parse({ "color": "red", "count": "tomato" }),
         ParseError,
-        `record.count: doesn't match '123 (constant)'`,
+        `count: doesn't match '123 (constant)'`,
       );
     });
   });

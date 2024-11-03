@@ -47,52 +47,32 @@ function stringFromFnOrConstructor(
 }
 
 function stringFromType(
-  {
-    kind,
-    keyword,
-    typeRef,
-    fnOrConstructor,
-    mappedType,
-    typeLiteral,
-    union,
-    intersection,
-  }: TsType,
+  t: TsType,
   indent: number,
 ): string {
-  switch (kind) {
-    case "keyword": {
-      assert(keyword);
-      return keyword;
-    }
-    case "typeRef": {
-      assert(typeRef);
-      return stringFromTypeRef(typeRef);
-    }
-    case "fnOrConstructor": {
-      assert(fnOrConstructor);
-      return stringFromFnOrConstructor(fnOrConstructor, indent);
-    }
+  switch (t.kind) {
+    case "keyword":
+      return t.keyword;
+    case "typeRef":
+      return stringFromTypeRef(t.typeRef);
+    case "fnOrConstructor":
+      return stringFromFnOrConstructor(t.fnOrConstructor, indent);
     case "mapped": {
-      assert(mappedType);
-      const valType = stringFromType(mappedType.tsType, indent);
-      return `[${mappedType.typeParam.name} ...]: ${valType}`;
+      const valType = stringFromType(t.mappedType.tsType, indent);
+      return `[${t.mappedType.typeParam.name} ...]: ${valType}`;
     }
-    case "typeLiteral": {
-      assert(typeLiteral);
-      return stringFromTypeLiteral(typeLiteral, indent);
-    }
+    case "typeLiteral":
+      return stringFromTypeLiteral(t.typeLiteral, indent);
     case "union": {
-      assert(union);
-      const types = union.map((t) => stringFromType(t, indent));
+      const types = t.union.map((t) => stringFromType(t, indent));
       return types.join(" | ");
     }
     case "intersection": {
-      assert(intersection);
-      const types = intersection.map((t) => stringFromType(t, indent));
+      const types = t.intersection.map((t) => stringFromType(t, indent));
       return types.join(" & ");
     }
     default:
-      return `(${kind})`;
+      return `(${t.kind})`;
   }
 }
 

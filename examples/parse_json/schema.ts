@@ -80,41 +80,46 @@ export const typeLiteral: Domain<TypeLiteral> = dom.record({
   properties: dom.array(property),
 }, { strip: true });
 
-const typeKinds = [
-  "literal",
-  "keyword",
-  "typeRef",
-  "fnOrConstructor",
-  "mapped",
-  "mappedType",
-  "typeOperator",
-  "typeLiteral",
-  "union",
-  "intersection",
-  "array",
-] as const;
+export type TsType =
+  | { kind: "literal" }
+  | { kind: "keyword"; keyword: string }
+  | { kind: "typeRef"; typeRef: TypeRef }
+  | { kind: "fnOrConstructor"; fnOrConstructor: FnOrConstructor }
+  | { kind: "mapped"; mappedType: MappedType }
+  | { kind: "mappedType" }
+  | { kind: "typeOperator" }
+  | { kind: "typeLiteral"; typeLiteral: TypeLiteral }
+  | { kind: "union"; union: TsType[] }
+  | { kind: "intersection"; intersection: TsType[] }
+  | { kind: "array" };
 
-export type TsType = {
-  kind: (typeof typeKinds)[number];
-  keyword?: string;
-  typeRef?: TypeRef;
-  fnOrConstructor?: FnOrConstructor;
-  mappedType?: MappedType;
-  typeLiteral?: TypeLiteral;
-  union?: TsType[];
-  intersection?: TsType[];
-};
-
-export const tsType: Domain<TsType> = dom.record({
-  kind: dom.of(...typeKinds),
-  keyword: maybe(dom.string()),
-  typeRef: maybe(typeRef),
-  fnOrConstructor: maybe(fnOrConstructor),
-  mappedType: maybe(mappedType),
-  typeLiteral: maybe(typeLiteral),
-  union: maybe(dom.array(innerType)),
-  intersection: maybe(dom.array(innerType)),
-}, { strip: true });
+export const tsType: Domain<TsType> = dom.taggedUnion<TsType>("kind", [
+  dom.record({ kind: dom.of("literal") }, { strip: true }),
+  dom.record({ kind: dom.of("keyword"), keyword: dom.string() }, {
+    strip: true,
+  }),
+  dom.record({ kind: dom.of("typeRef"), typeRef: typeRef }, { strip: true }),
+  dom.record({
+    kind: dom.of("fnOrConstructor"),
+    fnOrConstructor: fnOrConstructor,
+  }, { strip: true }),
+  dom.record({ kind: dom.of("mapped"), mappedType: mappedType }, {
+    strip: true,
+  }),
+  dom.record({ kind: dom.of("mappedType") }, { strip: true }),
+  dom.record({ kind: dom.of("typeOperator") }, { strip: true }),
+  dom.record({ kind: dom.of("typeLiteral"), typeLiteral: typeLiteral }, {
+    strip: true,
+  }),
+  dom.record({ kind: dom.of("union"), union: dom.array(innerType) }, {
+    strip: true,
+  }),
+  dom.record({
+    kind: dom.of("intersection"),
+    intersection: dom.array(innerType),
+  }, { strip: true }),
+  dom.record({ kind: dom.of("array") }, { strip: true }),
+]);
 
 export const typeAliasDef = dom.record({
   tsType: tsType,

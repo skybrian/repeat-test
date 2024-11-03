@@ -175,11 +175,8 @@ export function oneOf<T>(...cases: Domain<T>[]): Domain<T> {
  * The first Domain where the tag property matches will be used to validate the
  * rest of the value.
  */
-export function taggedUnion<
-  T extends Record<string, unknown>,
-  K extends string,
->(
-  tagProp: K,
+export function taggedUnion<T extends Record<string, unknown>>(
+  tagProp: string,
   cases: RecordDomain<T>[],
 ): Domain<T> {
   if (cases.length === 0) {
@@ -201,7 +198,7 @@ export function taggedUnion<
       return undefined;
     }
 
-    const hasTag: { [key in K]?: unknown } = val;
+    const hasTag: { [key in string]?: unknown } = val;
     const actual = hasTag[tagProp];
     if (typeof actual !== "string") {
       sendErr(`'${tagProp}' property is not a string`, val);
@@ -211,10 +208,10 @@ export function taggedUnion<
       const c = cases[i];
       const expected = tagPatterns[i];
       const ignoreErr = () => {};
-      if (!expected.innerPickify(actual, ignoreErr, c.name)) {
+      if (!expected.innerPickify(actual, ignoreErr, tagProp)) {
         continue; // tag didn't match
       }
-      const picks = c.innerPickify(val, sendErr, c.name);
+      const picks = c.innerPickify(val, sendErr);
       if (picks === undefined) {
         return undefined; // rest of pattern didn't match
       }

@@ -218,8 +218,10 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
     function nameConstant(val: unknown): string {
       if (val === undefined || typeof val === "number") {
         return `${val} (constant)`;
+      } else if (typeof val === "string") {
+        return `"${val}" (constant)`;
       } else {
-        return `untitled constant`;
+        return `a constant`;
       }
     }
 
