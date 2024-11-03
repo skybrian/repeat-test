@@ -37,7 +37,7 @@ export type PickifyFunction = (
  * generated.
  *
  * When validating, it takes a value and attempts to convert it into an array of
- * integers (a pick sequence). It contains an Arbitrary that does the opposite
+ * integers (a pick sequence). It contains an build script that does the opposite
  * operation, converting from picks to values.
  *
  * The mapping between pick sequences and values doesn't have to be one-to-one.
@@ -50,47 +50,24 @@ export type PickifyFunction = (
  * the Domain.
  */
 export class Domain<T> implements Pickable<T>, HasScript<T> {
-  #script: Script<T>;
   #pickify: PickifyFunction;
+  #build: Script<T>;
 
-  private constructor(
-    script: Script<T>,
-    pickify: PickifyFunction,
-    lazyInit: boolean,
-  ) {
-    this.#script = script;
+  protected constructor(pickify: PickifyFunction, build: Script<T>) {
     this.#pickify = pickify;
-
-    if (!lazyInit) {
-      // Verify that we can round-trip the default value.
-      const def = generateDefault(script);
-      const picks = this.pickify(
-        def.val,
-        "callback returned undefined",
-      );
-      if (!picks.ok) {
-        throw new Error(
-          `can't pickify default of ${script.name}: ${picks.message}`,
-        );
-      }
-      assertEquals(
-        Array.from(def.replies),
-        picks.val,
-        `callback's picks don't match for the default value of ${script.name}`,
-      );
-    }
+    this.#build = build;
   }
 
   get name(): string {
-    return this.#script.name;
+    return this.#build.name;
   }
 
   get directBuild(): BuildFunction<T> {
-    return this.#script.directBuild;
+    return this.#build.directBuild;
   }
 
   get buildScript(): Script<T> {
-    return this.#script;
+    return this.#build;
   }
 
   /**
@@ -212,7 +189,7 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
    */
   with(opts: { name: string }): Domain<T> {
     const script = this.buildScript.with(opts);
-    return new Domain(script, this.#pickify, true);
+    return new Domain(this.#pickify, script);
   }
 
   /**
@@ -246,7 +223,29 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
     pickify: PickifyFunction,
     opts?: { lazyInit?: boolean },
   ): Domain<T> {
-    return new Domain(Script.from(gen), pickify, opts?.lazyInit ?? false);
+    const dom = new Domain(pickify, Script.from(gen));
+    if (opts?.lazyInit) {
+      return dom;
+    }
+
+    // Verify that we can round-trip the default value.
+    const def = generateDefault(dom.buildScript);
+    const picks = dom.pickify(
+      def.val,
+      "callback returned undefined",
+    );
+    if (!picks.ok) {
+      throw new Error(
+        `can't pickify default of ${dom.name}: ${picks.message}`,
+      );
+    }
+    assertEquals(
+      Array.from(def.replies),
+      picks.val,
+      `callback's picks don't match for the default value of ${dom.name}`,
+    );
+
+    return dom;
   }
 
   /**
@@ -299,10 +298,6 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
       return cache;
     }
 
-    const script = Script.make("alias", (pick) => {
-      return target().directBuild(pick);
-    }, { lazyInit: true });
-
     function pickify(
       val: unknown,
       sendErr: SendErr,
@@ -311,7 +306,11 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
       return dom.#pickify(val, sendErr, dom.name);
     }
 
-    return new Domain(script, pickify, true);
+    const build = Script.make("alias", (pick) => {
+      return target().directBuild(pick);
+    }, { lazyInit: true });
+
+    return new Domain(pickify, build);
   }
 }
 
