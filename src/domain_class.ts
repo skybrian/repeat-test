@@ -315,51 +315,51 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
 }
 
 /**
- * Specifies the values accepted for each field of a record.
+ * Specifies the values accepted for each property on a record.
  */
-export type Fields<T> = {
+export type Props<T> = {
   [K in keyof T]: Domain<T[K]>;
 };
 
 /** Options for {@link record}. */
 export type RecordOpts = {
-  /** Indicates that extra fields will be ignored (not parsed). */
+  /** Indicates that extra properties will be ignored (not parsed). */
   strip?: boolean;
 };
 
-/** A domain representing a record. */
+/** A domain representing a set of records. */
 export class RecordDomain<T extends Record<string, unknown>> extends Domain<T> {
-  readonly #fields: Fields<T>;
+  readonly #props: Props<T>;
 
   constructor(
-    fields: Fields<T>,
+    props: Props<T>,
     opts?: RecordOpts,
   ) {
     const pickify: PickifyFunction = (val, sendErr) => {
-      if (!checkRecordKeys(val, fields, sendErr, opts)) {
+      if (!checkRecordKeys(val, props, sendErr, opts)) {
         return undefined;
       }
 
       const out: number[] = [];
-      for (const key of Object.keys(fields)) {
-        const fieldVal = val[key as keyof typeof val];
-        const picks = fields[key].innerPickify(fieldVal, sendErr, key);
+      for (const key of Object.keys(props)) {
+        const propVal = val[key as keyof typeof val];
+        const picks = props[key].innerPickify(propVal, sendErr, key);
         if (picks === undefined) return undefined;
         out.push(...picks);
       }
       return out;
     };
 
-    const build = Arbitrary.record<T>(fields).buildScript;
+    const build = Arbitrary.record<T>(props).buildScript;
 
     super(pickify, build);
-    this.#fields = fields;
+    this.#props = props;
   }
 
   /**
-   * Returns the domain for each field.
+   * Returns the Domain for the values of a specific property.
    */
-  get fields(): Fields<T> {
-    return this.#fields;
+  propAt<K extends string>(name: K): Domain<T[K]> | undefined {
+    return this.#props[name];
   }
 }

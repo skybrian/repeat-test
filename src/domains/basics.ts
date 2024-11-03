@@ -1,4 +1,4 @@
-import type { Fields, RecordOpts } from "@/domain.ts";
+import type { PickifyFunction, Props, RecordOpts } from "@/domain.ts";
 
 import { Domain } from "@/domain.ts";
 import * as arb from "@/arbs.ts";
@@ -75,9 +75,9 @@ export function int(min: number, max: number): Domain<number> {
  * Creates a Domain that accepts records with matching fields.
  */
 export function record<T extends Record<string, unknown>>(
-  fields: Fields<T>,
+  fields: Props<T>,
   opts?: RecordOpts,
-): Domain<T> {
+): RecordDomain<T> {
   return new RecordDomain(fields, opts);
 }
 
@@ -166,4 +166,64 @@ export function oneOf<T>(...cases: Domain<T>[]): Domain<T> {
     );
     return undefined;
   });
+}
+
+/**
+ * Creates a Domain that's the union of RecordDomains that all have a property
+ * in common.
+ *
+ * The first Domain where the tag property matches will be used to validate the
+ * rest of the value.
+ */
+export function taggedUnion<
+  T extends Record<string, unknown>,
+  K extends string,
+>(
+  tagProp: K,
+  cases: RecordDomain<T>[],
+): Domain<T> {
+  if (cases.length === 0) {
+    throw new Error("taggedUnion requires at least one case");
+  }
+
+  const tagPatterns: Domain<unknown>[] = [];
+  for (const c of cases) {
+    const pattern = c.propAt(tagProp);
+    if (!pattern) {
+      throw new Error(`case '${c.name}' doesn't have a '${tagProp}' property`);
+    }
+    tagPatterns.push(pattern);
+  }
+
+  const pickify: PickifyFunction = (val, sendErr, name) => {
+    if (val === null || typeof val !== "object") {
+      sendErr("not an object", val);
+      return undefined;
+    }
+
+    const hasTag: { [key in K]?: unknown } = val;
+    const actual = hasTag[tagProp];
+    if (typeof actual !== "string") {
+      sendErr(`'${tagProp}' property is not a string`, val);
+      return undefined;
+    }
+    for (let i = 0; i < cases.length; i++) {
+      const c = cases[i];
+      const expected = tagPatterns[i];
+      const ignoreErr = () => {};
+      if (!expected.innerPickify(actual, ignoreErr, c.name)) {
+        continue; // tag didn't match
+      }
+      const picks = c.innerPickify(val, sendErr, c.name);
+      if (picks === undefined) {
+        return undefined; // rest of pattern didn't match
+      }
+      return [i, ...picks];
+    }
+    sendErr(`${tagProp}: "${actual}" didn't match any case in '${name}'`, val);
+  };
+
+  const build = arb.oneOf(...cases).with({ name: "taggedUnion" });
+
+  return Domain.make(build, pickify, { lazyInit: true });
 }

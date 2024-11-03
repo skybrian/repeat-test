@@ -1,4 +1,4 @@
-import type { Fields } from "@/domain.ts";
+import type { Props } from "@/domain.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
@@ -129,11 +129,11 @@ describe("record", () => {
   describe("constructor", () => {
     it("throws errors for bad arguments", () => {
       assertThrows(
-        () => dom.record(undefined as unknown as Fields<unknown>),
+        () => dom.record(undefined as unknown as Props<unknown>),
         Error,
       );
       assertThrows(
-        () => dom.record({ a: "b" } as Fields<unknown>),
+        () => dom.record({ a: "b" } as Props<unknown>),
         Error,
       );
     });
@@ -379,6 +379,73 @@ describe("oneOf", () => {
     doesn't match 'undefined'
     not in range [4, 5]
 `,
+      );
+    });
+  });
+
+  describe("taggedUnion", () => {
+    it("throws an exception when no cases are given", () => {
+      assertThrows(
+        () => dom.taggedUnion("tag", []),
+        Error,
+        "taggedUnion requires at least one case",
+      );
+    });
+
+    it("throws an exception when a case don't have the tag property", () => {
+      const cases = [
+        dom.record({ "a": dom.of(1) }),
+      ];
+      assertThrows(
+        () => dom.taggedUnion("missing", cases),
+        Error,
+        "case 'record' doesn't have a 'missing' property",
+      );
+    });
+
+    const colors = dom.taggedUnion("color", [
+      dom.record({ "color": dom.of("red") }),
+      dom.record({ "color": dom.of("green") }),
+    ]);
+
+    it("chooses the first case with the matching tag", () => {
+      assertRoundTrip(colors, { "color": "red" });
+      assertRoundTrip(colors, { "color": "green" });
+    });
+
+    it("reports an error for a non-record value", () => {
+      assertThrows(
+        () => colors.parse("red"),
+        ParseError,
+        `not an object\n\n"red"`,
+      );
+    });
+
+    it("reports an error when the tag isn't a string", () => {
+      assertThrows(
+        () => colors.parse({ "color": 123 }),
+        ParseError,
+        `'color' property is not a string\n\n{ color: 123 }`,
+      );
+    });
+
+    it("reports an error when no case has a matching tag", () => {
+      assertThrows(
+        () => colors.parse({ "color": "blue" }),
+        ParseError,
+        `color: \"blue\" didn't match any case in 'taggedUnion'`,
+      );
+    });
+
+    it("reports an error when the case with the matching tag doesn't match the value", () => {
+      const tagged = dom.taggedUnion("color", [
+        dom.record({ "color": dom.of("red"), "count": dom.of(123) }),
+        dom.record({ "color": dom.of("yellow"), "count": dom.of(456) }),
+      ]);
+      assertThrows(
+        () => tagged.parse({ "color": "red", "count": "tomato" }),
+        ParseError,
+        `record.count: doesn't match '123 (constant)'`,
       );
     });
   });

@@ -1,4 +1,4 @@
-import type { Fields } from "@/domain.ts";
+import type { Props } from "@/domain.ts";
 
 import { assert } from "@std/assert";
 import { Domain } from "@/domain.ts";
@@ -60,7 +60,7 @@ export function uniqueArray<T>(
  * unique columns. The comparison is done using their canonical pick sequences
  */
 export function table<R extends Record<string, unknown>>(
-  fields: Fields<R>,
+  fields: Props<R>,
   opts?: arb.TableOpts<R>,
 ): Domain<R[]> {
   const keys = Object.keys(fields) as (keyof R & string)[];
