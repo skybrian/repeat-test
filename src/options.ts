@@ -1,5 +1,3 @@
-import type { Pickable } from "./pickable.ts";
-
 /**
  * A callback for reporting errors while validating a value.
  *
@@ -15,24 +13,17 @@ export type SendErr = (
 ) => void;
 
 /**
- * Specifies a record to be generated.
- *
- * Each property will be independently generated.
+ * Checks that value is an object and optionally that it has the given keys.
  */
-export type RecordShape<T> = {
-  [K in keyof T]: Pickable<T[K]>;
-};
-
-export function checkKeys<T extends Record<string, unknown>>(
+export function checkKeys(
   val: unknown,
-  shape: RecordShape<T>,
+  expectedKeys: Record<string, unknown>,
   sendErr: SendErr,
   opts?: { at?: string | number; strict?: boolean },
 ): val is Record<never, never> {
-  const at = opts?.at;
-  const errOpts = (at !== undefined) ? { at } : undefined;
-
   if (val === null || typeof val !== "object") {
+    const at = opts?.at;
+    const errOpts = (at !== undefined) ? { at } : undefined;
     sendErr("not an object", val, errOpts);
     return false;
   }
@@ -40,7 +31,9 @@ export function checkKeys<T extends Record<string, unknown>>(
   const strict = opts?.strict ?? false;
   if (strict) {
     for (const key of Object.keys(val)) {
-      if (!(key in shape)) {
+      if (!(key in expectedKeys)) {
+        const at = opts?.at;
+        const errOpts = (at !== undefined) ? { at } : undefined;
         sendErr(`extra property: ${key}`, val, errOpts);
         return false;
       }

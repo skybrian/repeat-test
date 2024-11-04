@@ -23,7 +23,7 @@ export type {
   Range,
 } from "../picks.ts";
 
-export type { RecordShape } from "../options.ts";
+export type { ObjectShape } from "../arbitrary_class.ts";
 
 export { Filtered } from "../pickable.ts";
 export { filtered } from "../results.ts";

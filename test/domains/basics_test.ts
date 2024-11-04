@@ -363,99 +363,99 @@ describe("firstOf", () => {
       );
     });
   });
+});
 
-  describe("for a nested firstOf", () => {
-    const undef = dom.of(undefined).with({ name: "undefined" });
+describe("for a nested firstOf", () => {
+  const undef = dom.of(undefined).with({ name: "undefined" });
 
-    const nested = dom.firstOf(
-      dom.int(1, 3),
-      dom.firstOf(undef, dom.int(4, 5)),
-    );
+  const nested = dom.firstOf(
+    dom.int(1, 3),
+    dom.firstOf(undef, dom.int(4, 5)),
+  );
 
-    it("encodes the choices made in order", () => {
-      assertEncoding(nested, [0, 1], 1);
-      assertEncoding(nested, [1, 0], undefined);
-      assertEncoding(nested, [1, 1, 5], 5);
-    });
+  it("encodes the choices made in order", () => {
+    assertEncoding(nested, [0, 1], 1);
+    assertEncoding(nested, [1, 0], undefined);
+    assertEncoding(nested, [1, 1, 5], 5);
+  });
 
-    it("prints nested error locations when no case matches", () => {
-      assertThrows(
-        () => nested.parse(42),
-        ParseError,
-        `no case matched:
+  it("prints nested error locations when no case matches", () => {
+    assertThrows(
+      () => nested.parse(42),
+      ParseError,
+      `no case matched:
   not in range [1, 3]
   no case matched:
     doesn't match 'undefined'
     not in range [4, 5]
 `,
-      );
-    });
+    );
+  });
+});
+
+describe("taggedUnion", () => {
+  it("throws an exception when no cases are given", () => {
+    assertThrows(
+      () => dom.taggedUnion("tag", []),
+      Error,
+      "taggedUnion requires at least one case",
+    );
   });
 
-  describe("taggedUnion", () => {
-    it("throws an exception when no cases are given", () => {
-      assertThrows(
-        () => dom.taggedUnion("tag", []),
-        Error,
-        "taggedUnion requires at least one case",
-      );
-    });
+  it("throws an exception when a case don't have the tag property", () => {
+    const cases = [
+      dom.object({ "a": dom.of(1) }),
+    ];
+    assertThrows(
+      () => dom.taggedUnion("missing", cases),
+      Error,
+      "case 0 doesn't have a 'missing' property",
+    );
+  });
 
-    it("throws an exception when a case don't have the tag property", () => {
-      const cases = [
-        dom.object({ "a": dom.of(1) }),
-      ];
-      assertThrows(
-        () => dom.taggedUnion("missing", cases),
-        Error,
-        "case 'record' doesn't have a 'missing' property",
-      );
-    });
+  const colors = dom.taggedUnion("color", [
+    dom.object({ "color": dom.of("red") }),
+    dom.object({ "color": dom.of("green") }),
+  ]);
 
-    const colors = dom.taggedUnion("color", [
-      dom.object({ "color": dom.of("red") }),
-      dom.object({ "color": dom.of("green") }),
+  it("chooses the first case with the matching tag", () => {
+    assertRoundTrip(colors, { "color": "red" });
+    assertRoundTrip(colors, { "color": "green" });
+  });
+
+  it("reports an error for a non-record value", () => {
+    assertThrows(
+      () => colors.parse("red"),
+      ParseError,
+      `not an object\n\n"red"`,
+    );
+  });
+
+  it("reports an error when the tag isn't a string", () => {
+    assertThrows(
+      () => colors.parse({ "color": 123 }),
+      ParseError,
+      `'color' property is not a string\n\n{ color: 123 }`,
+    );
+  });
+
+  it("reports an error when no case has a matching tag", () => {
+    assertThrows(
+      () => colors.parse({ "color": "blue" }),
+      ParseError,
+      `color: \"blue\" didn't match any case in 'taggedUnion'`,
+    );
+  });
+
+  it("reports an error when the case with the matching tag doesn't match the value", () => {
+    const tagged = dom.taggedUnion("color", [
+      dom.object({ "color": dom.of("red"), "count": dom.of(123) }),
+      dom.object({ "color": dom.of("yellow"), "count": dom.of(456) }),
     ]);
-
-    it("chooses the first case with the matching tag", () => {
-      assertRoundTrip(colors, { "color": "red" });
-      assertRoundTrip(colors, { "color": "green" });
-    });
-
-    it("reports an error for a non-record value", () => {
-      assertThrows(
-        () => colors.parse("red"),
-        ParseError,
-        `not an object\n\n"red"`,
-      );
-    });
-
-    it("reports an error when the tag isn't a string", () => {
-      assertThrows(
-        () => colors.parse({ "color": 123 }),
-        ParseError,
-        `'color' property is not a string\n\n{ color: 123 }`,
-      );
-    });
-
-    it("reports an error when no case has a matching tag", () => {
-      assertThrows(
-        () => colors.parse({ "color": "blue" }),
-        ParseError,
-        `color: \"blue\" didn't match any case in 'taggedUnion'`,
-      );
-    });
-
-    it("reports an error when the case with the matching tag doesn't match the value", () => {
-      const tagged = dom.taggedUnion("color", [
-        dom.object({ "color": dom.of("red"), "count": dom.of(123) }),
-        dom.object({ "color": dom.of("yellow"), "count": dom.of(456) }),
-      ]);
-      assertThrows(
-        () => tagged.parse({ "color": "red", "count": "tomato" }),
-        ParseError,
-        `count: doesn't match '123 (constant)'`,
-      );
-    });
+    assertThrows(
+      () => tagged.parse({ "color": "red", "count": "tomato" }),
+      ParseError,
+      `count: doesn't match '123 (constant)'`,
+    );
   });
 });

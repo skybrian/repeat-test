@@ -102,7 +102,7 @@ export function object<T extends Record<string, unknown>>(
     return out;
   };
 
-  const build = Arbitrary.record<T>(shape).buildScript;
+  const build = Arbitrary.object<T>(shape).buildScript;
 
   return new PropDomain(pickify, build, shape);
 }
@@ -198,11 +198,8 @@ export function firstOf<T>(...cases: Domain<T>[]): Domain<T> {
 }
 
 /**
- * Creates a Domain that's the union of RecordDomains that all have a property
- * in common.
- *
- * The first Domain where the tag property matches will be used to validate the
- * rest of the value.
+ * A domain that finds the first case where the given property matches, then
+ * tries to match the rest of the value.
  */
 export function taggedUnion<T extends Record<string, unknown>>(
   tagProp: string,
@@ -213,10 +210,11 @@ export function taggedUnion<T extends Record<string, unknown>>(
   }
 
   const tagPatterns: Domain<unknown>[] = [];
-  for (const c of cases) {
+  for (let i = 0; i < cases.length; i++) {
+    const c = cases[i];
     const pattern = c.propAt(tagProp);
     if (!pattern) {
-      throw new Error(`case '${c.name}' doesn't have a '${tagProp}' property`);
+      throw new Error(`case ${i} doesn't have a '${tagProp}' property`);
     }
     tagPatterns.push(pattern);
   }

@@ -1,4 +1,3 @@
-import type { RecordShape } from "./options.ts";
 import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
 import type { HasScript } from "./script_class.ts";
 
@@ -18,6 +17,16 @@ function checkRandomGenerate(script: Script<unknown>) {
     `can't create Arbitrary for '${script.name}' because no randomly-generated values were accepted`,
   );
 }
+
+/**
+ * Specifies an object to be generated.
+ *
+ * The generated object will have the given properties and its prototype will be
+ * Object.prototype.
+ */
+export type ObjectShape<T> = {
+  [K in keyof T]: Pickable<T[K]>;
+};
 
 /**
  * A set of values that can be generated on demand.
@@ -289,10 +298,10 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
   }
 
   /**
-   * Creates an Arbitrary for a record with the given shape.
+   * Am Arbitrary that creates an object with the given properties.
    */
-  static record<T extends Record<string, unknown>>(
-    shape: RecordShape<T>,
+  static object<T extends Record<string, unknown>>(
+    shape: ObjectShape<T>,
   ): Arbitrary<T> {
     const keys = Object.keys(shape) as (keyof T)[];
 
@@ -307,13 +316,13 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
     }
 
     if (keys.length === 0) {
-      const build = Script.make("empty record", () => {
+      const build = Script.make("empty object", () => {
         return {} as T;
       }, { maxSize, lazyInit: true });
       return new Arbitrary(build);
     }
 
-    const build = Script.make("record", (pick: PickFunction) => {
+    const build = Script.make("object", (pick: PickFunction) => {
       const result = {} as Partial<T>;
       for (const key of keys) {
         result[key] = pick(shape[key]);

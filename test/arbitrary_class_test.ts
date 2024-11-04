@@ -115,18 +115,18 @@ describe("Arbitrary", () => {
     });
   });
 
-  describe("record", () => {
-    it("accepts a constant record shape", () => {
-      const arb = Arbitrary.record({ a: Arbitrary.of(1), b: Arbitrary.of(2) });
+  describe("object", () => {
+    it("accepts a constant object shape", () => {
+      const arb = Arbitrary.object({ a: Arbitrary.of(1), b: Arbitrary.of(2) });
       assertGenerated(arb, [{ val: { a: 1, b: 2 }, picks: [] }]);
       assertEquals(arb.maxSize, 1);
     });
     it("has a default name", () => {
-      assertEquals(Arbitrary.record({}).name, "empty record");
-      assertEquals(Arbitrary.record({ a: Arbitrary.of(1) }).name, "record");
+      assertEquals(Arbitrary.object({}).name, "empty object");
+      assertEquals(Arbitrary.object({ a: Arbitrary.of(1) }).name, "object");
     });
     describe("for a pair", () => {
-      const pair = Arbitrary.record({ a: arb.int32(), b: arb.string() });
+      const pair = Arbitrary.object({ a: arb.int32(), b: arb.string() });
       it("sometimes has non-default values", () => {
         repeatTest(pair, ({ a, b }, console) => {
           console.sometimes(
@@ -162,7 +162,7 @@ describe("Arbitrary", () => {
       assertValues(filtered, [2, 4, 6]);
     });
     it("finds a new default when a property's default value is filtered out", () => {
-      const rec = Arbitrary.record({
+      const rec = Arbitrary.object({
         a: Arbitrary.of(1, 2),
         b: arb.array(arb.boolean()),
       });
@@ -236,7 +236,7 @@ describe("Arbitrary", () => {
       assertValues(filtered, [1, 3]);
     });
     describe("for a filtered pair", () => {
-      const pair = Arbitrary.record({ a: arb.int32(), b: arb.string() });
+      const pair = Arbitrary.object({ a: arb.int32(), b: arb.string() });
       const filtered = pair.filter((r) => r.a !== 0 && r.b !== "");
       it("always has non-default values", () => {
         repeatTest(filtered, ({ a, b }) => {
