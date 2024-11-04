@@ -1,4 +1,4 @@
-import { assertThrows } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import { describe, it } from "@std/testing/bdd";
 import { assertEncoding, assertRoundTrip } from "../lib/asserts.ts";
 
@@ -211,19 +211,17 @@ describe("table", () => {
         );
       });
     });
-    it("rejects an array with an extra field", () => {
-      const hasBadRow = Arbitrary.from((pick) => {
-        const list = pick(nonEmpty);
-        const badIndex = pick(dom.int(0, list.length - 1));
-        (list[badIndex] as { other?: unknown }).other = 1;
-        return { list, badIndex };
+    it("accepts an array with an extra field", () => {
+      const hasExtra = Arbitrary.from((pick) => {
+        const expected = pick(nonEmpty);
+        const extraIndex = pick(dom.int(0, expected.length - 1));
+
+        const extra = nonEmpty.parse(expected);
+        (extra[extraIndex] as { other?: unknown }).other = 1;
+        return { extra, expected };
       });
-      repeatTest(hasBadRow, ({ list, badIndex }) => {
-        assertThrows(
-          () => table.parse(list),
-          Error,
-          `${badIndex}: extra field: other`,
-        );
+      repeatTest(hasExtra, ({ extra, expected }) => {
+        assertEquals(table.parse(extra), expected);
       });
     });
     it("rejects an array with a duplicate field value", () => {

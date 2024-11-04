@@ -53,11 +53,12 @@ export function uniqueArray<T>(
 }
 
 /**
- * Creates a Domain that accepts arrays of objects where every object has the
- * given properties.
+ * Creates a Domain that accepts arrays of objects where every object has at
+ * least the given properties.
  *
- * Properties whose names appear in {@link TableOpts.keys} will be constrained to be
- * unique columns. The comparison is done using their canonical pick sequences
+ * Properties whose names appear in {@link TableOpts.keys} will be constrained
+ * to be unique columns. The comparison is done using their canonical pick
+ * sequences.
  */
 export function table<R extends Record<string, unknown>>(
   shape: PropShape<R>,

@@ -141,39 +141,37 @@ describe("record", () => {
   });
 
   describe("parse", () => {
-    const empty = dom.record({});
+    describe("with default settings", () => {
+      const anyRecord = dom.record({});
 
-    it("rejects a non-record", () => {
-      assertThrows(() => empty.parse(undefined), Error, "not an object");
+      it("rejects non-objects", () => {
+        assertThrows(() => anyRecord.parse(undefined), Error, "not an object");
+        assertThrows(() => anyRecord.parse(null), Error, "not an object");
+      });
+
+      it("accepts a record with an extra field", () => {
+        assertEquals(anyRecord.parse({ a: 0 }), {});
+      });
+
+      it("rejects a record with a missing field", () => {
+        const pair = dom.record({ a: dom.int(0, 1), b: dom.int(0, 1) });
+        assertThrows(
+          () => pair.parse({ a: 0 }),
+          ParseError,
+          "b: not a safe integer",
+        );
+      });
+
+      it("rejects a record with an invalid field", () => {
+        const rec = dom.record({ a: dom.int(0, 1) });
+        assertThrows(() => rec.parse({ a: 2 }), Error, "a: not in range");
+      });
     });
 
-    it("rejects a record with an extra field", () => {
-      assertThrows(() => empty.parse({ a: 0 }), Error, "extra field: a");
-    });
-
-    it("rejects a record with a missing field", () => {
-      const pair = dom.record({ a: dom.int(0, 1), b: dom.int(0, 1) });
-      assertThrows(
-        () => pair.parse({ a: 0 }),
-        ParseError,
-        "b: not a safe integer",
-      );
-    });
-
-    it("rejects a record with an invalid field", () => {
-      const rec = dom.record({ a: dom.int(0, 1) });
-      assertThrows(() => rec.parse({ a: 2 }), Error, "a: not in range");
-    });
-
-    describe("with the strip flag set", () => {
-      const shape = {
-        a: dom.int(0, 1),
-        b: dom.int(1, 6),
-      };
-      const rec = dom.record(shape, { strip: true });
-      it("ignores extra fields", () => {
-        const val = rec.parse({ a: 0, b: 6, c: 1 });
-        assertEquals(val, { a: 0, b: 6 });
+    describe("with the strict flag set to true", () => {
+      it("rejects a record with an extra field", () => {
+        const empty = dom.record({}, { strict: true });
+        assertThrows(() => empty.parse({ a: 0 }), Error, "extra field: a");
       });
     });
   });

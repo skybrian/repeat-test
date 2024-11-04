@@ -17,7 +17,7 @@ export type SendErr = (
 /**
  * Specifies a record to be generated.
  *
- * Each field will be independently generated.
+ * Each property will be independently generated.
  */
 export type RecordShape<T> = {
   [K in keyof T]: Pickable<T[K]>;
@@ -25,9 +25,9 @@ export type RecordShape<T> = {
 
 export function checkRecordKeys<T extends Record<string, unknown>>(
   val: unknown,
-  fields: RecordShape<T>,
+  shape: RecordShape<T>,
   sendErr: SendErr,
-  opts?: { at?: string | number; strip?: boolean },
+  opts?: { at?: string | number; strict?: boolean },
 ): val is Partial<T> {
   const at = opts?.at;
   const errOpts = (at !== undefined) ? { at } : undefined;
@@ -37,9 +37,10 @@ export function checkRecordKeys<T extends Record<string, unknown>>(
     return false;
   }
 
-  if (!opts?.strip) {
+  const strict = opts?.strict ?? false;
+  if (strict) {
     for (const key of Object.keys(val)) {
-      if (!(key in fields)) {
+      if (!(key in shape)) {
         sendErr(`extra field: ${key}`, val, errOpts);
         return false;
       }

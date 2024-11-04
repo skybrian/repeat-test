@@ -72,12 +72,14 @@ export function int(min: number, max: number): Domain<number> {
 
 /** Options for {@link record}. */
 export type RecordOpts = {
-  /** Indicates that extra properties will be ignored (not parsed). */
-  strip?: boolean;
+  /** Turns on checking for extra properties. */
+  strict?: boolean;
 };
 
 /**
- * Creates a Domain that accepts records with matching fields.
+ * Creates a Domain that accepts records with at least the given fields.
+ *
+ * Extra fields are normally allowed, unless the `strict` option is set.
  */
 export function record<T extends Record<string, unknown>>(
   shape: PropShape<T>,

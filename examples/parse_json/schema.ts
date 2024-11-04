@@ -16,11 +16,9 @@ export type TypeParam =
   | { kind: "keyword"; repr: string };
 
 export const typeParam = dom.taggedUnion<TypeParam>("kind", [
-  dom.record({ kind: dom.of("typeRef"), repr: dom.string() }, { strip: true }),
-  dom.record({ kind: dom.of("indexedAccess"), repr: dom.string() }, {
-    strip: true,
-  }),
-  dom.record({ kind: dom.of("keyword"), repr: dom.string() }, { strip: true }),
+  dom.record({ kind: dom.of("typeRef"), repr: dom.string() }),
+  dom.record({ kind: dom.of("indexedAccess"), repr: dom.string() }),
+  dom.record({ kind: dom.of("keyword"), repr: dom.string() }),
 ]);
 
 export type TypeRef = {
@@ -31,7 +29,7 @@ export type TypeRef = {
 export const typeRef: Domain<TypeRef> = dom.record({
   typeName: dom.string(),
   typeParams: dom.oneOf(dom.of(null), dom.array(typeParam)),
-}, { strip: true });
+});
 
 export type Param = {
   name: string | undefined;
@@ -39,7 +37,7 @@ export type Param = {
 
 export const param: Domain<Param> = dom.record({
   name: maybe(dom.string()),
-}, { strip: true });
+});
 
 export type FnOrConstructor = {
   params: Param[];
@@ -49,7 +47,7 @@ export type FnOrConstructor = {
 export const fnOrConstructor: Domain<FnOrConstructor> = dom.record({
   params: dom.array(param),
   tsType: innerType,
-}, { strip: true });
+});
 
 export type Property = {
   name: string;
@@ -59,7 +57,7 @@ export type Property = {
 export const property: Domain<Property> = dom.record({
   name: dom.string(),
   tsType: innerType,
-}, { strip: true });
+});
 
 export type MappedType = {
   typeParam: { name: string };
@@ -69,9 +67,9 @@ export type MappedType = {
 export const mappedType: Domain<MappedType> = dom.record({
   typeParam: dom.record({
     name: dom.string(),
-  }, { strip: true }),
+  }),
   tsType: innerType,
-}, { strip: true });
+});
 
 export type TypeLiteral = {
   properties: Property[];
@@ -79,7 +77,7 @@ export type TypeLiteral = {
 
 export const typeLiteral: Domain<TypeLiteral> = dom.record({
   properties: dom.array(property),
-}, { strip: true });
+});
 
 export type TsType =
   | { kind: "literal" }
@@ -95,38 +93,30 @@ export type TsType =
   | { kind: "array" };
 
 export const tsType: Domain<TsType> = dom.taggedUnion<TsType>("kind", [
-  dom.record({ kind: dom.of("literal") }, { strip: true }),
-  dom.record({ kind: dom.of("keyword"), keyword: dom.string() }, {
-    strip: true,
-  }),
-  dom.record({ kind: dom.of("typeRef"), typeRef: typeRef }, { strip: true }),
+  dom.record({ kind: dom.of("literal") }),
+  dom.record({ kind: dom.of("keyword"), keyword: dom.string() }),
+  dom.record({ kind: dom.of("typeRef"), typeRef: typeRef }),
   dom.record({
     kind: dom.of("fnOrConstructor"),
     fnOrConstructor: fnOrConstructor,
-  }, { strip: true }),
-  dom.record({ kind: dom.of("mapped"), mappedType: mappedType }, {
-    strip: true,
   }),
-  dom.record({ kind: dom.of("mappedType") }, { strip: true }),
-  dom.record({ kind: dom.of("typeOperator") }, { strip: true }),
-  dom.record({ kind: dom.of("typeLiteral"), typeLiteral: typeLiteral }, {
-    strip: true,
-  }),
-  dom.record({ kind: dom.of("union"), union: dom.array(innerType) }, {
-    strip: true,
-  }),
+  dom.record({ kind: dom.of("mapped"), mappedType: mappedType }),
+  dom.record({ kind: dom.of("mappedType") }),
+  dom.record({ kind: dom.of("typeOperator") }),
+  dom.record({ kind: dom.of("typeLiteral"), typeLiteral: typeLiteral }),
+  dom.record({ kind: dom.of("union"), union: dom.array(innerType) }),
   dom.record({
     kind: dom.of("intersection"),
     intersection: dom.array(innerType),
-  }, { strip: true }),
-  dom.record({ kind: dom.of("array") }, { strip: true }),
+  }),
+  dom.record({ kind: dom.of("array") }),
 ]);
 
 export const typeAliasDef = dom.record({
   tsType: tsType,
   typeParams: dom.array(dom.record({
     name: dom.string(),
-  }, { strip: true })),
+  })),
 });
 export type TypeAliasDef = ReturnType<typeof typeAliasDef.parse>;
 
@@ -138,7 +128,7 @@ export type Constructor = {
 export const constructor: Domain<Constructor> = dom.record({
   name: dom.string(),
   params: dom.array(param),
-}, { strip: true });
+});
 
 export type FunctionDef = {
   params: Param[];
@@ -148,7 +138,7 @@ export type FunctionDef = {
 export const functionDef: Domain<FunctionDef> = dom.record({
   params: dom.array(param),
   returnType: tsType,
-}, { strip: true });
+});
 
 export type Method = {
   name: string;
@@ -161,7 +151,7 @@ export type Method = {
 export const method: Domain<Method> = dom.record({
   name: dom.string(),
   functionDef,
-}, { strip: true });
+});
 
 export const classDef = dom.record({
   isAbstract: dom.boolean(),
@@ -171,7 +161,7 @@ export const classDef = dom.record({
   constructors: dom.array(constructor),
   properties: dom.array(property),
   methods: dom.array(method),
-}, { strip: true });
+});
 
 export type ClassDef = ReturnType<typeof classDef.parse>;
 
@@ -185,20 +175,20 @@ export const interfaceMethod: Domain<InterfaceMethod> = dom.record({
   name: dom.string(),
   params: dom.array(param),
   returnType: tsType,
-}, { strip: true });
+});
 
 export const interfaceDef = dom.record({
   typeParams: dom.array(dom.record({ name: dom.string() })),
   callSignatures: dom.array(fnOrConstructor),
   properties: dom.array(property),
   methods: dom.array(interfaceMethod),
-}, { strip: true });
+});
 
 export type InterfaceDef = ReturnType<typeof interfaceDef.parse>;
 
 export const variableDef = dom.record({
   tsType,
-}, { strip: true });
+});
 
 export type VariableDef = ReturnType<typeof variableDef.parse>;
 
@@ -239,32 +229,32 @@ export const node = dom.taggedUnion<Node>("kind", [
     kind: dom.of("typeAlias"),
     name: dom.string(),
     typeAliasDef: typeAliasDef,
-  }, { strip: true }),
+  }),
   dom.record({
     kind: dom.of("class"),
     name: dom.string(),
     classDef: classDef,
-  }, { strip: true }),
+  }),
   dom.record({
     kind: dom.of("interface"),
     name: dom.string(),
     interfaceDef: interfaceDef,
-  }, { strip: true }),
+  }),
   dom.record({
     kind: dom.of("function"),
     name: dom.string(),
     functionDef: functionDef,
-  }, { strip: true }),
+  }),
   dom.record({
     kind: dom.of("variable"),
     name: dom.string(),
     variableDef: variableDef,
-  }, { strip: true }),
+  }),
   dom.record({
     kind: dom.of("moduleDoc"),
     name: dom.string(),
     moduleDoc: maybe(dom.string()),
-  }, { strip: true }),
+  }),
 ]);
 
 /**
