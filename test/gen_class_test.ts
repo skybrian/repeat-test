@@ -48,6 +48,7 @@ describe("Gen", () => {
         },
       );
     });
+
     it("fails when the script never returns", () => {
       assertEquals(
         Gen.build(neverReturns, []),
@@ -58,6 +59,7 @@ describe("Gen", () => {
         },
       );
     });
+
     it("throws when too many values were supplied", () => {
       assertEquals(
         Gen.build(bit, [1, 1]),
@@ -68,6 +70,7 @@ describe("Gen", () => {
         },
       );
     });
+
     it("throws for an out-of-range value", () => {
       assertEquals(
         Gen.build(roll, [7]),
@@ -76,6 +79,33 @@ describe("Gen", () => {
           message:
             "can't build 'roll': pick 0 didn't satisfy the request. Want: [1, 6]. Got: 7",
           actual: [7],
+        },
+      );
+    });
+
+    const notOne = Script.make(
+      "filtered",
+      (pick) => pick(roll, { accept: (v) => v !== 1 }),
+    );
+
+    it("throws due to being filtered out", () => {
+      assertEquals(
+        Gen.build(notOne, [1]),
+        {
+          ok: false,
+          message: "can't build 'filtered': picks not accepted",
+          actual: [1],
+        },
+      );
+    });
+
+    it("throws due to being filtered out, and without reading all picks", () => {
+      assertEquals(
+        Gen.build(notOne, [1, 2]),
+        {
+          ok: false,
+          message: "can't build 'filtered': read only 1 of 2 available picks",
+          actual: [1, 2],
         },
       );
     });

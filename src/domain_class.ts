@@ -119,13 +119,6 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
   }
 
   /**
-   * Given some picks, attempts to generate the corresponding value.
-   */
-  generate(replies: Iterable<number>): Gen<T> | Failure {
-    return Gen.build(this.buildScript, replies);
-  }
-
-  /**
    * Validates a value, returning an array of picks that could be used to create
    * a copy of it.
    *

@@ -5,11 +5,12 @@ import { assert, assertEquals } from "@std/assert";
 import { take, takeAll, takeGenerated } from "../../src/ordered.ts";
 import { randomPicker } from "../../src/random.ts";
 import { usePicker } from "../../src/build.ts";
+import { Gen } from "@/arbitrary.ts";
 
 export function assertRoundTrip<T>(dom: Domain<T>, val: T) {
   const picks = dom.pickify(val);
   assert(picks.ok);
-  const gen = dom.generate(picks.val);
+  const gen = Gen.build(dom, picks.val);
   assert(gen.ok, `can't generate value ${val} from picks ${picks.val}`);
   assertEquals(gen.val, val, "regenerated value didn't match");
 }
@@ -52,9 +53,9 @@ export function assertSameExamples<T>(
   assertEquals(actualVals, expectedVals);
 }
 
-type Gen<T> = { val: T; picks: number[] };
+type Generated<T> = { val: T; picks: number[] };
 
-function takeGen<T>(set: Pickable<T>, n: number): Gen<T>[] {
+function takeGen<T>(set: Pickable<T>, n: number): Generated<T>[] {
   return takeGenerated(set, n).map((gen) => ({
     val: gen.val,
     picks: Array.from(gen.replies),
@@ -63,14 +64,14 @@ function takeGen<T>(set: Pickable<T>, n: number): Gen<T>[] {
 
 export function assertFirstGenerated<T>(
   arb: Arbitrary<T>,
-  expected: Gen<T>[],
+  expected: Generated<T>[],
 ) {
   assertEquals(takeGen(arb, expected.length), expected);
 }
 
 export function assertGenerated<T>(
   arb: Arbitrary<T>,
-  expected: Gen<T>[],
+  expected: Generated<T>[],
 ) {
   assertEquals(takeGen(arb, expected.length + 5), expected);
 }

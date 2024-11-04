@@ -6,6 +6,7 @@ import * as arb from "@/arbs.ts";
 
 import { PickTree } from "../pick_tree.ts";
 import { checkArray, checkRecordKeys, parseArrayOpts } from "../options.ts";
+import { Gen } from "../gen_class.ts";
 
 /**
  * Creates a Domain that accepts arrays where each item is different.
@@ -32,7 +33,7 @@ export function uniqueArray<T>(
       if (replies === undefined) return undefined;
 
       // Regenerate because we need both requests and replies.
-      const gen = item.generate(replies);
+      const gen = Gen.build(item, replies);
       assert(gen.ok, "can't regenerate an accepted value");
 
       if (!seen.prune(gen)) {
@@ -95,7 +96,7 @@ export function table<R extends Record<string, unknown>>(
         if (replies === undefined) return undefined;
 
         // Regenerate because we need both requests and replies.
-        const gen = shape[key].generate(replies);
+        const gen = Gen.build(shape[key], replies);
         assert(gen.ok, "can't regenerate an accepted value");
 
         const seen = trees[key];

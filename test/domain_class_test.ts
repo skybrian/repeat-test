@@ -213,45 +213,6 @@ describe("Domain", () => {
     });
   });
 
-  describe("generate", () => {
-    it("throws due to being filtered out", () => {
-      const weird = Domain.make(roll.filter((v) => v === 1), (val) => {
-        if (val !== 1) throw "oops";
-        return [val];
-      });
-      assertEquals(
-        weird.generate([2]),
-        {
-          ok: false,
-          message: "can't build '1..6 (filtered)': picks not accepted",
-          actual: [2],
-        },
-      );
-    });
-    it("throws due to being filtered out, and without reading all picks", () => {
-      const weird = Domain.make(roll.filter((v) => v === 1), (val) => {
-        if (val !== 1) throw "oops";
-        return [val];
-      });
-      assertEquals(
-        weird.generate([2, 3]),
-        {
-          ok: false,
-          message:
-            "can't build '1..6 (filtered)': read only 1 of 2 available picks",
-          actual: [2, 3],
-        },
-      );
-    });
-    it("returns the value from a successful parse", () => {
-      for (let i = 1; i < 6; i++) {
-        const gen = roll.generate([i]);
-        if (!gen.ok) fail(gen.message);
-        assertEquals(gen.val, i);
-      }
-    });
-  });
-
   describe("with", () => {
     it("returns a copy with a new name", () => {
       const newDom = roll.with({ name: "new name" });

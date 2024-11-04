@@ -143,6 +143,7 @@ describe("record", () => {
   describe("parse", () => {
     describe("with default settings", () => {
       const anyRecord = dom.record({});
+      const pair = dom.record({ a: dom.int(0, 1), b: dom.int(0, 1) });
 
       it("rejects non-objects", () => {
         assertThrows(() => anyRecord.parse(undefined), Error, "not an object");
@@ -151,10 +152,10 @@ describe("record", () => {
 
       it("accepts a record with an extra field", () => {
         assertEquals(anyRecord.parse({ a: 0 }), {});
+        assertEquals(pair.parse({ a: 0, b: 0, c: "extra" }), { a: 0, b: 0 });
       });
 
       it("rejects a record with a missing field", () => {
-        const pair = dom.record({ a: dom.int(0, 1), b: dom.int(0, 1) });
         assertThrows(
           () => pair.parse({ a: 0 }),
           ParseError,
@@ -169,9 +170,18 @@ describe("record", () => {
     });
 
     describe("with the strict flag set to true", () => {
+      const justA = dom.record({ a: dom.of(0) }, { strict: true });
+
+      it("accepts a record without an extra field", () => {
+        assertEquals(justA.parse({ a: 0 }), { a: 0 });
+      });
+
       it("rejects a record with an extra field", () => {
-        const empty = dom.record({}, { strict: true });
-        assertThrows(() => empty.parse({ a: 0 }), Error, "extra field: a");
+        assertThrows(
+          () => justA.parse({ a: 0, b: "extra" }),
+          Error,
+          "extra field: b",
+        );
       });
     });
   });
