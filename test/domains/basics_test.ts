@@ -180,7 +180,7 @@ describe("object", () => {
         assertThrows(
           () => justA.parse({ a: 0, b: "extra" }),
           Error,
-          "extra field: b",
+          "extra property: b",
         );
       });
     });

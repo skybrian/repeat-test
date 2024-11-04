@@ -161,7 +161,7 @@ describe("Arbitrary", () => {
       const filtered = sixSided.filter(keepEvens);
       assertValues(filtered, [2, 4, 6]);
     });
-    it("finds a default in the first field of a record", () => {
+    it("finds a new default when a property's default value is filtered out", () => {
       const rec = Arbitrary.record({
         a: Arbitrary.of(1, 2),
         b: arb.array(arb.boolean()),

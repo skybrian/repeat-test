@@ -571,11 +571,11 @@ describe("shrink", () => {
   });
 
   describe("for an object", () => {
-    it("can't shrink an empty record", () => {
+    it("can't shrink an empty object", () => {
       assertNoChange(dom.object({}), () => true, {});
     });
     const pair = dom.object({ a: dom.int32(), b: dom.string() });
-    it("can't shrink when there's no alternative", () => {
+    it("can't shrink a pair when there's no alternative", () => {
       repeatTest(pair, ({ a, b }) => {
         assertNoChange(
           pair,
@@ -584,17 +584,17 @@ describe("shrink", () => {
         );
       }, { reps: 10 });
     });
-    it("shrinks all fields to their minimums", () => {
+    it("shrinks a pair to minimum values", () => {
       repeatTest(pair, (start) => {
         assertShrinks(pair, (_r) => true, start, { a: 0, b: "" });
       }, { reps: 100 });
     });
-    it("shrinks the first field if the second is held constant", () => {
+    it("shrinks the first property if the second is held constant", () => {
       repeatTest(pair, ({ a, b }) => {
         assertShrinks(pair, (r) => r.b === b, { a, b }, { a: 0, b });
       }, { reps: 10 });
     });
-    it("shrinks the second field if the first is held constant", () => {
+    it("shrinks the second property if the first is held constant", () => {
       repeatTest(pair, ({ a, b }) => {
         assertShrinks(pair, (r) => r.a === a, { a, b }, { a, b: "" });
       }, { reps: 100 });

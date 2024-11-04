@@ -181,7 +181,7 @@ describe("table", () => {
       assertThrows(() => table.parse(undefined), Error, "not an array");
     });
     const nonEmpty = table.filter((v) => v.length > 0);
-    it("rejects an array with a non-record", () => {
+    it("rejects an array with a non-object", () => {
       const hasBadRow = Arbitrary.from((pick) => {
         const list = pick(nonEmpty) as unknown[];
         const badIndex = pick(dom.int(0, list.length - 1));
@@ -196,7 +196,7 @@ describe("table", () => {
         );
       });
     });
-    it("rejects an array with a missing field", () => {
+    it("rejects an array when an item has a missing property", () => {
       const hasBadRow = Arbitrary.from((pick) => {
         const list = pick(nonEmpty) as unknown[];
         const badIndex = pick(dom.int(0, list.length - 1));
@@ -211,7 +211,7 @@ describe("table", () => {
         );
       });
     });
-    it("accepts an array with an extra field", () => {
+    it("matchs an array when an item has an extra property", () => {
       const hasExtra = Arbitrary.from((pick) => {
         const expected = pick(nonEmpty);
         const extraIndex = pick(dom.int(0, expected.length - 1));
@@ -224,7 +224,7 @@ describe("table", () => {
         assertEquals(table.parse(extra), expected);
       });
     });
-    it("rejects an array with a duplicate field value", () => {
+    it("rejects an array when there is a duplicate value in a column that should be unique", () => {
       const hasBadRow = Arbitrary.from((pick) => {
         const list = pick(table.filter((v) => v.length === 2));
         list[1].a = list[0].a;
@@ -234,7 +234,7 @@ describe("table", () => {
         assertThrows(
           () => table.parse(rows),
           Error,
-          `1.a: duplicate field value`,
+          `1.a: duplicate value found for unique key`,
         );
       });
     });

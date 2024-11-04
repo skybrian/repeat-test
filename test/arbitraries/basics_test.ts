@@ -147,14 +147,14 @@ describe("object", () => {
     });
   });
   describe("with an int property", () => {
-    const oneField = arb.object({
+    const oneProp = arb.object({
       a: arb.int(1, 2),
     });
-    it("defaults to the default value of the field", () => {
-      assertEquals(generateDefault(oneField).val, { a: 1 });
+    it("defaults to the default value of the property", () => {
+      assertEquals(generateDefault(oneProp).val, { a: 1 });
     });
     it("makes one pick", () => {
-      assertGenerated(oneField, [
+      assertGenerated(oneProp, [
         { val: { a: 1 }, picks: [1] },
         { val: { a: 2 }, picks: [2] },
       ]);

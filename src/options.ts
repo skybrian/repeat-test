@@ -41,7 +41,7 @@ export function checkKeys<T extends Record<string, unknown>>(
   if (strict) {
     for (const key of Object.keys(val)) {
       if (!(key in shape)) {
-        sendErr(`extra field: ${key}`, val, errOpts);
+        sendErr(`extra property: ${key}`, val, errOpts);
         return false;
       }
     }

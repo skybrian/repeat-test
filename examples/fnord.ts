@@ -1,7 +1,7 @@
 import { assert } from "@std/assert";
 import { arb, repeatTest } from "@skybrian/repeat-test";
 
-const example = arb.record({
+const example = arb.object({
   prefix: arb.string(),
   suffix: arb.string(),
 });

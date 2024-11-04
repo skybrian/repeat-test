@@ -102,13 +102,15 @@ export function table<R extends Record<string, unknown>>(
   for (const key of uniqueKeys) {
     const set = shape[key];
     if (!(set instanceof Domain)) {
-      throw new Error(`field "${key}" is unique but not a Domain`);
+      throw new Error(
+        `property "${key}" is declared unique but not specified by a Domain`,
+      );
     }
     domains[key] = set;
     const count = countDistinct(set, min);
     if (count < min) {
       throw new Error(
-        `field "${key}": not enough unique keys; want length.min <= ${count}, got: ${min}`,
+        `property "${key}" has only ${count} unique value, but length.min is ${min}`,
       );
     }
   }

@@ -91,18 +91,24 @@ export function table<R extends Record<string, unknown>>(
         out.push(1);
       }
       for (const key of keys) {
-        const field = row[key];
-        const replies = shape[key].innerPickify(field, sendErr, `${i}.${key}`);
+        const propVal = row[key];
+        const replies = shape[key].innerPickify(
+          propVal,
+          sendErr,
+          `${i}.${key}`,
+        );
         if (replies === undefined) return undefined;
 
         // Regenerate because we need both requests and replies.
         const gen = Gen.build(shape[key], replies);
-        assert(gen.ok, "can't regenerate an accepted value");
+        assert(gen.ok, "can't regenerate a previously accepted value");
 
         const seen = trees[key];
         if (seen) {
           if (!seen.prune(gen)) {
-            sendErr("duplicate field value", field, { at: `${i}.${key}` });
+            sendErr("duplicate value found for unique key", propVal, {
+              at: `${i}.${key}`,
+            });
             return undefined;
           }
         }

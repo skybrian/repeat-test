@@ -96,7 +96,7 @@ describe("table", () => {
           keys: ["k"],
         }),
       Error,
-      'field "k" is unique but not a Domain',
+      'property "k" is declared unique but not specified by a Domain',
     );
   });
   it("rejects an impossible minimum size", () => {
@@ -108,7 +108,7 @@ describe("table", () => {
           length: 2,
         }),
       Error,
-      `field "k": not enough unique keys; want length.min <= 1, got: 2`,
+      `property "k" has only 1 unique value, but length.min is 2`,
     );
   });
   describe("with one column and no unique key", () => {

@@ -11,10 +11,10 @@ repeatTest(arb.string(), (s) => {
 });
 ```
 
-But we can make that happen by constructing a string with the property we want:
+But we can make that happen by generating two strings and combining them:
 
 ```ts
-const example = arb.record({
+const example = arb.object({
   prefix: arb.string(),
   suffix: arb.string(),
 });
@@ -25,16 +25,10 @@ repeatTest(example, ({ prefix, suffix }) => {
 });
 ```
 
-The `arb.record()` function returns an Arbitrary that generates JavaScript
-objects with a fixed list of keys. The value of each field is chosen
+The `arb.object()` function returns an Arbitrary that generates JavaScript
+objects with a fixed list of properties. The value of each property is chosen
 independently. That's just what we want in this case: there should be no
-relationship between the prefix and the suffix.
-
-Considered in terms of sets, `arb.records` takes multiple sets (Arbitraries) as
-input and returns a bigger set as output. To get the size of the output set, you
-*multiply* the sizes of each *occurance* of an input set. For example, since
-`arb.string()` appears twice, each occurrence is independent and a different
-string will be picked each time. [^1]
+relationship between the prefix and the suffix. [^1]
 
 ## A choice that depends on a previous choice
 
@@ -82,7 +76,11 @@ property-testing frameworks, but *repeat-test* makes it easy to define your own.
 
 (To be continued.)
 
-[^1]: This is like a cross join in SQL.
+[^1]: Like a cross join in SQL, the number of possible values escalates quickly.
+Considered in terms of sets, `arb.object()` takes multiple sets (Arbitraries) as
+input and returns a much bigger set as output. To get the size of the output
+set, you *multiply* the sizes of each *occurrence* of an input set.
+
 [^2]: Equivalent outputs don't have to be equal according to `===` or
     `assertEquals()`. Generating different values is allowed so long as the test
     passes or fails the same way. For mutable values, `arb.from` should generate
