@@ -230,9 +230,7 @@ export function taggedUnion<T extends Record<string, unknown>>(
     }
     for (let i = 0; i < cases.length; i++) {
       const c = cases[i];
-      const expected = tagPatterns[i];
-      const ignoreErr = () => {};
-      if (!expected.innerPickify(actual, ignoreErr, tagProp)) {
+      if (!tagPatterns[i].matches(actual)) {
         continue; // tag didn't match
       }
       const picks = c.innerPickify(val, sendErr);

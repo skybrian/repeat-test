@@ -88,6 +88,14 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
   }
 
   /**
+   * Returns true if the value can be parsed by this domain.
+   */
+  matches(val: unknown): boolean {
+    const ignoreErrs = () => {};
+    return this.#pickify(val, ignoreErrs, this.name) !== undefined;
+  }
+
+  /**
    * Returns a new domain with only the values accepted by a predicate.
    */
   filter(accept: (val: T) => boolean): Domain<T> {
