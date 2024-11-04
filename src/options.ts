@@ -23,12 +23,12 @@ export type RecordShape<T> = {
   [K in keyof T]: Pickable<T[K]>;
 };
 
-export function checkRecordKeys<T extends Record<string, unknown>>(
+export function checkKeys<T extends Record<string, unknown>>(
   val: unknown,
   shape: RecordShape<T>,
   sendErr: SendErr,
   opts?: { at?: string | number; strict?: boolean },
-): val is Partial<T> {
+): val is Record<never, never> {
   const at = opts?.at;
   const errOpts = (at !== undefined) ? { at } : undefined;
 

@@ -89,9 +89,11 @@ export function biased(probabilityTrue: number): Arbitrary<boolean> {
 }
 
 /**
- * Defines an Arbitrary that generates record with the given shape.
+ * An Arbitrary that generates objects with the given properties.
+ *
+ * (The prototype is always `Object.prototype`.)
  */
-export function record<T extends Record<string, unknown>>(
+export function object<T extends Record<string, unknown>>(
   shape: RecordShape<T>,
 ): Arbitrary<T> {
   return Arbitrary.record(shape);

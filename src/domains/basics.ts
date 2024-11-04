@@ -3,39 +3,38 @@ import type { PickifyFunction, PropShape, SendErr } from "@/domain.ts";
 import { Arbitrary } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
 import { Domain, PropDomain } from "@/domain.ts";
-import { checkArray, checkRecordKeys, parseArrayOpts } from "../options.ts";
+import { checkArray, checkKeys, parseArrayOpts } from "../options.ts";
 
 /**
- * A domain that accepts only values equal to the given arguments.
+ * A domain that matches only the given values.
  *
- * Comparisons are done using strict equality, the same algorithm used by
- * `===`.
+ * Comparisons are done using strict equality. (This is the same algorithm used by
+ * `===`.)
  */
 export function of<T>(...values: T[]): Domain<T> {
   return Domain.of(...values);
 }
 
 /**
- * Returns a Domain that stands for another Domain, which might be
- * defined later.
+ * A domain that stands for another domain to be defined later.
  *
- * Since initialization is lazy, this is useful for parsing recursive types.
+ * This is useful for matching recursive types.
  *
- * Usually, the return type must be declared when definining an alias, because
- * TypeScript's type inference doesn't work for recursive types.
+ * TypeScript's type inference doesn't work for recursive types,
+ * so explicitily specifying the type argument is recommended.
  */
 export function alias<T>(init: () => Domain<T>): Domain<T> {
   return Domain.alias(init);
 }
 
-/** A domain that accepts only booleans. */
+/** A domain that matches booleans. */
 export const boolean: () => Domain<boolean> = Domain.of(false, true).with({
   name: "boolean",
 })
   .asFunction();
 
 /**
- * A domain that accepts safe integers within the given range (inclusive).
+ * A domain that matches safe integers within the given range (inclusive).
  */
 export function int(min: number, max: number): Domain<number> {
   function intDomain(pickify: (val: number) => number[]) {
@@ -70,23 +69,26 @@ export function int(min: number, max: number): Domain<number> {
   }
 }
 
-/** Options for {@link record}. */
-export type RecordOpts = {
+/** Options for {@link object}. */
+export type PropOpts = {
   /** Turns on checking for extra properties. */
   strict?: boolean;
 };
 
 /**
- * Creates a Domain that accepts records with at least the given fields.
+ * A domain that matches an object when each of the given properties matches.
  *
- * Extra fields are normally allowed, unless the `strict` option is set.
+ * Additional properties are normally allowed, unless the `strict` option is set.
+ *
+ * After being parsed or regenerated, the copy will only have the listed properties
+ * and the copy's prototype will be Object.prototype.
  */
-export function record<T extends Record<string, unknown>>(
+export function object<T extends Record<string, unknown>>(
   shape: PropShape<T>,
-  opts?: RecordOpts,
+  opts?: PropOpts,
 ): PropDomain<T> {
   const pickify: PickifyFunction = (val, sendErr) => {
-    if (!checkRecordKeys(val, shape, sendErr, opts)) {
+    if (!checkKeys(val, shape, sendErr, opts)) {
       return undefined;
     }
 
@@ -106,7 +108,7 @@ export function record<T extends Record<string, unknown>>(
 }
 
 /**
- * Creates a Domain that accepts arrays where every item matches.
+ * A domain that matches arrays where every item matches.
  */
 export function array<T>(
   item: Domain<T>,
@@ -145,12 +147,14 @@ export function array<T>(
 }
 
 /**
- * Creates a Domain that's the union of other Domains.
+ * A domain that attempts to match each case in the order given.
  *
- * When multiple child domains accept the same value, the encoding for the first
- * one that matches will be used. The other Domains can also generate the same
- * value, but the pick sequences they use will be non-canonical representations
- * of it.
+ * When a parse fails because no case matched, a detailed error message explains
+ * why each case failed to match. This is quite verbose, so prefer using
+ * {@link taggedUnion} where possible.
+ *
+ * When multiple cases can generate the same value, the picks from generating
+ * a value might not match the picks from parsing a value.
  */
 export function oneOf<T>(...cases: Domain<T>[]): Domain<T> {
   if (cases.length === 0) {

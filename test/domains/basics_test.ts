@@ -47,7 +47,7 @@ describe("alias", () => {
 
   const child: Domain<Tree> = Domain.alias(() => tree);
 
-  const tree: Domain<Tree> = dom.record({
+  const tree: Domain<Tree> = dom.object({
     left: dom.oneOf<Child>(dom.string(), child),
     right: dom.oneOf<Child>(dom.string(), child),
   });
@@ -126,15 +126,15 @@ describe("int", () => {
   });
 });
 
-describe("record", () => {
+describe("object", () => {
   describe("constructor", () => {
     it("throws errors for bad arguments", () => {
       assertThrows(
-        () => dom.record(undefined as unknown as PropShape<unknown>),
+        () => dom.object(undefined as unknown as PropShape<unknown>),
         Error,
       );
       assertThrows(
-        () => dom.record({ a: "b" } as PropShape<unknown>),
+        () => dom.object({ a: "b" } as PropShape<unknown>),
         Error,
       );
     });
@@ -142,20 +142,20 @@ describe("record", () => {
 
   describe("parse", () => {
     describe("with default settings", () => {
-      const anyRecord = dom.record({});
-      const pair = dom.record({ a: dom.int(0, 1), b: dom.int(0, 1) });
+      const anyObject = dom.object({});
+      const pair = dom.object({ a: dom.int(0, 1), b: dom.int(0, 1) });
 
       it("rejects non-objects", () => {
-        assertThrows(() => anyRecord.parse(undefined), Error, "not an object");
-        assertThrows(() => anyRecord.parse(null), Error, "not an object");
+        assertThrows(() => anyObject.parse(undefined), Error, "not an object");
+        assertThrows(() => anyObject.parse(null), Error, "not an object");
       });
 
-      it("accepts a record with an extra field", () => {
-        assertEquals(anyRecord.parse({ a: 0 }), {});
+      it("accepts an object with an extra property", () => {
+        assertEquals(anyObject.parse({ a: 0 }), {});
         assertEquals(pair.parse({ a: 0, b: 0, c: "extra" }), { a: 0, b: 0 });
       });
 
-      it("rejects a record with a missing field", () => {
+      it("rejects an object with a missing property", () => {
         assertThrows(
           () => pair.parse({ a: 0 }),
           ParseError,
@@ -163,20 +163,20 @@ describe("record", () => {
         );
       });
 
-      it("rejects a record with an invalid field", () => {
-        const rec = dom.record({ a: dom.int(0, 1) });
+      it("rejects an object with a property that doesn't match", () => {
+        const rec = dom.object({ a: dom.int(0, 1) });
         assertThrows(() => rec.parse({ a: 2 }), Error, "a: not in range");
       });
     });
 
     describe("with the strict flag set to true", () => {
-      const justA = dom.record({ a: dom.of(0) }, { strict: true });
+      const justA = dom.object({ a: dom.of(0) }, { strict: true });
 
-      it("accepts a record without an extra field", () => {
+      it("accepts an object with the same properties", () => {
         assertEquals(justA.parse({ a: 0 }), { a: 0 });
       });
 
-      it("rejects a record with an extra field", () => {
+      it("rejects an object with extra properties", () => {
         assertThrows(
           () => justA.parse({ a: 0, b: "extra" }),
           Error,
@@ -186,33 +186,33 @@ describe("record", () => {
     });
   });
 
-  it("round-trips records", () => {
+  it("round-trips generated objects", () => {
     const shape = {
       a: dom.int(0, 1),
       b: dom.int(1, 6),
     };
-    const rec = dom.record(shape);
-    repeatTest(rec, (val) => {
-      assertRoundTrip(rec, val);
+    const obj = dom.object(shape);
+    repeatTest(obj, (val) => {
+      assertRoundTrip(obj, val);
     });
   });
 
-  it("encodes records as a sequence of encoded fields", () => {
+  it("encodes objects as a sequence of encoded properties", () => {
     const shape = {
       a: dom.int(0, 1),
       b: dom.int(1, 6),
     };
-    const rec = dom.record(shape);
+    const rec = dom.object(shape);
     assertEncoding(rec, [1, 6], { a: 1, b: 6 });
   });
 
-  describe("for a record with a field that's an alias", () => {
+  describe("for an object with a property that's an alias", () => {
     const alias = dom.alias(() => {
       throw new Error("should not be called");
     });
 
     it("shouldn't call the alias when defined", () => {
-      dom.record({
+      dom.object({
         a: dom.int(1, 2),
         b: alias,
       });
@@ -403,7 +403,7 @@ describe("oneOf", () => {
 
     it("throws an exception when a case don't have the tag property", () => {
       const cases = [
-        dom.record({ "a": dom.of(1) }),
+        dom.object({ "a": dom.of(1) }),
       ];
       assertThrows(
         () => dom.taggedUnion("missing", cases),
@@ -413,8 +413,8 @@ describe("oneOf", () => {
     });
 
     const colors = dom.taggedUnion("color", [
-      dom.record({ "color": dom.of("red") }),
-      dom.record({ "color": dom.of("green") }),
+      dom.object({ "color": dom.of("red") }),
+      dom.object({ "color": dom.of("green") }),
     ]);
 
     it("chooses the first case with the matching tag", () => {
@@ -448,8 +448,8 @@ describe("oneOf", () => {
 
     it("reports an error when the case with the matching tag doesn't match the value", () => {
       const tagged = dom.taggedUnion("color", [
-        dom.record({ "color": dom.of("red"), "count": dom.of(123) }),
-        dom.record({ "color": dom.of("yellow"), "count": dom.of(456) }),
+        dom.object({ "color": dom.of("red"), "count": dom.of(123) }),
+        dom.object({ "color": dom.of("yellow"), "count": dom.of(456) }),
       ]);
       assertThrows(
         () => tagged.parse({ "color": "red", "count": "tomato" }),

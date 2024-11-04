@@ -1,7 +1,7 @@
 /**
  * Functions for defining Domains.
  *
- * @module dom
+ * @module doms
  */
 export * from "../domains/basics.ts";
 export * from "../domains/numbers.ts";

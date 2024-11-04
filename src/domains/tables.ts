@@ -5,7 +5,7 @@ import { Domain } from "@/domain.ts";
 import * as arb from "@/arbs.ts";
 
 import { PickTree } from "../pick_tree.ts";
-import { checkArray, checkRecordKeys, parseArrayOpts } from "../options.ts";
+import { checkArray, checkKeys, parseArrayOpts } from "../options.ts";
 import { Gen } from "../gen_class.ts";
 
 /**
@@ -83,7 +83,7 @@ export function table<R extends Record<string, unknown>>(
     const out: number[] = [];
     let i = 0;
     for (const row of rows as Partial<Record<keyof R, unknown>>[]) {
-      if (!checkRecordKeys(row, shape, sendErr, { at: i })) {
+      if (!checkKeys(row, shape, sendErr, { at: i })) {
         return undefined;
       }
 

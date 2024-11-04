@@ -59,7 +59,7 @@ describe("PickRequest.random", () => {
 
     it("returns each value for a contiguous range of inputs", () => {
       repeatTest(
-        arb.record({ min, size, rangeStart }),
+        arb.object({ min, size, rangeStart }),
         ({ min, size, rangeStart }, console) => {
           const max = min + size - 1;
           console.log(`testing with range ${min}..${max}`);
@@ -87,7 +87,7 @@ describe("PickRequest.random", () => {
     it("tries again if the first input is the maximum value", () => {
       const min = arb.of(0, 1, 1000, Number.MAX_SAFE_INTEGER - 6);
       const size = arb.of(3, 5, 7);
-      repeatTest(arb.record({ min, size }), ({ min, size }) => {
+      repeatTest(arb.object({ min, size }), ({ min, size }) => {
         const max = min + size - 1;
         const next = mock(0x7fffffff, -0x80000000);
         calls = 0;

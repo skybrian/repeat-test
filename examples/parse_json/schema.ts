@@ -1,4 +1,5 @@
 import { dom, type Domain } from "@/mod.ts";
+import { object } from "@/doms.ts";
 
 function maybe<T>(d: Domain<T>) {
   return dom.oneOf(dom.of(undefined), d);
@@ -16,9 +17,9 @@ export type TypeParam =
   | { kind: "keyword"; repr: string };
 
 export const typeParam = dom.taggedUnion<TypeParam>("kind", [
-  dom.record({ kind: dom.of("typeRef"), repr: dom.string() }),
-  dom.record({ kind: dom.of("indexedAccess"), repr: dom.string() }),
-  dom.record({ kind: dom.of("keyword"), repr: dom.string() }),
+  object({ kind: dom.of("typeRef"), repr: dom.string() }),
+  object({ kind: dom.of("indexedAccess"), repr: dom.string() }),
+  object({ kind: dom.of("keyword"), repr: dom.string() }),
 ]);
 
 export type TypeRef = {
@@ -26,7 +27,7 @@ export type TypeRef = {
   typeParams: null | TypeParam[];
 };
 
-export const typeRef: Domain<TypeRef> = dom.record({
+export const typeRef: Domain<TypeRef> = object({
   typeName: dom.string(),
   typeParams: dom.oneOf(dom.of(null), dom.array(typeParam)),
 });
@@ -35,7 +36,7 @@ export type Param = {
   name: string | undefined;
 };
 
-export const param: Domain<Param> = dom.record({
+export const param: Domain<Param> = object({
   name: maybe(dom.string()),
 });
 
@@ -44,7 +45,7 @@ export type FnOrConstructor = {
   tsType: TsType;
 };
 
-export const fnOrConstructor: Domain<FnOrConstructor> = dom.record({
+export const fnOrConstructor: Domain<FnOrConstructor> = object({
   params: dom.array(param),
   tsType: innerType,
 });
@@ -54,7 +55,7 @@ export type Property = {
   tsType: TsType;
 };
 
-export const property: Domain<Property> = dom.record({
+export const property: Domain<Property> = object({
   name: dom.string(),
   tsType: innerType,
 });
@@ -64,8 +65,8 @@ export type MappedType = {
   tsType: TsType;
 };
 
-export const mappedType: Domain<MappedType> = dom.record({
-  typeParam: dom.record({
+export const mappedType: Domain<MappedType> = object({
+  typeParam: object({
     name: dom.string(),
   }),
   tsType: innerType,
@@ -75,7 +76,7 @@ export type TypeLiteral = {
   properties: Property[];
 };
 
-export const typeLiteral: Domain<TypeLiteral> = dom.record({
+export const typeLiteral: Domain<TypeLiteral> = object({
   properties: dom.array(property),
 });
 
@@ -93,28 +94,28 @@ export type TsType =
   | { kind: "array" };
 
 export const tsType: Domain<TsType> = dom.taggedUnion<TsType>("kind", [
-  dom.record({ kind: dom.of("literal") }),
-  dom.record({ kind: dom.of("keyword"), keyword: dom.string() }),
-  dom.record({ kind: dom.of("typeRef"), typeRef: typeRef }),
-  dom.record({
+  object({ kind: dom.of("literal") }),
+  object({ kind: dom.of("keyword"), keyword: dom.string() }),
+  object({ kind: dom.of("typeRef"), typeRef: typeRef }),
+  object({
     kind: dom.of("fnOrConstructor"),
     fnOrConstructor: fnOrConstructor,
   }),
-  dom.record({ kind: dom.of("mapped"), mappedType: mappedType }),
-  dom.record({ kind: dom.of("mappedType") }),
-  dom.record({ kind: dom.of("typeOperator") }),
-  dom.record({ kind: dom.of("typeLiteral"), typeLiteral: typeLiteral }),
-  dom.record({ kind: dom.of("union"), union: dom.array(innerType) }),
-  dom.record({
+  object({ kind: dom.of("mapped"), mappedType: mappedType }),
+  object({ kind: dom.of("mappedType") }),
+  object({ kind: dom.of("typeOperator") }),
+  object({ kind: dom.of("typeLiteral"), typeLiteral: typeLiteral }),
+  object({ kind: dom.of("union"), union: dom.array(innerType) }),
+  object({
     kind: dom.of("intersection"),
     intersection: dom.array(innerType),
   }),
-  dom.record({ kind: dom.of("array") }),
+  object({ kind: dom.of("array") }),
 ]);
 
-export const typeAliasDef = dom.record({
+export const typeAliasDef = object({
   tsType: tsType,
-  typeParams: dom.array(dom.record({
+  typeParams: dom.array(object({
     name: dom.string(),
   })),
 });
@@ -125,7 +126,7 @@ export type Constructor = {
   params: Param[];
 };
 
-export const constructor: Domain<Constructor> = dom.record({
+export const constructor: Domain<Constructor> = object({
   name: dom.string(),
   params: dom.array(param),
 });
@@ -135,7 +136,7 @@ export type FunctionDef = {
   returnType: TsType;
 };
 
-export const functionDef: Domain<FunctionDef> = dom.record({
+export const functionDef: Domain<FunctionDef> = object({
   params: dom.array(param),
   returnType: tsType,
 });
@@ -148,14 +149,14 @@ export type Method = {
   };
 };
 
-export const method: Domain<Method> = dom.record({
+export const method: Domain<Method> = object({
   name: dom.string(),
   functionDef,
 });
 
-export const classDef = dom.record({
+export const classDef = object({
   isAbstract: dom.boolean(),
-  typeParams: dom.array(dom.record({
+  typeParams: dom.array(object({
     name: dom.string(),
   })),
   constructors: dom.array(constructor),
@@ -171,14 +172,14 @@ export type InterfaceMethod = {
   returnType: TsType;
 };
 
-export const interfaceMethod: Domain<InterfaceMethod> = dom.record({
+export const interfaceMethod: Domain<InterfaceMethod> = object({
   name: dom.string(),
   params: dom.array(param),
   returnType: tsType,
 });
 
-export const interfaceDef = dom.record({
-  typeParams: dom.array(dom.record({ name: dom.string() })),
+export const interfaceDef = object({
+  typeParams: dom.array(object({ name: dom.string() })),
   callSignatures: dom.array(fnOrConstructor),
   properties: dom.array(property),
   methods: dom.array(interfaceMethod),
@@ -186,7 +187,7 @@ export const interfaceDef = dom.record({
 
 export type InterfaceDef = ReturnType<typeof interfaceDef.parse>;
 
-export const variableDef = dom.record({
+export const variableDef = object({
   tsType,
 });
 
@@ -225,32 +226,32 @@ export type Node =
   };
 
 export const node = dom.taggedUnion<Node>("kind", [
-  dom.record({
+  object({
     kind: dom.of("typeAlias"),
     name: dom.string(),
     typeAliasDef: typeAliasDef,
   }),
-  dom.record({
+  object({
     kind: dom.of("class"),
     name: dom.string(),
     classDef: classDef,
   }),
-  dom.record({
+  object({
     kind: dom.of("interface"),
     name: dom.string(),
     interfaceDef: interfaceDef,
   }),
-  dom.record({
+  object({
     kind: dom.of("function"),
     name: dom.string(),
     functionDef: functionDef,
   }),
-  dom.record({
+  object({
     kind: dom.of("variable"),
     name: dom.string(),
     variableDef: variableDef,
   }),
-  dom.record({
+  object({
     kind: dom.of("moduleDoc"),
     name: dom.string(),
     moduleDoc: maybe(dom.string()),
@@ -260,7 +261,7 @@ export const node = dom.taggedUnion<Node>("kind", [
 /**
  * A partial schema for the JSON printed by `deno doc --json`.
  */
-export const schema = dom.record({
+export const schema = object({
   version: dom.int(0, 1000),
   nodes: dom.array(node),
 });

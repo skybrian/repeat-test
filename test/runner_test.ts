@@ -41,20 +41,20 @@ const strangeNumber = Arbitrary.of(
   Number.NaN,
 );
 
-const anyKey = arb.record({
+const anyKey = arb.object({
   id: arb.int(0, 100),
   seed: arb.int32(),
   index: arb.int(0, 100),
 });
 const badKey = arb.oneOf(
-  arb.record({
+  arb.object({
     id: arb.int(-100, -1),
     seed: arb.int32(),
     index: arb.int(0, 100),
   }),
-  arb.record({ id: arb.of(0), seed: arb.int32(), index: arb.int(-100, -1) }),
-  arb.record({ id: arb.of(0), seed: strangeNumber, index: arb.int(0, 100) }),
-  arb.record({ id: arb.of(0), seed: arb.int32(), index: strangeNumber }),
+  arb.object({ id: arb.of(0), seed: arb.int32(), index: arb.int(-100, -1) }),
+  arb.object({ id: arb.of(0), seed: strangeNumber, index: arb.int(0, 100) }),
+  arb.object({ id: arb.of(0), seed: arb.int32(), index: strangeNumber }),
   arb.of(Object.freeze({ id: 0, seed: Number.MAX_SAFE_INTEGER, index: 0 })),
 );
 
@@ -73,7 +73,7 @@ describe("parseRepKey", () => {
   });
   it("returns a failure if the serialized key isn't in the right format", () => {
     const field = arb.string().filter((s) => !s.includes(":"));
-    const badString = arb.record({ k: anyKey, junk: field }).map((
+    const badString = arb.object({ k: anyKey, junk: field }).map((
       { k, junk },
     ) => `${serializeRepKey(k)}:${junk}`);
 

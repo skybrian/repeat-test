@@ -125,9 +125,9 @@ describe("int", () => {
   });
 });
 
-describe("record", () => {
-  describe("for an empty record shape", () => {
-    const empty = arb.record({});
+describe("object", () => {
+  describe("with no properties", () => {
+    const empty = arb.object({});
     it("creates empty records", () => {
       assertGenerated(empty, [
         { val: {}, picks: [] },
@@ -135,8 +135,8 @@ describe("record", () => {
       assertEquals(empty.maxSize, 1);
     });
   });
-  describe("for a constant record shape", () => {
-    const example = arb.record({
+  describe("with constant properties", () => {
+    const example = arb.object({
       a: arb.of(1),
       b: arb.of(2),
     });
@@ -146,8 +146,8 @@ describe("record", () => {
       ]);
     });
   });
-  describe("for a record with a single field", () => {
-    const oneField = arb.record({
+  describe("with an int property", () => {
+    const oneField = arb.object({
       a: arb.int(1, 2),
     });
     it("defaults to the default value of the field", () => {
@@ -160,8 +160,8 @@ describe("record", () => {
       ]);
     });
   });
-  describe("for a record with mutiple fields", () => {
-    const example = arb.record({
+  describe("with mutiple properties", () => {
+    const example = arb.object({
       a: arb.int(1, 2),
       b: arb.int(3, 4),
     });
@@ -175,13 +175,13 @@ describe("record", () => {
     });
   });
 
-  describe("for a record with a field that's an alias", () => {
+  describe("with a property that's an alias", () => {
     const alias = arb.alias(() => {
       throw new Error("should not be called");
     });
 
     it("shouldn't call the alias when defined", () => {
-      arb.record({
+      arb.object({
         a: arb.int(1, 2),
         b: alias,
       });

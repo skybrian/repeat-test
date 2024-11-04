@@ -176,7 +176,7 @@ describe("Shrinker", () => {
     });
 
     it("shrinks strings using split calls", () => {
-      const rec = arb.record({
+      const rec = arb.object({
         a: arb.string(),
         b: arb.string(),
       });
@@ -297,7 +297,7 @@ describe("Shrinker", () => {
     });
 
     it("shrinks strings using split calls", () => {
-      const rec = arb.record({
+      const rec = arb.object({
         a: arb.string(),
         b: arb.string(),
       });
@@ -330,7 +330,7 @@ describe("Shrinker", () => {
 
     it("shrinks a pick to the minimum", () => {
       const rolls = arb.array(arb.int(1, 6), { length: { max: 3 } });
-      const example = arb.record({
+      const example = arb.object({
         prefix: rolls,
         value: arb.int(2, 6),
         suffix: rolls,
@@ -570,11 +570,11 @@ describe("shrink", () => {
     });
   });
 
-  describe("for a record", () => {
+  describe("for an object", () => {
     it("can't shrink an empty record", () => {
-      assertNoChange(dom.record({}), () => true, {});
+      assertNoChange(dom.object({}), () => true, {});
     });
-    const pair = dom.record({ a: dom.int32(), b: dom.string() });
+    const pair = dom.object({ a: dom.int32(), b: dom.string() });
     it("can't shrink when there's no alternative", () => {
       repeatTest(pair, ({ a, b }) => {
         assertNoChange(
