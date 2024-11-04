@@ -2,7 +2,7 @@ import { dom, type Domain } from "@/mod.ts";
 import { object } from "@/doms.ts";
 
 function maybe<T>(d: Domain<T>) {
-  return dom.oneOf(dom.of(undefined), d);
+  return dom.firstOf(dom.of(undefined), d);
 }
 
 // Types are defined separately from Domains because type inference doesn't work
@@ -29,7 +29,7 @@ export type TypeRef = {
 
 export const typeRef: Domain<TypeRef> = object({
   typeName: dom.string(),
-  typeParams: dom.oneOf(dom.of(null), dom.array(typeParam)),
+  typeParams: dom.firstOf(dom.of(null), dom.array(typeParam)),
 });
 
 export type Param = {

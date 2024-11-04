@@ -48,8 +48,8 @@ describe("alias", () => {
   const child: Domain<Tree> = Domain.alias(() => tree);
 
   const tree: Domain<Tree> = dom.object({
-    left: dom.oneOf<Child>(dom.string(), child),
-    right: dom.oneOf<Child>(dom.string(), child),
+    left: dom.firstOf<Child>(dom.string(), child),
+    right: dom.firstOf<Child>(dom.string(), child),
   });
 
   it("round-trips trees", () => {
@@ -291,32 +291,32 @@ describe("array", () => {
   });
 });
 
-describe("oneOf", () => {
+describe("firstOf", () => {
   it("throws when given an empty array", () => {
-    assertThrows(() => dom.oneOf(), Error);
+    assertThrows(() => dom.firstOf(), Error, "firstOf: no cases");
   });
 
-  describe("for a single-case oneOf", () => {
+  describe("for a single case", () => {
     it("encodes it the same way as the child domain", () => {
       repeatTest(minMaxVal(), ({ min, max, val }) => {
         const child = dom.int(min, max);
         const ignore = () => {};
         const expected = child.innerPickify(val, ignore);
         assert(expected !== undefined);
-        const oneWay = dom.oneOf(child);
+        const oneWay = dom.firstOf(child);
         assertEncoding(oneWay, expected, val);
       });
     });
 
     it("rejects values that don't match", () => {
       const child = dom.int(1, 3);
-      const oneWay = dom.oneOf(child);
+      const oneWay = dom.firstOf(child);
       assertThrows(() => oneWay.parse(0), ParseError, "not in range");
     });
   });
 
-  describe("for a multi-case oneOf", () => {
-    const multiWay = dom.oneOf(dom.int(1, 3), dom.int(4, 6));
+  describe("for multiple cases", () => {
+    const multiWay = dom.firstOf(dom.int(1, 3), dom.int(4, 6));
 
     it("encodes distinct cases by putting the case index first", () => {
       assertEncoding(multiWay, [0, 2], 2);
@@ -334,8 +334,8 @@ describe("oneOf", () => {
       );
     });
 
-    it("uses the oneOf's name if it's not unnamed", () => {
-      const named = dom.oneOf(dom.int(1, 3), dom.int(4, 6)).with({
+    it("reports its own name an errors if it's not untitled", () => {
+      const named = dom.firstOf(dom.int(1, 3), dom.int(4, 6)).with({
         name: "named",
       });
       assertThrows(
@@ -349,7 +349,7 @@ describe("oneOf", () => {
     });
 
     it("prints error locations when the mismatch is in a nested domain", () => {
-      const example = dom.oneOf(
+      const example = dom.firstOf(
         dom.array(dom.int(1, 3)),
         dom.array(dom.int(4, 5)),
       );
@@ -364,12 +364,12 @@ describe("oneOf", () => {
     });
   });
 
-  describe("for a nested oneOf", () => {
+  describe("for a nested firstOf", () => {
     const undef = dom.of(undefined).with({ name: "undefined" });
 
-    const nested = dom.oneOf(
+    const nested = dom.firstOf(
       dom.int(1, 3),
-      dom.oneOf(undef, dom.int(4, 5)),
+      dom.firstOf(undef, dom.int(4, 5)),
     );
 
     it("encodes the choices made in order", () => {

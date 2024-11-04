@@ -24,7 +24,7 @@ describe("Jar", () => {
     assert(stream.startAt(0));
   });
 
-  const overlap = dom.oneOf(dom.of(1, 2), dom.of(2, 3));
+  const overlap = dom.firstOf(dom.of(1, 2), dom.of(2, 3));
 
   function checkPicksFromOverlap(stream: Backtracker) {
     pick = makePickFunction(stream);
@@ -62,7 +62,7 @@ describe("Jar", () => {
       assertThrows(() => jar.take(pick), Filtered);
     });
 
-    describe("with an overlapping oneOf", () => {
+    describe("with an overlapping firstOf", () => {
       it("picks values in order", () => {
         checkPicksFromOverlap(orderedPlayouts());
       });

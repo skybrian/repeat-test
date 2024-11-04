@@ -154,16 +154,17 @@ export function array<T>(
  * {@link taggedUnion} where possible.
  *
  * When multiple cases can generate the same value, the picks from generating
- * a value might not match the picks from parsing a value.
+ * a value randomly might not match the picks from parsing a value. To get
+ * "canonical" picks, the value will need to be regenerated.
  */
-export function oneOf<T>(...cases: Domain<T>[]): Domain<T> {
+export function firstOf<T>(...cases: Domain<T>[]): Domain<T> {
   if (cases.length === 0) {
-    throw new Error("oneOf must have at least one choice");
+    throw new Error("firstOf: no cases");
   } else if (cases.length === 1) {
     return cases[0];
   }
 
-  const gen = arb.oneOf(...cases);
+  const gen = arb.oneOf(...cases).with({ name: "firstOf" });
 
   return Domain.make(gen, (val, sendErr, name) => {
     const errors: string[] = [];
@@ -187,7 +188,7 @@ export function oneOf<T>(...cases: Domain<T>[]): Domain<T> {
       if (picks !== undefined) return [i, ...picks];
     }
     sendErr(
-      `no case matched${name === "oneOf" ? "" : ` '${name}'`}:\n${
+      `no case matched${name === "firstOf" ? "" : ` '${name}'`}:\n${
         errors.join("")
       }`,
       val,
