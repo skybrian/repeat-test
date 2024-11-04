@@ -1,4 +1,4 @@
-import type { Props } from "@/domain.ts";
+import type { PropShape } from "@/domain.ts";
 
 import { assert } from "@std/assert";
 import { Domain } from "@/domain.ts";
@@ -53,22 +53,22 @@ export function uniqueArray<T>(
 }
 
 /**
- * Creates a Domain that accepts arrays of records, where every record has the
- * given fields.
+ * Creates a Domain that accepts arrays of objects where every object has the
+ * given properties.
  *
- * Fields whose names appear in {@link TableOpts.keys} will be constrained to be
+ * Properties whose names appear in {@link TableOpts.keys} will be constrained to be
  * unique columns. The comparison is done using their canonical pick sequences
  */
 export function table<R extends Record<string, unknown>>(
-  fields: Props<R>,
+  shape: PropShape<R>,
   opts?: arb.TableOpts<R>,
 ): Domain<R[]> {
-  const keys = Object.keys(fields) as (keyof R & string)[];
+  const keys = Object.keys(shape) as (keyof R & string)[];
   const uniqueKeys = opts?.keys ?? [];
   const { min, max } = parseArrayOpts(opts);
-  const generator = arb.table(fields, opts);
+  const build = arb.table(shape, opts);
 
-  return Domain.make(generator, (rows, sendErr) => {
+  return Domain.make(build, (rows, sendErr) => {
     if (!checkArray(rows, min, max, sendErr)) {
       return undefined;
     }
@@ -81,7 +81,7 @@ export function table<R extends Record<string, unknown>>(
     const out: number[] = [];
     let i = 0;
     for (const row of rows as Partial<Record<keyof R, unknown>>[]) {
-      if (!checkRecordKeys(row, fields, sendErr, { at: i })) {
+      if (!checkRecordKeys(row, shape, sendErr, { at: i })) {
         return undefined;
       }
 
@@ -90,11 +90,11 @@ export function table<R extends Record<string, unknown>>(
       }
       for (const key of keys) {
         const field = row[key];
-        const replies = fields[key].innerPickify(field, sendErr, `${i}.${key}`);
+        const replies = shape[key].innerPickify(field, sendErr, `${i}.${key}`);
         if (replies === undefined) return undefined;
 
         // Regenerate because we need both requests and replies.
-        const gen = fields[key].generate(replies);
+        const gen = shape[key].generate(replies);
         assert(gen.ok, "can't regenerate an accepted value");
 
         const seen = trees[key];

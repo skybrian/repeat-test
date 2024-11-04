@@ -1,12 +1,11 @@
 import type { BuildFunction, HasScript, Pickable } from "@/arbitrary.ts";
 import type { Failure, Success } from "./results.ts";
+import type { SendErr } from "./options.ts";
 
 import { assertEquals } from "@std/assert";
 import { Arbitrary, Gen, Script } from "@/arbitrary.ts";
 import { failure, success } from "./results.ts";
 import { generateDefault } from "./ordered.ts";
-
-import { checkRecordKeys, type SendErr } from "./options.ts";
 
 /** Thrown for validation errors. */
 export class ParseError<T> extends Error {
@@ -315,51 +314,31 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
 }
 
 /**
- * Specifies the values accepted for each property on a record.
+ * Defines the acceptable values for some of the properties on an object.
  */
-export type Props<T> = {
+export type PropShape<T> = {
   [K in keyof T]: Domain<T[K]>;
 };
 
-/** Options for {@link record}. */
-export type RecordOpts = {
-  /** Indicates that extra properties will be ignored (not parsed). */
-  strip?: boolean;
-};
-
-/** A domain representing a set of records. */
-export class RecordDomain<T extends Record<string, unknown>> extends Domain<T> {
-  readonly #props: Props<T>;
+/**
+ * A Domain that also specifies some of its properties.
+ */
+export class PropDomain<T extends Record<string, unknown>> extends Domain<T> {
+  readonly #shape: PropShape<T>;
 
   constructor(
-    props: Props<T>,
-    opts?: RecordOpts,
+    pickify: PickifyFunction,
+    build: Script<T>,
+    shape: PropShape<T>,
   ) {
-    const pickify: PickifyFunction = (val, sendErr) => {
-      if (!checkRecordKeys(val, props, sendErr, opts)) {
-        return undefined;
-      }
-
-      const out: number[] = [];
-      for (const key of Object.keys(props)) {
-        const propVal = val[key as keyof typeof val];
-        const picks = props[key].innerPickify(propVal, sendErr, key);
-        if (picks === undefined) return undefined;
-        out.push(...picks);
-      }
-      return out;
-    };
-
-    const build = Arbitrary.record<T>(props).buildScript;
-
     super(pickify, build);
-    this.#props = props;
+    this.#shape = shape;
   }
 
   /**
-   * Returns the Domain for the values of a specific property.
+   * Returns the Domain for a specific property.
    */
   propAt<K extends string>(name: K): Domain<T[K]> | undefined {
-    return this.#props[name];
+    return this.#shape[name];
   }
 }

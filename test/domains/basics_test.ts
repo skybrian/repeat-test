@@ -1,4 +1,4 @@
-import type { Props } from "@/domain.ts";
+import type { PropShape } from "@/domain.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
@@ -130,11 +130,11 @@ describe("record", () => {
   describe("constructor", () => {
     it("throws errors for bad arguments", () => {
       assertThrows(
-        () => dom.record(undefined as unknown as Props<unknown>),
+        () => dom.record(undefined as unknown as PropShape<unknown>),
         Error,
       );
       assertThrows(
-        () => dom.record({ a: "b" } as Props<unknown>),
+        () => dom.record({ a: "b" } as PropShape<unknown>),
         Error,
       );
     });

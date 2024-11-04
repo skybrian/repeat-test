@@ -1,10 +1,9 @@
-import type { PickifyFunction, Props, RecordOpts } from "@/domain.ts";
+import type { PickifyFunction, PropShape, SendErr } from "@/domain.ts";
 
-import { Domain } from "@/domain.ts";
+import { Arbitrary } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
-
-import { checkArray, parseArrayOpts, type SendErr } from "../options.ts";
-import { RecordDomain } from "../domain_class.ts";
+import { Domain, PropDomain } from "@/domain.ts";
+import { checkArray, checkRecordKeys, parseArrayOpts } from "../options.ts";
 
 /**
  * A domain that accepts only values equal to the given arguments.
@@ -71,14 +70,37 @@ export function int(min: number, max: number): Domain<number> {
   }
 }
 
+/** Options for {@link record}. */
+export type RecordOpts = {
+  /** Indicates that extra properties will be ignored (not parsed). */
+  strip?: boolean;
+};
+
 /**
  * Creates a Domain that accepts records with matching fields.
  */
 export function record<T extends Record<string, unknown>>(
-  fields: Props<T>,
+  shape: PropShape<T>,
   opts?: RecordOpts,
-): RecordDomain<T> {
-  return new RecordDomain(fields, opts);
+): PropDomain<T> {
+  const pickify: PickifyFunction = (val, sendErr) => {
+    if (!checkRecordKeys(val, shape, sendErr, opts)) {
+      return undefined;
+    }
+
+    const out: number[] = [];
+    for (const key of Object.keys(shape)) {
+      const propVal = val[key as keyof typeof val];
+      const picks = shape[key].innerPickify(propVal, sendErr, key);
+      if (picks === undefined) return undefined;
+      out.push(...picks);
+    }
+    return out;
+  };
+
+  const build = Arbitrary.record<T>(shape).buildScript;
+
+  return new PropDomain(pickify, build, shape);
 }
 
 /**
@@ -177,7 +199,7 @@ export function oneOf<T>(...cases: Domain<T>[]): Domain<T> {
  */
 export function taggedUnion<T extends Record<string, unknown>>(
   tagProp: string,
-  cases: RecordDomain<T>[],
+  cases: PropDomain<T>[],
 ): Domain<T> {
   if (cases.length === 0) {
     throw new Error("taggedUnion requires at least one case");
