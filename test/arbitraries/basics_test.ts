@@ -128,7 +128,7 @@ describe("int", () => {
 describe("object", () => {
   describe("with no properties", () => {
     const empty = arb.object({});
-    it("creates empty records", () => {
+    it("creates empty objects", () => {
       assertGenerated(empty, [
         { val: {}, picks: [] },
       ]);

@@ -78,7 +78,7 @@ const nonInteger: () => Arbitrary<number> = oneOf<number>(
 ).asFunction();
 
 /**
- * Generates a record that satisfies the Range type, but isn't a valid range of
+ * Generates an object that satisfies the Range type, but isn't a valid range of
  * non-negative safe integers.
  */
 export function invalidIntRange(opts?: { minMin: number }): Arbitrary<Range> {

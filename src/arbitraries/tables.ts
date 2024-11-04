@@ -85,9 +85,9 @@ function countDistinct(dom: Domain<unknown>, max: number): number {
 }
 
 /**
- * Defines an Arbitrary that generates arrays of records with a given shape.
+ * Defines an Arbitrary that generates arrays of objects with a given shape.
  *
- * Fields whose names appear in {@link TableOpts.keys} will be constrained to be
+ * Properties whose names appear in {@link TableOpts.keys} will be constrained to be
  * unique columns. The comparison is done using their canonical pick sequences,
  * so they must be defined using a {@link Domain}.
  */

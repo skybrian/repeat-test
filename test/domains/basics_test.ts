@@ -423,7 +423,7 @@ describe("taggedUnion", () => {
     assertRoundTrip(colors, { "color": "green" });
   });
 
-  it("reports an error for a non-record value", () => {
+  it("reports an error for a non-object", () => {
     assertThrows(
       () => colors.parse("red"),
       ParseError,
