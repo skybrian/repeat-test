@@ -1,4 +1,9 @@
-import type { BuildFunction, ObjectShape, Pickable } from "@/arbitrary.ts";
+import type {
+  BuildFunction,
+  ObjectShape,
+  Pickable,
+  RowMaker,
+} from "@/arbitrary.ts";
 
 import { Arbitrary, biasedBitRequest, PickRequest } from "@/arbitrary.ts";
 
@@ -95,7 +100,7 @@ export function biased(probabilityTrue: number): Arbitrary<boolean> {
  */
 export function object<T extends Record<string, unknown>>(
   shape: ObjectShape<T>,
-): Arbitrary<T> {
+): RowMaker<T> {
   return Arbitrary.object(shape);
 }
 

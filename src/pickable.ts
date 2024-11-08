@@ -81,3 +81,10 @@ export type Pickable<T> = {
    */
   readonly directBuild: BuildFunction<T>;
 };
+
+/**
+ * Specifies the properties of an object to be generated.
+ */
+export type ObjectShape<T extends Record<string, unknown>> = {
+  [K in keyof T]: Pickable<T[K]>;
+};

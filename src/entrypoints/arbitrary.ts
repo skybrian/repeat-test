@@ -8,6 +8,7 @@ export type { Failure, Success } from "../results.ts";
 
 export type {
   BuildFunction,
+  ObjectShape,
   Pickable,
   PickFunction,
   PickFunctionOpts,
@@ -23,11 +24,9 @@ export type {
   Range,
 } from "../picks.ts";
 
-export type { ObjectShape } from "../arbitrary_class.ts";
-
 export { Filtered } from "../pickable.ts";
 export { filtered } from "../results.ts";
 export { biasedBitRequest, PickRequest } from "../picks.ts";
 export { Gen } from "../gen_class.ts";
 export { Script } from "../script_class.ts";
-export { Arbitrary } from "../arbitrary_class.ts";
+export { Arbitrary, RowMaker } from "../arbitrary_class.ts";

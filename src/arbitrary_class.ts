@@ -1,5 +1,6 @@
 import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
 import type { HasScript } from "./script_class.ts";
+import type { ObjectShape } from "./pickable.ts";
 
 import { filtered } from "./results.ts";
 import { PickRequest } from "./picks.ts";
@@ -17,16 +18,6 @@ function checkRandomGenerate(script: Script<unknown>) {
     `can't create Arbitrary for '${script.name}' because no randomly-generated values were accepted`,
   );
 }
-
-/**
- * Specifies an object to be generated.
- *
- * The generated object will have the given properties and its prototype will be
- * Object.prototype.
- */
-export type ObjectShape<T> = {
-  [K in keyof T]: Pickable<T[K]>;
-};
 
 /**
  * A set of values that can be generated on demand.
@@ -298,38 +289,16 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
   }
 
   /**
-   * Am Arbitrary that creates an object with the given properties.
+   * An Arbitrary that generates objects with the given properties.
+   *
+   * (Their prototypes will be Object.prototype.)
    */
   static object<T extends Record<string, unknown>>(
     shape: ObjectShape<T>,
-  ): Arbitrary<T> {
-    const keys = Object.keys(shape) as (keyof T)[];
-
-    let maxSize: number | undefined = 1;
-    for (const key of keys) {
-      const size = Arbitrary.from(shape[key]).maxSize;
-      if (size === undefined) {
-        maxSize = undefined;
-        break;
-      }
-      maxSize *= size;
-    }
-
-    if (keys.length === 0) {
-      const build = Script.make("empty object", () => {
-        return {} as T;
-      }, { maxSize, lazyInit: true });
-      return new Arbitrary(build);
-    }
-
-    const build = Script.make("object", (pick: PickFunction) => {
-      const result = {} as Partial<T>;
-      for (const key of keys) {
-        result[key] = pick(shape[key]);
-      }
-      return result as T;
-    }, { maxSize, lazyInit: true, logCalls: keys.length > 1 });
-    return new Arbitrary(build);
+  ): RowMaker<T> {
+    const propCount = Object.keys(shape).length;
+    const name = propCount === 0 ? "empty object" : "object";
+    return new RowMaker(name, shape);
   }
 
   /**
@@ -357,5 +326,22 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
     }, { lazyInit: true });
 
     return new Arbitrary(script);
+  }
+}
+
+/**
+ * An Arbitrary that's suitable for generating rows for a table.
+ */
+export class RowMaker<T extends Record<string, unknown>> extends Arbitrary<T> {
+  readonly #props: ObjectShape<T>;
+
+  constructor(name: string, shape: ObjectShape<T>) {
+    super(Script.object(name, shape));
+    this.#props = shape;
+  }
+
+  /** Returns the Pickable for each property. */
+  get props(): ObjectShape<T> {
+    return this.#props;
   }
 }

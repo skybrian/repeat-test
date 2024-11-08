@@ -126,65 +126,61 @@ describe("int", () => {
 });
 
 describe("object", () => {
-  describe("with no properties", () => {
+  it("can generate empty objects", () => {
     const empty = arb.object({});
-    it("creates empty objects", () => {
-      assertGenerated(empty, [
-        { val: {}, picks: [] },
-      ]);
-      assertEquals(empty.maxSize, 1);
-    });
+    assertEquals(empty.buildScript.name, "empty object");
+    assertEquals(empty.buildScript.opts.maxSize, 1);
+    assertGenerated(empty, [{ val: {}, picks: [] }]);
+    assertEquals(Object.keys(empty.props), []);
   });
-  describe("with constant properties", () => {
+
+  it("can generate constant objects", () => {
     const example = arb.object({
       a: arb.of(1),
       b: arb.of(2),
     });
-    it("doesn't make any picks", () => {
-      assertGenerated(example, [
-        { val: { a: 1, b: 2 }, picks: [] },
-      ]);
-    });
+    assertEquals(example.buildScript.name, "object");
+    assertEquals(example.buildScript.opts.maxSize, 1);
+    assertGenerated(example, [
+      { val: { a: 1, b: 2 }, picks: [] },
+    ]);
+    assertEquals(Object.keys(example.props), ["a", "b"]);
   });
-  describe("with an int property", () => {
+
+  it("can generate one int property", () => {
     const oneProp = arb.object({
       a: arb.int(1, 2),
     });
-    it("defaults to the default value of the property", () => {
-      assertEquals(generateDefault(oneProp).val, { a: 1 });
-    });
-    it("makes one pick", () => {
-      assertGenerated(oneProp, [
-        { val: { a: 1 }, picks: [1] },
-        { val: { a: 2 }, picks: [2] },
-      ]);
-    });
+    assertEquals(oneProp.buildScript.opts.maxSize, 2);
+    assertEquals(generateDefault(oneProp).val, { a: 1 });
+    assertGenerated(oneProp, [
+      { val: { a: 1 }, picks: [1] },
+      { val: { a: 2 }, picks: [2] },
+    ]);
   });
-  describe("with mutiple properties", () => {
+
+  it("can generate two int properties", () => {
     const example = arb.object({
       a: arb.int(1, 2),
       b: arb.int(3, 4),
     });
-    it("reads picks ordered by the keys", () => {
-      assertGenerated(example, [
-        { val: { a: 1, b: 3 }, picks: [1, 3] },
-        { val: { a: 2, b: 3 }, picks: [2, 3] },
-        { val: { a: 1, b: 4 }, picks: [1, 4] },
-        { val: { a: 2, b: 4 }, picks: [2, 4] },
-      ]);
-    });
+
+    assertGenerated(example, [
+      { val: { a: 1, b: 3 }, picks: [1, 3] },
+      { val: { a: 2, b: 3 }, picks: [2, 3] },
+      { val: { a: 1, b: 4 }, picks: [1, 4] },
+      { val: { a: 2, b: 4 }, picks: [2, 4] },
+    ]);
   });
 
-  describe("with a property that's an alias", () => {
+  it("doesn't generate alias property when defined", () => {
     const alias = arb.alias(() => {
       throw new Error("should not be called");
     });
 
-    it("shouldn't call the alias when defined", () => {
-      arb.object({
-        a: arb.int(1, 2),
-        b: alias,
-      });
+    arb.object({
+      a: arb.int(1, 2),
+      b: alias,
     });
   });
 });

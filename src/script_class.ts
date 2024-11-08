@@ -1,4 +1,9 @@
-import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
+import type {
+  BuildFunction,
+  ObjectShape,
+  Pickable,
+  PickFunction,
+} from "./pickable.ts";
 
 import { filtered } from "./results.ts";
 import { Filtered } from "./pickable.ts";
@@ -162,6 +167,41 @@ export class Script<T> implements Pickable<T> {
     } else {
       return Script.make("untitled", arg.directBuild);
     }
+  }
+
+  /**
+   * Makes a new script the generates an object with the given shape.
+   */
+  static object<T extends Record<string, unknown>>(
+    name: string,
+    shape: ObjectShape<T>,
+  ): Script<T> {
+    const keys: string[] = Object.keys(shape);
+
+    const props = Object.fromEntries(
+      keys.map((key) => [key, Script.from(shape[key])]),
+    );
+
+    let maxSize: number | undefined = 1;
+    for (const key of keys) {
+      const size = props[key].opts.maxSize;
+      if (size === undefined) {
+        maxSize = undefined;
+        break;
+      }
+      maxSize *= size;
+    }
+
+    return Script.make(
+      name,
+      (pick: PickFunction) => {
+        const result = Object.fromEntries(
+          keys.map((key) => [key, pick(props[key])]),
+        );
+        return result as T;
+      },
+      { maxSize, lazyInit: true, logCalls: keys.length > 1 },
+    );
   }
 }
 

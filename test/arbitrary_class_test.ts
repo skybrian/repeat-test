@@ -115,29 +115,6 @@ describe("Arbitrary", () => {
     });
   });
 
-  describe("object", () => {
-    it("accepts a constant object shape", () => {
-      const arb = Arbitrary.object({ a: Arbitrary.of(1), b: Arbitrary.of(2) });
-      assertGenerated(arb, [{ val: { a: 1, b: 2 }, picks: [] }]);
-      assertEquals(arb.maxSize, 1);
-    });
-    it("has a default name", () => {
-      assertEquals(Arbitrary.object({}).name, "empty object");
-      assertEquals(Arbitrary.object({ a: Arbitrary.of(1) }).name, "object");
-    });
-    describe("for a pair", () => {
-      const pair = Arbitrary.object({ a: arb.int32(), b: arb.string() });
-      it("sometimes has non-default values", () => {
-        repeatTest(pair, ({ a, b }, console) => {
-          console.sometimes(
-            "a and b are both non-default values",
-            a !== 0 && b !== "",
-          );
-        });
-      });
-    });
-  });
-
   describe("filter", () => {
     const sixSided = Arbitrary.from(new PickRequest(1, 6)).with({
       name: "sixSided",
