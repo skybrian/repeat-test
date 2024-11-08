@@ -68,7 +68,7 @@ export function table<R extends Record<string, unknown>>(
   const keys = Object.keys(shape) as (keyof R & string)[];
   const uniqueKeys = opts?.keys ?? [];
   const { min, max } = parseArrayOpts(opts);
-  const build = arb.table(shape, opts);
+  const build = arb.table(arb.object(shape), opts);
 
   return Domain.make(build, (rows, sendErr) => {
     if (!checkArray(rows, min, max, sendErr)) {
