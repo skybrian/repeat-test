@@ -131,7 +131,7 @@ describe("object", () => {
     assertEquals(empty.buildScript.name, "empty object");
     assertEquals(empty.buildScript.opts.maxSize, 1);
     assertGenerated(empty, [{ val: {}, picks: [] }]);
-    assertEquals(Object.keys(empty.props), []);
+    assertEquals(Object.keys(empty.shape), []);
   });
 
   it("can generate constant objects", () => {
@@ -144,7 +144,7 @@ describe("object", () => {
     assertGenerated(example, [
       { val: { a: 1, b: 2 }, picks: [] },
     ]);
-    assertEquals(Object.keys(example.props), ["a", "b"]);
+    assertEquals(Object.keys(example.shape), ["a", "b"]);
   });
 
   it("can generate one int property", () => {

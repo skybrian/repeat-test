@@ -84,6 +84,41 @@ function countDistinct(dom: Domain<unknown>, max: number): number {
   return count;
 }
 
+type ColumnJars<T extends Record<string, unknown>> = Partial<
+  {
+    [P in keyof T]: Jar<T[P]>;
+  }
+>;
+
+class RowJar<T extends Record<string, unknown>> {
+  constructor(
+    readonly row: RowMaker<T>,
+    readonly keys: ColumnJars<T>,
+  ) {}
+
+  isEmpty(): boolean {
+    for (const jar of Object.values(this.keys)) {
+      if (jar.isEmpty()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  take(pick: PickFunction): T {
+    const row: Record<string, unknown> = {};
+    for (const key of Object.keys(this.row.shape)) {
+      const jar = this.keys[key];
+      if (jar) {
+        row[key] = jar.take(pick);
+      } else {
+        row[key] = pick(this.row.shape[key]);
+      }
+    }
+    return row as T;
+  }
+}
+
 /**
  * Defines an Arbitrary that generates arrays of objects with a given shape.
  *
@@ -95,7 +130,7 @@ export function table<R extends Record<string, unknown>>(
   row: RowMaker<R>,
   opts?: TableOpts<R>,
 ): Arbitrary<R[]> {
-  const shape = row.props;
+  const shape = row.shape;
   const { min, max } = parseArrayOpts(opts);
   const uniqueKeys = opts?.keys ?? [];
 
@@ -133,32 +168,25 @@ export function table<R extends Record<string, unknown>>(
   }
 
   return arb.from((pick) => {
-    const jars: Record<string, Jar<R[keyof R & string]>> = {};
+    const keyJars: ColumnJars<R> = {};
     for (const key of uniqueKeys) {
-      jars[key] = new Jar(domains[key]);
+      keyJars[key] = new Jar(domains[key]);
     }
 
-    const emptyJar = () => {
-      for (const jar of Object.values(jars)) {
-        if (jar.isEmpty()) {
-          return true;
-        }
-      }
-      return false;
-    };
+    const rowJar = new RowJar(row, keyJars);
 
     const rows: R[] = [];
 
     const addRow: Script<R | undefined> = Script.make("addRow", (pick) => {
       if (rows.length < min) {
-        for (const jar of Object.values(jars)) {
+        for (const jar of Object.values(keyJars)) {
           assert(!jar.isEmpty());
         }
       } else {
         if (max !== undefined && rows.length >= max) {
           return undefined;
         }
-        if (emptyJar()) {
+        if (rowJar.isEmpty()) {
           return undefined;
         }
         if (!wantItem(rows.length, pick)) {
@@ -166,22 +194,13 @@ export function table<R extends Record<string, unknown>>(
         }
       }
 
-      const row: Record<string, unknown> = {};
-      for (const key of Object.keys(shape)) {
-        const jar = jars[key];
-        if (jar) {
-          row[key] = jar.take(pick);
-        } else {
-          row[key] = pick(shape[key]);
-        }
-      }
-      return row as R;
+      return rowJar.take(pick);
     });
 
     for (let row = pick(addRow); row !== undefined; row = pick(addRow)) {
       rows.push(row);
     }
-    if (emptyJar()) {
+    if (rowJar.isEmpty()) {
       // Add an ending pick to match a regular array.
       pick(new PickRequest(0, 0));
     }

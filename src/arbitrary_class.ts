@@ -333,15 +333,15 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
  * An Arbitrary that's suitable for generating rows for a table.
  */
 export class RowMaker<T extends Record<string, unknown>> extends Arbitrary<T> {
-  readonly #props: ObjectShape<T>;
+  readonly #shape: ObjectShape<T>;
 
   constructor(name: string, shape: ObjectShape<T>) {
     super(Script.object(name, shape));
-    this.#props = shape;
+    this.#shape = shape;
   }
 
   /** Returns the Pickable for each property. */
-  get props(): ObjectShape<T> {
-    return this.#props;
+  get shape(): ObjectShape<T> {
+    return this.#shape;
   }
 }
