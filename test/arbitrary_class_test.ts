@@ -1,10 +1,9 @@
 import type { BuildFunction, Pickable } from "../src/pickable.ts";
 
 import { describe, it } from "@std/testing/bdd";
-import { assert, assertEquals, assertThrows } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import {
   assertFirstGenerated,
-  assertFirstValues,
   assertGenerated,
   assertValues,
 } from "./lib/asserts.ts";
@@ -112,115 +111,6 @@ describe("Arbitrary", () => {
       const arb = Arbitrary.oneOf(Arbitrary.of(1), Arbitrary.of(2));
       assertGenerated(arb, [{ val: 1, picks: [0] }, { val: 2, picks: [1] }]);
       assertEquals(arb.maxSize, 2);
-    });
-  });
-
-  describe("filter", () => {
-    const sixSided = Arbitrary.from(new PickRequest(1, 6)).with({
-      name: "sixSided",
-    });
-
-    it("disallows filters that don't allow any values through", () => {
-      const rejectEverything = () => false;
-      assertThrows(
-        () => arb.string().filter(rejectEverything),
-        Error,
-        "string filter didn't allow enough values through; want: 2 of 50, got: 0",
-      );
-    });
-    it("keeps the default the same if it works", () => {
-      const keepEverything = () => true;
-      const filtered = sixSided.filter(keepEverything);
-      assertValues(filtered, [1, 2, 3, 4, 5, 6]);
-    });
-    it("changes the default to the next value that satisfies the predicate", () => {
-      const keepEvens = (n: number) => n % 2 === 0;
-      const filtered = sixSided.filter(keepEvens);
-      assertValues(filtered, [2, 4, 6]);
-    });
-    it("finds a new default when a property's default value is filtered out", () => {
-      const rec = Arbitrary.object({
-        a: Arbitrary.of(1, 2),
-        b: arb.array(arb.boolean()),
-      });
-      const filtered = rec.filter((r) => r.a === 2);
-      assertFirstValues(filtered, [
-        { b: [], a: 2 },
-        { b: [false], a: 2 },
-        { b: [true], a: 2 },
-        { b: [false, false], a: 2 },
-      ]);
-    });
-    it("filters out values that don't satisfy the predicate", () => {
-      const not3 = sixSided.filter((n) => n !== 3);
-      repeatTest(not3, (n) => {
-        assert(n !== 3, `want: not 3, got ${n}`);
-      });
-    });
-    it("filters an arbitrary created from multiple picks", () => {
-      const bit = new PickRequest(0, 1);
-      const bitCount = 2;
-      const accepted = new Set(["[0,1]", "[1,0]"]);
-
-      const combos = Arbitrary.from((pick) => {
-        const picks: number[] = [];
-        for (let i = 0; i < bitCount; i++) {
-          picks.push(pick(bit));
-        }
-        return JSON.stringify(picks);
-      });
-      const filtered = combos.filter(
-        (pick) => accepted.has(pick),
-      );
-      assertValues(filtered, ["[1,0]", "[0,1]"]);
-    });
-    it("works when a filter is embedded in another filter", () => {
-      const example = Arbitrary.from((pick) => {
-        const fiveSided = Arbitrary.from((pick) =>
-          pick(sixSided.filter((n) => n !== 5))
-        );
-        const excluded = pick(fiveSided);
-        const filtered = fiveSided.filter((n) => n !== excluded);
-        const other = pick(filtered);
-        return { excluded, other };
-      });
-      repeatTest(example, ({ excluded, other }) => {
-        assert(excluded >= 1 && excluded <= 6, `want: 1-6, got ${excluded}}`);
-        assert(other !== excluded, `want: not ${excluded}`);
-      });
-    });
-    it("has a name by default", () => {
-      const original = Arbitrary.of(1, 2, 3);
-      const filtered = original.filter(
-        (n) => n === 2,
-      );
-      assertEquals(filtered.name, "3 examples (filtered)");
-    });
-    it("doesn't add (filtered) twice to the name", () => {
-      const original = Arbitrary.of(1, 2, 3);
-      const filtered = original.filter(
-        (n) => n > 1,
-      ).filter((n) => n === 2);
-      assertEquals(filtered.name, "3 examples (filtered)");
-    });
-    it("recovers cleanly when the filtered arbitrary throws Pruned", () => {
-      const original = Arbitrary.from((pick) => {
-        const n = pick(new PickRequest(1, 3));
-        if (n === 2) throw new Filtered("skip 2");
-        return n;
-      });
-      const filtered = original.filter(() => true);
-      assertValues(filtered, [1, 3]);
-    });
-    describe("for a filtered pair", () => {
-      const pair = Arbitrary.object({ a: arb.int32(), b: arb.string() });
-      const filtered = pair.filter((r) => r.a !== 0 && r.b !== "");
-      it("always has non-default values", () => {
-        repeatTest(filtered, ({ a, b }) => {
-          assert(a !== 0, `want: not 0, got ${a}`);
-          assert(b !== "", `want: not empty, got ${b}`);
-        });
-      });
     });
   });
 

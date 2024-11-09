@@ -72,7 +72,7 @@ describe("uniqueArray", () => {
     assertThrows(
       () => bools.filter((v) => v.length > 2),
       Error,
-      "uniqueArray filter didn't allow enough values through; want: 1 of 5, got: 0",
+      "filter on 'uniqueArray' didn't allow enough values through; want: 1 of 5, got: 0",
     );
   });
   it("rejects an impossible minimum size", () => {

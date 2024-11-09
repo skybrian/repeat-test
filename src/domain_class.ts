@@ -6,6 +6,7 @@ import { assertEquals } from "@std/assert";
 import { Arbitrary, Gen, Script } from "@/arbitrary.ts";
 import { failure, success } from "./results.ts";
 import { generateDefault } from "./ordered.ts";
+import { filter } from "./filters.ts";
 
 /** Thrown for validation errors. */
 export class ParseError<T> extends Error {
@@ -99,9 +100,7 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
    * Returns a new domain with only the values accepted by a predicate.
    */
   filter(accept: (val: T) => boolean): Domain<T> {
-    const gen = Arbitrary.from(this).filter(accept);
-
-    return Domain.make<T>(gen, (val, sendErr) => {
+    const pickify: PickifyFunction = (val, sendErr) => {
       const gen = this.regenerate(val);
       if (!gen.ok) {
         sendErr(gen.message, val);
@@ -112,7 +111,11 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
         return undefined;
       }
       return gen.replies;
-    });
+    };
+
+    const build = filter(this.#build, accept);
+
+    return new Domain(pickify, build);
   }
 
   /**

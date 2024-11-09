@@ -8,6 +8,7 @@ import { Script } from "./script_class.ts";
 import { generate } from "./gen_class.ts";
 import { generateDefault } from "./ordered.ts";
 import { randomPlayouts } from "./random.ts";
+import { filter } from "./filters.ts";
 
 function checkRandomGenerate(script: Script<unknown>) {
   const gen = generate(script, randomPlayouts(123), { limit: 1000 });
@@ -95,50 +96,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
   filter(
     accept: (val: T) => boolean,
   ): Arbitrary<T> {
-    // Check that accept() returns often enough.
-    // Based on biased coin simulation:
-    // https://claude.site/artifacts/624afebe-b86f-4e33-9e30-5414dc7c810b
-
-    let threshold = 2;
-    const playouts = randomPlayouts(123);
-    let accepted = 0;
-    let total = 0;
-    const maxTries = 50;
-    while (total < maxTries) {
-      const gen = generate(this, playouts, { limit: 1000 });
-      if (gen === filtered) {
-        break; // visited all values
-      }
-      total++;
-      if (accept(gen.val)) {
-        accepted++;
-        if (accepted >= threshold) {
-          break;
-        }
-      }
-    }
-
-    if (total < maxTries) {
-      threshold = 1; // small arbitraries only need to pass one value through
-    }
-    if (accepted < threshold) {
-      throw new Error(
-        `${this.name} filter didn't allow enough values through; want: ${threshold} of ${total}, got: ${accepted}`,
-      );
-    }
-
-    const name = this.name.endsWith("(filtered)")
-      ? this.name
-      : `${this.name} (filtered)`;
-
-    const script = Script.make(name, (pick) => {
-      return pick(this, { accept });
-    }, { ...this.#script.opts, cachable: true });
-
-    // Check that a default exists
-    generateDefault(script);
-
-    return new Arbitrary(script);
+    return new Arbitrary(filter(this.#script, accept));
   }
 
   /**
