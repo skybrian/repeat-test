@@ -11,6 +11,7 @@ import { arrayLengthBiases } from "../math.ts";
 import { Script } from "../script_class.ts";
 
 import * as arb from "./basics.ts";
+import { RowJar } from "../jar_class.ts";
 
 /**
  * Defines an Arbitrary that generates an array by taking distinct values from a
@@ -84,41 +85,6 @@ function countDistinct(dom: Domain<unknown>, max: number): number {
   return count;
 }
 
-type ColumnJars<T extends Record<string, unknown>> = Partial<
-  {
-    [P in keyof T]: Jar<T[P]>;
-  }
->;
-
-class RowJar<T extends Record<string, unknown>> {
-  constructor(
-    readonly row: RowMaker<T>,
-    readonly keys: ColumnJars<T>,
-  ) {}
-
-  isEmpty(): boolean {
-    for (const jar of Object.values(this.keys)) {
-      if (jar.isEmpty()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  take(pick: PickFunction): T {
-    const row: Record<string, unknown> = {};
-    for (const key of Object.keys(this.row.shape)) {
-      const jar = this.keys[key];
-      if (jar) {
-        row[key] = jar.take(pick);
-      } else {
-        row[key] = pick(this.row.shape[key]);
-      }
-    }
-    return row as T;
-  }
-}
-
 /**
  * Defines an Arbitrary that generates arrays of objects with a given shape.
  *
@@ -130,13 +96,12 @@ export function table<R extends Record<string, unknown>>(
   row: RowMaker<R>,
   opts?: TableOpts<R>,
 ): Arbitrary<R[]> {
-  const shape = row.shape;
   const { min, max } = parseArrayOpts(opts);
   const uniqueKeys = opts?.keys ?? [];
 
   const domains: Record<string, Domain<R[keyof R & string]>> = {};
   for (const key of uniqueKeys) {
-    const set = shape[key];
+    const set = row.shape[key];
     if (!(set instanceof Domain)) {
       throw new Error(
         `property "${key}" is declared unique but not specified by a Domain`,
@@ -168,20 +133,13 @@ export function table<R extends Record<string, unknown>>(
   }
 
   return arb.from((pick) => {
-    const keyJars: ColumnJars<R> = {};
-    for (const key of uniqueKeys) {
-      keyJars[key] = new Jar(domains[key]);
-    }
-
-    const rowJar = new RowJar(row, keyJars);
+    const rowJar = new RowJar(row.shape, uniqueKeys);
 
     const rows: R[] = [];
 
     const addRow: Script<R | undefined> = Script.make("addRow", (pick) => {
       if (rows.length < min) {
-        for (const jar of Object.values(keyJars)) {
-          assert(!jar.isEmpty());
-        }
+        rowJar.assertNotEmpty();
       } else {
         if (max !== undefined && rows.length >= max) {
           return undefined;

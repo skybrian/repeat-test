@@ -1,7 +1,11 @@
-import type { Pickable, PickFunction, PickFunctionOpts } from "./pickable.ts";
+import type {
+  ObjectShape,
+  Pickable,
+  PickFunction,
+  PickFunctionOpts,
+} from "./pickable.ts";
 import type { Backtracker } from "./backtracking.ts";
 import type { Gen } from "./gen_class.ts";
-import type { Domain } from "./domain_class.ts";
 
 import { assert } from "@std/assert";
 import { PickRequest } from "./picks.ts";
@@ -10,6 +14,7 @@ import { Script } from "./script_class.ts";
 import { generate } from "./gen_class.ts";
 import { PickTree } from "./pick_tree.ts";
 import { orderedPlayouts } from "./ordered.ts";
+import { Domain } from "./domain_class.ts";
 
 /**
  * Picks an integer in the given range.
@@ -147,5 +152,52 @@ export class Jar<T> {
     const regen = this.dom.regenerate(next.val);
     assert(regen.ok, "regenerate should always succeed");
     return regen;
+  }
+}
+
+type KeyToJar<T> = {
+  [P in keyof T]?: Jar<T[P]>;
+};
+
+export class RowJar<T extends Record<string, unknown>> {
+  readonly keys: KeyToJar<T> = {};
+
+  constructor(
+    readonly shape: ObjectShape<T>,
+    uniqueKeys: (keyof T)[],
+  ) {
+    for (const key of uniqueKeys) {
+      const prop = this.shape[key];
+      assert(prop instanceof Domain);
+      this.keys[key] = new Jar(prop);
+    }
+  }
+
+  isEmpty(): boolean {
+    for (const jar of Object.values(this.keys)) {
+      if (jar.isEmpty()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  assertNotEmpty() {
+    for (const jar of Object.values(this.keys)) {
+      assert(!jar.isEmpty());
+    }
+  }
+
+  take(pick: PickFunction): T {
+    const row: Record<string, unknown> = {};
+    for (const key of Object.keys(this.shape)) {
+      const jar = this.keys[key];
+      if (jar) {
+        row[key] = jar.take(pick);
+      } else {
+        row[key] = pick(this.shape[key]);
+      }
+    }
+    return row as T;
   }
 }
