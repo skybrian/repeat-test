@@ -3,10 +3,12 @@ import type { Failure, Success } from "./results.ts";
 import type { SendErr } from "./options.ts";
 
 import { assertEquals } from "@std/assert";
-import { Arbitrary, Gen, Script } from "@/arbitrary.ts";
 import { failure, success } from "./results.ts";
+import { Script } from "./script_class.ts";
+import { Gen } from "./gen_class.ts";
 import { generateDefault } from "./ordered.ts";
 import { filter } from "./filters.ts";
+import { chooseFrom } from "./chooseFrom.ts";
 
 /** Thrown for validation errors. */
 export class ParseError<T> extends Error {
@@ -258,7 +260,7 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
    * `===`.
    */
   static of<T>(...values: T[]): Domain<T> {
-    const build = Arbitrary.of(...values);
+    const build = chooseFrom(values, { caller: "Domain.of()" });
 
     if (values.length === 1) {
       return Domain.make(build, (val, sendErr, name) => {

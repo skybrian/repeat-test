@@ -9,6 +9,7 @@ import { generate } from "./gen_class.ts";
 import { generateDefault } from "./ordered.ts";
 import { randomPlayouts } from "./random.ts";
 import { filter } from "./filters.ts";
+import { chooseFrom } from "./chooseFrom.ts";
 
 function checkRandomGenerate(script: Script<unknown>) {
   const gen = generate(script, randomPlayouts(123), { limit: 1000 });
@@ -173,41 +174,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
    * each time.
    */
   static of<T>(...examples: T[]): Arbitrary<T> {
-    function nameOfConstant(val: unknown): string {
-      if (val === undefined || typeof val === "number") {
-        return `${val} (constant)`;
-      } else if (typeof val === "string") {
-        return `"${val}" (constant)`;
-      } else {
-        return `a constant`;
-      }
-    }
-
-    for (const example of examples) {
-      if (!Object.isFrozen(example)) {
-        throw new Error("Arbitrary.of() requires frozen objects");
-      }
-    }
-
-    if (examples.length === 0) {
-      throw new Error("Arbitrary.of() requires at least one argument");
-    } else if (examples.length === 1) {
-      const constant = examples[0];
-      const build = Script.make(nameOfConstant(constant), () => {
-        return constant;
-      }, { maxSize: 1, lazyInit: true });
-      return new Arbitrary(build);
-    }
-
-    const req = new PickRequest(0, examples.length - 1);
-    const maxSize = examples.length;
-
-    const name = `${examples.length} examples`;
-    const build = Script.make(name, (pick) => {
-      const i = pick(req);
-      return examples[i];
-    }, { maxSize, lazyInit: true });
-    return new Arbitrary(build);
+    return new Arbitrary(chooseFrom(examples, { caller: "Arbitrary.of()" }));
   }
 
   /**

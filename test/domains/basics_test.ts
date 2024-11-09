@@ -133,6 +133,7 @@ describe("object", () => {
         () => dom.object(undefined as unknown as PropShape<unknown>),
         Error,
       );
+
       assertThrows(
         () => dom.object({ a: "b" } as PropShape<unknown>),
         Error,
@@ -171,6 +172,7 @@ describe("object", () => {
 
     describe("with the strict flag set to true", () => {
       const justA = dom.object({ a: dom.of(0) }, { strict: true });
+      const nested = dom.object({ nest: justA });
 
       it("accepts an object with the same properties", () => {
         assertEquals(justA.parse({ a: 0 }), { a: 0 });
@@ -181,6 +183,11 @@ describe("object", () => {
           () => justA.parse({ a: 0, b: "extra" }),
           Error,
           "extra property: b",
+        );
+        assertThrows(
+          () => nested.parse({ nest: { a: 0, b: "extra" } }),
+          Error,
+          "nest: extra property: b",
         );
       });
     });

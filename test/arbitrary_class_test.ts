@@ -74,7 +74,7 @@ describe("Arbitrary", () => {
       assertThrows(
         () => Arbitrary.of(),
         Error,
-        "Arbitrary.of() requires at least one argument",
+        "Arbitrary.of() requires at least one item",
       );
     });
     it("throws if passes a non-frozen object", () => {
@@ -83,19 +83,6 @@ describe("Arbitrary", () => {
         Error,
         "Arbitrary.of() requires frozen objects",
       );
-    });
-    it("returns a constant Arbitrary if called with one argument", () => {
-      const arb = Arbitrary.of("hi");
-      assertGenerated(arb, [{ val: "hi", picks: [] }]);
-      assertEquals(arb.maxSize, 1);
-    });
-    it("creates an Arbitrary with multiple arguments", () => {
-      const arb = Arbitrary.of("hi", "there");
-      assertGenerated(arb, [
-        { val: "hi", picks: [0] },
-        { val: "there", picks: [1] },
-      ]);
-      assertEquals(arb.maxSize, 2);
     });
   });
 
