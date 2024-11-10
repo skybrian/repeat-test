@@ -1,6 +1,5 @@
 import type { PickifyFunction, PropShape, SendErr } from "@/domain.ts";
 
-import { Arbitrary } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
 import { Domain, PropDomain } from "@/domain.ts";
 import { checkArray, checkKeys, parseArrayOpts } from "../options.ts";
@@ -102,7 +101,7 @@ export function object<T extends Record<string, unknown>>(
     return out;
   };
 
-  const build = Arbitrary.object<T>(shape).buildScript;
+  const build = arb.object<T>(shape).buildScript;
 
   return new PropDomain(pickify, build, shape);
 }

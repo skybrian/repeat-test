@@ -1,6 +1,5 @@
-import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
+import type { BuildFunction, Pickable } from "./pickable.ts";
 import type { HasScript } from "./script_class.ts";
-import type { ObjectShape } from "./pickable.ts";
 
 import { filtered } from "./results.ts";
 import { PickRequest } from "./picks.ts";
@@ -145,15 +144,6 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
   static from<T>(arg: Pickable<T> | BuildFunction<T>): Arbitrary<T> {
     if (typeof arg === "function") {
       return new Arbitrary(Script.make("untitled", arg));
-    } else if (arg instanceof PickRequest) {
-      const name = `${arg.min}..${arg.max}`;
-      const maxSize = arg.max - arg.min + 1;
-
-      const script = Script.make(name, (pick: PickFunction) => {
-        return pick(arg);
-      }, { cachable: true, logCalls: true, maxSize, lazyInit: true });
-
-      return new Arbitrary(script) as Arbitrary<T>;
     } else if (arg instanceof Arbitrary) {
       return arg;
     }
@@ -214,19 +204,6 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
   }
 
   /**
-   * An Arbitrary that generates objects with the given properties.
-   *
-   * (Their prototypes will be Object.prototype.)
-   */
-  static object<T extends Record<string, unknown>>(
-    shape: ObjectShape<T>,
-  ): RowMaker<T> {
-    const propCount = Object.keys(shape).length;
-    const name = propCount === 0 ? "empty object" : "object";
-    return new RowMaker(name, shape);
-  }
-
-  /**
    * Returns an Arbitrary that stands for another Arbitrary, which might be
    * defined later.
    *
@@ -251,22 +228,5 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
     }, { lazyInit: true });
 
     return new Arbitrary(script);
-  }
-}
-
-/**
- * An Arbitrary that's suitable for generating rows for a table.
- */
-export class RowMaker<T extends Record<string, unknown>> extends Arbitrary<T> {
-  readonly #shape: ObjectShape<T>;
-
-  constructor(name: string, shape: ObjectShape<T>) {
-    super(Script.object(name, shape));
-    this.#shape = shape;
-  }
-
-  /** Returns the Pickable for each property. */
-  get shape(): ObjectShape<T> {
-    return this.#shape;
   }
 }

@@ -7,6 +7,7 @@ import type {
 
 import { filtered } from "./results.ts";
 import { Filtered } from "./pickable.ts";
+import { PickRequest } from "./picks.ts";
 
 /**
  * An optional interface that a Pickable can use to give itself a name and set flags.
@@ -149,6 +150,13 @@ export class Script<T> implements Pickable<T> {
   ): Script<T> {
     if (arg instanceof Script) {
       return arg;
+    } else if (arg instanceof PickRequest) {
+      const name = `${arg.min}..${arg.max}`;
+      const maxSize = arg.max - arg.min + 1;
+
+      return Script.make(name, (pick: PickFunction) => {
+        return pick(arg) as T;
+      }, { cachable: true, logCalls: true, maxSize, lazyInit: true });
     }
 
     if (

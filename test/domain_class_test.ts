@@ -4,11 +4,9 @@ import {
   assertEquals,
   assertStringIncludes,
   assertThrows,
-  fail,
 } from "@std/assert";
 
 import { PickRequest } from "../src/picks.ts";
-import { Arbitrary } from "../src/arbitrary_class.ts";
 import {
   Domain,
   ParseError,
@@ -36,53 +34,41 @@ describe("ParseError", () => {
   });
 });
 
+const sixSided = new PickRequest(1, 6);
+
 describe("Domain", () => {
   describe("make", () => {
-    it("preserves maxSize from a copied Arbitrary", () => {
-      const arb = Arbitrary.from(new PickRequest(1, 6));
-
-      const dom = Domain.make(arb, (val) => {
+    it("sets maxSize when based on a PickRequest", () => {
+      const dom = Domain.make(sixSided, (val) => {
         if (typeof val !== "number") return undefined;
         if (val < 1 || val > 6) return undefined;
         return [val];
       });
 
-      assertEquals(dom.buildScript.opts.maxSize, arb.maxSize);
-    });
-
-    it("creates a Domain from a non-Arbitrary", () => {
-      const dom = Domain.make(new PickRequest(1, 6), (val) => {
-        if (typeof val !== "number") return undefined;
-        if (val < 1 || val > 6) return undefined;
-        return [val];
-      });
-      assertEquals(dom.innerPickify(2, fail), [2]);
+      assertEquals(dom.buildScript.opts.maxSize, 6);
     });
 
     it("throws an Error if the callback returns undefined with no error", () => {
-      const arb = Arbitrary.from(new PickRequest(1, 6));
       assertThrows(
-        () => Domain.make(arb, () => undefined),
+        () => Domain.make(sixSided, () => undefined),
         Error,
         "can't pickify default of 1..6: callback returned undefined",
       );
     });
 
     it("throws an Error if the callback returns undefined with an error", () => {
-      const arb = Arbitrary.from(new PickRequest(1, 6));
       const callback: PickifyFunction = (val, sendErr) => {
         sendErr("oops!", val);
         return undefined;
       };
       assertThrows(
-        () => Domain.make(arb, callback),
+        () => Domain.make(sixSided, callback),
         Error,
         "can't pickify default of 1..6: oops",
       );
     });
 
     it("throws an Error if the callback returns picks that don't match the generated default", () => {
-      const arb = Arbitrary.from(new PickRequest(1, 6));
       const callback: PickifyFunction = (v) => {
         if (v === 1) {
           return [123];
@@ -90,7 +76,7 @@ describe("Domain", () => {
         return undefined;
       };
       assertThrows(
-        () => Domain.make(arb, callback),
+        () => Domain.make(sixSided, callback),
         Error,
         "callback's picks don't match for the default value of 1..6",
       );
@@ -98,14 +84,14 @@ describe("Domain", () => {
   });
 
   const bit = Domain.make(
-    Arbitrary.from(new PickRequest(0, 1)),
+    new PickRequest(0, 1),
     (v) => {
       return (v === 0 || v === 1) ? [v] : undefined;
     },
   );
 
   const roll = Domain.make(
-    Arbitrary.from(new PickRequest(1, 6)),
+    sixSided,
     (v, sendErr) => {
       if (typeof v !== "number") {
         sendErr("not a number", v);
@@ -200,8 +186,7 @@ describe("Domain", () => {
     });
 
     it("prepends a location to an inner error", () => {
-      const arb = Arbitrary.from(new PickRequest(1, 6));
-      const dom = Domain.make(arb, (v, sendErr) => {
+      const dom = Domain.make(sixSided, (v, sendErr) => {
         if (v !== 1) {
           sendErr("oops!", v, { at: "inner" });
           return undefined;
