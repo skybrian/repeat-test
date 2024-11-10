@@ -1,6 +1,7 @@
 import type { BuildFunction, Pickable } from "@/arbitrary.ts";
 
 import { Arbitrary, biasedBitRequest, PickRequest } from "@/arbitrary.ts";
+import { oneOf as scriptOneOf } from "../scripts/oneOf.ts";
 
 /**
  * Defines an Arbitrary implemented by a build function.
@@ -61,7 +62,7 @@ export function int(
       name,
     });
   } else {
-    return Arbitrary.oneOf(int(0, max), int(min, -1)).with({ name });
+    return oneOf(int(0, max), int(min, -1)).with({ name });
   }
 }
 
@@ -92,5 +93,5 @@ export function biased(probabilityTrue: number): Arbitrary<boolean> {
  * Defines an Arbitrary that generates a value using any of the given PickSets.
  */
 export function oneOf<T>(...cases: Pickable<T>[]): Arbitrary<T> {
-  return Arbitrary.oneOf(...cases);
+  return Arbitrary.from(scriptOneOf(cases));
 }

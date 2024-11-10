@@ -1,4 +1,4 @@
-import type { Arbitrary, PickFunction, RowMaker } from "@/arbitrary.ts";
+import type { Arbitrary, ObjectArb, PickFunction } from "@/arbitrary.ts";
 import type { ArrayOpts, TableOpts } from "../options.ts";
 
 import { assert } from "@std/assert/assert";
@@ -93,7 +93,7 @@ function countDistinct(dom: Domain<unknown>, max: number): number {
  * so they must be defined using a {@link Domain}.
  */
 export function table<R extends Record<string, unknown>>(
-  row: RowMaker<R>,
+  row: ObjectArb<R>,
   opts?: TableOpts<R>,
 ): Arbitrary<R[]> {
   const { min, max } = parseArrayOpts(opts);

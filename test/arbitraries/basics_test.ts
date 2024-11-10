@@ -126,6 +126,14 @@ describe("int", () => {
 });
 
 describe("oneOf", () => {
+  it("throws if given an empty array", () => {
+    assertThrows(
+      () => arb.oneOf(),
+      Error,
+      "oneOf() requires at least one alternative",
+    );
+  });
+
   const oneWay = arb.oneOf(
     arb.int(1, 2),
   );
@@ -134,8 +142,15 @@ describe("oneOf", () => {
     arb.int(3, 4),
     arb.int(5, 6),
   );
+
   it("defaults to the first branch", () => {
     assertEquals(generateDefault(oneWay).val, 1);
     assertEquals(generateDefault(threeWay).val, 1);
+  });
+
+  it("accepts constant alteratives", () => {
+    const oneOrTwo = arb.oneOf(Arbitrary.of(1), Arbitrary.of(2));
+    assertGenerated(oneOrTwo, [{ val: 1, picks: [0] }, { val: 2, picks: [1] }]);
+    assertEquals(oneOrTwo.maxSize, 2);
   });
 });

@@ -30,4 +30,4 @@ export { biasedBitRequest, PickRequest } from "../picks.ts";
 export { Gen } from "../gen_class.ts";
 export { Script } from "../script_class.ts";
 export { Arbitrary } from "../arbitrary_class.ts";
-export { RowMaker } from "../arbitraries/rows.ts";
+export { ObjectArb } from "../arbitraries/rows.ts";

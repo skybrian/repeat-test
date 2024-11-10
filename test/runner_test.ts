@@ -662,7 +662,7 @@ describe("repeatTest", () => {
     }
   });
   it("uses a constant only once when given an unbalanced choice of examples", () => {
-    const unbalanced = Arbitrary.oneOf(
+    const unbalanced = arb.oneOf(
       arb.of(123.4),
       arb.int32(),
     );

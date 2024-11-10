@@ -2,11 +2,7 @@ import type { BuildFunction, Pickable } from "../src/pickable.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
-import {
-  assertFirstGenerated,
-  assertGenerated,
-  assertValues,
-} from "./lib/asserts.ts";
+import { assertFirstGenerated, assertValues } from "./lib/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { Filtered } from "../src/pickable.ts";
@@ -83,21 +79,6 @@ describe("Arbitrary", () => {
         Error,
         "Arbitrary.of() requires frozen objects",
       );
-    });
-  });
-
-  describe("oneOf", () => {
-    it("throws if given an empty array", () => {
-      assertThrows(
-        () => Arbitrary.oneOf(),
-        Error,
-        "Arbitrary.oneOf() requires at least one alternative",
-      );
-    });
-    it("accepts constant alteratives", () => {
-      const arb = Arbitrary.oneOf(Arbitrary.of(1), Arbitrary.of(2));
-      assertGenerated(arb, [{ val: 1, picks: [0] }, { val: 2, picks: [1] }]);
-      assertEquals(arb.maxSize, 2);
     });
   });
 

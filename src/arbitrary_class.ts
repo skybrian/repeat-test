@@ -2,7 +2,6 @@ import type { BuildFunction, Pickable } from "./pickable.ts";
 import type { HasScript } from "./script_class.ts";
 
 import { filtered } from "./results.ts";
-import { PickRequest } from "./picks.ts";
 import { Script } from "./script_class.ts";
 import { generate } from "./gen_class.ts";
 import { generateDefault } from "./ordered.ts";
@@ -165,42 +164,6 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
    */
   static of<T>(...examples: T[]): Arbitrary<T> {
     return new Arbitrary(chooseFrom(examples, { caller: "Arbitrary.of()" }));
-  }
-
-  /**
-   * Creates an arbitrary that picks one of the given arbitaries and then returns it.
-   */
-  static oneOf<T>(
-    ...cases: Pickable<T>[]
-  ): Arbitrary<T> {
-    if (cases.length === 0) {
-      throw new Error("Arbitrary.oneOf() requires at least one alternative");
-    }
-
-    // Convert to Arbitraries first, in case maxSize is defined for all of them.
-    const caseArbs = cases.map((c) => Arbitrary.from(c));
-    if (caseArbs.length === 1) {
-      return caseArbs[0];
-    }
-
-    let maxSize: number | undefined = 0;
-    for (const arb of caseArbs) {
-      const caseSize = arb.maxSize;
-      if (caseSize === undefined) {
-        maxSize = undefined;
-        break;
-      }
-      maxSize += caseSize;
-    }
-
-    const req = new PickRequest(0, cases.length - 1);
-    const scripts = caseArbs.map((arb) => arb.#script);
-
-    const script = Script.make("oneOf", (pick) => {
-      const index = pick(req);
-      return scripts[index].directBuild(pick);
-    }, { maxSize, lazyInit: true, cachable: true });
-    return new Arbitrary(script);
   }
 
   /**
