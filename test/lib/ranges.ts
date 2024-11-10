@@ -1,6 +1,5 @@
 import { Arbitrary } from "@/arbitrary.ts";
-import { from, int, object, oneOf } from "../../src/arbitraries/basics.ts";
-import { int32 } from "../../src/arbitraries/numbers.ts";
+import * as arb from "@/arbs.ts";
 
 export type Range = { min: number; max: number };
 
@@ -39,12 +38,12 @@ export function intRange(opts?: IntRangeOptions): Arbitrary<Range> {
     examples.push(Object.freeze({ min: -1, max: minSize - 2 }));
   }
 
-  return oneOf<Range>(
+  return arb.oneOf<Range>(
     Arbitrary.of(...examples),
-    from((pick) => {
-      const size = pick(int(minSize, maxSize));
+    arb.from((pick) => {
+      const size = pick(arb.int(minSize, maxSize));
       const min = pick(
-        int(minMin, Number.MAX_SAFE_INTEGER - (size - 1)),
+        arb.int(minMin, Number.MAX_SAFE_INTEGER - (size - 1)),
       );
       const max = min + (size - 1);
       return { min, max };
@@ -59,9 +58,9 @@ export function minMaxVal(
   opts?: IntRangeOptions,
 ): Arbitrary<Range & { val: number }> {
   const range = intRange(opts);
-  return from((pick) => {
+  return arb.from((pick) => {
     const { min, max } = pick(range);
-    const val = pick(int(min, max));
+    const val = pick(arb.int(min, max));
     return { min, max, val };
   });
 }
@@ -72,9 +71,9 @@ const strangeNumber = Arbitrary.of(
   Number.NaN,
 );
 
-const nonInteger: () => Arbitrary<number> = oneOf<number>(
+const nonInteger: () => Arbitrary<number> = arb.oneOf<number>(
   strangeNumber,
-  int(-100, 100).map((n) => n + 0.5),
+  arb.int(-100, 100).map((n) => n + 0.5),
 ).asFunction();
 
 /**
@@ -84,16 +83,19 @@ const nonInteger: () => Arbitrary<number> = oneOf<number>(
 export function invalidIntRange(opts?: { minMin: number }): Arbitrary<Range> {
   const minMin = opts?.minMin ?? Number.MIN_SAFE_INTEGER;
 
-  const validMin = int(minMin, Number.MAX_SAFE_INTEGER);
+  const validMin = arb.int(minMin, Number.MAX_SAFE_INTEGER);
 
   let invalidMin = nonInteger();
   if (minMin > Number.MIN_SAFE_INTEGER) {
-    invalidMin = oneOf(invalidMin, int(Number.MIN_SAFE_INTEGER, minMin - 1));
+    invalidMin = arb.oneOf(
+      invalidMin,
+      arb.int(Number.MIN_SAFE_INTEGER, minMin - 1),
+    );
   }
 
-  return oneOf<Range>(
+  return arb.oneOf<Range>(
     Arbitrary.of(Object.freeze({ min: 1, max: 0 })),
-    object({ min: validMin, max: nonInteger() }),
-    object({ min: invalidMin, max: int32() }),
+    arb.object({ min: validMin, max: nonInteger() }),
+    arb.object({ min: invalidMin, max: arb.int32() }),
   );
 }

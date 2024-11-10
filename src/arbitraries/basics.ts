@@ -1,9 +1,4 @@
-import type {
-  BuildFunction,
-  ObjectShape,
-  Pickable,
-  RowMaker,
-} from "@/arbitrary.ts";
+import type { BuildFunction, Pickable } from "@/arbitrary.ts";
 
 import { Arbitrary, biasedBitRequest, PickRequest } from "@/arbitrary.ts";
 
@@ -91,17 +86,6 @@ export function biased(probabilityTrue: number): Arbitrary<boolean> {
   const req = biasedBitRequest(probabilityTrue);
   const name = "biased boolean";
   return Arbitrary.from(req).map((v) => v === 1).with({ name });
-}
-
-/**
- * An Arbitrary that generates objects with the given properties.
- *
- * (The prototype is always `Object.prototype`.)
- */
-export function object<T extends Record<string, unknown>>(
-  shape: ObjectShape<T>,
-): RowMaker<T> {
-  return Arbitrary.object(shape);
 }
 
 /**
