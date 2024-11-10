@@ -1,7 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
-import { assertGenerated } from "./lib/asserts.ts";
-import { chooseFrom } from "../src/chooseFrom.ts";
+import { assertGenerated } from "../lib/asserts.ts";
+import { chooseFrom } from "../../src/scripts/chooseFrom.ts";
 
 describe("chooseFrom", () => {
   it("throws if called with no arguments", () => {

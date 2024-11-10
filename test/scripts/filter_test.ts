@@ -1,14 +1,14 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
-import { assertFirstValues, assertValues } from "./lib/asserts.ts";
-import { repeatTest } from "../src/runner.ts";
+import { assertFirstValues, assertValues } from "../lib/asserts.ts";
+import { repeatTest } from "../../src/runner.ts";
 
-import { Filtered } from "../src/pickable.ts";
-import { PickRequest } from "../src/picks.ts";
+import { Filtered } from "../../src/pickable.ts";
+import { PickRequest } from "../../src/picks.ts";
 
-import { Script } from "../src/script_class.ts";
+import { Script } from "../../src/script_class.ts";
 import * as arb from "@/arbs.ts";
-import { filter } from "../src/filters.ts";
+import { filter } from "../../src/scripts/filter.ts";
 
 describe("filter", () => {
   const sixSided = Script.from(new PickRequest(1, 6)).with({

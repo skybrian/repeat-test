@@ -7,8 +7,8 @@ import { failure, success } from "./results.ts";
 import { Script } from "./script_class.ts";
 import { Gen } from "./gen_class.ts";
 import { generateDefault } from "./ordered.ts";
-import { filter } from "./filters.ts";
-import { chooseFrom } from "./chooseFrom.ts";
+import { filter } from "./scripts/filter.ts";
+import { chooseFrom } from "./scripts/chooseFrom.ts";
 
 /** Thrown for validation errors. */
 export class ParseError<T> extends Error {

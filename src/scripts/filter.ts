@@ -1,8 +1,8 @@
-import { generate } from "./gen_class.ts";
-import { generateDefault } from "./ordered.ts";
-import { randomPlayouts } from "./random.ts";
-import { filtered } from "./results.ts";
-import { Script } from "./script_class.ts";
+import { generate } from "../gen_class.ts";
+import { generateDefault } from "../ordered.ts";
+import { randomPlayouts } from "../random.ts";
+import { filtered } from "../results.ts";
+import { Script } from "../script_class.ts";
 
 /** Creates a new Script that has some of its values filtered out. */
 export function filter<T>(

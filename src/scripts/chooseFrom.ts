@@ -1,5 +1,5 @@
-import { PickRequest } from "./picks.ts";
-import { Script } from "./script_class.ts";
+import { PickRequest } from "../picks.ts";
+import { Script } from "../script_class.ts";
 
 /**
  * Creates a Script that picks from a list of examples.

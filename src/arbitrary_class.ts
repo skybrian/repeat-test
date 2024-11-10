@@ -7,8 +7,8 @@ import { Script } from "./script_class.ts";
 import { generate } from "./gen_class.ts";
 import { generateDefault } from "./ordered.ts";
 import { randomPlayouts } from "./random.ts";
-import { filter } from "./filters.ts";
-import { chooseFrom } from "./chooseFrom.ts";
+import { filter } from "./scripts/filter.ts";
+import { chooseFrom } from "./scripts/chooseFrom.ts";
 
 function checkRandomGenerate(script: Script<unknown>) {
   const gen = generate(script, randomPlayouts(123), { limit: 1000 });
