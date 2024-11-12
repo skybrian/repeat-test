@@ -89,22 +89,56 @@ describe("uniqueArray", () => {
 });
 
 describe("table", () => {
-  it("throws an Error if a unique key isn't a Domain", () => {
-    const row = arb.object({ k: arb.boolean() });
-    assertThrows(
-      () => arb.table(row, { keys: ["k"] }),
-      Error,
-      'property "k" is declared unique but not specified by a Domain',
-    );
+  describe("for an object row", () => {
+    it("throws an Error if a unique key isn't a Domain", () => {
+      const row = arb.object({ k: arb.boolean() });
+      assertThrows(
+        () => arb.table(row, { keys: ["k"] }),
+        Error,
+        "property 'k' is declared unique but not specified by a Domain",
+      );
+    });
   });
 
-  it("rejects an impossible minimum size", () => {
+  describe("for a union row", () => {
+    it("throws an Error if a unique key isn't a Domain", () => {
+      const row = arb.union<{ k: boolean } | { k: number }>(
+        arb.object({ k: arb.boolean() }),
+        arb.object({ k: arb.int(1, 100) }),
+      );
+      assertThrows(
+        () => arb.table(row, { keys: ["k"] }),
+        Error,
+        "property 'k' is declared unique but not specified by a Domain",
+      );
+    });
+
+    it("throws an Error if a unique key isn't the same in all cases", () => {
+      const row = arb.union<{ k: number }>(
+        arb.object({ k: dom.int(1, 10) }),
+        arb.object({ k: dom.int(1, 11) }),
+      );
+      assertThrows(
+        () => arb.table(row, { keys: ["k"] }),
+        Error,
+        "property 'k' is declared unique, but case 1 doesn't match case 0",
+      );
+    });
+  });
+
+  it("rejects impossible minimum sizes", () => {
     const justTrue = dom.boolean().filter((v) => v);
     const row = arb.object({ k: justTrue });
     assertThrows(
       () => arb.table(row, { keys: ["k"], length: 2 }),
       Error,
-      `property "k" has only 1 unique value, but length.min is 2`,
+      "property 'k' has 1 unique value, but length.min is 2",
+    );
+    const row2 = arb.object({ k: dom.boolean() });
+    assertThrows(
+      () => arb.table(row2, { keys: ["k"], length: 3 }),
+      Error,
+      "property 'k' has 2 unique values, but length.min is 3",
     );
   });
 
@@ -214,18 +248,53 @@ describe("table", () => {
   describe("with two unique columns", () => {
     const table = arb.table(
       arb.object({
-        ids: dom.asciiLetter(),
-        ranks: dom.int(1, 5),
+        id: dom.asciiLetter(),
+        rank: dom.int(1, 5),
       }),
-      { keys: ["ids", "ranks"] },
+      { keys: ["id", "rank"] },
     );
 
     it("generates unique ids and ranks", () => {
       repeatTest(table, (rows) => {
-        const ids = new Set(rows.map((row) => row.ids));
-        assertEquals(ids.size, rows.length, "ids should be unique");
-        const ranks = new Set(rows.map((row) => row.ranks));
-        assertEquals(ranks.size, rows.length, "ranks should be unique");
+        const ids = new Set(rows.map((row) => row.id));
+        assertEquals(ids.size, rows.length, "id should be unique");
+        const ranks = new Set(rows.map((row) => row.rank));
+        assertEquals(ranks.size, rows.length, "rank should be unique");
+      });
+    });
+  });
+
+  describe("with two object shapes having a common, unique key", () => {
+    const id = dom.of(1, 2, 3);
+    const row = arb.union<
+      { id: number; name: string } | { id: number; color: string }
+    >(
+      arb.object({
+        id,
+        name: arb.string(),
+      }),
+      arb.object({
+        id,
+        color: arb.of("red", "green", "blue"),
+      }),
+    );
+
+    const table = arb.table(row, { keys: ["id"] });
+
+    it("generates both kinds of rows", () => {
+      repeatTest(table, (rows, console) => {
+        const ids = new Set(rows.map((row) => row.id));
+        assertEquals(ids.size, rows.length, "id should be unique");
+
+        console.sometimes(
+          "the first case is picked",
+          rows.some((r) => Object.keys(r).includes("name")),
+        );
+
+        console.sometimes(
+          "the second case is picked",
+          rows.some((r) => Object.keys(r).includes("color")),
+        );
       });
     });
   });

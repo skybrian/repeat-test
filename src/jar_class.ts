@@ -1,11 +1,7 @@
-import type {
-  ObjectShape,
-  Pickable,
-  PickFunction,
-  PickFunctionOpts,
-} from "./pickable.ts";
+import type { Pickable, PickFunction, PickFunctionOpts } from "./pickable.ts";
 import type { Backtracker } from "./backtracking.ts";
 import type { Gen } from "./gen_class.ts";
+import type { RowCase } from "./arbitraries/rows.ts";
 
 import { assert } from "@std/assert";
 import { PickRequest } from "./picks.ts";
@@ -15,6 +11,7 @@ import { generate } from "./gen_class.ts";
 import { PickTree } from "./pick_tree.ts";
 import { orderedPlayouts } from "./ordered.ts";
 import { Domain } from "./domain_class.ts";
+import { chooseFrom } from "./scripts/chooseFrom.ts";
 
 /**
  * Picks an integer in the given range.
@@ -161,16 +158,18 @@ type KeyToJar<T> = {
 
 export class RowJar<T extends Record<string, unknown>> {
   readonly keys: KeyToJar<T> = {};
+  readonly chooseCase: Script<RowCase<T>>;
 
   constructor(
-    readonly shape: ObjectShape<T>,
+    readonly cases: RowCase<T>[],
     uniqueKeys: (keyof T)[],
   ) {
     for (const key of uniqueKeys) {
-      const prop = this.shape[key];
+      const prop = this.cases[0].shape[key];
       assert(prop instanceof Domain);
       this.keys[key] = new Jar(prop);
     }
+    this.chooseCase = chooseFrom(this.cases);
   }
 
   isEmpty(): boolean {
@@ -189,13 +188,15 @@ export class RowJar<T extends Record<string, unknown>> {
   }
 
   take(pick: PickFunction): T {
+    const c = this.chooseCase.directBuild(pick);
+
     const row: Record<string, unknown> = {};
-    for (const key of Object.keys(this.shape)) {
+    for (const key of Object.keys(c.shape)) {
       const jar = this.keys[key];
       if (jar) {
         row[key] = jar.take(pick);
       } else {
-        row[key] = pick(this.shape[key]);
+        row[key] = pick(c.shape[key]);
       }
     }
     return row as T;
