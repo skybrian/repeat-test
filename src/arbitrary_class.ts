@@ -7,7 +7,7 @@ import { generate } from "./gen_class.ts";
 import { generateDefault } from "./ordered.ts";
 import { randomPlayouts } from "./random.ts";
 import { filter } from "./scripts/filter.ts";
-import { chooseFrom } from "./scripts/chooseFrom.ts";
+import { scriptOf } from "./scripts/scriptOf.ts";
 
 function checkRandomGenerate(script: Script<unknown>) {
   const gen = generate(script, randomPlayouts(123), { limit: 1000 });
@@ -163,7 +163,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
    * each time.
    */
   static of<T>(...examples: T[]): Arbitrary<T> {
-    return new Arbitrary(chooseFrom(examples, { caller: "Arbitrary.of()" }));
+    return new Arbitrary(scriptOf(examples, { caller: "Arbitrary.of()" }));
   }
 
   /**

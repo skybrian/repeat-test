@@ -11,7 +11,7 @@ import { generate } from "./gen_class.ts";
 import { PickTree } from "./pick_tree.ts";
 import { orderedPlayouts } from "./ordered.ts";
 import { Domain } from "./domain_class.ts";
-import { chooseFrom } from "./scripts/chooseFrom.ts";
+import { scriptOf } from "./scripts/scriptOf.ts";
 
 /**
  * Picks an integer in the given range.
@@ -169,7 +169,7 @@ export class RowJar<T extends Record<string, unknown>> {
       assert(prop instanceof Domain);
       this.keys[key] = new Jar(prop);
     }
-    this.chooseCase = chooseFrom(this.cases);
+    this.chooseCase = scriptOf(this.cases);
   }
 
   isEmpty(): boolean {

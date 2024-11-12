@@ -8,7 +8,7 @@ import { Script } from "./script_class.ts";
 import { Gen } from "./gen_class.ts";
 import { generateDefault } from "./ordered.ts";
 import { filter } from "./scripts/filter.ts";
-import { chooseFrom } from "./scripts/chooseFrom.ts";
+import { scriptOf } from "./scripts/scriptOf.ts";
 
 /** Thrown for validation errors. */
 export class ParseError<T> extends Error {
@@ -260,7 +260,7 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
    * `===`.
    */
   static of<T>(...values: T[]): Domain<T> {
-    const build = chooseFrom(values, { caller: "Domain.of()" });
+    const build = scriptOf(values, { caller: "Domain.of()" });
 
     if (values.length === 1) {
       return Domain.make(build, (val, sendErr, name) => {

@@ -4,7 +4,7 @@ import { Script } from "../script_class.ts";
 /**
  * Creates a Script that picks from a list of examples.
  */
-export function chooseFrom<T>(
+export function scriptOf<T>(
   examples: T[],
   opts?: { caller: string },
 ): Script<T> {
