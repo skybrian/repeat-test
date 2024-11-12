@@ -1,11 +1,42 @@
-import type { PickifyFunction, PropShape } from "@/domain.ts";
+import type { Row, Script } from "@/arbitrary.ts";
+import type { PickifyFunction } from "@/domain.ts";
 
 import * as arb from "@/arbs.ts";
-import { Domain, PropDomain } from "@/domain.ts";
+import { Domain } from "@/domain.ts";
 import { checkKeys } from "../options.ts";
 
+/**
+ * Defines the acceptable values for some of the properties on an object.
+ */
+export type RowShape<T> = {
+  [K in keyof T]: Domain<T[K]>;
+};
+
+/**
+ * A Domain that also specifies some of its properties.
+ */
+export class RowDomain<T extends Record<string, unknown>> extends Domain<T> {
+  readonly #shape: RowShape<T>;
+
+  constructor(
+    pickify: PickifyFunction,
+    build: Script<T>,
+    shape: RowShape<T>,
+  ) {
+    super(pickify, build);
+    this.#shape = shape;
+  }
+
+  /**
+   * Returns the Domain for a specific property.
+   */
+  propAt<K extends string>(name: K): Domain<T[K]> | undefined {
+    return this.#shape[name];
+  }
+}
+
 /** Options for {@link object}. */
-export type PropOpts = {
+export type ObjectOpts = {
   /** Turns on checking for extra properties. */
   strict?: boolean;
 };
@@ -18,10 +49,10 @@ export type PropOpts = {
  * After being parsed or regenerated, the copy will only have the listed properties
  * and the copy's prototype will be Object.prototype.
  */
-export function object<T extends Record<string, unknown>>(
-  shape: PropShape<T>,
-  opts?: PropOpts,
-): PropDomain<T> {
+export function object<T extends Row>(
+  shape: RowShape<T>,
+  opts?: ObjectOpts,
+): RowDomain<T> {
   const pickify: PickifyFunction = (val, sendErr) => {
     if (!checkKeys(val, shape, sendErr, opts)) {
       return undefined;
@@ -39,16 +70,16 @@ export function object<T extends Record<string, unknown>>(
 
   const build = arb.object<T>(shape).buildScript;
 
-  return new PropDomain(pickify, build, shape);
+  return new RowDomain(pickify, build, shape);
 }
 
 /**
  * A domain that finds the first case where the given property matches, then
  * tries to match the rest of the value.
  */
-export function taggedUnion<T extends Record<string, unknown>>(
+export function taggedUnion<T extends Row>(
   tagProp: string,
-  cases: PropDomain<T>[],
+  cases: RowDomain<T>[],
 ): Domain<T> {
   if (cases.length === 0) {
     throw new Error("taggedUnion requires at least one case");

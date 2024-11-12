@@ -1,4 +1,4 @@
-import type { PropShape } from "@/domain.ts";
+import type { RowShape } from "@/domain.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
@@ -13,12 +13,12 @@ describe("object", () => {
   describe("constructor", () => {
     it("throws errors for bad arguments", () => {
       assertThrows(
-        () => dom.object(undefined as unknown as PropShape<unknown>),
+        () => dom.object(undefined as unknown as RowShape<unknown>),
         Error,
       );
 
       assertThrows(
-        () => dom.object({ a: "b" } as PropShape<unknown>),
+        () => dom.object({ a: "b" } as RowShape<unknown>),
         Error,
       );
     });

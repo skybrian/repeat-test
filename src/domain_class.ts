@@ -318,33 +318,3 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
     return new Domain(pickify, build);
   }
 }
-
-/**
- * Defines the acceptable values for some of the properties on an object.
- */
-export type PropShape<T> = {
-  [K in keyof T]: Domain<T[K]>;
-};
-
-/**
- * A Domain that also specifies some of its properties.
- */
-export class PropDomain<T extends Record<string, unknown>> extends Domain<T> {
-  readonly #shape: PropShape<T>;
-
-  constructor(
-    pickify: PickifyFunction,
-    build: Script<T>,
-    shape: PropShape<T>,
-  ) {
-    super(pickify, build);
-    this.#shape = shape;
-  }
-
-  /**
-   * Returns the Domain for a specific property.
-   */
-  propAt<K extends string>(name: K): Domain<T[K]> | undefined {
-    return this.#shape[name];
-  }
-}

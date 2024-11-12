@@ -1,4 +1,4 @@
-import type { PropShape } from "@/domain.ts";
+import type { RowShape } from "@/domain.ts";
 
 import { assert } from "@std/assert";
 import { Domain } from "@/domain.ts";
@@ -62,7 +62,7 @@ export function uniqueArray<T>(
  * sequences.
  */
 export function table<R extends Record<string, unknown>>(
-  shape: PropShape<R>,
+  shape: RowShape<R>,
   opts?: arb.TableOpts<R>,
 ): Domain<R[]> {
   const keys = Object.keys(shape) as (keyof R & string)[];
