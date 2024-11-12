@@ -9,7 +9,7 @@ import { PickRequest } from "./picks.ts";
 import { Backtracker } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
 import { makePickFunction } from "./build.ts";
-import { Script } from "./script_class.ts";
+import { scriptFrom } from "./script_class.ts";
 import { generate } from "./gen_class.ts";
 
 /**
@@ -111,7 +111,7 @@ export function orderedPlayouts(): Backtracker {
  * possible.
  */
 export function generateDefault<T>(arg: Pickable<T>): Gen<T> {
-  const script = Script.from(arg);
+  const script = scriptFrom(arg);
   const gen = generate(script, orderedPlayouts());
   assert(gen !== filtered, `${script.name} has no default`);
   return gen;
@@ -146,7 +146,7 @@ export function find<T>(
   predicate: (val: T) => boolean,
   opts?: { limit: number },
 ): Gen<T> | undefined {
-  const script = Script.from(arg);
+  const script = scriptFrom(arg);
   const limit = opts?.limit ?? 1000;
 
   let count = 0;
@@ -207,7 +207,7 @@ export function takeAll<T>(
   arg: Pickable<T>,
   opts?: { limit?: number },
 ): T[] {
-  const script = Script.from(arg);
+  const script = scriptFrom(arg);
   const limit = opts?.limit ?? 1000;
 
   const examples = take(script, limit + 1);

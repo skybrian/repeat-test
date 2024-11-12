@@ -10,7 +10,7 @@ import * as dom from "@/doms.ts";
 import { minMaxVal } from "./lib/ranges.ts";
 
 import { PickList, PickRequest } from "../src/picks.ts";
-import { Script } from "../src/script_class.ts";
+import { Script, scriptFrom } from "../src/script_class.ts";
 import { Gen } from "@/arbitrary.ts";
 import { CountingTestConsole } from "../src/console.ts";
 
@@ -180,7 +180,7 @@ describe("Shrinker", () => {
         a: arb.string(),
         b: arb.string(),
       });
-      assert(Script.from(rec).opts.logCalls);
+      assert(scriptFrom(rec).opts.logCalls);
       const seed = Gen.mustBuild(rec, [1, 3, 1, 3, 0, 1, 3, 1, 3, 0]);
       assertEquals(seed.val, { a: "dd", b: "dd" });
       assertEquals(MutableGen.from(seed).groupKeys, [0, 1]);
@@ -301,7 +301,7 @@ describe("Shrinker", () => {
         a: arb.string(),
         b: arb.string(),
       });
-      assert(Script.from(rec).opts.logCalls);
+      assert(scriptFrom(rec).opts.logCalls);
       const seed = Gen.mustBuild(rec, [1, 3, 1, 3, 0, 1, 3, 1, 3, 0]);
       assertEquals(seed.val, { a: "dd", b: "dd" });
       assertEquals(MutableGen.from(seed).groupKeys, [0, 1]);

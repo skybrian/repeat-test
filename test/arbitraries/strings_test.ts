@@ -16,7 +16,7 @@ import {
 
 import { isWellFormed } from "../../src/workarounds.ts";
 
-import { Script } from "../../src/script_class.ts";
+import { scriptFrom } from "../../src/script_class.ts";
 import { takeAll } from "../../src/ordered.ts";
 
 function assertCharCodeRange(
@@ -183,7 +183,7 @@ describe("string", () => {
   });
 
   it("has the cachable flag set", () => {
-    assertEquals(Script.from(arb.string()).opts.cachable, true);
+    assertEquals(scriptFrom(arb.string()).opts.cachable, true);
   });
 });
 

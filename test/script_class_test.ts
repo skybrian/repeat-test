@@ -6,21 +6,11 @@ import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import { filtered } from "../src/results.ts";
 import { PickRequest } from "../src/picks.ts";
 import { usePicks } from "../src/build.ts";
-import { Script } from "../src/script_class.ts";
+import { Script, scriptFrom } from "../src/script_class.ts";
 
 const bool = Script.make("bool", (pick) => pick(PickRequest.bit) === 1);
 
 describe("Script", () => {
-  describe("from", () => {
-    it("throws if given an invalid argument", () => {
-      assertThrows(
-        () => Script.from(null as unknown as Pickable<number>),
-        Error,
-        "Script.from() called with an invalid argument",
-      );
-    });
-  });
-
   describe("run", () => {
     it("executes a script", () => {
       assertEquals(bool.run(usePicks(1)), true);
@@ -55,5 +45,15 @@ describe("Script", () => {
       const cached = original.with({ cachable: true });
       assert(cached.opts.cachable);
     });
+  });
+});
+
+describe("scriptFrom", () => {
+  it("throws if given an invalid argument", () => {
+    assertThrows(
+      () => scriptFrom(null as unknown as Pickable<number>),
+      Error,
+      "Script.from() called with an invalid argument",
+    );
   });
 });

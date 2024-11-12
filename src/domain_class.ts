@@ -4,7 +4,7 @@ import type { SendErr } from "./options.ts";
 
 import { assertEquals } from "@std/assert";
 import { failure, success } from "./results.ts";
-import { Script } from "./script_class.ts";
+import { Script, scriptFrom } from "./script_class.ts";
 import { Gen } from "./gen_class.ts";
 import { generateDefault } from "./ordered.ts";
 import { filter } from "./scripts/filter.ts";
@@ -228,7 +228,7 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
     pickify: PickifyFunction,
     opts?: { lazyInit?: boolean },
   ): Domain<T> {
-    const dom = new Domain(pickify, Script.from(gen));
+    const dom = new Domain(pickify, scriptFrom(gen));
     if (opts?.lazyInit) {
       return dom;
     }

@@ -3,12 +3,13 @@ import type { PickFunction } from "./pickable.ts";
 import type { GroupEdit, MultiEdit } from "./edits.ts";
 import type { PickList } from "./picks.ts";
 import type { CallBuffer } from "./calls.ts";
+import type { Script } from "./script_class.ts";
 
 import { assert } from "@std/assert";
 import { Filtered } from "@/arbitrary.ts";
 import { filtered } from "./results.ts";
 import { PickRequest } from "./picks.ts";
-import { Script } from "./script_class.ts";
+import { scriptFrom } from "./script_class.ts";
 import { makePickFunction } from "./build.ts";
 import { EditResponder, keep } from "./edits.ts";
 import { allReplies, Call, regen } from "./calls.ts";
@@ -119,7 +120,7 @@ class Replay {
       return this.handlePick(req, input.group, edit);
     }
 
-    const val = this.handleScript(Script.from(req), input, edit);
+    const val = this.handleScript(scriptFrom(req), input, edit);
 
     const accept = opts?.accept;
     if (accept !== undefined && !accept(val)) {

@@ -1,10 +1,10 @@
 import type { Pickable, PickFunction, PickFunctionOpts } from "./pickable.ts";
-
 import type { IntPicker, Range } from "./picks.ts";
+import type { Script } from "./script_class.ts";
 
 import { Filtered } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
-import { Script } from "./script_class.ts";
+import { scriptFrom } from "./script_class.ts";
 
 export interface PickResponder {
   /** Attempts to start a new playout, continuing at the given depth. */
@@ -170,7 +170,7 @@ export function makePickFunction<T>(
       return pick as T;
     }
 
-    const script = Script.from(arg, { caller: "pick function" });
+    const script = scriptFrom(arg, { caller: "pick function" });
 
     const accept = opts?.accept;
     if (accept === undefined) {

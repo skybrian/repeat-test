@@ -2,7 +2,7 @@ import type { BuildFunction, Pickable } from "./pickable.ts";
 import type { HasScript } from "./script_class.ts";
 
 import { filtered } from "./results.ts";
-import { Script } from "./script_class.ts";
+import { Script, scriptFrom } from "./script_class.ts";
 import { generate } from "./gen_class.ts";
 import { generateDefault } from "./ordered.ts";
 import { randomPlayouts } from "./random.ts";
@@ -146,7 +146,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
     } else if (arg instanceof Arbitrary) {
       return arg;
     }
-    return new Arbitrary(Script.from(arg, { caller: "Arbitrary.from" }));
+    return new Arbitrary(scriptFrom(arg, { caller: "Arbitrary.from" }));
   }
 
   /**

@@ -4,20 +4,21 @@ import type { ArrayOpts } from "../options.ts";
 import { Arbitrary } from "@/arbitrary.ts";
 import { parseArrayOpts } from "../options.ts";
 import { arrayLengthBiases } from "../math.ts";
-import { Script } from "../script_class.ts";
+import { Script, scriptFrom } from "../script_class.ts";
 import { biased } from "./basics.ts";
 
 export const off = Symbol("off");
 
 function option<T>(bias: number, item: Pickable<T>): Script<T | typeof off> {
   const coin = biased(bias);
+  const it = scriptFrom(item);
   return Script.make("option", (pick) => {
     if (pick(coin)) {
-      return pick(item);
+      return pick(it);
     } else {
       return off;
     }
-  }, { cachable: Script.from(item).opts.cachable });
+  }, { cachable: it.opts.cachable });
 }
 
 export type ItemFunction<T> = (i: number, pick: PickFunction) => T | typeof off;

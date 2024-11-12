@@ -139,45 +139,6 @@ export class Script<T> implements Pickable<T> {
   }
 
   /**
-   * Converts any Pickable into a Script.
-   *
-   * If it wasn't already a Script and didn't implement HasScript, it will be
-   * named 'untitled'.
-   */
-  static from<T>(
-    arg: Pickable<T>,
-    opts?: { caller: string },
-  ): Script<T> {
-    if (arg instanceof Script) {
-      return arg;
-    } else if (arg instanceof PickRequest) {
-      const name = `${arg.min}..${arg.max}`;
-      const maxSize = arg.max - arg.min + 1;
-
-      return Script.make(name, (pick: PickFunction) => {
-        return pick(arg) as T;
-      }, { cachable: true, logCalls: true, maxSize, lazyInit: true });
-    }
-
-    if (
-      arg === null || typeof arg !== "object" ||
-      typeof arg.directBuild !== "function"
-    ) {
-      const caller = opts?.caller ?? "Script.from()";
-      throw new Error(`${caller} called with an invalid argument`);
-    }
-
-    const props: Partial<HasScript<T>> = arg;
-    if (
-      props.buildScript !== undefined && props.buildScript instanceof Script
-    ) {
-      return props.buildScript;
-    } else {
-      return Script.make("untitled", arg.directBuild);
-    }
-  }
-
-  /**
    * Makes a new script the generates an object with the given shape.
    */
   static object<T extends Record<string, unknown>>(
@@ -187,7 +148,7 @@ export class Script<T> implements Pickable<T> {
     const keys: string[] = Object.keys(shape);
 
     const props = Object.fromEntries(
-      keys.map((key) => [key, Script.from(shape[key])]),
+      keys.map((key) => [key, scriptFrom(shape[key])]),
     );
 
     let maxSize: number | undefined = 1;
@@ -210,6 +171,45 @@ export class Script<T> implements Pickable<T> {
       },
       { maxSize, lazyInit: true, logCalls: keys.length > 1 },
     );
+  }
+}
+
+/**
+ * Converts any Pickable into a Script.
+ *
+ * If it wasn't already a Script and didn't implement HasScript, it will be
+ * named 'untitled'.
+ */
+export function scriptFrom<T>(
+  arg: Pickable<T>,
+  opts?: { caller: string },
+): Script<T> {
+  if (arg instanceof Script) {
+    return arg;
+  } else if (arg instanceof PickRequest) {
+    const name = `${arg.min}..${arg.max}`;
+    const maxSize = arg.max - arg.min + 1;
+
+    return Script.make(name, (pick: PickFunction) => {
+      return pick(arg) as T;
+    }, { cachable: true, logCalls: true, maxSize, lazyInit: true });
+  }
+
+  if (
+    arg === null || typeof arg !== "object" ||
+    typeof arg.directBuild !== "function"
+  ) {
+    const caller = opts?.caller ?? "Script.from()";
+    throw new Error(`${caller} called with an invalid argument`);
+  }
+
+  const props: Partial<HasScript<T>> = arg;
+  if (
+    props.buildScript !== undefined && props.buildScript instanceof Script
+  ) {
+    return props.buildScript;
+  } else {
+    return Script.make("untitled", arg.directBuild);
   }
 }
 

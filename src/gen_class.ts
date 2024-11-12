@@ -4,10 +4,11 @@ import type { PickSink } from "./picks.ts";
 import type { GroupKey, MultiEdit } from "./edits.ts";
 import type { Backtracker } from "./backtracking.ts";
 import type { Call } from "./calls.ts";
+import type { Script } from "./script_class.ts";
 
 import { assert } from "@std/assert";
 import { failure, filtered } from "./results.ts";
-import { Script } from "./script_class.ts";
+import { scriptFrom } from "./script_class.ts";
 import { PickList, PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
 import { makePickFunction } from "./build.ts";
@@ -201,7 +202,7 @@ export class Gen<T> implements Success<T> {
     arg: Pickable<T>,
     replies: Iterable<number>,
   ): Gen<T> | Failure {
-    const script = Script.from(arg, { caller: "Gen.build()" });
+    const script = scriptFrom(arg, { caller: "Gen.build()" });
     const picker = new PlaybackPicker(replies);
     const gen = generate(script, onePlayout(picker));
     if (gen === filtered || picker.error !== undefined) {
@@ -270,7 +271,7 @@ export function generate<T>(
   playouts: Backtracker,
   opts?: GenerateOpts,
 ): Gen<T> | typeof filtered {
-  const script = Script.from(arg, { caller: "generate" });
+  const script = scriptFrom(arg, { caller: "generate" });
 
   while (playouts.startAt(0)) {
     const log = new CallBuffer();
