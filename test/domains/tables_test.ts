@@ -97,11 +97,13 @@ describe("uniqueArray", () => {
 });
 
 describe("table", () => {
+  const pair = dom.object({
+    a: dom.boolean(),
+    b: dom.boolean(),
+  });
+
   describe("with no unique columns", () => {
-    const table = dom.table({
-      a: dom.boolean(),
-      b: dom.boolean(),
-    });
+    const table = dom.table(pair);
     it("encodes it the same way as a regular array", () => {
       assertEncoding(table, [0], []);
       assertEncoding(table, [1, 1, 0], [{ a: true, b: true }]);
@@ -121,18 +123,12 @@ describe("table", () => {
     it("round-trips generated tables", () => {
       const example = Arbitrary.from((pick) => {
         const length = pick(dom.int(0, 2));
-        const array = pick(dom.table({
-          a: dom.boolean(),
-          b: dom.boolean(),
-        }, { length }));
+        const array = pick(dom.table(pair, { length }));
         return { array, length };
       });
       repeatTest(example, ({ array, length }) => {
         assertRoundTrip(
-          dom.table({
-            a: dom.boolean(),
-            b: dom.boolean(),
-          }, { length }),
+          dom.table(pair, { length }),
           array,
         );
       });
@@ -142,19 +138,12 @@ describe("table", () => {
       const example = Arbitrary.from((pick) => {
         const length = pick(dom.int(1, 5));
         const shorter = pick(arb.int(0, length - 1));
-        const array = pick(dom.table({
-          a: dom.boolean(),
-          b: dom.boolean(),
-        }, { length: shorter }));
+        const array = pick(dom.table(pair, { length: shorter }));
         return { array, length };
       });
       repeatTest(example, ({ array, length }) => {
         assertThrows(
-          () =>
-            dom.table({
-              a: dom.boolean(),
-              b: dom.boolean(),
-            }, { length }).parse(array),
+          () => dom.table(pair, { length }).parse(array),
           Error,
           `array too short; want len >= ${length}, got: ${array.length}`,
         );
@@ -163,9 +152,10 @@ describe("table", () => {
   });
 
   describe("with a single unique column", () => {
-    const table = dom.table({
+    const row = dom.object({
       a: dom.boolean(),
-    }, { keys: ["a"] });
+    });
+    const table = dom.table(row, { keys: ["a"] });
     it("encodes it the same way as a unique array", () => {
       assertEncoding(table, [0], []);
       assertEncoding(table, [1, 1, 0], [{ a: true }]);

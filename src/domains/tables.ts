@@ -1,4 +1,4 @@
-import type { RowShape } from "@/domain.ts";
+import type { RowDomain } from "@/domain.ts";
 
 import { assert } from "@std/assert";
 import { Domain } from "@/domain.ts";
@@ -62,9 +62,10 @@ export function uniqueArray<T>(
  * sequences.
  */
 export function table<R extends Record<string, unknown>>(
-  shape: RowShape<R>,
+  item: RowDomain<R>,
   opts?: arb.TableOpts<R>,
 ): Domain<R[]> {
+  const shape = item.shape;
   const keys = Object.keys(shape) as (keyof R & string)[];
   const uniqueKeys = opts?.keys ?? [];
   const { min, max } = parseArrayOpts(opts);

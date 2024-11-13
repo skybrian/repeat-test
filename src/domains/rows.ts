@@ -16,22 +16,12 @@ export type RowShape<T> = {
  * A Domain that also specifies some of its properties.
  */
 export class RowDomain<T extends Record<string, unknown>> extends Domain<T> {
-  readonly #shape: RowShape<T>;
-
   constructor(
     pickify: PickifyFunction,
     build: Script<T>,
-    shape: RowShape<T>,
+    readonly shape: RowShape<T>,
   ) {
     super(pickify, build);
-    this.#shape = shape;
-  }
-
-  /**
-   * Returns the Domain for a specific property.
-   */
-  propAt<K extends string>(name: K): Domain<T[K]> | undefined {
-    return this.#shape[name];
   }
 }
 
@@ -88,7 +78,7 @@ export function taggedUnion<T extends Row>(
   const tagPatterns: Domain<unknown>[] = [];
   for (let i = 0; i < cases.length; i++) {
     const c = cases[i];
-    const pattern = c.propAt(tagProp);
+    const pattern = c.shape[tagProp];
     if (!pattern) {
       throw new Error(`case ${i} doesn't have a '${tagProp}' property`);
     }
