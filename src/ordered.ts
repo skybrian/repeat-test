@@ -9,7 +9,7 @@ import { PickRequest } from "./picks.ts";
 import { Backtracker } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
 import { makePickFunction } from "./build.ts";
-import { scriptFrom } from "./script_class.ts";
+import { scriptFrom } from "./scripts/scriptFrom.ts";
 import { generate } from "./gen_class.ts";
 
 /**

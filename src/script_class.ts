@@ -1,13 +1,7 @@
-import type {
-  BuildFunction,
-  ObjectShape,
-  Pickable,
-  PickFunction,
-} from "./pickable.ts";
+import type { BuildFunction, Pickable, PickFunction } from "./pickable.ts";
 
 import { filtered } from "./results.ts";
 import { Filtered } from "./pickable.ts";
-import { PickRequest } from "./picks.ts";
 
 /**
  * An optional interface that a Pickable can use to give itself a name and set flags.
@@ -136,80 +130,6 @@ export class Script<T> implements Pickable<T> {
       build,
       opts ?? {},
     );
-  }
-
-  /**
-   * Makes a new script the generates an object with the given shape.
-   */
-  static object<T extends Record<string, unknown>>(
-    name: string,
-    shape: ObjectShape<T>,
-  ): Script<T> {
-    const keys: string[] = Object.keys(shape);
-
-    const props = Object.fromEntries(
-      keys.map((key) => [key, scriptFrom(shape[key])]),
-    );
-
-    let maxSize: number | undefined = 1;
-    for (const key of keys) {
-      const size = props[key].opts.maxSize;
-      if (size === undefined) {
-        maxSize = undefined;
-        break;
-      }
-      maxSize *= size;
-    }
-
-    return Script.make(
-      name,
-      (pick: PickFunction) => {
-        const result = Object.fromEntries(
-          keys.map((key) => [key, pick(props[key])]),
-        );
-        return result as T;
-      },
-      { maxSize, lazyInit: true, logCalls: keys.length > 1 },
-    );
-  }
-}
-
-/**
- * Converts any Pickable into a Script.
- *
- * If it wasn't already a Script and didn't implement HasScript, it will be
- * named 'untitled'.
- */
-export function scriptFrom<T>(
-  arg: Pickable<T>,
-  opts?: { caller: string },
-): Script<T> {
-  if (arg instanceof Script) {
-    return arg;
-  } else if (arg instanceof PickRequest) {
-    const name = `${arg.min}..${arg.max}`;
-    const maxSize = arg.max - arg.min + 1;
-
-    return Script.make(name, (pick: PickFunction) => {
-      return pick(arg) as T;
-    }, { cachable: true, logCalls: true, maxSize, lazyInit: true });
-  }
-
-  if (
-    arg === null || typeof arg !== "object" ||
-    typeof arg.directBuild !== "function"
-  ) {
-    const caller = opts?.caller ?? "Script.from()";
-    throw new Error(`${caller} called with an invalid argument`);
-  }
-
-  const props: Partial<HasScript<T>> = arg;
-  if (
-    props.buildScript !== undefined && props.buildScript instanceof Script
-  ) {
-    return props.buildScript;
-  } else {
-    return Script.make("untitled", arg.directBuild);
   }
 }
 

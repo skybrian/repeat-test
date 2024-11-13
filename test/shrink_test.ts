@@ -10,7 +10,8 @@ import * as dom from "@/doms.ts";
 import { minMaxVal } from "./lib/ranges.ts";
 
 import { PickList, PickRequest } from "../src/picks.ts";
-import { Script, scriptFrom } from "../src/script_class.ts";
+import { Script } from "../src/script_class.ts";
+import { scriptFrom } from "../src/scripts/scriptFrom.ts";
 import { Gen } from "@/arbitrary.ts";
 import { CountingTestConsole } from "../src/console.ts";
 

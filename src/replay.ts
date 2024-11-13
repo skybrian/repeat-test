@@ -9,7 +9,7 @@ import { assert } from "@std/assert";
 import { Filtered } from "@/arbitrary.ts";
 import { filtered } from "./results.ts";
 import { PickRequest } from "./picks.ts";
-import { scriptFrom } from "./script_class.ts";
+import { scriptFrom } from "./scripts/scriptFrom.ts";
 import { makePickFunction } from "./build.ts";
 import { EditResponder, keep } from "./edits.ts";
 import { allReplies, Call, regen } from "./calls.ts";

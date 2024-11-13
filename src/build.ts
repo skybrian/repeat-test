@@ -4,7 +4,7 @@ import type { Script } from "./script_class.ts";
 
 import { Filtered } from "./pickable.ts";
 import { PickRequest } from "./picks.ts";
-import { scriptFrom } from "./script_class.ts";
+import { scriptFrom } from "./scripts/scriptFrom.ts";
 
 export interface PickResponder {
   /** Attempts to start a new playout, continuing at the given depth. */

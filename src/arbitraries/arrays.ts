@@ -4,7 +4,8 @@ import type { ArrayOpts } from "../options.ts";
 import { Arbitrary } from "@/arbitrary.ts";
 import { parseArrayOpts } from "../options.ts";
 import { arrayLengthBiases } from "../math.ts";
-import { Script, scriptFrom } from "../script_class.ts";
+import { Script } from "../script_class.ts";
+import { scriptFrom } from "../scripts/scriptFrom.ts";
 import { biased } from "./basics.ts";
 
 export const off = Symbol("off");

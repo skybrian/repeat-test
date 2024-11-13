@@ -16,7 +16,7 @@ import {
 
 import { isWellFormed } from "../../src/workarounds.ts";
 
-import { scriptFrom } from "../../src/script_class.ts";
+import { scriptFrom } from "../../src/scripts/scriptFrom.ts";
 import { takeAll } from "../../src/ordered.ts";
 
 function assertCharCodeRange(

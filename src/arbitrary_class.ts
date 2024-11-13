@@ -2,7 +2,8 @@ import type { BuildFunction, Pickable } from "./pickable.ts";
 import type { HasScript } from "./script_class.ts";
 
 import { filtered } from "./results.ts";
-import { Script, scriptFrom } from "./script_class.ts";
+import { Script } from "./script_class.ts";
+import { scriptFrom } from "./scripts/scriptFrom.ts";
 import { generate } from "./gen_class.ts";
 import { generateDefault } from "./ordered.ts";
 import { randomPlayouts } from "./random.ts";

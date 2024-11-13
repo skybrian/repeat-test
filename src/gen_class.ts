@@ -8,7 +8,7 @@ import type { Script } from "./script_class.ts";
 
 import { assert } from "@std/assert";
 import { failure, filtered } from "./results.ts";
-import { scriptFrom } from "./script_class.ts";
+import { scriptFrom } from "./scripts/scriptFrom.ts";
 import { PickList, PlaybackPicker } from "./picks.ts";
 import { onePlayout } from "./backtracking.ts";
 import { makePickFunction } from "./build.ts";

@@ -6,7 +6,8 @@ import { repeatTest } from "../../src/runner.ts";
 import { Filtered } from "../../src/pickable.ts";
 import { PickRequest } from "../../src/picks.ts";
 
-import { Script, scriptFrom } from "../../src/script_class.ts";
+import { Script } from "../../src/script_class.ts";
+import { scriptFrom } from "../../src/scripts/scriptFrom.ts";
 import * as arb from "@/arbs.ts";
 import { filter } from "../../src/scripts/filter.ts";
 

@@ -1,6 +1,7 @@
 import type { Pickable } from "../pickable.ts";
 import { PickRequest } from "../picks.ts";
-import { Script, scriptFrom } from "../script_class.ts";
+import { Script } from "../script_class.ts";
+import { scriptFrom } from "./scriptFrom.ts";
 
 /**
  * Creates a script that randomly picks a pickable to call.
