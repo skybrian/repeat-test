@@ -6,7 +6,7 @@ import { scriptFrom } from "./scriptFrom.ts";
 /**
  * Creates a script that randomly picks a pickable to call.
  */
-export function oneOf<T>(cases: Pickable<T>[]): Script<T> {
+export function scriptFromCases<T>(cases: Pickable<T>[]): Script<T> {
   if (cases.length === 0) {
     throw new Error("oneOf() requires at least one alternative");
   }

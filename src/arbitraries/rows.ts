@@ -1,7 +1,7 @@
 import type { ObjectShape } from "../pickable.ts";
 
 import { scriptFromShape } from "../scripts/scriptFromShape.ts";
-import { oneOf } from "../scripts/oneOf.ts";
+import { scriptFromCases } from "../scripts/scriptFromCases.ts";
 import { Arbitrary } from "../arbitrary_class.ts";
 
 export type Row = Record<string, unknown>;
@@ -52,7 +52,7 @@ export class RowPicker<T extends Row> extends Arbitrary<T> {
       return;
     }
 
-    const build = oneOf<T>(
+    const build = scriptFromCases<T>(
       cases.map(({ name, shape }) => scriptFromShape(name, shape)),
     );
     super(build.with({ name }));
