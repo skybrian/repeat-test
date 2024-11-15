@@ -57,4 +57,8 @@ export class RowPicker<T extends Row> extends Arbitrary<T> {
     );
     super(build.with({ name }));
   }
+
+  override with(opts: { name: string }): RowPicker<T> {
+    return new RowPicker(opts.name, this.cases);
+  }
 }

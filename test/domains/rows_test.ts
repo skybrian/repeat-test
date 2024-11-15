@@ -140,6 +140,16 @@ describe("taggedUnion", () => {
     assertRoundTrip(colors, { "color": "green" });
   });
 
+  it("supports nested tagged unions", () => {
+    const moreColors = dom.taggedUnion<{ color: string }>("color", [
+      colors,
+      dom.object({ "color": dom.of("blue") }),
+    ]);
+    assertRoundTrip(moreColors, { "color": "red" });
+    assertRoundTrip(moreColors, { "color": "green" });
+    assertRoundTrip(moreColors, { "color": "blue" });
+  });
+
   it("reports an error for a non-object", () => {
     assertThrows(
       () => colors.parse("red"),
@@ -174,5 +184,15 @@ describe("taggedUnion", () => {
       ParseError,
       `count: doesn't match '123 (constant)'`,
     );
+  });
+});
+
+describe("RowDomain", () => {
+  describe("with", () => {
+    it("renames the domain", () => {
+      const row = dom.object({ a: dom.int(0, 1) });
+      const renamed = row.with({ name: "something" });
+      assertEquals(renamed.name, "something");
+    });
   });
 });

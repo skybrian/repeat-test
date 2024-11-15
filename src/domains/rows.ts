@@ -1,9 +1,10 @@
-import type { Row, Script } from "@/arbitrary.ts";
+import type { Row, RowPicker } from "@/arbitrary.ts";
 import type { PickifyFunction } from "@/domain.ts";
 
 import * as arb from "@/arbs.ts";
 import { Domain } from "@/domain.ts";
 import { checkKeys } from "../options.ts";
+import { assert } from "@std/assert/assert";
 
 /**
  * Defines the acceptable values for some of the properties on an object.
@@ -45,9 +46,15 @@ export function object<T extends Row>(
     return out;
   };
 
-  const build = arb.object<T>(shape).buildScript;
+  const rowPicker = arb.object(shape);
 
-  return new RowDomain(pickify, build, shape);
+  const c: RowCase<T> = {
+    shape,
+    pickify,
+    rowPicker,
+  };
+
+  return new RowDomain(pickify, rowPicker, [c]);
 }
 
 /**
@@ -56,11 +63,13 @@ export function object<T extends Row>(
  */
 export function taggedUnion<T extends Row>(
   tagProp: keyof T & string,
-  cases: RowDomain<T>[],
-): Domain<T> {
-  if (cases.length === 0) {
+  input: RowDomain<T>[],
+): RowDomain<T> {
+  if (input.length === 0) {
     throw new Error("taggedUnion requires at least one case");
   }
+
+  const cases = input.map((c) => c.cases).flat();
 
   for (let i = 0; i < cases.length; i++) {
     const c = cases[i];
@@ -86,8 +95,8 @@ export function taggedUnion<T extends Row>(
 
     for (let i = 0; i < cases.length; i++) {
       const c = cases[i];
-      if (c.propsMatch(tags)) {
-        const picks = c.innerPickify(val, sendErr);
+      if (propsMatch(c, tags)) {
+        const picks = c.pickify(val, sendErr, "taggedUnion");
         if (picks === undefined) {
           return undefined; // rest of pattern didn't match
         }
@@ -97,34 +106,48 @@ export function taggedUnion<T extends Row>(
     sendErr(`${tagProp}: "${actual}" didn't match any case in '${name}'`, val);
   };
 
-  const build = arb.oneOf(...cases).with({ name: "taggedUnion" });
+  const picker = arb.union(...cases.map((c) => c.rowPicker)).with({
+    name: "taggedUnion",
+  });
 
-  return Domain.make(build, pickify, { lazyInit: true });
+  return new RowDomain(pickify, picker, cases);
 }
 
+export type RowCase<T extends Row> = {
+  readonly shape: RowShape<T>;
+  readonly rowPicker: RowPicker<T>;
+  readonly pickify: PickifyFunction;
+};
+
 /**
- * A Domain that also specifies some of its properties.
+ * Returns true if each of the given properties matches the corresponding
+ * domain.
  */
-export class RowDomain<T extends Record<string, unknown>> extends Domain<T> {
+function propsMatch(c: RowCase<Row>, props: Row): boolean {
+  return Object.entries(props).every(([key, val]) => {
+    const domain = c.shape[key];
+    assert(domain !== undefined);
+    return domain.matches(val);
+  });
+}
+
+export class RowDomain<T extends Row> extends Domain<T> {
+  readonly #pickify: PickifyFunction;
+
   constructor(
     pickify: PickifyFunction,
-    build: Script<T>,
-    readonly shape: RowShape<T>,
+    readonly rowPicker: RowPicker<T>,
+    readonly cases: RowCase<T>[],
   ) {
-    super(pickify, build);
+    super(pickify, rowPicker.buildScript);
+    this.#pickify = pickify;
   }
 
-  /**
-   * Returns true if each of the given properties matches the corresponding
-   * domain.
-   */
-  propsMatch(props: Row): boolean {
-    return Object.entries(props).every(([key, val]) => {
-      const domain = this.shape[key];
-      if (domain === undefined) {
-        return false;
-      }
-      return domain.matches(val);
-    });
+  override with(opts: { name: string }): RowDomain<T> {
+    return new RowDomain(
+      this.#pickify,
+      this.rowPicker.with(opts),
+      this.cases,
+    );
   }
 }

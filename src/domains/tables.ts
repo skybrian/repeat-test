@@ -1,4 +1,4 @@
-import type { RowDomain } from "@/domain.ts";
+import type { RowDomain, RowShape } from "./rows.ts";
 
 import { assert } from "@std/assert";
 import { Domain } from "@/domain.ts";
@@ -65,8 +65,11 @@ export function table<R extends Record<string, unknown>>(
   item: RowDomain<R>,
   opts?: arb.TableOpts<R>,
 ): Domain<R[]> {
-  const shape = item.shape;
+  const shapes = item.cases.map((c) => c.shape);
+  assert(shapes.length === 1, "not implemented");
+  const shape: RowShape<R> = shapes[0];
   const keys = Object.keys(shape) as (keyof R & string)[];
+
   const uniqueKeys = opts?.keys ?? [];
   const { min, max } = parseArrayOpts(opts);
   const build = arb.table(arb.object(shape), opts);
