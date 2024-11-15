@@ -12,19 +12,6 @@ export type RowShape<T> = {
   [K in keyof T]: Domain<T[K]>;
 };
 
-/**
- * A Domain that also specifies some of its properties.
- */
-export class RowDomain<T extends Record<string, unknown>> extends Domain<T> {
-  constructor(
-    pickify: PickifyFunction,
-    build: Script<T>,
-    readonly shape: RowShape<T>,
-  ) {
-    super(pickify, build);
-  }
-}
-
 /** Options for {@link object}. */
 export type ObjectOpts = {
   /** Turns on checking for extra properties. */
@@ -68,21 +55,19 @@ export function object<T extends Row>(
  * tries to match the rest of the value.
  */
 export function taggedUnion<T extends Row>(
-  tagProp: string,
+  tagProp: keyof T & string,
   cases: RowDomain<T>[],
 ): Domain<T> {
   if (cases.length === 0) {
     throw new Error("taggedUnion requires at least one case");
   }
 
-  const tagPatterns: Domain<unknown>[] = [];
   for (let i = 0; i < cases.length; i++) {
     const c = cases[i];
     const pattern = c.shape[tagProp];
     if (!pattern) {
       throw new Error(`case ${i} doesn't have a '${tagProp}' property`);
     }
-    tagPatterns.push(pattern);
   }
 
   const pickify: PickifyFunction = (val, sendErr, name) => {
@@ -91,22 +76,23 @@ export function taggedUnion<T extends Row>(
       return undefined;
     }
 
-    const hasTag: { [key in string]?: unknown } = val;
-    const actual = hasTag[tagProp];
+    const allProps: { [key in string]?: unknown } = val;
+    const actual = allProps[tagProp];
     if (typeof actual !== "string") {
       sendErr(`'${tagProp}' property is not a string`, val);
       return undefined;
     }
+    const tags = { [tagProp]: actual };
+
     for (let i = 0; i < cases.length; i++) {
       const c = cases[i];
-      if (!tagPatterns[i].matches(actual)) {
-        continue; // tag didn't match
+      if (c.propsMatch(tags)) {
+        const picks = c.innerPickify(val, sendErr);
+        if (picks === undefined) {
+          return undefined; // rest of pattern didn't match
+        }
+        return [i, ...picks];
       }
-      const picks = c.innerPickify(val, sendErr);
-      if (picks === undefined) {
-        return undefined; // rest of pattern didn't match
-      }
-      return [i, ...picks];
     }
     sendErr(`${tagProp}: "${actual}" didn't match any case in '${name}'`, val);
   };
@@ -114,4 +100,31 @@ export function taggedUnion<T extends Row>(
   const build = arb.oneOf(...cases).with({ name: "taggedUnion" });
 
   return Domain.make(build, pickify, { lazyInit: true });
+}
+
+/**
+ * A Domain that also specifies some of its properties.
+ */
+export class RowDomain<T extends Record<string, unknown>> extends Domain<T> {
+  constructor(
+    pickify: PickifyFunction,
+    build: Script<T>,
+    readonly shape: RowShape<T>,
+  ) {
+    super(pickify, build);
+  }
+
+  /**
+   * Returns true if each of the given properties matches the corresponding
+   * domain.
+   */
+  propsMatch(props: Row): boolean {
+    return Object.entries(props).every(([key, val]) => {
+      const domain = this.shape[key];
+      if (domain === undefined) {
+        return false;
+      }
+      return domain.matches(val);
+    });
+  }
 }

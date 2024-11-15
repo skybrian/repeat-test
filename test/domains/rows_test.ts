@@ -119,12 +119,12 @@ describe("taggedUnion", () => {
     );
   });
 
-  it("throws an exception when a case don't have the tag property", () => {
+  it("throws an exception when a case doesn't have the tag property", () => {
     const cases = [
       dom.object({ "a": dom.of(1) }),
     ];
     assertThrows(
-      () => dom.taggedUnion("missing", cases),
+      () => dom.taggedUnion("missing" as unknown as "a", cases),
       Error,
       "case 0 doesn't have a 'missing' property",
     );
