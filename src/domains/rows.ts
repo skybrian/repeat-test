@@ -1,5 +1,5 @@
 import type { Row, RowPicker } from "@/arbitrary.ts";
-import type { PickifyFunction } from "@/domain.ts";
+import type { PickifyFunction, SendErr } from "@/domain.ts";
 
 import * as arb from "@/arbs.ts";
 import { Domain } from "@/domain.ts";
@@ -98,7 +98,10 @@ export function taggedUnion<T extends Row>(
     };
   });
 
-  const pickify: PickifyFunction = (val, sendErr, name) => {
+  function findPatternIndex(
+    val: unknown,
+    sendErr: SendErr,
+  ): number | undefined {
     if (val === null || typeof val !== "object") {
       sendErr("not an object", val);
       return undefined;
@@ -112,17 +115,28 @@ export function taggedUnion<T extends Row>(
     for (let i = 0; i < taggedCases.length; i++) {
       const c = taggedCases[i];
       if (tagsMatch(c, row)) {
-        const picks = c.pickify(val, sendErr, "taggedUnion");
-        if (picks === undefined) {
-          return undefined; // rest of pattern didn't match
-        }
-        return [i, ...picks];
+        return i;
       }
     }
-    sendErr(
-      `tags didn't match any case in '${name}'`,
-      val,
-    );
+    return undefined;
+  }
+
+  const pickify: PickifyFunction = (val, sendErr, name) => {
+    const index = findPatternIndex(val, sendErr);
+    if (index === undefined) {
+      sendErr(
+        `tags didn't match any case in '${name}'`,
+        val,
+      );
+      return undefined;
+    }
+
+    const pat = taggedCases[index];
+    const picks = pat.pickify(val, sendErr, "taggedUnion");
+    if (picks === undefined) {
+      return undefined;
+    }
+    return [index, ...picks];
   };
 
   const picker = arb.union(...cases.map((c) => c.rowPicker)).with({
