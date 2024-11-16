@@ -163,12 +163,6 @@ describe("taggedUnion", () => {
     const columnId = dom.of("a", "b", "c");
     const rowId = dom.of("x", "y", "z");
 
-    type Row = { x: string; y: string } | {
-      x: string;
-      y: string;
-      name: string;
-    };
-
     const named = dom.object({
       "x": dom.of("a"),
       "y": dom.of("x"),
@@ -180,8 +174,8 @@ describe("taggedUnion", () => {
       "y": rowId,
     });
 
-    const schema = dom.taggedUnion<Row>("x", [
-      dom.taggedUnion<Row>("y", [
+    const schema = dom.taggedUnion("x", [
+      dom.taggedUnion("y", [
         named,
         unnamed,
       ]),
@@ -193,6 +187,14 @@ describe("taggedUnion", () => {
         console.sometimes("unnnamed", !Object.keys(val).includes("name"));
         schema.regenerate(val);
       });
+    });
+
+    it("reports an error when no inner tag matched", () => {
+      assertThrows(
+        () => schema.parse({ "x": "a", "y": "q" }),
+        ParseError,
+        `tags didn't match any case in 'taggedUnion'`,
+      );
     });
   });
 
@@ -216,7 +218,7 @@ describe("taggedUnion", () => {
     assertThrows(
       () => colors.parse({ "color": "blue" }),
       ParseError,
-      `color: \"blue\" didn't match any case in 'taggedUnion'`,
+      `tags didn't match any case in 'taggedUnion'`,
     );
   });
 

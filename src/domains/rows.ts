@@ -1,10 +1,9 @@
 import type { Row, RowPicker } from "@/arbitrary.ts";
-import type { PickifyFunction, SendErr } from "@/domain.ts";
+import type { PickifyFunction } from "@/domain.ts";
 
 import * as arb from "@/arbs.ts";
 import { Domain } from "@/domain.ts";
 import { checkKeys } from "../options.ts";
-import { assert } from "@std/assert/assert";
 
 /**
  * Defines the acceptable values for some of the properties on an object.
@@ -49,6 +48,7 @@ export function object<T extends Row>(
   const rowPicker = arb.object(shape);
 
   const c: RowCase<T> = {
+    tags: [],
     shape,
     pickify,
     rowPicker,
@@ -58,8 +58,13 @@ export function object<T extends Row>(
 }
 
 /**
- * A domain that finds the first case where the given property matches, then
- * tries to match the rest of the value.
+ * A domain that finds the first case where all tag properties match, then tries
+ * to match that case against the rest of the object.
+ *
+ * (There can be more than one tag property when taggedUnions are nested.)
+ *
+ * Compared to `dom.firstOf`, matching against tags results in better error
+ * messages when the tags match, but the rest of the selected case doesn't.
  */
 export function taggedUnion<T extends Row>(
   tagProp: keyof T & string,
@@ -83,20 +88,30 @@ export function taggedUnion<T extends Row>(
     return input[0]; // pick format doesn't begin with a case number
   }
 
+  const taggedCases = cases.map((c) => {
+    const tags = c.tags.includes(tagProp) ? c.tags : [...c.tags, tagProp];
+    return {
+      tags,
+      shape: c.shape,
+      pickify: c.pickify,
+      rowPicker: c.rowPicker,
+    };
+  });
+
   const pickify: PickifyFunction = (val, sendErr, name) => {
     if (val === null || typeof val !== "object") {
       sendErr("not an object", val);
       return undefined;
     }
-
-    const tags = extractTags(val as Row, [tagProp], sendErr);
-    if (tags === undefined) {
+    const row = val as Row;
+    if (typeof row[tagProp] !== "string") {
+      sendErr(`'${tagProp}' property is not a string`, row);
       return undefined;
     }
 
-    for (let i = 0; i < cases.length; i++) {
-      const c = cases[i];
-      if (propsMatch(c, tags)) {
+    for (let i = 0; i < taggedCases.length; i++) {
+      const c = taggedCases[i];
+      if (tagsMatch(c, row)) {
         const picks = c.pickify(val, sendErr, "taggedUnion");
         if (picks === undefined) {
           return undefined; // rest of pattern didn't match
@@ -105,7 +120,7 @@ export function taggedUnion<T extends Row>(
       }
     }
     sendErr(
-      `${tagProp}: "${tags[tagProp]}" didn't match any case in '${name}'`,
+      `tags didn't match any case in '${name}'`,
       val,
     );
   };
@@ -114,27 +129,13 @@ export function taggedUnion<T extends Row>(
     name: "taggedUnion",
   });
 
-  return new RowDomain(pickify, picker, cases);
-}
-
-function extractTags(
-  row: Row,
-  keys: string[],
-  sendErr: SendErr,
-): Record<string, string> | undefined {
-  const out: Record<string, string> = {};
-  for (const key of keys) {
-    const val = row[key];
-    if (typeof val !== "string") {
-      sendErr(`'${key}' property is not a string`, row);
-      return undefined;
-    }
-    out[key] = val;
-  }
-  return out;
+  return new RowDomain(pickify, picker, taggedCases);
 }
 
 export type RowCase<T extends Row> = {
+  /** The names of the properties to check first to see if there's a match. */
+  readonly tags: string[];
+
   readonly shape: RowShape<T>;
   readonly rowPicker: RowPicker<T>;
   readonly pickify: PickifyFunction;
@@ -144,12 +145,14 @@ export type RowCase<T extends Row> = {
  * Returns true if each of the given properties matches the corresponding
  * domain.
  */
-function propsMatch(c: RowCase<Row>, props: Row): boolean {
-  return Object.entries(props).every(([key, val]) => {
-    const domain = c.shape[key];
-    assert(domain !== undefined);
-    return domain.matches(val);
-  });
+function tagsMatch(c: RowCase<Row>, row: Row): boolean {
+  for (const tag of c.tags) {
+    const val = row[tag];
+    if (typeof val !== "string" || !c.shape[tag].matches(val)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export class RowDomain<T extends Row> extends Domain<T> {
