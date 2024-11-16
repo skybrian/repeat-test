@@ -47,7 +47,7 @@ export function object<T extends Row>(
 
   const rowPicker = arb.object(shape);
 
-  const c: RowCase<T> = {
+  const c: RowPattern<T> = {
     tags: [],
     shape,
     pickify,
@@ -132,23 +132,24 @@ export function taggedUnion<T extends Row>(
   return new RowDomain(pickify, picker, taggedCases);
 }
 
-export type RowCase<T extends Row> = {
+export type RowPattern<T extends Row> = {
   /** The names of the properties to check first to see if there's a match. */
   readonly tags: string[];
 
   readonly shape: RowShape<T>;
-  readonly rowPicker: RowPicker<T>;
   readonly pickify: PickifyFunction;
+
+  readonly rowPicker: RowPicker<T>;
 };
 
 /**
  * Returns true if each of the given properties matches the corresponding
  * domain.
  */
-function tagsMatch(c: RowCase<Row>, row: Row): boolean {
-  for (const tag of c.tags) {
+function tagsMatch(pat: RowPattern<Row>, row: Row): boolean {
+  for (const tag of pat.tags) {
     const val = row[tag];
-    if (typeof val !== "string" || !c.shape[tag].matches(val)) {
+    if (typeof val !== "string" || !pat.shape[tag].matches(val)) {
       return false;
     }
   }
@@ -161,7 +162,7 @@ export class RowDomain<T extends Row> extends Domain<T> {
   constructor(
     pickify: PickifyFunction,
     readonly rowPicker: RowPicker<T>,
-    readonly cases: RowCase<T>[],
+    readonly cases: RowPattern<T>[],
   ) {
     super(pickify, rowPicker.buildScript);
     this.#pickify = pickify;
