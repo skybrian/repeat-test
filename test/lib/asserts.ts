@@ -1,17 +1,25 @@
 import type { Arbitrary, Pickable } from "@/arbitrary.ts";
 import type { Domain } from "@/domain.ts";
 
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, fail } from "@std/assert";
 import { take, takeAll, takeGenerated } from "../../src/ordered.ts";
 import { randomPicker } from "../../src/random.ts";
 import { usePicker } from "../../src/build.ts";
 import { Gen } from "@/arbitrary.ts";
+import type { SystemConsole } from "@/runner.ts";
 
-export function assertRoundTrip<T>(dom: Domain<T>, val: T) {
+export function assertRoundTrip<T>(
+  dom: Domain<T>,
+  val: T,
+  console?: SystemConsole,
+) {
   const picks = dom.pickify(val);
   assert(picks.ok);
   const gen = Gen.build(dom, picks.val);
-  assert(gen.ok, `can't generate value ${val} from picks ${picks.val}`);
+  if (!gen.ok) {
+    console?.log("gen:", gen);
+    fail(`can't generate value from picks ${picks.val}:\n${Deno.inspect(val)}`);
+  }
   assertEquals(gen.val, val, "regenerated value didn't match");
 }
 

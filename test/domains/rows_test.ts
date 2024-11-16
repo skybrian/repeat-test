@@ -140,7 +140,7 @@ describe("taggedUnion", () => {
     assertRoundTrip(colors, { "color": "green" });
   });
 
-  it("supports nested tagged unions", () => {
+  it("supports nesting with the same tag", () => {
     const moreColors = dom.taggedUnion<{ color: string }>("color", [
       colors,
       dom.object({ "color": dom.of("blue") }),
@@ -148,6 +148,52 @@ describe("taggedUnion", () => {
     assertRoundTrip(moreColors, { "color": "red" });
     assertRoundTrip(moreColors, { "color": "green" });
     assertRoundTrip(moreColors, { "color": "blue" });
+  });
+
+  it("round trips a nested unions with only one case", () => {
+    const schema = dom.taggedUnion<{ row: string; column: string }>("row", [
+      dom.taggedUnion<{ row: string; column: string }>("column", [
+        dom.object({ "row": dom.of("a", "b"), "column": dom.of("x", "y") }),
+      ]),
+    ]);
+    assertRoundTrip(schema, { "row": "a", "column": "x" });
+  });
+
+  describe("for nested unions with different tags", () => {
+    const columnId = dom.of("a", "b", "c");
+    const rowId = dom.of("x", "y", "z");
+
+    type Row = { x: string; y: string } | {
+      x: string;
+      y: string;
+      name: string;
+    };
+
+    const named = dom.object({
+      "x": dom.of("a"),
+      "y": dom.of("x"),
+      "name": dom.string(),
+    });
+
+    const unnamed = dom.object({
+      "x": columnId,
+      "y": rowId,
+    });
+
+    const schema = dom.taggedUnion<Row>("x", [
+      dom.taggedUnion<Row>("y", [
+        named,
+        unnamed,
+      ]),
+    ]);
+
+    it("round-trips all combinations", () => {
+      repeatTest(schema, (val, console) => {
+        console.sometimes("named", named.matches(val));
+        console.sometimes("unnnamed", !Object.keys(val).includes("name"));
+        schema.regenerate(val);
+      });
+    });
   });
 
   it("reports an error for a non-object", () => {

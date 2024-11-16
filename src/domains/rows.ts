@@ -1,5 +1,5 @@
 import type { Row, RowPicker } from "@/arbitrary.ts";
-import type { PickifyFunction } from "@/domain.ts";
+import type { PickifyFunction, SendErr } from "@/domain.ts";
 
 import * as arb from "@/arbs.ts";
 import { Domain } from "@/domain.ts";
@@ -79,19 +79,20 @@ export function taggedUnion<T extends Row>(
     }
   }
 
+  if (cases.length === 1) {
+    return input[0]; // pick format doesn't begin with a case number
+  }
+
   const pickify: PickifyFunction = (val, sendErr, name) => {
     if (val === null || typeof val !== "object") {
       sendErr("not an object", val);
       return undefined;
     }
 
-    const allProps: { [key in string]?: unknown } = val;
-    const actual = allProps[tagProp];
-    if (typeof actual !== "string") {
-      sendErr(`'${tagProp}' property is not a string`, val);
+    const tags = extractTags(val as Row, [tagProp], sendErr);
+    if (tags === undefined) {
       return undefined;
     }
-    const tags = { [tagProp]: actual };
 
     for (let i = 0; i < cases.length; i++) {
       const c = cases[i];
@@ -103,7 +104,10 @@ export function taggedUnion<T extends Row>(
         return [i, ...picks];
       }
     }
-    sendErr(`${tagProp}: "${actual}" didn't match any case in '${name}'`, val);
+    sendErr(
+      `${tagProp}: "${tags[tagProp]}" didn't match any case in '${name}'`,
+      val,
+    );
   };
 
   const picker = arb.union(...cases.map((c) => c.rowPicker)).with({
@@ -111,6 +115,23 @@ export function taggedUnion<T extends Row>(
   });
 
   return new RowDomain(pickify, picker, cases);
+}
+
+function extractTags(
+  row: Row,
+  keys: string[],
+  sendErr: SendErr,
+): Record<string, string> | undefined {
+  const out: Record<string, string> = {};
+  for (const key of keys) {
+    const val = row[key];
+    if (typeof val !== "string") {
+      sendErr(`'${key}' property is not a string`, row);
+      return undefined;
+    }
+    out[key] = val;
+  }
+  return out;
 }
 
 export type RowCase<T extends Row> = {
