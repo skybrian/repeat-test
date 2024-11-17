@@ -229,4 +229,66 @@ describe("table", () => {
       });
     });
   });
+
+  describe("with two row shapes", () => {
+    const id = dom.int(1, 10);
+
+    type RowType =
+      | { id: number; kind: "number"; value: number }
+      | { id: number; kind: "string"; value: string };
+
+    const row = dom.taggedUnion<RowType>("kind", [
+      dom.object<RowType>({
+        id,
+        kind: dom.of("string"),
+        value: dom.string(),
+      }),
+      dom.object<RowType>({
+        id,
+        kind: dom.of("number"),
+        value: dom.int(1, 10),
+      }),
+    ]);
+
+    const table = dom.table(row, { keys: ["id"] });
+
+    it("round trips generated tables", () => {
+      repeatTest(table, (rows) => {
+        assertRoundTrip(table, rows);
+      });
+    });
+
+    it("rejects an array with a non-object", () => {
+      const invalid = [1, 2, 3];
+      assertThrows(
+        () => table.parse(invalid as unknown as RowType[]),
+        Error,
+        `0: not an object`,
+      );
+    });
+  });
+
+  it("throws if a unique key isn't defined", () => {
+    assertThrows(
+      () => dom.table(dom.object({}), { keys: ["id"] }),
+      Error,
+      "unique key 'id' not defined",
+    );
+  });
+
+  it("throws for a union with inconsistent id types", () => {
+    const row = dom.taggedUnion<{ id: number; kind: "a" | "b" }>(
+      "kind",
+      [
+        dom.object({ id: dom.int(1, 10), kind: dom.of("a") }),
+        dom.object({ id: dom.int(11, 20), kind: dom.of("b") }),
+      ],
+    );
+
+    assertThrows(
+      () => dom.table(row, { keys: ["id"] }),
+      Error,
+      "unique key 'id' not defined the same way in each case",
+    );
+  });
 });

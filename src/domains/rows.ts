@@ -54,7 +54,7 @@ export function object<T extends Row>(
     rowPicker,
   };
 
-  return new RowDomain(pickify, rowPicker, [c]);
+  return new RowDomain(pickify, rowPicker, [c], () => 0);
 }
 
 /**
@@ -101,14 +101,15 @@ export function taggedUnion<T extends Row>(
   function findPatternIndex(
     val: unknown,
     sendErr: SendErr,
+    opts?: { at: number | string },
   ): number | undefined {
     if (val === null || typeof val !== "object") {
-      sendErr("not an object", val);
+      sendErr("not an object", val, opts);
       return undefined;
     }
     const row = val as Row;
     if (typeof row[tagProp] !== "string") {
-      sendErr(`'${tagProp}' property is not a string`, row);
+      sendErr(`'${tagProp}' property is not a string`, row, opts);
       return undefined;
     }
 
@@ -143,7 +144,7 @@ export function taggedUnion<T extends Row>(
     name: "taggedUnion",
   });
 
-  return new RowDomain(pickify, picker, taggedCases);
+  return new RowDomain(pickify, picker, taggedCases, findPatternIndex);
 }
 
 export type RowPattern<T extends Row> = {
@@ -177,6 +178,11 @@ export class RowDomain<T extends Row> extends Domain<T> {
     pickify: PickifyFunction,
     readonly rowPicker: RowPicker<T>,
     readonly cases: RowPattern<T>[],
+    readonly findPatternIndex: (
+      val: unknown,
+      sendErr: SendErr,
+      opts?: { at: number | string },
+    ) => number | undefined,
   ) {
     super(pickify, rowPicker.buildScript);
     this.#pickify = pickify;
@@ -187,6 +193,7 @@ export class RowDomain<T extends Row> extends Domain<T> {
       this.#pickify,
       this.rowPicker.with(opts),
       this.cases,
+      this.findPatternIndex,
     );
   }
 }

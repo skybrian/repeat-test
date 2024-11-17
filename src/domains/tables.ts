@@ -67,7 +67,6 @@ export function table<R extends Record<string, unknown>>(
   opts?: arb.TableOpts<R>,
 ): Domain<R[]> {
   const { min, max } = parseArrayOpts(opts);
-  const build = arb.table(item.rowPicker, opts);
 
   const uniqueKeys = opts?.keys ?? [];
 
@@ -75,18 +74,20 @@ export function table<R extends Record<string, unknown>>(
   const first = shapes[0];
   for (const key of uniqueKeys) {
     if (!first[key]) {
-      throw new Error(`unique key ${key} not defined`);
+      throw new Error(`unique key '${key}' not defined`);
     }
   }
   for (let i = 1; i < shapes.length; i++) {
     for (const key of uniqueKeys) {
       if (first[key] !== shapes[i][key]) {
         throw new Error(
-          `unique key ${key} not defined the same way in each case`,
+          `unique key '${key}' not defined the same way in each case`,
         );
       }
     }
   }
+
+  const build = arb.table(item.rowPicker, opts);
 
   function pickifyTable(rows: unknown, sendErr: SendErr) {
     if (!checkArray(rows, min, max, sendErr)) {
@@ -118,9 +119,16 @@ function pickifyRow<R extends Row>(
   val: unknown,
   out: TableWriter<R>,
 ): boolean {
-  const shapes = out.item.cases.map((c) => c.shape);
-  assert(shapes.length === 1, "not implemented");
-  const shape: RowShape<R> = shapes[0];
+  const patternIndex = out.item.findPatternIndex(val, out.sendErr, {
+    at: out.rowCount,
+  });
+  if (patternIndex === undefined) {
+    return false;
+  }
+  const shape = out.item.cases[patternIndex].shape;
+  if (out.item.cases.length > 1) {
+    out.buf.push(patternIndex);
+  }
 
   if (val === null || typeof val !== "object") {
     out.sendErr("not an object", val, { at: out.rowCount });
