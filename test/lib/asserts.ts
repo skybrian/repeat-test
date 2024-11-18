@@ -78,10 +78,10 @@ export function assertFirstGenerated<T>(
 }
 
 export function assertGenerated<T>(
-  arb: Pickable<T>,
+  set: Pickable<T>,
   expected: Generated<T>[],
 ) {
-  assertEquals(takeGen(arb, expected.length + 5), expected);
+  assertEquals(takeGen(set, expected.length + 5), expected);
 }
 
 export function assertFirstValues<T>(

@@ -1,13 +1,14 @@
 import type { RowShape } from "@/domain.ts";
 
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 
 import { repeatTest } from "@/runner.ts";
 import * as dom from "@/doms.ts";
 
 import { assertEncoding, assertRoundTrip } from "../lib/asserts.ts";
 import { ParseError } from "@/domain.ts";
+import { propsFromGen } from "../lib/props.ts";
 
 describe("object", () => {
   describe("constructor", () => {
@@ -24,11 +25,11 @@ describe("object", () => {
     });
   });
 
+  const anyObject = dom.object({});
+  const pair = dom.object({ a: dom.int(0, 1), b: dom.int(0, 1) });
+
   describe("parse", () => {
     describe("with default settings", () => {
-      const anyObject = dom.object({});
-      const pair = dom.object({ a: dom.int(0, 1), b: dom.int(0, 1) });
-
       it("rejects non-objects", () => {
         assertThrows(() => anyObject.parse(undefined), Error, "not an object");
         assertThrows(() => anyObject.parse(null), Error, "not an object");
@@ -72,6 +73,28 @@ describe("object", () => {
           Error,
           "nest: extra property: b",
         );
+      });
+    });
+
+    describe("regenerate", () => {
+      it("generates no picks for an empty object", () => {
+        assertEncoding(anyObject, [], {});
+      });
+
+      it("generates no picks for an ignored property", () => {
+        const gen = anyObject.regenerate({ "extra": true });
+        assert(gen.ok);
+        assertEquals(propsFromGen(gen), {
+          val: {},
+          name: "empty object",
+          reqs: [],
+          replies: [],
+        });
+      });
+
+      it("generates no picks for a constant property", () => {
+        const constObject = dom.object({ a: dom.of(0) });
+        assertEncoding(constObject, [], { a: 0 });
       });
     });
   });

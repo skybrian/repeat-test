@@ -268,6 +268,30 @@ describe("table", () => {
     });
   });
 
+  describe("with two row shapes that have constant props", () => {
+    type RowType = { kind: "one"; val: 1 } | { kind: "two"; val: 2 };
+
+    const row = dom.taggedUnion<RowType>("kind", [
+      dom.object<RowType>({ kind: dom.of("one"), val: dom.of(1) }),
+      dom.object<RowType>({ kind: dom.of("two"), val: dom.of(2) }),
+    ]);
+
+    const table = dom.table(row);
+
+    it("round trips generated tables", () => {
+      repeatTest(table, (rows) => {
+        assertRoundTrip(table, rows);
+      });
+    });
+
+    it("encodes the table using case indexes only", () => {
+      assertEncoding(table, [1, 0, 1, 1, 0], [{ kind: "one", val: 1 }, {
+        kind: "two",
+        val: 2,
+      }]);
+    });
+  });
+
   it("throws if a unique key isn't defined", () => {
     assertThrows(
       () => dom.table(dom.object({}), { keys: ["id"] }),
