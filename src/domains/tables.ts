@@ -135,6 +135,14 @@ function pickifyRow<R extends Row>(
     return false;
   }
   const row = val as Row;
+  let rowAt = `${out.rowCount}`;
+  if (out.uniqueKeys.length > 0) {
+    const key = out.uniqueKeys[0];
+    const val = row[key];
+    if (shape[key].matches(val)) {
+      rowAt = `[${key}=${val}]`;
+    }
+  }
 
   const keys = Object.keys(shape) as (keyof R & string)[];
   for (const key of keys) {
@@ -142,7 +150,7 @@ function pickifyRow<R extends Row>(
     const replies = shape[key].innerPickify(
       propVal,
       out.sendErr,
-      `${out.rowCount}.${key}`,
+      `${rowAt}.${key}`,
     );
     if (replies === undefined) return false;
 

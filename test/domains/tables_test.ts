@@ -292,6 +292,28 @@ describe("table", () => {
     });
   });
 
+  describe("with a key-value pair", () => {
+    const row = dom.object({
+      key: dom.string(),
+      value: dom.string(),
+    });
+    const table = dom.table(row, { keys: ["key"] });
+
+    it("round trips generated tables", () => {
+      repeatTest(table, (rows) => {
+        assertRoundTrip(table, rows);
+      }, { reps: 10 });
+    });
+
+    it("rejects a table with a bad value", () => {
+      assertThrows(
+        () => table.parse([{ key: "a", value: 1 }]),
+        Error,
+        "[key=a].value: not a string",
+      );
+    });
+  });
+
   it("throws if a unique key isn't defined", () => {
     assertThrows(
       () => dom.table(dom.object({}), { keys: ["id"] }),

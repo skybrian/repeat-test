@@ -1,4 +1,4 @@
-import { dom, type Domain } from "@/mod.ts";
+import { dom, type Domain, type RowDomain } from "@/mod.ts";
 import { object } from "@/doms.ts";
 
 function maybe<T>(d: Domain<T>) {
@@ -55,7 +55,7 @@ export type Property = {
   tsType: TsType;
 };
 
-export const property: Domain<Property> = object({
+export const property: RowDomain<Property> = object({
   name: dom.string(),
   tsType: innerType,
 });
@@ -149,19 +149,20 @@ export type Method = {
   };
 };
 
-export const method: Domain<Method> = object({
+export const method: RowDomain<Method> = object({
   name: dom.string(),
   functionDef,
 });
 
 export const classDef = object({
   isAbstract: dom.boolean(),
-  typeParams: dom.array(object({
-    name: dom.string(),
-  })),
+  typeParams: dom.table(
+    object({ name: dom.string() }),
+    { keys: ["name"] },
+  ),
   constructors: dom.array(constructor),
-  properties: dom.array(property),
-  methods: dom.array(method),
+  properties: dom.table(property, { keys: ["name"] }),
+  methods: dom.array(method), // multiple method signatures are possible
 });
 
 export type ClassDef = ReturnType<typeof classDef.parse>;
@@ -172,17 +173,17 @@ export type InterfaceMethod = {
   returnType: TsType;
 };
 
-export const interfaceMethod: Domain<InterfaceMethod> = object({
+export const interfaceMethod: RowDomain<InterfaceMethod> = object({
   name: dom.string(),
   params: dom.array(param),
   returnType: tsType,
 });
 
 export const interfaceDef = object({
-  typeParams: dom.array(object({ name: dom.string() })),
+  typeParams: dom.table(dom.object({ name: dom.string() }), { keys: ["name"] }),
   callSignatures: dom.array(fnOrConstructor),
-  properties: dom.array(property),
-  methods: dom.array(interfaceMethod),
+  properties: dom.table(property, { keys: ["name"] }),
+  methods: dom.table(interfaceMethod, { keys: ["name"] }),
 });
 
 export type InterfaceDef = ReturnType<typeof interfaceDef.parse>;
@@ -225,35 +226,37 @@ export type Node =
     moduleDoc?: string;
   };
 
+const name = dom.string();
+
 export const node = dom.taggedUnion<Node>("kind", [
   object({
     kind: dom.of("typeAlias"),
-    name: dom.string(),
+    name,
     typeAliasDef: typeAliasDef,
   }),
   object({
     kind: dom.of("class"),
-    name: dom.string(),
+    name,
     classDef: classDef,
   }),
   object({
     kind: dom.of("interface"),
-    name: dom.string(),
+    name,
     interfaceDef: interfaceDef,
   }),
   object({
     kind: dom.of("function"),
-    name: dom.string(),
+    name,
     functionDef: functionDef,
   }),
   object({
     kind: dom.of("variable"),
-    name: dom.string(),
+    name,
     variableDef: variableDef,
   }),
   object({
     kind: dom.of("moduleDoc"),
-    name: dom.string(),
+    name,
     moduleDoc: maybe(dom.string()),
   }),
 ]);
@@ -263,7 +266,7 @@ export const node = dom.taggedUnion<Node>("kind", [
  */
 export const schema = object({
   version: dom.int(0, 1000),
-  nodes: dom.array(node),
+  nodes: dom.table(node, { keys: ["name"] }),
 });
 
 export type Schema = ReturnType<typeof schema.parse>;
