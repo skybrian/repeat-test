@@ -87,7 +87,8 @@ export function table<R extends Record<string, unknown>>(
     }
   }
 
-  const build = arb.table(item.rowPicker, opts);
+  const buildRow = arb.union(...item.pats.map((c) => c.rowPicker));
+  const build = arb.table(buildRow, opts);
 
   function pickifyTable(rows: unknown, sendErr: SendErr) {
     if (!checkArray(rows, min, max, sendErr)) {
@@ -119,15 +120,15 @@ function pickifyRow<R extends Row>(
   val: unknown,
   out: TableWriter<R>,
 ): boolean {
-  const patternIndex = out.item.findPatternIndex(val, out.sendErr, {
+  const pat = out.item.findPattern(val, out.sendErr, {
     at: out.rowCount,
   });
-  if (patternIndex === undefined) {
+  if (pat === undefined) {
     return false;
   }
-  const shape = out.item.pats[patternIndex].shape;
+
   if (out.item.pats.length > 1) {
-    out.buf.push(patternIndex);
+    out.buf.push(pat.index);
   }
 
   if (val === null || typeof val !== "object") {
@@ -139,22 +140,22 @@ function pickifyRow<R extends Row>(
   if (out.uniqueKeys.length > 0) {
     const key = out.uniqueKeys[0];
     const val = row[key];
-    if (shape[key].matches(val)) {
+    if (pat.shape[key].matches(val)) {
       rowAt = `[${key}=${val}]`;
     }
   }
 
-  const keys = Object.keys(shape) as (keyof R & string)[];
+  const keys = Object.keys(pat.shape) as (keyof R & string)[];
   for (const key of keys) {
     const propVal = row[key];
-    const replies = shape[key].innerPickify(
+    const replies = pat.shape[key].innerPickify(
       propVal,
       out.sendErr,
       `${rowAt}.${key}`,
     );
     if (replies === undefined) return false;
 
-    if (!fieldAdded(shape, key, propVal, replies, out)) {
+    if (!fieldAdded(pat.shape, key, propVal, replies, out)) {
       return false;
     }
 

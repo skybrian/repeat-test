@@ -33,7 +33,7 @@ export function object<T extends Row>(
   shape: RowShape<T>,
   opts?: RowShapeOpts,
 ): RowDomain<T> {
-  const pat = new RowPattern([], shape, opts);
+  const pat = new RowPattern(0, [], shape, opts);
   return RowDomain.object(pat);
 }
 
@@ -64,7 +64,7 @@ export function taggedUnion<T extends Row>(
     }
   }
 
-  return RowDomain.union(tagProp, pats);
+  return RowDomain.taggedUnion(tagProp, pats);
 }
 
 /**
@@ -77,6 +77,8 @@ export class RowPattern<T extends Row> {
   #opts?: RowShapeOpts;
 
   constructor(
+    /** The index of this case in the tagged union. */
+    readonly index: number,
     /** The names of the properties to use for checking if this is the right case. */
     readonly tags: string[],
     readonly shape: RowShape<T>,
@@ -84,6 +86,21 @@ export class RowPattern<T extends Row> {
   ) {
     this.rowPicker = arb.object(shape);
     this.#opts = opts;
+  }
+
+  /**
+   * Returns true if each of the row's tag properties match this pattern.
+   *
+   * (There might still be a mismatch due to the other properties.)
+   */
+  tagsMatch(row: Row): boolean {
+    for (const tag of this.tags) {
+      const val = row[tag];
+      if (typeof val !== "string" || !this.shape[tag].matches(val)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -129,103 +146,107 @@ export class RowPattern<T extends Row> {
       throw new Error(`case ${at} doesn't have a '${name}' property`);
     }
 
-    return new RowPattern([...this.tags, name], this.shape, this.#opts);
+    return new RowPattern(at, [...this.tags, name], this.shape, this.#opts);
   }
 }
 
-/**
- * Returns true if each of the given properties matches the corresponding
- * domain.
- */
-function tagsMatch(pat: RowPattern<Row>, row: Row): boolean {
-  for (const tag of pat.tags) {
-    const val = row[tag];
-    if (typeof val !== "string" || !pat.shape[tag].matches(val)) {
-      return false;
-    }
+function checkIsRow(
+  val: unknown,
+  sendErr: SendErr,
+  opts?: { at: number | string },
+): val is Row {
+  if (val === null || typeof val !== "object") {
+    sendErr("not an object", val, opts);
+    return false;
   }
   return true;
 }
 
 export class RowDomain<T extends Row> extends Domain<T> {
-  readonly #pickify: PickifyFunction;
-
   private constructor(
-    readonly rowPicker: RowPicker<T>,
+    name: string,
     readonly pats: RowPattern<T>[],
-    readonly findPatternIndex: (
+    readonly checkIsRow: (
       val: unknown,
       sendErr: SendErr,
       opts?: { at: number | string },
-    ) => number | undefined,
+    ) => val is Row,
   ) {
     const pickify: PickifyFunction = (val, sendErr, name) => {
-      const index = findPatternIndex(val, sendErr);
-      if (index === undefined) {
-        sendErr(
-          `tags didn't match any case in '${name}'`,
-          val,
-        );
+      const pat = this.findPattern(val, sendErr);
+      if (pat === undefined) {
         return undefined;
       }
 
-      const pat = pats[index];
       const picks = pat.pickify(val, sendErr, name);
       if (picks === undefined) {
         return undefined;
       }
-      return pats.length > 1 ? [index, ...picks] : picks;
+      return pats.length > 1 ? [pat.index, ...picks] : picks;
     };
 
-    super(pickify, rowPicker.buildScript);
-    this.#pickify = pickify;
+    const build =
+      arb.union(...pats.map((c) => c.rowPicker)).with({ name }).buildScript;
+    super(pickify, build);
   }
 
-  override with(opts: { name: string }): RowDomain<T> {
-    return new RowDomain(
-      this.rowPicker.with(opts),
-      this.pats,
-      this.findPatternIndex,
-    );
-  }
-
-  static object<T extends Row>(
-    pat: RowPattern<T>,
-  ): RowDomain<T> {
-    return new RowDomain(pat.rowPicker, [pat], () => 0);
-  }
-
-  static union<T extends Row>(
-    tagProp: string,
-    pats: RowPattern<T>[],
-  ): RowDomain<T> {
-    function findPatternIndex(
-      val: unknown,
-      sendErr: SendErr,
-      opts?: { at: number | string },
-    ): number | undefined {
-      if (val === null || typeof val !== "object") {
-        sendErr("not an object", val, opts);
-        return undefined;
-      }
-      const row = val as Row;
-      if (typeof row[tagProp] !== "string") {
-        sendErr(`'${tagProp}' property is not a string`, row, opts);
-        return undefined;
-      }
-
-      for (let i = 0; i < pats.length; i++) {
-        if (tagsMatch(pats[i], row)) {
-          return i;
-        }
-      }
+  /**
+   * Given a value, returns the first RowPattern that matches it.
+   */
+  findPattern(
+    val: unknown,
+    sendErr: SendErr,
+    opts?: { at: number | string },
+  ): RowPattern<T> | undefined {
+    if (!this.checkIsRow(val, sendErr, opts)) {
       return undefined;
     }
 
-    const picker = arb.union(...pats.map((c) => c.rowPicker)).with({
-      name: "taggedUnion",
-    });
+    for (let i = 0; i < this.pats.length; i++) {
+      const pat = this.pats[i];
+      if (pat.tagsMatch(val)) {
+        return pat;
+      }
+    }
 
-    return new RowDomain(picker, pats, findPatternIndex);
+    sendErr(`tags didn't match any case in '${this.name}'`, val);
+    return undefined;
+  }
+
+  /** Renames the domain. */
+  override with(opts: { name: string }): RowDomain<T> {
+    const name = opts.name ?? this.name;
+    return new RowDomain(name, this.pats, this.checkIsRow);
+  }
+
+  /** Creates a RowDomain with a single case and no tag properties. */
+  static object<T extends Row>(
+    pat: RowPattern<T>,
+  ): RowDomain<T> {
+    const name = Object.keys(pat.shape).length > 0 ? "object" : "empty object";
+    return new RowDomain(name, [pat], checkIsRow);
+  }
+
+  /** Creates a RowDomain with the given tag property. */
+  static taggedUnion<T extends Row>(
+    tagProp: string,
+    pats: RowPattern<T>[],
+  ): RowDomain<T> {
+    function checkIsTagged(
+      val: unknown,
+      sendErr: SendErr,
+      opts?: { at: number | string },
+    ): val is Row {
+      if (!checkIsRow(val, sendErr, opts)) {
+        return false;
+      }
+      if (typeof val[tagProp] !== "string") {
+        sendErr(`'${tagProp}' property is not a string`, val, opts);
+        return false;
+      }
+      return true;
+    }
+
+    return new RowDomain("taggedUnion", pats, checkIsTagged);
   }
 }
