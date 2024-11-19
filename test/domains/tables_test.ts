@@ -290,6 +290,14 @@ describe("table", () => {
         val: 2,
       }]);
     });
+
+    it("rejects a row that doesn't match either shape", () => {
+      assertThrows(
+        () => table.parse([{ kind: "three", val: 3 }]),
+        Error,
+        `tags didn't match any case in 'taggedUnion'`,
+      );
+    });
   });
 
   describe("with a key-value pair", () => {

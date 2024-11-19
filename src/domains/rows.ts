@@ -33,8 +33,7 @@ export function object<T extends Row>(
   shape: RowShape<T>,
   opts?: RowShapeOpts,
 ): RowDomain<T> {
-  const pat = new RowPattern(0, [], shape, opts);
-  return RowDomain.object(pat);
+  return RowDomain.object(shape, opts);
 }
 
 /**
@@ -53,18 +52,7 @@ export function taggedUnion<T extends Row>(
   tagProp: keyof T & string,
   cases: RowDomain<T>[],
 ): RowDomain<T> {
-  if (cases.length === 0) {
-    throw new Error("taggedUnion requires at least one case");
-  }
-
-  const pats: RowPattern<T>[] = [];
-  for (const c of cases) {
-    for (const pat of c.pats) {
-      pats.push(pat.withTag(tagProp, pats.length));
-    }
-  }
-
-  return RowDomain.taggedUnion(tagProp, pats);
+  return RowDomain.taggedUnion(tagProp, cases);
 }
 
 /**
@@ -104,14 +92,9 @@ export class RowPattern<T extends Row> {
   }
 
   /**
-   * Returns the picks for the given object, not including the case number.
+   * Returns the picks for the given row, not including the case number.
    */
-  readonly pickify: PickifyFunction = (val, sendErr) => {
-    if (val === null || typeof val !== "object") {
-      sendErr("not an object", val);
-      return undefined;
-    }
-
+  pickify(val: Row, sendErr: SendErr) {
     if (this.#opts?.strict) {
       for (const key of Object.keys(val)) {
         if (!(key in this.shape)) {
@@ -129,7 +112,7 @@ export class RowPattern<T extends Row> {
       out.push(...picks);
     }
     return out;
-  };
+  }
 
   /**
    * Marks the property with the given name as a tag that distinguishes this
@@ -162,48 +145,56 @@ function checkIsRow(
   return true;
 }
 
+/**
+ * A Domain that matches objects with one of more possible shapes.
+ */
 export class RowDomain<T extends Row> extends Domain<T> {
+  #tagProp: string | undefined;
+
   private constructor(
     name: string,
-    readonly pats: RowPattern<T>[],
-    readonly checkIsRow: (
-      val: unknown,
-      sendErr: SendErr,
-      opts?: { at: number | string },
-    ) => val is Row,
+    tagProp: string | undefined,
+    /** The possible shapes for objects in this domain. */
+    readonly patterns: RowPattern<T>[],
   ) {
-    const pickify: PickifyFunction = (val, sendErr, name) => {
+    const pickify: PickifyFunction = (val, sendErr) => {
+      if (!checkIsRow(val, sendErr)) {
+        return undefined;
+      }
+
       const pat = this.findPattern(val, sendErr);
       if (pat === undefined) {
         return undefined;
       }
 
-      const picks = pat.pickify(val, sendErr, name);
+      const picks = pat.pickify(val, sendErr);
       if (picks === undefined) {
         return undefined;
       }
-      return pats.length > 1 ? [pat.index, ...picks] : picks;
+      return patterns.length > 1 ? [pat.index, ...picks] : picks;
     };
 
     const build =
-      arb.union(...pats.map((c) => c.rowPicker)).with({ name }).buildScript;
+      arb.union(...patterns.map((c) => c.rowPicker)).with({ name }).buildScript;
     super(pickify, build);
+    this.#tagProp = tagProp;
   }
 
   /**
    * Given a value, returns the first RowPattern that matches it.
    */
   findPattern(
-    val: unknown,
+    val: Row,
     sendErr: SendErr,
     opts?: { at: number | string },
   ): RowPattern<T> | undefined {
-    if (!this.checkIsRow(val, sendErr, opts)) {
+    if (this.#tagProp !== undefined && typeof val[this.#tagProp] !== "string") {
+      sendErr(`'${this.#tagProp}' property is not a string`, val, opts);
       return undefined;
     }
 
-    for (let i = 0; i < this.pats.length; i++) {
-      const pat = this.pats[i];
+    for (let i = 0; i < this.patterns.length; i++) {
+      const pat = this.patterns[i];
       if (pat.tagsMatch(val)) {
         return pat;
       }
@@ -215,38 +206,35 @@ export class RowDomain<T extends Row> extends Domain<T> {
 
   /** Renames the domain. */
   override with(opts: { name: string }): RowDomain<T> {
-    const name = opts.name ?? this.name;
-    return new RowDomain(name, this.pats, this.checkIsRow);
+    return new RowDomain(opts.name, this.#tagProp, this.patterns);
   }
 
   /** Creates a RowDomain with a single case and no tag properties. */
   static object<T extends Row>(
-    pat: RowPattern<T>,
+    shape: RowShape<T>,
+    opts?: RowShapeOpts,
   ): RowDomain<T> {
-    const name = Object.keys(pat.shape).length > 0 ? "object" : "empty object";
-    return new RowDomain(name, [pat], checkIsRow);
+    const name = Object.keys(shape).length > 0 ? "object" : "empty object";
+    const pat = new RowPattern(0, [], shape, opts);
+    return new RowDomain(name, undefined, [pat]);
   }
 
   /** Creates a RowDomain with the given tag property. */
   static taggedUnion<T extends Row>(
-    tagProp: string,
-    pats: RowPattern<T>[],
+    tagProp: keyof T & string,
+    cases: RowDomain<T>[],
   ): RowDomain<T> {
-    function checkIsTagged(
-      val: unknown,
-      sendErr: SendErr,
-      opts?: { at: number | string },
-    ): val is Row {
-      if (!checkIsRow(val, sendErr, opts)) {
-        return false;
-      }
-      if (typeof val[tagProp] !== "string") {
-        sendErr(`'${tagProp}' property is not a string`, val, opts);
-        return false;
-      }
-      return true;
+    if (cases.length === 0) {
+      throw new Error("taggedUnion requires at least one case");
     }
 
-    return new RowDomain("taggedUnion", pats, checkIsTagged);
+    const pats: RowPattern<T>[] = [];
+    for (const c of cases) {
+      for (const pat of c.patterns) {
+        pats.push(pat.withTag(tagProp, pats.length));
+      }
+    }
+
+    return new RowDomain("taggedUnion", tagProp, pats);
   }
 }

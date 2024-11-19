@@ -70,7 +70,7 @@ export function table<R extends Record<string, unknown>>(
 
   const uniqueKeys = opts?.keys ?? [];
 
-  const shapes = item.pats.map((c) => c.shape);
+  const shapes = item.patterns.map((c) => c.shape);
   const first = shapes[0];
   for (const key of uniqueKeys) {
     if (!first[key]) {
@@ -87,7 +87,7 @@ export function table<R extends Record<string, unknown>>(
     }
   }
 
-  const buildRow = arb.union(...item.pats.map((c) => c.rowPicker));
+  const buildRow = arb.union(...item.patterns.map((c) => c.rowPicker));
   const build = arb.table(buildRow, opts);
 
   function pickifyTable(rows: unknown, sendErr: SendErr) {
@@ -120,22 +120,21 @@ function pickifyRow<R extends Row>(
   val: unknown,
   out: TableWriter<R>,
 ): boolean {
-  const pat = out.item.findPattern(val, out.sendErr, {
-    at: out.rowCount,
-  });
-  if (pat === undefined) {
-    return false;
-  }
-
-  if (out.item.pats.length > 1) {
-    out.buf.push(pat.index);
-  }
-
   if (val === null || typeof val !== "object") {
     out.sendErr("not an object", val, { at: out.rowCount });
     return false;
   }
   const row = val as Row;
+
+  const pat = out.item.findPattern(row, out.sendErr, { at: out.rowCount });
+  if (pat === undefined) {
+    return false;
+  }
+
+  if (out.item.patterns.length > 1) {
+    out.buf.push(pat.index);
+  }
+
   let rowAt = `${out.rowCount}`;
   if (out.uniqueKeys.length > 0) {
     const key = out.uniqueKeys[0];
