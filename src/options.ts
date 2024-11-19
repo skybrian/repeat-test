@@ -13,36 +13,6 @@ export type SendErr = (
 ) => void;
 
 /**
- * Checks that value is an object and optionally that it has the given keys.
- */
-export function checkKeys(
-  val: unknown,
-  expectedKeys: Record<string, unknown>,
-  sendErr: SendErr,
-  opts?: { at?: string | number; strict?: boolean },
-): val is Record<never, never> {
-  if (val === null || typeof val !== "object") {
-    const at = opts?.at;
-    const errOpts = (at !== undefined) ? { at } : undefined;
-    sendErr("not an object", val, errOpts);
-    return false;
-  }
-
-  const strict = opts?.strict ?? false;
-  if (strict) {
-    for (const key of Object.keys(val)) {
-      if (!(key in expectedKeys)) {
-        const at = opts?.at;
-        const errOpts = (at !== undefined) ? { at } : undefined;
-        sendErr(`extra property: ${key}`, val, errOpts);
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-/**
  * Defines constraints on generated arrays.
  */
 export type ArrayOpts = {
