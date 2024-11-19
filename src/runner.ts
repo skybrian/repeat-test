@@ -1,7 +1,7 @@
 import type { Failure, Success } from "./results.ts";
 import type { Pickable } from "./pickable.ts";
 import type { IntPicker } from "./picks.ts";
-import type { Gen } from "./gen_class.ts";
+import type { Gen, GenerateOpts } from "./gen_class.ts";
 import type { Coverage, SystemConsole, TestConsole } from "./console.ts";
 
 import { assert, assertEquals, AssertionError } from "@std/assert";
@@ -121,12 +121,12 @@ export class RepSource<T> {
     return { ok: true, key, arb: this.arb, arg, test: this.test };
   }
 
-  generateRandom(): Rep<T> | RepFailure<T> | undefined {
+  generateRandom(opts?: GenerateOpts): Rep<T> | RepFailure<T> | undefined {
     this.tracker.pickSource = this.pickers.next().value;
     this.randomReps++;
     const key = { id: this.id, seed: this.seed, index: this.randomReps };
     try {
-      const arg = generate(this.arb, this.stream);
+      const arg = generate(this.arb, this.stream, opts);
       if (arg === filtered) {
         return undefined;
       }
@@ -159,6 +159,7 @@ export class RepSource<T> {
 export function* generateReps<T>(
   sources: RepSource<T>[],
   seed: number,
+  opts?: GenerateOpts,
 ): Generator<Rep<T> | RepFailure<T>> {
   // Generate the default for each Arbitrary.
   for (const source of sources) {
@@ -170,7 +171,7 @@ export function* generateReps<T>(
   while (sources.length > 0) {
     const choice = picker.pick(new PickRequest(0, sources.length - 1));
     const src = sources[choice];
-    const rep = src.generateRandom();
+    const rep = src.generateRandom(opts);
     if (rep === undefined) {
       sources.splice(choice, 1);
     } else {
@@ -283,12 +284,25 @@ export type RepeatOpts = {
    */
   reps?: number;
 
+  /**
+   * The limit on the size of random inputs.
+   *
+   * This is measured in the number of random integers that were generated while
+   * building the value. After the limit is reached, default values are returned
+   * instead of picking randomly.
+   *
+   * If not specified, defaults to 10,000.
+   */
+  maxPicks?: number;
+
   /** If specified, repeatTest will rerun a single rep. */
   only?: string;
 
   /** If specified, repeatTest will send output to an alternate console. */
   console?: SystemConsole;
 };
+
+const maxPicksDefault = 10_000;
 
 function parseOnlyOption(input: string): RepKey {
   const parsed = parseRepKey(input);
@@ -358,7 +372,8 @@ export function repeatTest<T>(
   if (only) {
     sources = sources.filter((source) => source.id === only.id);
   }
-  const reps = generateReps(sources, seed);
+  const limit = opts?.maxPicks ?? maxPicksDefault;
+  const reps = generateReps(sources, seed, { limit });
 
   const startIndex = only?.index ?? 0;
 

@@ -6,6 +6,7 @@ import arbEntry from "./data/arbitrary_0.4.json" with { type: "json" };
 import runnerEntry from "./data/runner_0.4.json" with { type: "json" };
 
 import { assertEquals } from "@std/assert/equals";
+import { repeatTest } from "@/mod.ts";
 
 describe("linesFromSchema", () => {
   it("prints the docs for for arbitrary entrypoint", () => {
@@ -13,10 +14,17 @@ describe("linesFromSchema", () => {
     const lines = Array.from(linesFromSchema(parsed)).join("\n");
     assertEquals(lines, expectedArbEntry);
   });
+
   it("prints the docs for for arbitrary entrypoint", () => {
     const parsed = schema.parse(runnerEntry);
     const lines = Array.from(linesFromSchema(parsed)).join("\n");
     assertEquals(lines, expectedRunnerEntry);
+  });
+
+  it("doesn't fail for an arbitrary schema", () => {
+    repeatTest(schema, (s) => {
+      linesFromSchema(s);
+    });
   });
 });
 

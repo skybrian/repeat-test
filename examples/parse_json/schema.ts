@@ -265,7 +265,7 @@ export const node = dom.taggedUnion<Node>("kind", [
  * A partial schema for the JSON printed by `deno doc --json`.
  */
 export const schema = object({
-  version: dom.int(0, 1000),
+  version: dom.of(1),
   nodes: dom.table(node, { keys: ["name"] }),
 });
 

@@ -32,6 +32,7 @@ describe("array", () => {
           }
           console.sometimes(`length is 10000`, arr.length === 10000);
         },
+        { maxPicks: 20000 },
       );
     });
   });
