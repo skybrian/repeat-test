@@ -70,7 +70,7 @@ export function table<R extends Record<string, unknown>>(
 
   const uniqueKeys = opts?.keys ?? [];
 
-  const shapes = item.cases.map((c) => c.shape);
+  const shapes = item.pats.map((c) => c.shape);
   const first = shapes[0];
   for (const key of uniqueKeys) {
     if (!first[key]) {
@@ -125,8 +125,8 @@ function pickifyRow<R extends Row>(
   if (patternIndex === undefined) {
     return false;
   }
-  const shape = out.item.cases[patternIndex].shape;
-  if (out.item.cases.length > 1) {
+  const shape = out.item.pats[patternIndex].shape;
+  if (out.item.pats.length > 1) {
     out.buf.push(patternIndex);
   }
 

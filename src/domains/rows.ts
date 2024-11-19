@@ -34,7 +34,7 @@ export function object<T extends Row>(
   opts?: RowShapeOpts,
 ): RowDomain<T> {
   const pat = new RowPattern([], shape, opts);
-  return new RowDomain(pat.pickify, pat.rowPicker, [pat], () => 0);
+  return RowDomain.object(pat);
 }
 
 /**
@@ -59,61 +59,12 @@ export function taggedUnion<T extends Row>(
 
   const pats: RowPattern<T>[] = [];
   for (const c of cases) {
-    for (const pat of c.cases) {
+    for (const pat of c.pats) {
       pats.push(pat.withTag(tagProp, pats.length));
     }
   }
 
-  if (pats.length === 1) {
-    return cases[0]; // pick format doesn't begin with a case number
-  }
-
-  function findPatternIndex(
-    val: unknown,
-    sendErr: SendErr,
-    opts?: { at: number | string },
-  ): number | undefined {
-    if (val === null || typeof val !== "object") {
-      sendErr("not an object", val, opts);
-      return undefined;
-    }
-    const row = val as Row;
-    if (typeof row[tagProp] !== "string") {
-      sendErr(`'${tagProp}' property is not a string`, row, opts);
-      return undefined;
-    }
-
-    for (let i = 0; i < pats.length; i++) {
-      if (tagsMatch(pats[i], row)) {
-        return i;
-      }
-    }
-    return undefined;
-  }
-
-  const pickify: PickifyFunction = (val, sendErr, name) => {
-    const index = findPatternIndex(val, sendErr);
-    if (index === undefined) {
-      sendErr(
-        `tags didn't match any case in '${name}'`,
-        val,
-      );
-      return undefined;
-    }
-
-    const pat = pats[index];
-    const picks = pat.pickify(val, sendErr, "taggedUnion");
-    if (picks === undefined) {
-      return undefined;
-    }
-    return [index, ...picks];
-  };
-
-  const picker = arb.union(...pats.map((c) => c.rowPicker)).with({
-    name: "taggedUnion",
-  });
-
-  return new RowDomain(pickify, picker, pats, findPatternIndex);
+  return RowDomain.union(tagProp, pats);
 }
 
 /**
@@ -199,26 +150,82 @@ function tagsMatch(pat: RowPattern<Row>, row: Row): boolean {
 export class RowDomain<T extends Row> extends Domain<T> {
   readonly #pickify: PickifyFunction;
 
-  constructor(
-    pickify: PickifyFunction,
+  private constructor(
     readonly rowPicker: RowPicker<T>,
-    readonly cases: RowPattern<T>[],
+    readonly pats: RowPattern<T>[],
     readonly findPatternIndex: (
       val: unknown,
       sendErr: SendErr,
       opts?: { at: number | string },
     ) => number | undefined,
   ) {
+    const pickify: PickifyFunction = (val, sendErr, name) => {
+      const index = findPatternIndex(val, sendErr);
+      if (index === undefined) {
+        sendErr(
+          `tags didn't match any case in '${name}'`,
+          val,
+        );
+        return undefined;
+      }
+
+      const pat = pats[index];
+      const picks = pat.pickify(val, sendErr, name);
+      if (picks === undefined) {
+        return undefined;
+      }
+      return pats.length > 1 ? [index, ...picks] : picks;
+    };
+
     super(pickify, rowPicker.buildScript);
     this.#pickify = pickify;
   }
 
   override with(opts: { name: string }): RowDomain<T> {
     return new RowDomain(
-      this.#pickify,
       this.rowPicker.with(opts),
-      this.cases,
+      this.pats,
       this.findPatternIndex,
     );
+  }
+
+  static object<T extends Row>(
+    pat: RowPattern<T>,
+  ): RowDomain<T> {
+    return new RowDomain(pat.rowPicker, [pat], () => 0);
+  }
+
+  static union<T extends Row>(
+    tagProp: string,
+    pats: RowPattern<T>[],
+  ): RowDomain<T> {
+    function findPatternIndex(
+      val: unknown,
+      sendErr: SendErr,
+      opts?: { at: number | string },
+    ): number | undefined {
+      if (val === null || typeof val !== "object") {
+        sendErr("not an object", val, opts);
+        return undefined;
+      }
+      const row = val as Row;
+      if (typeof row[tagProp] !== "string") {
+        sendErr(`'${tagProp}' property is not a string`, row, opts);
+        return undefined;
+      }
+
+      for (let i = 0; i < pats.length; i++) {
+        if (tagsMatch(pats[i], row)) {
+          return i;
+        }
+      }
+      return undefined;
+    }
+
+    const picker = arb.union(...pats.map((c) => c.rowPicker)).with({
+      name: "taggedUnion",
+    });
+
+    return new RowDomain(picker, pats, findPatternIndex);
   }
 }
