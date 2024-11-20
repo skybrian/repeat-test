@@ -1,5 +1,5 @@
-import { linesFromSchema } from "./print.ts";
-import { schema } from "./schema.ts";
+import { linesFromDenoDoc } from "./print.ts";
+import { denoDoc } from "./schema.ts";
 
 async function readJson(stream: ReadableStream): Promise<unknown> {
   const decoder = new TextDecoder();
@@ -11,7 +11,7 @@ async function readJson(stream: ReadableStream): Promise<unknown> {
 }
 
 const json = await readJson(Deno.stdin.readable);
-const parsed = schema.parse(json);
-for (const line of linesFromSchema(parsed)) {
+const parsed = denoDoc.parse(json);
+for (const line of linesFromDenoDoc(parsed)) {
   console.log(line);
 }

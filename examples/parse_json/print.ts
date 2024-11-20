@@ -1,12 +1,12 @@
 import type {
   Constructor,
+  DenoDoc,
   FnOrConstructor,
   InterfaceMethod,
   Literal,
   Method,
   Param,
   Property,
-  Schema,
   TsType,
   TypeLiteral,
   TypeParam,
@@ -136,7 +136,7 @@ function lineFromInterfaceMethod(
   return `  ${name}(${pars}) : ${retType}`;
 }
 
-export function* linesFromSchema({ nodes }: Schema) {
+export function* linesFromDenoDoc({ nodes }: DenoDoc) {
   let i = 0;
   for (const node of nodes) {
     if (i > 0) {

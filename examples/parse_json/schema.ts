@@ -154,6 +154,12 @@ export type Node =
     moduleDoc?: string;
   };
 
+/** A schema for the JSON printed by `deno doc --json`. */
+export type DenoDoc = {
+  version: 1;
+  nodes: Node[];
+};
+
 //
 
 function maybe<T>(d: Domain<T>) {
@@ -318,9 +324,7 @@ export const node = dom.taggedUnion<Node>("kind", [
 /**
  * A partial schema for the JSON printed by `deno doc --json`.
  */
-export const schema = object({
+export const denoDoc: Domain<DenoDoc> = object({
   version: dom.of(1),
   nodes: dom.table(node, { keys: ["name"] }),
 });
-
-export type Schema = ReturnType<typeof schema.parse>;
