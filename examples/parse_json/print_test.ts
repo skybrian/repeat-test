@@ -1,5 +1,5 @@
 import { describe, it } from "@std/testing/bdd";
-import { schema } from "./schema.ts";
+import { type Node, schema } from "./schema.ts";
 import { linesFromSchema } from "./print.ts";
 
 import arbEntry from "./data/arbitrary_0.4.json" with { type: "json" };
@@ -7,6 +7,7 @@ import runnerEntry from "./data/runner_0.4.json" with { type: "json" };
 
 import { assertEquals } from "@std/assert/equals";
 import { repeatTest } from "@/mod.ts";
+import { assertThrows } from "@std/assert";
 
 describe("linesFromSchema", () => {
   it("prints the docs for for arbitrary entrypoint", () => {
@@ -23,8 +24,18 @@ describe("linesFromSchema", () => {
 
   it("doesn't fail for an arbitrary schema", () => {
     repeatTest(schema, (s) => {
-      linesFromSchema(s);
-    });
+      for (const _line of linesFromSchema(s)) {
+        // console.log(_line);
+      }
+    }, { reps: 100 });
+  });
+
+  it("throws an exception for an invalid node kind", () => {
+    const invalidNode = {
+      kind: "invalid",
+    } as unknown as Node;
+    const lines = linesFromSchema({ version: 1, nodes: [invalidNode] });
+    assertThrows(() => Array.from(lines), Error, "unknown node kind");
   });
 });
 

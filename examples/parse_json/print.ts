@@ -163,7 +163,7 @@ export function* linesFromSchema({ nodes }: Schema) {
         break;
       }
       default:
-        throw new Error(`unknown node: ${node}`);
+        throw new Error(`unknown node kind\n\n${Deno.inspect(node)}`);
     }
     i++;
   }
