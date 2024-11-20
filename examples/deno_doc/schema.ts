@@ -173,46 +173,46 @@ const literal: Domain<Literal> = dom.taggedUnion("kind", [
 /** A recursive (non-toplevel) reference to a tsType. */
 const innerType: Domain<TsType> = dom.alias(() => tsType);
 
-export const typeParam = dom.taggedUnion<TypeParam>("kind", [
+const typeParam = dom.taggedUnion<TypeParam>("kind", [
   object({ kind: dom.of("typeRef"), repr: dom.string() }),
   object({ kind: dom.of("indexedAccess"), repr: dom.string() }),
   object({ kind: dom.of("keyword"), repr: dom.string() }),
 ]);
 
-export const typeRef: Domain<TypeRef> = object({
+const typeRef: Domain<TypeRef> = object({
   typeName: dom.string(),
   typeParams: dom.firstOf(dom.of(null), dom.array(typeParam)),
 });
 
-export const innerParam: Domain<Param> = dom.alias(() => param);
+const innerParam: Domain<Param> = dom.alias(() => param);
 
-export const param: Domain<Param> = dom.taggedUnion<Param>("kind", [
+const param: Domain<Param> = dom.taggedUnion<Param>("kind", [
   object({ kind: dom.of("identifier"), name: dom.string() }),
   object({ kind: dom.of("rest"), arg: innerParam }),
 ]);
 
-export const fnOrConstructor: Domain<FnOrConstructor> = object({
+const fnOrConstructor: Domain<FnOrConstructor> = object({
   params: dom.array(param),
   tsType: innerType,
 });
 
-export const property: RowDomain<Property> = object({
+const property: RowDomain<Property> = object({
   name: dom.string(),
   tsType: innerType,
 });
 
-export const mappedType: Domain<MappedType> = object({
+const mappedType: Domain<MappedType> = object({
   typeParam: object({
     name: dom.string(),
   }),
   tsType: innerType,
 });
 
-export const typeLiteral: Domain<TypeLiteral> = object({
+const typeLiteral: Domain<TypeLiteral> = object({
   properties: dom.array(property),
 });
 
-export const tsType: Domain<TsType> = dom.taggedUnion<TsType>("kind", [
+const tsType: Domain<TsType> = dom.taggedUnion<TsType>("kind", [
   object({ kind: dom.of("literal"), literal }),
   object({ kind: dom.of("keyword"), keyword: dom.string() }),
   object({ kind: dom.of("typeRef"), typeRef: typeRef }),
@@ -236,29 +236,29 @@ export const tsType: Domain<TsType> = dom.taggedUnion<TsType>("kind", [
   }),
 ]);
 
-export const typeAliasDef = object({
+const typeAliasDef = object({
   tsType: tsType,
   typeParams: dom.array(object({
     name: dom.string(),
   })),
 });
 
-export const constructor: Domain<Constructor> = object({
+const constructor: Domain<Constructor> = object({
   name: dom.string(),
   params: dom.array(param),
 });
 
-export const functionDef: Domain<FunctionDef> = object({
+const functionDef: Domain<FunctionDef> = object({
   params: dom.array(param),
   returnType: tsType,
 });
 
-export const method: RowDomain<Method> = object({
+const method: RowDomain<Method> = object({
   name: dom.string(),
   functionDef,
 });
 
-export const classDef = object({
+const classDef = object({
   isAbstract: dom.boolean(),
   typeParams: dom.table(
     object({ name: dom.string() }),
@@ -269,26 +269,26 @@ export const classDef = object({
   methods: dom.array(method), // multiple method signatures are possible
 });
 
-export const interfaceMethod: RowDomain<InterfaceMethod> = object({
+const interfaceMethod: RowDomain<InterfaceMethod> = object({
   name: dom.string(),
   params: dom.array(param),
   returnType: tsType,
 });
 
-export const interfaceDef = object({
+const interfaceDef = object({
   typeParams: dom.table(dom.object({ name: dom.string() }), { keys: ["name"] }),
   callSignatures: dom.array(fnOrConstructor),
   properties: dom.table(property, { keys: ["name"] }),
   methods: dom.table(interfaceMethod, { keys: ["name"] }),
 });
 
-export const variableDef = object({
+const variableDef = object({
   tsType,
 });
 
 const name = dom.string();
 
-export const node = dom.taggedUnion<Node>("kind", [
+const node = dom.taggedUnion<Node>("kind", [
   object({
     kind: dom.of("typeAlias"),
     name,
