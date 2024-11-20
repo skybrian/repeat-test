@@ -48,9 +48,9 @@ type RandomPicker = (source) => number
 type RandomSource = () => number
 
 type Generated<T> = {
-  ok : (literal)
-  reqs : (array)
-  replies : (array)
+  ok : true
+  reqs : PickRequest[]
+  replies : number[]
   val : T
 }
 
@@ -102,8 +102,8 @@ class Arbitrary<T> {
   from(req) : Arbitrary<number>
   from(callback) : Arbitrary<T>
   from(arg) : Arbitrary<T> | Arbitrary<number>
-  of(?) : Arbitrary<T>
-  oneOf(?) : Arbitrary<T>
+  of(...examples) : Arbitrary<T>
+  oneOf(...cases) : Arbitrary<T>
   record(shape) : Arbitrary<T>
 }
 `;
@@ -111,18 +111,18 @@ class Arbitrary<T> {
 const expectedRunnerEntry = `repeatTest : (input, test, opts) => void
 
 interface SystemConsole {
-  log(?) : void
-  error(?) : void
+  log(...data) : void
+  error(...data) : void
 }
 
 interface TestConsole {
-  log(?) : void
-  error(?) : void
+  log(...data) : void
+  error(...data) : void
   sometimes(key, val) : boolean
   debugger() : void
 }
 
-type Examples<T> = PickSet<T> | (array)
+type Examples<T> = PickSet<T> | (T | Arbitrary<T>)[]
 
 type RepeatOpts = {
   reps : number

@@ -2,7 +2,9 @@ import type {
   Constructor,
   FnOrConstructor,
   InterfaceMethod,
+  Literal,
   Method,
+  Param,
   Property,
   Schema,
   TsType,
@@ -12,6 +14,15 @@ import type {
 } from "./schema.ts";
 
 import { assert } from "@std/assert/assert";
+
+function stringFromLiteral(lit: Literal) {
+  switch (lit.kind) {
+    case "boolean":
+      return lit.boolean.toString();
+    default:
+      return "(literal)";
+  }
+}
 
 function stringFromProperty({ name, tsType }: Property, indent: number) {
   return `${name} : ${stringFromType(tsType, indent)}`;
@@ -41,7 +52,7 @@ function stringFromFnOrConstructor(
   { params, tsType }: FnOrConstructor,
   indent: number,
 ) {
-  const names = params.map((p) => p.name ?? "?").join(", ");
+  const names = params.map(stringFromParam).join(", ");
   const ret = stringFromType(tsType, indent + 1);
   return `(${names}) => ${ret}`;
 }
@@ -53,6 +64,8 @@ function stringFromType(
   switch (t.kind) {
     case "keyword":
       return t.keyword;
+    case "literal":
+      return stringFromLiteral(t.literal);
     case "typeRef":
       return stringFromTypeRef(t.typeRef);
     case "fnOrConstructor":
@@ -71,6 +84,14 @@ function stringFromType(
       const types = t.intersection.map((t) => stringFromType(t, indent));
       return types.join(" & ");
     }
+    case "array": {
+      const inner = stringFromType(t.array, indent);
+      return inner + "[]";
+    }
+    case "parenthesized": {
+      const inner = stringFromType(t.parenthesized, indent);
+      return `(${inner})`;
+    }
     default:
       return `(${t.kind})`;
   }
@@ -82,8 +103,19 @@ function stringFromTypeParams(typeParams: { name: string }[]): string {
     : `<${typeParams.map((v) => v.name).join(", ")}>`;
 }
 
+function stringFromParam(param: Param): string {
+  switch (param.kind) {
+    case "identifier":
+      return param.name;
+    case "rest":
+      return "..." + stringFromParam(param.arg);
+    default:
+      return "(param)";
+  }
+}
+
 function lineFromConstructor({ name, params }: Constructor) {
-  return `  ${name}(${params.map((p) => p.name).join(", ")})`;
+  return `  ${name}(${params.map(stringFromParam).join(", ")})`;
 }
 
 function lineFromProperty({ name, tsType }: Property) {
@@ -91,7 +123,7 @@ function lineFromProperty({ name, tsType }: Property) {
 }
 
 function lineFromMethod({ name, functionDef }: Method) {
-  const params = functionDef.params.map((p) => p.name ?? "?").join(", ");
+  const params = functionDef.params.map(stringFromParam).join(", ");
   const retType = stringFromType(functionDef.returnType, 1);
   return `  ${name}(${params}) : ${retType}`;
 }
@@ -99,7 +131,7 @@ function lineFromMethod({ name, functionDef }: Method) {
 function lineFromInterfaceMethod(
   { name, params, returnType }: InterfaceMethod,
 ) {
-  const pars = params.map((p) => p.name ?? "?").join(", ");
+  const pars = params.map(stringFromParam).join(", ");
   const retType = stringFromType(returnType, 1);
   return `  ${name}(${pars}) : ${retType}`;
 }
@@ -150,7 +182,7 @@ export function* linesFromSchema({ nodes }: Schema) {
       case "function": {
         const def = node.functionDef;
         assert(def !== undefined);
-        const params = def.params.map((p) => p.name ?? "?").join(", ");
+        const params = def.params.map(stringFromParam).join(", ");
         const retType = stringFromType(def.returnType, 0);
         yield `${node.name} : (${params}) => ${retType}`;
         break;

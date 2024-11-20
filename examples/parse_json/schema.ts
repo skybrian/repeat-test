@@ -5,8 +5,13 @@ function maybe<T>(d: Domain<T>) {
   return dom.firstOf(dom.of(undefined), d);
 }
 
-// Types are defined separately from Domains because type inference doesn't work
+// Types are often defined separately from Domains because type inference doesn't work
 // for recursive types.
+
+const literal = dom.taggedUnion("kind", [
+  dom.object({ kind: dom.of("boolean"), boolean: dom.boolean() }),
+]);
+export type Literal = ReturnType<typeof literal.parse>;
 
 /** A recursive (non-toplevel) reference to a tsType. */
 const innerType: Domain<TsType> = dom.alias(() => tsType);
@@ -32,13 +37,16 @@ export const typeRef: Domain<TypeRef> = object({
   typeParams: dom.firstOf(dom.of(null), dom.array(typeParam)),
 });
 
-export type Param = {
-  name: string | undefined;
-};
+export type Param =
+  | { kind: "identifier"; name: string }
+  | { kind: "rest"; arg: Param };
 
-export const param: Domain<Param> = object({
-  name: maybe(dom.string()),
-});
+export const innerParam: Domain<Param> = dom.alias(() => param);
+
+export const param: Domain<Param> = dom.taggedUnion<Param>("kind", [
+  object({ kind: dom.of("identifier"), name: dom.string() }),
+  object({ kind: dom.of("rest"), arg: innerParam }),
+]);
 
 export type FnOrConstructor = {
   params: Param[];
@@ -81,7 +89,7 @@ export const typeLiteral: Domain<TypeLiteral> = object({
 });
 
 export type TsType =
-  | { kind: "literal" }
+  | { kind: "literal"; literal: Literal }
   | { kind: "keyword"; keyword: string }
   | { kind: "typeRef"; typeRef: TypeRef }
   | { kind: "fnOrConstructor"; fnOrConstructor: FnOrConstructor }
@@ -91,10 +99,11 @@ export type TsType =
   | { kind: "typeLiteral"; typeLiteral: TypeLiteral }
   | { kind: "union"; union: TsType[] }
   | { kind: "intersection"; intersection: TsType[] }
-  | { kind: "array" };
+  | { kind: "array"; array: TsType }
+  | { kind: "parenthesized"; parenthesized: TsType };
 
 export const tsType: Domain<TsType> = dom.taggedUnion<TsType>("kind", [
-  object({ kind: dom.of("literal") }),
+  object({ kind: dom.of("literal"), literal }),
   object({ kind: dom.of("keyword"), keyword: dom.string() }),
   object({ kind: dom.of("typeRef"), typeRef: typeRef }),
   object({
@@ -110,7 +119,11 @@ export const tsType: Domain<TsType> = dom.taggedUnion<TsType>("kind", [
     kind: dom.of("intersection"),
     intersection: dom.array(innerType),
   }),
-  object({ kind: dom.of("array") }),
+  object({ kind: dom.of("array"), array: innerType }),
+  object({
+    kind: dom.of("parenthesized"),
+    parenthesized: innerType,
+  }),
 ]);
 
 export const typeAliasDef = object({
