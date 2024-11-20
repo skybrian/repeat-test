@@ -1,6 +1,10 @@
 import { linesFromDenoDoc } from "./print.ts";
 import { denoDoc } from "./schema.ts";
 
+/**
+ * Reads JSON from stdin. Meant to be used in a pipeline with 'deno doc --json'.
+ */
+
 async function readJson(stream: ReadableStream): Promise<unknown> {
   const decoder = new TextDecoder();
   let out = "";
