@@ -1,12 +1,12 @@
 import { describe, it } from "@std/testing/bdd";
-import { denoDoc, type Node } from "./schema.ts";
+import { denoDoc, makeDenoDocSchema, type Node } from "./schema.ts";
 import { linesFromDenoDoc } from "./print.ts";
 
 import arbEntry from "./data/arbitrary_0.4.json" with { type: "json" };
 import runnerEntry from "./data/runner_0.4.json" with { type: "json" };
 
 import { assertEquals } from "@std/assert/equals";
-import { repeatTest } from "@/mod.ts";
+import { dom, repeatTest } from "@/mod.ts";
 import { assertThrows } from "@std/assert";
 
 describe("linesFromDenoDoc", () => {
@@ -23,7 +23,13 @@ describe("linesFromDenoDoc", () => {
   });
 
   it("doesn't fail for arbitrary DenoDoc", () => {
-    repeatTest(denoDoc, (s) => {
+    const example = makeDenoDocSchema({
+      typeName: dom.of("Foo", "Bar", "Baz", "Quux"),
+      typeParamName: dom.of("T", "A", "B", "C"),
+      valName: dom.asciiLetter(),
+      text: dom.of("some text"),
+    });
+    repeatTest(example, (s) => {
       for (const _line of linesFromDenoDoc(s)) {
         // console.log(_line);
       }
