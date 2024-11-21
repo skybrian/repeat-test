@@ -12,15 +12,10 @@ export type Literal = {
   boolean: boolean;
 }; // TODO: more kinds of literals
 
-export type TypeParam =
-  | { kind: "typeRef"; repr: string }
-  | { kind: "indexedAccess"; repr: string }
-  | { kind: "keyword"; repr: string };
-
 /** Refers by name to a type defined elsewhere. */
 export type TypeRef = {
   typeName: string;
-  typeParams: null | TypeParam[];
+  typeParams: null | TsType[];
 };
 
 /** A constructor, function, or method parameter. */
@@ -40,10 +35,16 @@ export type MappedType = {
   tsType: TsType;
 };
 
+/** A reference to a property type like T[K] */
+export type IndexedAccess = {
+  objType: TsType;
+  indexType: TsType;
+};
+
 /** A property appearing in a class, interface, or object type. */
 export type Property = {
   name: string;
-  tsType: TsType;
+  tsType: TsType | null;
 };
 
 /** An object type such as `{ a: string, b: number }` */
@@ -58,12 +59,14 @@ export type TsType =
   | { kind: "fnOrConstructor"; fnOrConstructor: FnOrConstructor }
   | { kind: "mapped"; mappedType: MappedType }
   | { kind: "mappedType" }
+  | { kind: "indexedAccess"; indexedAccess: IndexedAccess }
   | { kind: "typeOperator" }
   | { kind: "typeLiteral"; typeLiteral: TypeLiteral }
   | { kind: "union"; union: TsType[] }
   | { kind: "intersection"; intersection: TsType[] }
   | { kind: "array"; array: TsType }
-  | { kind: "parenthesized"; parenthesized: TsType };
+  | { kind: "parenthesized"; parenthesized: TsType }
+  | { kind: "typeQuery" };
 
 /** A top-level type definition. */
 export type TypeAliasDef = {
@@ -71,10 +74,10 @@ export type TypeAliasDef = {
   typeParams: { name: string }[];
 };
 
-/** A top-level function definition. */
+/** A function definition. (Also used in a method.) */
 export type FunctionDef = {
   params: Param[];
-  returnType: TsType;
+  returnType: TsType | null;
 };
 
 /** A constructor appearing in a class. */
@@ -86,10 +89,7 @@ export type Constructor = {
 /** A method appearing in a class. */
 export type Method = {
   name: string;
-  functionDef: {
-    params: Param[];
-    returnType: TsType;
-  };
+  functionDef: FunctionDef;
 };
 
 /** A top-level class definition. */
@@ -149,6 +149,10 @@ export type Node =
     variableDef: VariableDef;
   }
   | {
+    kind: "namespace";
+    name: string;
+  }
+  | {
     kind: "moduleDoc";
     name: string;
     moduleDoc?: string;
@@ -162,6 +166,10 @@ export type DenoDoc = {
 
 function maybe<T>(d: Domain<T>) {
   return dom.firstOf(dom.of(undefined), d);
+}
+
+function maybeNull<T>(d: Domain<T>) {
+  return dom.firstOf(dom.of(null), d);
 }
 
 /**
@@ -203,25 +211,16 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
   const valName = opts?.valName ?? dom.string();
   const text = opts?.text ?? dom.string();
 
-  const literal: Domain<Literal> = dom.taggedUnion("kind", [
+  const literal: Domain<Literal> = dom.taggedUnion<Literal>("kind", [
     dom.object({ kind: dom.of("boolean"), boolean: dom.boolean() }),
-  ]);
+  ]).with({ name: "literal" });
 
   /** A recursive (non-toplevel) reference to a tsType. */
   const innerType: Domain<TsType> = dom.alias(() => tsType);
 
-  const typeParam = dom.taggedUnion<TypeParam>("kind", [
-    object({ kind: dom.of("typeRef"), repr: typeParamName }),
-    object({ kind: dom.of("indexedAccess"), repr: typeParamName }),
-    object({
-      kind: dom.of("keyword"),
-      repr: valName, // TODO: actual keywords
-    }),
-  ]);
-
   const typeRef: Domain<TypeRef> = object({
     typeName,
-    typeParams: dom.firstOf(dom.of(null), dom.array(typeParam)),
+    typeParams: dom.firstOf(dom.of(null), dom.array(innerType)),
   });
 
   const innerParam: Domain<Param> = dom.alias(() => param);
@@ -238,7 +237,7 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
 
   const property: RowDomain<Property> = object({
     name: valName,
-    tsType: innerType,
+    tsType: maybeNull(innerType),
   });
 
   const mappedType: Domain<MappedType> = object({
@@ -246,6 +245,11 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
       name: typeParamName,
     }),
     tsType: innerType,
+  });
+
+  const indexedAccess: Domain<IndexedAccess> = object({
+    objType: innerType,
+    indexType: innerType,
   });
 
   const typeLiteral: Domain<TypeLiteral> = object({
@@ -265,6 +269,10 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
     }),
     object({ kind: dom.of("mapped"), mappedType }),
     object({ kind: dom.of("mappedType") }),
+    object({
+      kind: dom.of("indexedAccess"),
+      indexedAccess,
+    }),
     object({ kind: dom.of("typeOperator") }),
     object({ kind: dom.of("typeLiteral"), typeLiteral }),
     object({ kind: dom.of("union"), union: dom.array(innerType) }),
@@ -277,7 +285,8 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
       kind: dom.of("parenthesized"),
       parenthesized: innerType,
     }),
-  ]);
+    object({ kind: dom.of("typeQuery") }), // TODO: more fields
+  ]).with({ name: "tsType" });
 
   const typeAliasDef = object({
     tsType,
@@ -296,7 +305,7 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
 
   const functionDef: Domain<FunctionDef> = object({
     params: dom.array(param),
-    returnType: tsType,
+    returnType: maybeNull(tsType),
   });
 
   const method: RowDomain<Method> = object({
@@ -366,7 +375,12 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
       name,
       moduleDoc: maybe(text),
     }),
-  ]);
+    object({
+      kind: dom.of("namespace"),
+      name,
+      // TODO: more fields
+    }),
+  ]).with({ name: "Node" });
 
   const denoDoc: Domain<DenoDoc> = object({
     version: dom.of(1),

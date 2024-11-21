@@ -76,17 +76,17 @@ type PickFunctionOpts<T> = {
 }
 
 interface PickSet<T> {
-  label: string
-  generateFrom: PickCallback<T>
+  label : string
+  generateFrom : PickCallback<T>
 }
 
-type RecordShape<T> = [K ...]: PickSet<...>
+type RecordShape<T> = [K ...]: PickSet<T[K]>
 
-biasedBitRequest : (probOne) => PickRequest
+function biasedBitRequest(probOne) : PickRequest
 
 class PickRequest {
   constructor(min, max, opts)
-  random: RandomPicker
+  random : RandomPicker
   inRange(n) : boolean
   size() : number
   toString() : string
@@ -114,7 +114,7 @@ class Arbitrary<T> {
 }
 `;
 
-const expectedRunnerEntry = `repeatTest : (input, test, opts) => void
+const expectedRunnerEntry = `function repeatTest(input, test, opts) : void
 
 interface SystemConsole {
   log(...data) : void

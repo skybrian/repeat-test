@@ -9,7 +9,6 @@ import type {
   Property,
   TsType,
   TypeLiteral,
-  TypeParam,
   TypeRef,
 } from "./schema.ts";
 
@@ -25,7 +24,8 @@ function stringFromLiteral(lit: Literal) {
 }
 
 function stringFromProperty({ name, tsType }: Property, indent: number) {
-  return `${name} : ${stringFromType(tsType, indent)}`;
+  const type = tsType === null ? "" : ` : ${stringFromType(tsType, indent)}`;
+  return `${name}${type}`;
 }
 
 function stringFromTypeLiteral(lit: TypeLiteral, indent: number) {
@@ -36,13 +36,9 @@ function stringFromTypeLiteral(lit: TypeLiteral, indent: number) {
   return `{\n${propNames.join("")}${ind}}`;
 }
 
-function stringFromTypeParam({ repr }: TypeParam): string {
-  return repr === "" ? "..." : repr;
-}
-
 function stringFromTypeRef({ typeName, typeParams }: TypeRef) {
   if (typeParams !== null) {
-    const params = typeParams.map(stringFromTypeParam).join(", ");
+    const params = typeParams.map(stringFromType).join(", ");
     return `${typeName}<${params}>`;
   }
   return typeName;
@@ -73,6 +69,11 @@ function stringFromType(
     case "mapped": {
       const valType = stringFromType(t.mappedType.tsType, indent);
       return `[${t.mappedType.typeParam.name} ...]: ${valType}`;
+    }
+    case "indexedAccess": {
+      const obj = stringFromType(t.indexedAccess.objType, indent);
+      const index = stringFromType(t.indexedAccess.indexType, indent);
+      return `${obj}[${index}]`;
     }
     case "typeLiteral":
       return stringFromTypeLiteral(t.typeLiteral, indent);
@@ -119,13 +120,16 @@ function lineFromConstructor({ name, params }: Constructor) {
 }
 
 function lineFromProperty({ name, tsType }: Property) {
-  return `  ${name}: ${stringFromType(tsType, 1)}`;
+  const type = tsType === null ? "" : ` : ${stringFromType(tsType, 1)}`;
+  return `  ${name}${type}`;
 }
 
 function lineFromMethod({ name, functionDef }: Method) {
   const params = functionDef.params.map(stringFromParam).join(", ");
-  const retType = stringFromType(functionDef.returnType, 1);
-  return `  ${name}(${params}) : ${retType}`;
+  const retType = functionDef.returnType === null
+    ? ""
+    : " : " + stringFromType(functionDef.returnType, 1);
+  return `  ${name}(${params})${retType}`;
 }
 
 function lineFromInterfaceMethod(
@@ -183,8 +187,10 @@ export function* linesFromDenoDoc({ nodes }: DenoDoc) {
         const def = node.functionDef;
         assert(def !== undefined);
         const params = def.params.map(stringFromParam).join(", ");
-        const retType = stringFromType(def.returnType, 0);
-        yield `${node.name} : (${params}) => ${retType}`;
+        const retType = def.returnType === null
+          ? ""
+          : " : " + stringFromType(def.returnType, 0);
+        yield `function ${node.name}(${params})${retType}`;
         break;
       }
       case "variable": {
@@ -194,6 +200,9 @@ export function* linesFromDenoDoc({ nodes }: DenoDoc) {
         yield `${node.name} : ${type}`;
         break;
       }
+      case "namespace":
+        yield `namespace ${node.name}`;
+        break;
       default:
         throw new Error(`unknown node kind\n\n${Deno.inspect(node)}`);
     }

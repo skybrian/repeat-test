@@ -24,7 +24,7 @@ export function scriptOf<T>(
     const val = examples[0];
 
     let name = "a constant";
-    if (val === undefined || typeof val === "number") {
+    if (val === undefined || val === null || typeof val === "number") {
       name = `${val} (constant)`;
     } else if (typeof val === "string") {
       name = `"${val}" (constant)`;

@@ -193,14 +193,20 @@ export class RowDomain<T extends Row> extends Domain<T> {
       return undefined;
     }
 
-    for (let i = 0; i < this.patterns.length; i++) {
-      const pat = this.patterns[i];
+    for (const pat of this.patterns) {
       if (pat.tagsMatch(val)) {
         return pat;
       }
     }
 
-    sendErr(`tags didn't match any case in '${this.name}'`, val);
+    const tags: Row = {};
+    for (const pat of this.patterns) {
+      for (const tag of pat.tags) {
+        tags[tag] = val[tag];
+      }
+    }
+
+    sendErr(`tags didn't match any case in '${this.name}'`, tags);
     return undefined;
   }
 
