@@ -1,6 +1,6 @@
 import { assert } from "@std/assert";
 import type { SystemConsole } from "./console.ts";
-import type { BuildFunction, Pickable } from "./pickable.ts";
+import type { Pickable, PickFunction } from "./pickable.ts";
 
 /**
  * A source of random signed 32-bit integers.
@@ -138,8 +138,8 @@ export class PickRequest implements Pickable<number>, Range {
    *
    * The output is assumed to satisfy {@link PickRequest.inRange}.
    */
-  get random(): RandomPicker {
-    return this.#random;
+  random(source: RandomSource): number {
+    return this.#random(source);
   }
 
   /**
@@ -150,8 +150,8 @@ export class PickRequest implements Pickable<number>, Range {
    * `directBuild` on a PickRequest isn't very useful, other than to satisfy the
    * {@link Pickable} interface.
    */
-  get directBuild(): BuildFunction<number> {
-    return (pick) => pick(this);
+  directBuild(pick: PickFunction): number {
+    return pick(this);
   }
 
   /** Returns true if the given number satisfies this request. */

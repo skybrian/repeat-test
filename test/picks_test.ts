@@ -227,7 +227,10 @@ describe("PickRequest", () => {
   });
 
   it("compares equal to a value with the same range", () => {
-    assertEquals(new PickRequest(0, 1), new PickRequest(0, 1));
+    const a = new PickRequest(0, 1);
+    const b = new PickRequest(0, 1);
+    assert(equal(a, b));
+    assertEquals(a, b);
   });
 
   it("compares differently when min is different", () => {

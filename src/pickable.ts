@@ -79,7 +79,7 @@ export type Pickable<T> = {
    * usually be equivalent, except that *pick* may cache values or automatically
    * retry, so performance will be different.
    */
-  readonly directBuild: BuildFunction<T>;
+  directBuild(pick: PickFunction): T;
 };
 
 /**

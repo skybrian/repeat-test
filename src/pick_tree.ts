@@ -288,9 +288,8 @@ export class Walk {
       const min = branch.findUnpruned(0);
       if (min > req.min) {
         assert(min <= req.max);
-        const innerBias = req.random;
         const bias = (source: RandomSource) => {
-          const pick = innerBias(source);
+          const pick = req.random(source);
           return pick < min ? min : pick;
         };
         return new PickRequest(min, req.max, { bias });
