@@ -33,21 +33,29 @@ export function assertEncoding<T>(
   assertEquals(gen.val, val, `dom.generate(${picks}) didn't match val`);
 }
 
+const samples = 1000;
+
+/**
+ * Asserts that the probability of a predicate holding when picking randomly
+ * falls within the given range of percentages.
+ */
 export function assertSometimes<T>(
-  input: Arbitrary<T>,
+  input: Pickable<T>,
   predicate: (val: T) => boolean,
   expectedMin: number,
   expectedMax: number,
 ) {
+  expectedMin *= samples / 100;
+  expectedMax *= samples / 100;
+
   const rand = randomPicker(123);
   let count = 0;
-  for (let i = 0; i < 1000; i++) {
+  for (let i = 0; i < samples; i++) {
     const val = input.directBuild(usePicker(rand));
     if (predicate(val)) {
       count++;
     }
   }
-
   assert(count >= expectedMin, `want at least ${expectedMin}, got ${count}`);
   assert(count <= expectedMax, `want at most ${expectedMax}, got ${count}`);
 }

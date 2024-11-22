@@ -115,11 +115,11 @@ describe("char16", () => {
       const code = val.charCodeAt(0);
       return code >= 0 && code < 128;
     };
-    assertSometimes(arb.char16(), isASCII, 200, 500);
+    assertSometimes(arb.char16(), isASCII, 20, 50);
   });
 
   it("is usually well-formed", () => {
-    assertSometimes(arb.char16(), isWellFormed, 850, 950);
+    assertSometimes(arb.char16(), isWellFormed, 85, 95);
   });
 
   it("has a name", () => {
@@ -145,7 +145,7 @@ describe("unicodeChar", () => {
     });
   });
   it("chooses length 1 or 2 with equal probability", () => {
-    assertSometimes(arb.unicodeChar(), (str) => str.length === 1, 450, 550);
+    assertSometimes(arb.unicodeChar(), (str) => str.length === 1, 45, 55);
   });
   it("has a name", () => {
     assertEquals(arb.unicodeChar().name, "unicodeChar");
@@ -168,13 +168,13 @@ describe("string", () => {
 
   describe("with length 1", () => {
     it("is usually well-formed", () => {
-      assertSometimes(arb.string({ length: 1 }), isWellFormed, 850, 950);
+      assertSometimes(arb.string({ length: 1 }), isWellFormed, 85, 95);
     });
   });
 
   describe("with length 2", () => {
     it("is usually well-formed", () => {
-      assertSometimes(arb.string({ length: 2 }), isWellFormed, 850, 950);
+      assertSometimes(arb.string({ length: 2 }), isWellFormed, 85, 95);
     });
   });
 
