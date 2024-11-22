@@ -16,4 +16,11 @@ describe("scriptFromCases", () => {
     ]);
     assertSometimes(ab, (v) => v === "a", 45, 55);
   });
+  it("usually chooses the case with more weight", () => {
+    const ab = scriptFromCases([
+      scriptOf(["a"]).with({ weight: 3 }),
+      scriptOf(["b"]),
+    ]);
+    assertSometimes(ab, (v) => v === "a", 70, 80);
+  });
 });

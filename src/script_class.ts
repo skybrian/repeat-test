@@ -22,6 +22,16 @@ export interface HasScript<T> extends Pickable<T> {
  */
 export type ScriptOpts = {
   /**
+   * How often this script should be picked, relative to other choices.
+   *
+   * This influences the behavior of arb.oneOf() and arb.union() when picking
+   * randomly.
+   *
+   * Defaults to 1.
+   */
+  readonly weight?: number;
+
+  /**
    * An upper bound on the number of possible values that this script can
    * generate.
    *
@@ -108,9 +118,19 @@ export class Script<T> implements Pickable<T> {
    * Returns a script that builds the same thing, but with a different name or
    * build options.
    */
-  with(opts: { name?: string; cachable?: boolean }): Script<T> {
+  with(
+    opts: { name?: string; weight?: number; cachable?: boolean },
+  ): Script<T> {
+    if (opts.weight !== undefined && opts.weight < 0) {
+      throw new Error("weight must be non-negative");
+    }
+
     const name = opts.name ?? this.#name;
+    const weight = opts.weight ?? this.#opts.weight;
     const newOpts = { ...this.#opts };
+    if (weight !== undefined) {
+      newOpts.weight = weight;
+    }
     if (opts.cachable !== undefined) {
       newOpts.cachable = opts.cachable;
     }

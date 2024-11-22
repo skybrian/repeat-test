@@ -1,5 +1,6 @@
+import { assert } from "@std/assert/assert";
 import type { Pickable } from "../pickable.ts";
-import { PickRequest } from "../picks.ts";
+import { PickRequest, type RandomPicker } from "../picks.ts";
 import { Script } from "../script_class.ts";
 import { scriptFrom } from "./scriptFrom.ts";
 
@@ -26,10 +27,52 @@ export function scriptFromCases<T>(cases: Pickable<T>[]): Script<T> {
     maxSize += caseSize;
   }
 
-  const req = new PickRequest(0, cases.length - 1);
+  const weights: number[] = [];
+  let totalWeight = 0;
+  let allDefaultWeights = true;
+  for (const s of scripts) {
+    const weight = s.opts.weight ?? 1;
+    if (weight !== 1) {
+      allDefaultWeights = false;
+    }
+    totalWeight += weight;
+    weights.push(weight);
+  }
+
+  let bias: RandomPicker | undefined = undefined;
+  if (!allDefaultWeights) {
+    if (totalWeight === 0) {
+      throw new Error(
+        "oneOf() requires at least one alternative with weight > 0",
+      );
+    }
+
+    let newTotal = 0;
+    for (let i = 0; i < weights.length; i++) {
+      const next = weights[i] / totalWeight * 0x100000000;
+      weights[i] = next;
+      newTotal += next;
+    }
+    weights[weights.length - 1] += 0x100000000 - newTotal;
+
+    bias = (next) => {
+      const n = next(); // unsigned 32-bit integer
+      let sum = -0x80000000;
+      for (let i = 0; i < weights.length; i++) {
+        sum += weights[i];
+        if (n < sum) {
+          return i;
+        }
+      }
+      assert(false, "unreachable");
+    };
+  }
+
+  const req = new PickRequest(0, cases.length - 1, { bias });
 
   return Script.make("oneOf", (pick) => {
     const index = pick(req);
+    assert(index >= 0 && index < cases.length, `invalid index: ${index}`);
     return scripts[index].directBuild(pick);
   }, { maxSize, lazyInit: true, cachable: true });
 }
