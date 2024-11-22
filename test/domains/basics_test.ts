@@ -4,7 +4,11 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { repeatTest } from "@/runner.ts";
 import * as dom from "@/doms.ts";
 
-import { assertEncoding, assertRoundTrip } from "../lib/asserts.ts";
+import {
+  assertEncoding,
+  assertRoundTrip,
+  assertSometimes,
+} from "../lib/asserts.ts";
 import { intRange, invalidIntRange, minMaxVal } from "../lib/ranges.ts";
 import { MutableGen } from "../../src/gen_class.ts";
 import { Domain, ParseError } from "@/domain.ts";
@@ -265,6 +269,19 @@ describe("firstOf", () => {
   0: not in range [4, 5]
 `,
       );
+    });
+
+    it("chooses evenly between two cases", () => {
+      const ab = dom.firstOf(dom.of("a"), dom.of("b"));
+      assertSometimes(ab, (v) => v === "a", 45, 55);
+    });
+
+    it("usually chooses the case with more weight", () => {
+      const ab = dom.firstOf(
+        dom.of("a").with({ weight: 3 }),
+        dom.of("b"),
+      );
+      assertSometimes(ab, (v) => v === "a", 70, 80);
     });
   });
 });

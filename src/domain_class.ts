@@ -193,7 +193,7 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
   /**
    * Returns a copy of the Domain with a different name.
    */
-  with(opts: { name: string }): Domain<T> {
+  with(opts: { name?: string; weight?: number }): Domain<T> {
     const script = this.buildScript.with(opts);
     return new Domain(this.#pickify, script);
   }
