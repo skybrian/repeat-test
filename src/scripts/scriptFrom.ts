@@ -39,6 +39,6 @@ export function scriptFrom<T>(
   ) {
     return props.buildScript;
   } else {
-    return Script.make("untitled", arg.directBuild);
+    return Script.make("untitled", (pick) => arg.directBuild(pick));
   }
 }

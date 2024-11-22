@@ -1,6 +1,10 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
-import { assertGenerated, assertValues } from "../lib/asserts.ts";
+import {
+  assertGenerated,
+  assertSometimes,
+  assertValues,
+} from "../lib/asserts.ts";
 
 import { filtered } from "../../src/results.ts";
 import { repeatTest } from "@/runner.ts";
@@ -152,5 +156,18 @@ describe("oneOf", () => {
     const oneOrTwo = arb.oneOf(Arbitrary.of(1), Arbitrary.of(2));
     assertGenerated(oneOrTwo, [{ val: 1, picks: [0] }, { val: 2, picks: [1] }]);
     assertEquals(oneOrTwo.maxSize, 2);
+  });
+
+  it("chooses evenly between two cases", () => {
+    const ab = arb.oneOf(arb.of("a"), arb.of("b"));
+    assertSometimes(ab, (v) => v === "a", 45, 55);
+  });
+
+  it("usually chooses the case with more weight", () => {
+    const ab = arb.oneOf(
+      arb.of("a").with({ weight: 3 }),
+      arb.of("b"),
+    );
+    assertSometimes(ab, (v) => v === "a", 70, 80);
   });
 });

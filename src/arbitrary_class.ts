@@ -20,6 +20,28 @@ function checkRandomGenerate(script: Script<unknown>) {
   );
 }
 
+export type ArbitraryOpts = {
+  /**
+   * The name of this Arbitrary, for use in error messages.
+   */
+  name?: string;
+
+  /**
+   * How often this Arbitrary should be used, relative to other choices.
+   *
+   * This influences the behavior of arb.oneOf() and arb.union() when picking
+   * randomly.
+   *
+   * Defaults to 1.
+   */
+  weight?: number;
+
+  /**
+   * If true, picks from this Arbitrary may be cached when shrinking.
+   */
+  cachable?: boolean;
+};
+
 /**
  * A set of values that can be generated on demand.
  *
@@ -117,7 +139,9 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
   /**
    * Returns a new Arbitrary with a different name or other options.
    */
-  with(opts: { name?: string; cachable?: boolean }): Arbitrary<T> {
+  with(
+    opts: { name?: string; weight?: number; cachable?: boolean },
+  ): Arbitrary<T> {
     const script = this.#script.with(opts);
     return new Arbitrary(script);
   }
