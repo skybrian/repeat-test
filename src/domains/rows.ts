@@ -3,6 +3,7 @@ import type { PickifyFunction, SendErr } from "@/domain.ts";
 
 import * as arb from "@/arbs.ts";
 import { Domain } from "@/domain.ts";
+import { assert } from "@std/assert";
 
 /**
  * Defines which values are allowed for multiple properties on an object.
@@ -64,19 +65,32 @@ export function taggedUnion<T extends Row>(
  * A RowPattern has *tags*, which are the properties that distinguish this case from others in the same union.
  */
 export class RowPattern<T extends Row> {
+  readonly shape: RowShape<T>;
+  /** The index of this case in the tagged union. */
+  readonly index: number;
+  /** The names of the properties to use for checking if this is the right case. */
+  readonly tags: string[];
+  readonly strict: boolean;
   readonly rowPicker: RowPicker<T>;
-  #opts?: RowShapeOpts;
 
   constructor(
-    /** The index of this case in the tagged union. */
-    readonly index: number,
-    /** The names of the properties to use for checking if this is the right case. */
-    readonly tags: string[],
-    readonly shape: RowShape<T>,
-    opts?: RowShapeOpts,
+    shape: RowShape<T>,
+    opts: {
+      index: number;
+      tags: string[];
+      weight: number;
+      strict: boolean;
+    },
   ) {
-    this.rowPicker = arb.object(shape);
-    this.#opts = opts;
+    this.shape = shape;
+    this.index = opts.index;
+    this.tags = opts.tags;
+    this.strict = opts.strict;
+    this.rowPicker = arb.object(shape).with({ weight: opts.weight });
+  }
+
+  get weight(): number {
+    return this.rowPicker.buildScript.weight;
   }
 
   /**
@@ -98,7 +112,7 @@ export class RowPattern<T extends Row> {
    * Returns the picks for the given row, not including the case number.
    */
   pickify(val: Row, sendErr: SendErr) {
-    if (this.#opts?.strict) {
+    if (this.strict) {
       for (const key of Object.keys(val)) {
         if (!(key in this.shape)) {
           sendErr(`extra property: ${key}`, val);
@@ -117,22 +131,16 @@ export class RowPattern<T extends Row> {
     return out;
   }
 
-  /**
-   * Marks the property with the given name as a tag that distinguishes this
-   * case from others.
-   *
-   * @param at The index of the case in the new union.
-   */
-  withTag(name: string, at: number) {
-    if (this.tags.includes(name)) {
-      return this;
-    }
-
-    if (!this.shape[name]) {
-      throw new Error(`case ${at} doesn't have a '${name}' property`);
-    }
-
-    return new RowPattern(at, [...this.tags, name], this.shape, this.#opts);
+  with(opts: { index: number; tags: string[]; weight: number }): RowPattern<T> {
+    return new RowPattern(
+      this.shape,
+      {
+        index: opts.index,
+        tags: opts.tags,
+        weight: opts.weight,
+        strict: this.strict,
+      },
+    );
   }
 }
 
@@ -228,7 +236,12 @@ export class RowDomain<T extends Row> extends Domain<T> {
     opts?: RowShapeOpts,
   ): RowDomain<T> {
     const name = Object.keys(shape).length > 0 ? "object" : "empty object";
-    const pat = new RowPattern(0, [], shape, opts);
+    const pat = new RowPattern(shape, {
+      index: 0,
+      tags: [],
+      weight: 1,
+      strict: opts?.strict ?? false,
+    });
     return new RowDomain(name, 1, undefined, [pat]);
   }
 
@@ -243,8 +256,24 @@ export class RowDomain<T extends Row> extends Domain<T> {
 
     const pats: RowPattern<T>[] = [];
     for (const c of cases) {
+      const weight = c.buildScript.weight;
+      const childTotal = c.patterns.reduce((sum, pat) => sum + pat.weight, 0);
+      assert(childTotal > 0, "child total must be positive");
+      const adjustment = weight / childTotal;
+
       for (const pat of c.patterns) {
-        pats.push(pat.withTag(tagProp, pats.length));
+        let tags = pat.tags;
+        if (!tags.includes(tagProp)) {
+          if (!pat.shape[tagProp]) {
+            throw new Error(
+              `case ${pat.index} doesn't have a '${tagProp}' property`,
+            );
+          }
+          tags = [...tags, tagProp];
+        }
+        const weight = pat.weight * adjustment;
+
+        pats.push(pat.with({ index: pats.length, tags, weight }));
       }
     }
 

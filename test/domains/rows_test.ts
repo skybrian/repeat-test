@@ -6,7 +6,11 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { repeatTest } from "@/runner.ts";
 import * as dom from "@/doms.ts";
 
-import { assertEncoding, assertRoundTrip } from "../lib/asserts.ts";
+import {
+  assertEncoding,
+  assertRoundTrip,
+  assertSometimes,
+} from "../lib/asserts.ts";
 import { ParseError } from "@/domain.ts";
 import { propsFromGen } from "../lib/props.ts";
 
@@ -180,6 +184,25 @@ describe("taggedUnion", () => {
       ]),
     ]);
     assertRoundTrip(schema, { "row": "a", "column": "x" });
+  });
+
+  it("chooses evenly between two patterns", () => {
+    const ab = dom.taggedUnion("kind", [
+      dom.object({ kind: dom.of("a") }),
+      dom.object({ kind: dom.of("b") }),
+    ]);
+    assertSometimes(ab, (v) => v.kind === "a", 45, 55);
+  });
+
+  it("chooses the pattern with more weight more often", () => {
+    const ab = dom.taggedUnion("kind", [
+      dom.object({ kind: dom.of("a") }),
+      dom.object({ kind: dom.of("b") }).with({ weight: 3 }),
+    ]);
+    assertEquals(ab.buildScript.weight, 1);
+    assertEquals(ab.patterns[0].weight, 1);
+    assertEquals(ab.patterns[1].weight, 3);
+    assertSometimes(ab, (v) => v.kind === "b", 70, 80);
   });
 
   describe("for nested unions with different tags", () => {

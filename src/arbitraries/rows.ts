@@ -38,7 +38,7 @@ export function union<T extends Row>(
 ): RowPicker<T> {
   const rowCases: RowCase<T>[] = [];
   for (const arb of cases) {
-    const weight = arb.buildScript.opts.weight ?? 1;
+    const weight = arb.buildScript.weight;
     const childTotal = arb.cases.reduce((sum, c) => sum + c.weight, 0);
     assert(childTotal > 0, "child total must be positive");
     const adjustment = weight / childTotal;
