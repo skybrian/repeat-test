@@ -260,10 +260,18 @@ describe("taggedUnion", () => {
 
 describe("RowDomain", () => {
   describe("with", () => {
-    it("renames the domain", () => {
+    it("changes the name", () => {
       const row = dom.object({ a: dom.int(0, 1) });
       const renamed = row.with({ name: "something" });
       assertEquals(renamed.name, "something");
+    });
+
+    it("changes the weight", () => {
+      const row = dom.object({ a: dom.int(0, 1) });
+      assertEquals(row.buildScript.opts.weight, 1);
+
+      const changed = row.with({ weight: 2 });
+      assertEquals(changed.buildScript.opts.weight, 2);
     });
   });
 });

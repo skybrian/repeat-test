@@ -22,12 +22,12 @@ export interface HasScript<T> extends Pickable<T> {
  */
 export type ScriptOpts = {
   /**
-   * How often this script should be picked, relative to other choices.
+   * How often this script should be chosen instead of other scripts.
    *
-   * This influences the behavior of arb.oneOf() and arb.union() when picking
-   * randomly.
+   * It's used by `arb.oneOf()` and `arb.union()` when picking randomly.
    *
-   * Defaults to 1.
+   * It must not be negative and defaults to 1. The probability depends on the
+   * total weight of all scripts being considered.
    */
   readonly weight?: number;
 
@@ -85,6 +85,18 @@ export class Script<T> implements Pickable<T> {
   /** The name used in error messages about this script. */
   get name(): string {
     return this.#name;
+  }
+
+  /**
+   * How often this script should be chosen instead of other scripts.
+   *
+   * It's used by `arb.oneOf()` and `arb.union()` when picking randomly.
+   *
+   * It must not be negative and defaults to 1. The probability depends
+   * on the total weight of all scripts being considered.
+   */
+  get weight(): number {
+    return this.#opts.weight ?? 1;
   }
 
   /** Returns this script's flags as an object. */

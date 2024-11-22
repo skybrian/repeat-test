@@ -44,11 +44,11 @@ export function union<T extends Row>(
     const adjustment = weight / childTotal;
 
     for (const c of arb.cases) {
-      rowCases.push({
+      rowCases.push(Object.freeze({
         name: c.name,
         weight: c.weight * adjustment,
         shape: c.shape,
-      });
+      }));
     }
   }
 

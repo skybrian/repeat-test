@@ -5,7 +5,10 @@ import * as arb from "@/arbs.ts";
 import { Domain } from "@/domain.ts";
 
 /**
- * Defines acceptable values for some properties on an object.
+ * Defines which values are allowed for multiple properties on an object.
+ *
+ * Each property's allowed values are independent. Any other properties that the
+ * object might have are unrestricted.
  */
 export type RowShape<T> = {
   [K in keyof T]: Domain<T[K]>;
@@ -153,6 +156,7 @@ export class RowDomain<T extends Row> extends Domain<T> {
 
   private constructor(
     name: string,
+    weight: number,
     tagProp: string | undefined,
     /** The possible shapes for objects in this domain. */
     readonly patterns: RowPattern<T>[],
@@ -175,7 +179,8 @@ export class RowDomain<T extends Row> extends Domain<T> {
     };
 
     const build =
-      arb.union(...patterns.map((c) => c.rowPicker)).with({ name }).buildScript;
+      arb.union(...patterns.map((c) => c.rowPicker)).with({ name, weight })
+        .buildScript;
     super(pickify, build);
     this.#tagProp = tagProp;
   }
@@ -211,8 +216,10 @@ export class RowDomain<T extends Row> extends Domain<T> {
   }
 
   /** Renames the domain. */
-  override with(opts: { name: string }): RowDomain<T> {
-    return new RowDomain(opts.name, this.#tagProp, this.patterns);
+  override with(opts: { name?: string; weight?: number }): RowDomain<T> {
+    const name = opts.name ?? this.name;
+    const weight = opts.weight ?? this.buildScript.weight;
+    return new RowDomain(name, weight, this.#tagProp, this.patterns);
   }
 
   /** Creates a RowDomain with a single case and no tag properties. */
@@ -222,7 +229,7 @@ export class RowDomain<T extends Row> extends Domain<T> {
   ): RowDomain<T> {
     const name = Object.keys(shape).length > 0 ? "object" : "empty object";
     const pat = new RowPattern(0, [], shape, opts);
-    return new RowDomain(name, undefined, [pat]);
+    return new RowDomain(name, 1, undefined, [pat]);
   }
 
   /** Creates a RowDomain with the given tag property. */
@@ -241,6 +248,6 @@ export class RowDomain<T extends Row> extends Domain<T> {
       }
     }
 
-    return new RowDomain("taggedUnion", tagProp, pats);
+    return new RowDomain("taggedUnion", 1, tagProp, pats);
   }
 }

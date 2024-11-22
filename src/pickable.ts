@@ -83,7 +83,9 @@ export type Pickable<T> = {
 };
 
 /**
- * Specifies the properties of an object to be generated.
+ * Specifies how to generate each property of an object.
+ *
+ * The properties are independently generated, with no constraints between them.
  */
 export type ObjectShape<T extends Record<string, unknown>> = {
   [K in keyof T]: Pickable<T[K]>;
