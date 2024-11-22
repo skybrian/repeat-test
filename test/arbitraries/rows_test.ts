@@ -1,6 +1,6 @@
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
-import { assertGenerated } from "../lib/asserts.ts";
+import { assertGenerated, assertSometimes } from "../lib/asserts.ts";
 import { generateDefault } from "../../src/ordered.ts";
 import * as arb from "@/arbs.ts";
 
@@ -87,5 +87,39 @@ describe("union", () => {
       { val: { a: 2 }, picks: [0, 2] },
       { val: { b: 4 }, picks: [1, 4] },
     ]);
+  });
+
+  it("chooses evenly between two cases", () => {
+    const ab = arb.union(
+      arb.object({ name: arb.of("a") }),
+      arb.object({ name: arb.of("b") }),
+    );
+
+    assertSometimes(ab, (v) => v.name === "a", 45, 55);
+  });
+
+  it("usually chooses the case with more weight", () => {
+    const ab = arb.union(
+      arb.object({ name: arb.of("a") }),
+      arb.object({ name: arb.of("b") }).with({ weight: 3 }),
+    );
+    assertEquals(ab.cases[0].weight, 1);
+    assertEquals(ab.cases[1].weight, 3);
+
+    assertSometimes(ab, (v) => v.name === "a", 20, 30);
+  });
+
+  it("adjusts weights of nested unions", () => {
+    const ab = arb.union(
+      arb.object({ name: arb.of("a") }),
+      arb.union(
+        arb.object({ name: arb.of("b") }),
+        arb.object({ name: arb.of("c") }).with({ weight: 3 }),
+      ),
+    );
+
+    assertEquals(ab.cases[0].weight, 1);
+    assertEquals(ab.cases[1].weight, 0.25);
+    assertEquals(ab.cases[2].weight, 0.75);
   });
 });
