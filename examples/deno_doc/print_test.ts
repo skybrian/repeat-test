@@ -28,12 +28,13 @@ describe("linesFromDenoDoc", () => {
       typeParamName: dom.of("T", "A", "B", "C"),
       valName: dom.asciiLetter(),
       text: dom.of("some text"),
+      maxItems: 10,
     });
     repeatTest(example, (s) => {
       for (const _line of linesFromDenoDoc(s)) {
         // console.log(_line);
       }
-    }, { reps: 100 });
+    }, { reps: 100, maxPicks: 1000 });
   });
 
   it("throws an exception when given an invalid node kind", () => {

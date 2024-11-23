@@ -24,14 +24,16 @@ function stringFromLiteral(lit: Literal) {
 }
 
 function stringFromProperty({ name, tsType }: Property, indent: number) {
-  const type = tsType === null ? "" : ` : ${stringFromType(tsType, indent)}`;
+  const type = tsType === null
+    ? ""
+    : ` : ${stringFromType(tsType, indent + 1)}`;
   return `${name}${type}`;
 }
 
 function stringFromTypeLiteral(lit: TypeLiteral, indent: number) {
   const ind = "  ".repeat(indent);
   const propNames = lit.properties.map((p) =>
-    `${ind}  ${stringFromProperty(p, indent + 1)}\n`
+    `${ind}  ${stringFromProperty(p, indent)}\n`
   );
   return `{\n${propNames.join("")}${ind}}`;
 }

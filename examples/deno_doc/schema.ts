@@ -1,4 +1,5 @@
-import { dom, type Domain, type RowDomain } from "@/mod.ts";
+import type { Domain, Row, RowDomain } from "@/mod.ts";
+import { dom } from "@/mod.ts";
 import { object } from "@/doms.ts";
 
 // These types are defined separately from Domains because type inference doesn't work
@@ -200,6 +201,9 @@ export type DenoDocSchemaOpts = {
    * Freeform text, such as documentation.
    */
   text?: Domain<string>;
+
+  /** The maximum number of parameters, properties, methods, etc in a node. */
+  maxItems?: number;
 };
 
 /**
@@ -211,6 +215,16 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
   const valName = opts?.valName ?? dom.string();
   const text = opts?.text ?? dom.string();
 
+  const maxItems = opts?.maxItems;
+
+  function array<T>(item: Domain<T>): Domain<T[]> {
+    return dom.array(item, { length: { max: maxItems } });
+  }
+
+  function table<T extends Row>(item: RowDomain<T>): Domain<T[]> {
+    return dom.table(item, { length: { max: maxItems }, keys: ["name"] });
+  }
+
   const literal: Domain<Literal> = dom.taggedUnion<Literal>("kind", [
     dom.object({ kind: dom.of("boolean"), boolean: dom.boolean() }),
   ]).with({ name: "literal" });
@@ -220,18 +234,25 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
 
   const typeRef: Domain<TypeRef> = object({
     typeName,
-    typeParams: dom.firstOf(dom.of(null), dom.array(innerType)),
+    typeParams: dom.firstOf(
+      dom.of(null).with({ weight: 3 }),
+      array(innerType),
+    ),
   });
 
   const innerParam: Domain<Param> = dom.alias(() => param);
 
   const param: Domain<Param> = dom.taggedUnion<Param>("kind", [
     object({ kind: dom.of("identifier"), name: valName }),
-    object({ kind: dom.of("rest"), arg: innerParam }),
+    object<Param>({ kind: dom.of("rest"), arg: innerParam }).with({
+      weight: 0.1,
+    }),
   ]);
 
+  const params = array(param);
+
   const fnOrConstructor: Domain<FnOrConstructor> = object({
-    params: dom.array(param),
+    params,
     tsType: innerType,
   });
 
@@ -253,7 +274,7 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
   });
 
   const typeLiteral: Domain<TypeLiteral> = object({
-    properties: dom.array(property),
+    properties: array(property),
   });
 
   const tsType: Domain<TsType> = dom.taggedUnion<TsType>("kind", [
@@ -262,7 +283,7 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
       kind: dom.of("keyword"),
       keyword: valName, // TODO: actual keywords
     }),
-    object({ kind: dom.of("typeRef"), typeRef }),
+    object<TsType>({ kind: dom.of("typeRef"), typeRef }).with({ weight: 10 }),
     object({
       kind: dom.of("fnOrConstructor"),
       fnOrConstructor,
@@ -275,10 +296,10 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
     }),
     object({ kind: dom.of("typeOperator") }),
     object({ kind: dom.of("typeLiteral"), typeLiteral }),
-    object({ kind: dom.of("union"), union: dom.array(innerType) }),
+    object({ kind: dom.of("union"), union: array(innerType) }),
     object({
       kind: dom.of("intersection"),
-      intersection: dom.array(innerType),
+      intersection: array(innerType),
     }),
     object({ kind: dom.of("array"), array: innerType }),
     object({
@@ -290,21 +311,16 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
 
   const typeAliasDef = object({
     tsType,
-    typeParams: dom.table(
-      object({
-        name: typeName,
-      }),
-      { keys: ["name"] },
-    ),
+    typeParams: table(object({ name: typeName })),
   });
 
   const construct: Domain<Constructor> = object({
     name: valName,
-    params: dom.array(param),
+    params,
   });
 
   const functionDef: Domain<FunctionDef> = object({
-    params: dom.array(param),
+    params,
     returnType: maybeNull(tsType),
   });
 
@@ -315,18 +331,17 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
 
   const classDef = object({
     isAbstract: dom.boolean(),
-    typeParams: dom.table(
+    typeParams: table(
       object({ name: typeParamName }),
-      { keys: ["name"] },
     ),
-    constructors: dom.array(construct),
-    properties: dom.table(property, { keys: ["name"] }),
-    methods: dom.array(method), // multiple method signatures are possible
+    constructors: array(construct),
+    properties: table(property),
+    methods: array(method), // multiple method signatures are possible
   });
 
   const interfaceMethod: RowDomain<InterfaceMethod> = object({
     name: typeName,
-    params: dom.array(param),
+    params,
     returnType: tsType,
   });
 
