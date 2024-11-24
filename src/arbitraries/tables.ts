@@ -50,7 +50,7 @@ export function uniqueArray<T>(
           `not enough unique values; want length.min <= ${out.length}, got: ${min}`,
         );
       }
-      out.push(jar.take(pick));
+      out.push(jar.takeAny(pick));
     }
     while (out.length < max) {
       if (jar.isEmpty()) {
@@ -60,7 +60,7 @@ export function uniqueArray<T>(
       } else if (!wantItem(out.length, pick)) {
         return out;
       }
-      out.push(jar.take(pick));
+      out.push(jar.takeAny(pick));
     }
     return out;
   }).with({ name: "uniqueArray" });
@@ -166,7 +166,7 @@ export function table<R extends Record<string, unknown>>(
         }
       }
 
-      return rowJar.take(pick);
+      return rowJar.takeAny(pick);
     });
 
     for (let row = pick(addRow); row !== undefined; row = pick(addRow)) {

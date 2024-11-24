@@ -36,7 +36,7 @@ describe("Jar", () => {
         const seen = new Set<number>();
         for (let i = 0; i < 3; i++) {
           assertFalse(jar.isEmpty(), `should not be empty after ${i} picks`);
-          const val = jar.take(pick);
+          const val = jar.takeAny(pick);
           assertFalse(seen.has(val));
           seen.add(val);
         }
@@ -51,15 +51,15 @@ describe("Jar", () => {
     assert(jar.isEmpty(), "should be empty");
   }
 
-  describe("take", () => {
+  describe("takeAny", () => {
     it("returns the only value from a constant", () => {
       const jar = new Jar(dom.of("hi"));
-      assertEquals(jar.take(pick), "hi");
+      assertEquals(jar.takeAny(pick), "hi");
     });
     it("throws Pruned if the same playout was seen twice", () => {
       const jar = new Jar(dom.of("hi"));
-      jar.take(pick);
-      assertThrows(() => jar.take(pick), Filtered);
+      jar.takeAny(pick);
+      assertThrows(() => jar.takeAny(pick), Filtered);
     });
 
     describe("with an overlapping firstOf", () => {
@@ -76,10 +76,10 @@ describe("Jar", () => {
     it("takes values given a minimum playout", () => {
       const jar = new Jar(dom.int32());
       const pick = usePicker(alwaysPickMin);
-      assertEquals(jar.take(pick), 0);
-      assertEquals(jar.take(pick), 1);
-      assertEquals(jar.take(pick), 2);
-      assertEquals(jar.take(pick), 3);
+      assertEquals(jar.takeAny(pick), 0);
+      assertEquals(jar.takeAny(pick), 1);
+      assertEquals(jar.takeAny(pick), 2);
+      assertEquals(jar.takeAny(pick), 3);
     });
   });
   describe("isEmpty", () => {
@@ -89,14 +89,14 @@ describe("Jar", () => {
     });
     it("returns true after taking the only value from a constant", () => {
       const jar = new Jar(dom.of("hi"));
-      jar.take(pick);
+      jar.takeAny(pick);
       assert(jar.isEmpty());
     });
     it("returns true after taking both values of a boolean", () => {
       const jar = new Jar(dom.of(false, true));
-      jar.take(pick);
+      jar.takeAny(pick);
       assertFalse(jar.isEmpty());
-      jar.take(pick);
+      jar.takeAny(pick);
       assert(jar.isEmpty());
     });
   });

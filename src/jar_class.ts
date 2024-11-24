@@ -55,11 +55,11 @@ export class Jar<T> {
   }
 
   /**
-   * Takes a previously-unused value from the jar.
+   * Takes any value remaining in the jar.
    *
    * @throws {@link Pruned} if the jar is empty.
    */
-  take(pick: PickFunction): T {
+  takeAny(pick: PickFunction): T {
     const toCall = this.dom.buildScript;
 
     const script = Script.make(
@@ -163,14 +163,14 @@ export class RowJar<T extends Record<string, unknown>> {
     }
   }
 
-  take(pick: PickFunction): T {
+  takeAny(pick: PickFunction): T {
     const c = this.chooseCase.directBuild(pick);
 
     const row: Record<string, unknown> = {};
     for (const key of Object.keys(c.shape)) {
       const jar = this.keys[key];
       if (jar) {
-        row[key] = jar.take(pick);
+        row[key] = jar.takeAny(pick);
       } else {
         row[key] = pick(c.shape[key]);
       }
