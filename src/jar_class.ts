@@ -99,6 +99,26 @@ export class Jar<T> {
     return val;
   }
 
+  /**
+   * Takes a specific value from the Jar.
+   *
+   * Returns true if the value was previously in the Jar and successfully taken.
+   */
+  take(val: T): boolean {
+    const canon = this.dom.regenerate(val);
+    if (!canon.ok) {
+      return false;
+    }
+
+    if (!this.remaining.prune(canon)) {
+      return false;
+    }
+
+    this.#refreshExample();
+    this.taken++;
+    return true;
+  }
+
   #accept = (val: T): boolean => {
     // Compare using the canonical picks for this value.
     const canon = this.dom.regenerate(val);

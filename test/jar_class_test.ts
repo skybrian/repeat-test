@@ -51,6 +51,16 @@ describe("Jar", () => {
     assert(jar.isEmpty(), "should be empty");
   }
 
+  describe("take", () => {
+    it("returns the only value from a constant", () => {
+      const jar = new Jar(dom.of("hi"));
+      assertEquals(jar.take("x"), false);
+      assertEquals(jar.take("hi"), true);
+      assertEquals(jar.take("hi"), false);
+      assert(jar.isEmpty(), "should be empty");
+    });
+  });
+
   describe("takeAny", () => {
     it("returns the only value from a constant", () => {
       const jar = new Jar(dom.of("hi"));
@@ -82,6 +92,7 @@ describe("Jar", () => {
       assertEquals(jar.takeAny(pick), 3);
     });
   });
+
   describe("isEmpty", () => {
     it("returns false when nothing has been taken yet", () => {
       const jar = new Jar(dom.of("hi"));
