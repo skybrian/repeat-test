@@ -14,45 +14,11 @@ import { Domain } from "./domain_class.ts";
 import { scriptOf } from "./scripts/scriptOf.ts";
 
 /**
- * Picks an integer in the given range.
- *
- * A minimum implementation will just call next(), but it can also substitute a
- * different PickRequest, such as one with a narrower range.
- */
-export type IntPickerMiddleware = (
-  req: PickRequest,
-  next: (req: PickRequest) => number,
-) => number;
-
-function makeMiddleware<T>(
-  name: string,
-  build: (pick: PickFunction) => T,
-  startMiddle: () => IntPickerMiddleware,
-): Script<T> {
-  const middleBuild = (pick: PickFunction) => {
-    const middle = startMiddle();
-    function middlePick<T>(
-      req: Pickable<T>,
-      opts?: PickFunctionOpts<T>,
-    ) {
-      if (req instanceof PickRequest) {
-        return middle(req, pick) as T;
-      } else {
-        return pick(req, opts);
-      }
-    }
-    return build(middlePick);
-  };
-  return Script.make(name, middleBuild, { cachable: false });
-}
-
-/**
  * Picks from the possible values in a Domain, without replacement.
  *
  * A jar can be used to generate permutations or unique ids.
  */
 export class Jar<T> {
-  private readonly name;
   private readonly remaining = new PickTree();
 
   /**
@@ -77,7 +43,6 @@ export class Jar<T> {
    * (Conceptually; the values will be generated when needed.)
    */
   constructor(readonly dom: Domain<T>) {
-    this.name = `take(${this.dom.name})`;
     this.moreExamples = orderedPlayouts();
     this.example = this.#nextExample();
   }
@@ -95,28 +60,39 @@ export class Jar<T> {
    * @throws {@link Pruned} if the jar is empty.
    */
   take(pick: PickFunction): T {
-    const remaining = this.remaining;
-    function middle(): IntPickerMiddleware {
-      const walk = remaining.walk();
-      function narrowToRemaining(
-        req: PickRequest,
-        next: (req: PickRequest) => number,
-      ): number {
-        const innerReq = walk.narrow(req);
-        assert(innerReq !== undefined);
-        const n = next(innerReq);
-        assert(walk.push(req, n));
-        return n;
-      }
-      return narrowToRemaining;
-    }
+    const toCall = this.dom.buildScript;
+
+    const script = Script.make(
+      `take(${toCall.name})`,
+      (pick: PickFunction) => {
+        const walk = this.remaining.walk();
+
+        // Narrow the range of each pick request to avoid generating values that
+        // were already taken.
+        function narrowedPick<T>(
+          req: Pickable<T>,
+          opts?: PickFunctionOpts<T>,
+        ): T {
+          if (req instanceof PickRequest) {
+            const innerReq = walk.narrow(req);
+            const n = pick(innerReq);
+            assert(walk.push(req, n));
+            return n as T;
+          } else {
+            return pick(req, opts);
+          }
+        }
+
+        return toCall.directBuild(narrowedPick);
+      },
+      { cachable: false },
+    );
 
     // Hack: increase the number of tries to try to avoid running out when many
     // values have already been taken. (Ideally we'd use some better way than
     // filtering when there are few values left.)
     const maxTries = this.taken + 1000;
 
-    const script = makeMiddleware(this.name, this.dom.directBuild, middle);
     const val = pick(script, { accept: this.#accept, maxTries });
     this.#refreshExample();
     this.taken++;
