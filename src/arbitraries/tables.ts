@@ -2,7 +2,7 @@ import type { Arbitrary, PickFunction, RowPicker } from "@/arbitrary.ts";
 import type { ArrayOpts, TableOpts } from "../options.ts";
 
 import { assert } from "@std/assert/assert";
-import { Domain, Jar } from "@/domain.ts";
+import { Domain, Jar, type RowShape } from "@/domain.ts";
 import { PickRequest } from "../picks.ts";
 import { parseArrayOpts } from "../options.ts";
 import { generateAll } from "../ordered.ts";
@@ -103,7 +103,7 @@ export function table<R extends Record<string, unknown>>(
   const uniqueKeys = opts?.keys ?? [];
   const cases = row.cases;
 
-  const domains: Record<string, Domain<R[keyof R & string]>> = {};
+  const keyShape: Partial<RowShape<R>> = {};
   for (const key of uniqueKeys) {
     const first = cases[0].shape[key];
     if (!(first instanceof Domain)) {
@@ -119,7 +119,7 @@ export function table<R extends Record<string, unknown>>(
         );
       }
     }
-    domains[key] = first;
+    keyShape[key] = first;
 
     const count = countDistinct(first, min);
     if (count < min) {
@@ -147,18 +147,18 @@ export function table<R extends Record<string, unknown>>(
   }
 
   return arb.from((pick) => {
-    const rowJar = new RowJar(row.cases, uniqueKeys);
+    const jar = new RowJar(row.cases, keyShape);
 
     const rows: R[] = [];
 
     const addRow: Script<R | undefined> = Script.make("addRow", (pick) => {
       if (rows.length < min) {
-        rowJar.assertNotEmpty();
+        jar.assertNotEmpty();
       } else {
         if (max !== undefined && rows.length >= max) {
           return undefined;
         }
-        if (rowJar.isEmpty()) {
+        if (jar.isEmpty()) {
           return undefined;
         }
         if (!wantItem(rows.length, pick)) {
@@ -166,13 +166,13 @@ export function table<R extends Record<string, unknown>>(
         }
       }
 
-      return rowJar.takeAny(pick);
+      return jar.takeAny(pick);
     });
 
     for (let row = pick(addRow); row !== undefined; row = pick(addRow)) {
       rows.push(row);
     }
-    if (rowJar.isEmpty()) {
+    if (jar.isEmpty()) {
       // Add an ending pick to match a regular array.
       pick(new PickRequest(0, 0));
     }

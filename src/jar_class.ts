@@ -2,6 +2,8 @@ import type { Pickable, PickFunction, PickFunctionOpts } from "./pickable.ts";
 import type { Backtracker } from "./backtracking.ts";
 import type { Gen } from "./gen_class.ts";
 import type { RowCase } from "./arbitraries/rows.ts";
+import type { Domain } from "./domain_class.ts";
+import type { RowShape } from "./domains/rows.ts";
 
 import { assert } from "@std/assert";
 import { PickRequest } from "./picks.ts";
@@ -10,7 +12,6 @@ import { Script } from "./script_class.ts";
 import { generate } from "./gen_class.ts";
 import { PickTree } from "./pick_tree.ts";
 import { orderedPlayouts } from "./ordered.ts";
-import { Domain } from "./domain_class.ts";
 import { scriptOf } from "./scripts/scriptOf.ts";
 
 /**
@@ -158,11 +159,12 @@ export class RowJar<T extends Record<string, unknown>> {
 
   constructor(
     readonly cases: RowCase<T>[],
-    uniqueKeys: (keyof T)[],
+    keyShape: Partial<RowShape<T>>,
   ) {
-    for (const key of uniqueKeys) {
-      const prop = this.cases[0].shape[key];
-      assert(prop instanceof Domain);
+    const keys = Object.keys(keyShape) as (keyof T)[];
+    for (const key of keys) {
+      const prop = keyShape[key];
+      assert(prop);
       this.keys[key] = new Jar(prop);
     }
     this.chooseCase = scriptOf(this.cases);
