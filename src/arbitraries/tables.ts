@@ -1,5 +1,5 @@
 import type { Arbitrary, PickFunction, RowPicker } from "@/arbitrary.ts";
-import type { ArrayOpts, TableOpts } from "../options.ts";
+import type { ArrayOpts } from "../options.ts";
 
 import { assert } from "@std/assert/assert";
 import { Domain, Jar, type RowShape } from "@/domain.ts";
@@ -84,6 +84,13 @@ function countDistinct(dom: Domain<unknown>, max: number): number {
   }
   return count;
 }
+
+/**
+ * Constraints used when generating or validating tables.
+ */
+export type TableOpts<T extends Record<string, unknown>> = ArrayOpts & {
+  keys?: (keyof T & string)[];
+};
 
 /**
  * Creates an Arbitrary that generates arrays of objects.

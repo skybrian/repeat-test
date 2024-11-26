@@ -57,10 +57,3 @@ export function checkArray(
   }
   return true;
 }
-
-/**
- * Constraints used when generating or validating tables.
- */
-export type TableOpts<T extends Record<string, unknown>> = ArrayOpts & {
-  keys?: (keyof T & string)[];
-};
