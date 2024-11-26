@@ -24,6 +24,7 @@ export type {
   Range,
 } from "../picks.ts";
 
+export type { RowShape } from "../domain_class.ts";
 export type { Row } from "../arbitraries/rows.ts";
 
 export { Filtered } from "../pickable.ts";

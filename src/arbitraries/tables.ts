@@ -1,8 +1,13 @@
-import type { Arbitrary, PickFunction, RowPicker } from "@/arbitrary.ts";
+import type {
+  Arbitrary,
+  PickFunction,
+  RowPicker,
+  RowShape,
+} from "@/arbitrary.ts";
 import type { ArrayOpts } from "../options.ts";
 
 import { assert } from "@std/assert/assert";
-import { Domain, Jar, type RowShape } from "@/domain.ts";
+import { Domain, Jar } from "@/domain.ts";
 import { PickRequest } from "../picks.ts";
 import { parseArrayOpts } from "../options.ts";
 import { generateAll } from "../ordered.ts";

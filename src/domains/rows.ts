@@ -1,4 +1,4 @@
-import type { Row, RowPicker } from "@/arbitrary.ts";
+import type { Row, RowPicker, RowShape } from "@/arbitrary.ts";
 import type { PickifyFunction, SendErr } from "@/domain.ts";
 
 import * as arb from "@/arbs.ts";
@@ -6,17 +6,7 @@ import { Domain } from "@/domain.ts";
 import { assert } from "@std/assert";
 
 /**
- * Defines which values are allowed for multiple properties on an object.
- *
- * Each property's allowed values are independent. Any other properties that the
- * object might have are unrestricted.
- */
-export type RowShape<T> = {
-  [K in keyof T]: Domain<T[K]>;
-};
-
-/**
- * Options for validating an object using a {@link RowShape}.
+ * Options for validating an object using {@link RowShape}.
  */
 export type RowShapeOpts = {
   /**
@@ -41,9 +31,9 @@ export function object<T extends Row>(
 }
 
 /**
- * A domain that searches for a {@link RowShape} that matches the given object.
+ * A domain that searches for a shape that matches the given object.
  *
- * Shapes are tried in the order listed in the provided RowDomain, recursively
+ * Shapes are tried in the order listed in the provided RowDomains, recursively
  * when taggedUnions are nested. The first shape that matches on all its tag
  * properties will be used. (There can be more than one tag property when
  * taggedUnions are nested.)

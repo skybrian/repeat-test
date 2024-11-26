@@ -1,4 +1,5 @@
-import type { RowDomain, RowShape } from "./rows.ts";
+import type { Row, RowShape } from "@/arbitrary.ts";
+import type { RowDomain } from "./rows.ts";
 
 import { assert } from "@std/assert";
 import { Domain, type SendErr } from "@/domain.ts";
@@ -7,7 +8,6 @@ import * as arb from "@/arbs.ts";
 import { PickTree } from "../pick_tree.ts";
 import { checkArray, parseArrayOpts } from "../options.ts";
 import { Gen } from "../gen_class.ts";
-import type { Row } from "@/arbitrary.ts";
 
 /**
  * Creates a Domain that accepts arrays where each item is different.

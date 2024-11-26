@@ -319,3 +319,13 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
     return new Domain(pickify, build);
   }
 }
+
+/**
+ * Defines which values are allowed for multiple properties on an object.
+ *
+ * Each property's allowed values are independent. Any other properties that the
+ * object might have are unrestricted.
+ */
+export type RowShape<T> = {
+  [K in keyof T]: Domain<T[K]>;
+};
