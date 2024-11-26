@@ -2,7 +2,6 @@ import type { Pickable, PickFunction, PickFunctionOpts } from "./pickable.ts";
 import type { Backtracker } from "./backtracking.ts";
 import type { Gen } from "./gen_class.ts";
 import type { RowCase } from "./arbitraries/rows.ts";
-import type { Domain } from "./domain_class.ts";
 import type { RowShape } from "./domains/rows.ts";
 
 import { assert } from "@std/assert";
@@ -12,6 +11,8 @@ import { Script } from "./script_class.ts";
 import { generate } from "./gen_class.ts";
 import { PickTree } from "./pick_tree.ts";
 import { orderedPlayouts } from "./ordered.ts";
+import { Domain } from "./domain_class.ts";
+import { scriptFrom } from "./scripts/scriptFrom.ts";
 import { scriptOf } from "./scripts/scriptOf.ts";
 
 /**
@@ -185,7 +186,7 @@ export class UnionJar<T> {
   constructor(common: Domain<T>, cases: Domain<unknown>[]) {
     const commonJar = new Jar(common);
 
-    const acceptable = (val: unknown): val is T => {
+    const acceptable = (val: unknown): boolean => {
       return commonJar.has(val);
     };
 
@@ -207,7 +208,7 @@ export class UnionJar<T> {
   take(item: unknown): boolean {
     const commonRemoved = this.commonJar.take(item);
 
-    const acceptable = (val: unknown): val is T => {
+    const acceptable = (val: unknown): boolean => {
       return this.commonJar.has(val);
     };
 
@@ -224,31 +225,70 @@ export class UnionJar<T> {
 
     return commonRemoved && caseRemoved;
   }
+
+  /**
+   * Takes one value from the case domain at the given index.
+   *
+   * Returns undefined if the intersection of the case domain and common domain
+   * is empty.
+   */
+  takeAt(caseIndex: number, pick: PickFunction): T | undefined {
+    const caseJar = this.caseJars.get(caseIndex);
+    if (!caseJar || this.commonJar.isEmpty()) {
+      return undefined;
+    }
+
+    const val = caseJar.takeAny(pick, {
+      accept: (val) => {
+        return this.commonJar.has(val);
+      },
+    });
+
+    this.take(val);
+    return val as T;
+  }
 }
 
-type KeyToJar<T> = {
-  [P in keyof T]?: Jar<T[P]>;
-};
-
 export class RowJar<T extends Record<string, unknown>> {
-  readonly keys: KeyToJar<T> = {};
-  readonly chooseCase: Script<RowCase<T>>;
+  readonly keyJars: Record<string, UnionJar<unknown>> = {};
+  readonly chooseCase: Script<number>;
 
   constructor(
     readonly cases: RowCase<T>[],
     keyShape: Partial<RowShape<T>>,
   ) {
-    const keys = Object.keys(keyShape) as (keyof T)[];
-    for (const key of keys) {
-      const prop = keyShape[key];
-      assert(prop);
-      this.keys[key] = new Jar(prop);
+    if (cases.length === 0) {
+      throw new Error("must have at least one case");
     }
-    this.chooseCase = scriptOf(this.cases);
+
+    const keys = Object.keys(keyShape) as (keyof T & string)[];
+    for (const key of keys) {
+      const common = keyShape[key];
+      assert(common);
+
+      const keyCases: Domain<unknown>[] = [];
+      for (let i = 0; i < cases.length; i++) {
+        const c = cases[i].shape[key];
+        if (!c) {
+          throw new Error(`case ${i} is missing key ${key}`);
+        } else if (!(c instanceof Domain)) {
+          throw new Error(`case ${i} has non-domain property ${key}`);
+        }
+        keyCases.push(c);
+      }
+
+      this.keyJars[key] = new UnionJar(common, keyCases);
+    }
+
+    if (cases.length === 1) {
+      this.chooseCase = scriptOf([0]);
+    } else {
+      this.chooseCase = scriptFrom(new PickRequest(0, cases.length - 1));
+    }
   }
 
   isEmpty(): boolean {
-    for (const jar of Object.values(this.keys)) {
+    for (const jar of Object.values(this.keyJars)) {
       if (jar.isEmpty()) {
         return true;
       }
@@ -257,19 +297,22 @@ export class RowJar<T extends Record<string, unknown>> {
   }
 
   assertNotEmpty() {
-    for (const jar of Object.values(this.keys)) {
+    for (const jar of Object.values(this.keyJars)) {
       assert(!jar.isEmpty());
     }
   }
 
   takeAny(pick: PickFunction): T {
-    const c = this.chooseCase.directBuild(pick);
+    const index = this.chooseCase.directBuild(pick);
+    const c = this.cases[index];
 
     const row: Record<string, unknown> = {};
     for (const key of Object.keys(c.shape)) {
-      const jar = this.keys[key];
-      if (jar) {
-        row[key] = jar.takeAny(pick);
+      const keyJar = this.keyJars[key];
+      if (keyJar) {
+        const keyVal = keyJar.takeAt(index, pick);
+        assert(keyVal !== undefined);
+        row[key] = keyVal;
       } else {
         row[key] = pick(c.shape[key]);
       }
