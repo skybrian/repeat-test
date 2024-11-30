@@ -95,7 +95,7 @@ describe("table", () => {
       assertThrows(
         () => arb.table(row, { keys: ["k"] }),
         Error,
-        "property 'k' is declared unique but not specified by a Domain",
+        "property 'k' is declared a unique key, but not defined as a Domain",
       );
     });
   });
@@ -109,7 +109,7 @@ describe("table", () => {
       assertThrows(
         () => arb.table(row, { keys: ["k"] }),
         Error,
-        "property 'k' is declared unique but not specified by a Domain",
+        "property 'k' is declared a unique key, but not defined as a Domain",
       );
     });
 
@@ -121,7 +121,7 @@ describe("table", () => {
       assertThrows(
         () => arb.table(row, { keys: ["k"] }),
         Error,
-        "property 'k' is declared unique, but case 1 doesn't match case 0",
+        "property 'k' is declared a unique key, but case 1 doesn't match key domain",
       );
     });
   });
@@ -148,6 +148,7 @@ describe("table", () => {
     it("defaults to zero rows", () => {
       assertFirstGenerated(arb.table(row), [{ val: [], picks: [0] }]);
     });
+
     it("generates every combination of a boolean", () => {
       const table = arb.table(row, { length: 2 });
       const combos: boolean[][] = [];
@@ -162,6 +163,7 @@ describe("table", () => {
         [true, true],
       ]);
     });
+
     it("sometimes generates short and max lengths", () => {
       const table = arb.table(row);
       repeatTest(table, (table, console) => {
@@ -185,6 +187,25 @@ describe("table", () => {
       const table = arb.table(row, { keys: ["v"], length: { min: 1 } });
       assertEquals(generateDefault(table).val.length, 1);
     });
+
+    it("generates the same values as uniqueArray", () => {
+      const expected = takeAll(
+        arb.uniqueArray(dom.boolean()).map((r) => JSON.stringify(r)),
+      );
+      function toJSON(rows: { v: boolean }[]): string {
+        const values = rows.map((row) => row.v);
+        return JSON.stringify(values);
+      }
+      assertValues(
+        table.map(toJSON),
+        expected,
+      );
+    });
+  });
+
+  describe("with a unique key declared using a KeyShape", () => {
+    const row = arb.object({ v: dom.boolean() });
+    const table = arb.table(row, { keys: { "v": dom.boolean() } });
 
     it("generates the same values as uniqueArray", () => {
       const expected = takeAll(

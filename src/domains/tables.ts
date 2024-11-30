@@ -8,6 +8,7 @@ import * as arb from "@/arbs.ts";
 import { PickTree } from "../pick_tree.ts";
 import { checkArray, parseArrayOpts } from "../options.ts";
 import { Gen } from "../gen_class.ts";
+import { parseKeyOpts } from "../arbitraries/tables.ts";
 
 /**
  * Creates a Domain that accepts arrays where each item is different.
@@ -67,25 +68,7 @@ export function table<R extends Record<string, unknown>>(
   opts?: arb.TableOpts<R>,
 ): Domain<R[]> {
   const { min, max } = parseArrayOpts(opts);
-
-  const uniqueKeys = opts?.keys ?? [];
-
-  const shapes = item.patterns.map((c) => c.shape);
-  const first = shapes[0];
-  for (const key of uniqueKeys) {
-    if (!first[key]) {
-      throw new Error(`unique key '${key}' not defined`);
-    }
-  }
-  for (let i = 1; i < shapes.length; i++) {
-    for (const key of uniqueKeys) {
-      if (first[key] !== shapes[i][key]) {
-        throw new Error(
-          `unique key '${key}' not defined the same way in each case`,
-        );
-      }
-    }
-  }
+  const keyShape = parseKeyOpts(item.rowPicker, opts);
 
   const buildRow = arb.union(...item.patterns.map((c) => c.rowPicker));
   const build = arb.table(buildRow, opts);
@@ -95,7 +78,7 @@ export function table<R extends Record<string, unknown>>(
       return undefined;
     }
 
-    const out = new TableWriter(item, uniqueKeys, sendErr);
+    const out = new TableWriter(item, Object.keys(keyShape), sendErr);
 
     for (const row of rows as unknown[]) {
       if (out.rowCount >= min) {

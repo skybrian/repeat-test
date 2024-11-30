@@ -151,6 +151,7 @@ function checkIsRow(
  */
 export class RowDomain<T extends Row> extends Domain<T> {
   #tagProp: string | undefined;
+  #rowPicker: RowPicker<T>;
 
   private constructor(
     name: string,
@@ -176,11 +177,19 @@ export class RowDomain<T extends Row> extends Domain<T> {
       return patterns.length > 1 ? [pat.index, ...picks] : picks;
     };
 
-    const build =
-      arb.union(...patterns.map((c) => c.rowPicker)).with({ name, weight })
-        .buildScript;
-    super(pickify, build);
+    const rowPicker = arb.union(...patterns.map((c) => c.rowPicker)).with({
+      name,
+      weight,
+    });
+
+    super(pickify, rowPicker.buildScript);
+
     this.#tagProp = tagProp;
+    this.#rowPicker = rowPicker;
+  }
+
+  get rowPicker(): RowPicker<T> {
+    return this.#rowPicker;
   }
 
   /**

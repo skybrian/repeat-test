@@ -66,6 +66,75 @@ export function uniqueArray<T>(
   }).with({ name: "uniqueArray" });
 }
 
+/** Defines the unique keys in a table. */
+export type KeyShape<T> = {
+  [K in keyof T]?: Domain<T[K]>;
+};
+
+/**
+ * Constraints used when generating or validating tables.
+ */
+export type TableOpts<T extends Record<string, unknown>> = ArrayOpts & {
+  keys?: (keyof T & string)[] | KeyShape<T>;
+};
+
+export function parseKeyOpts<T extends Row>(
+  row: RowPicker<T>,
+  opts?: TableOpts<T>,
+): KeyShape<T> {
+  if (!opts?.keys) {
+    return {};
+  } else if (Array.isArray(opts?.keys)) {
+    const uniqueKeys = opts?.keys ?? [];
+
+    const keyShape: KeyShape<T> = {};
+    for (const key of uniqueKeys) {
+      const first = row.cases[0].shape[key];
+      if (!(first instanceof Domain)) {
+        if (first === undefined) {
+          throw new Error(
+            `property '${key}' is declared a unique key, but not defined`,
+          );
+        }
+        throw new Error(
+          `property '${key}' is declared a unique key, but not defined as a Domain`,
+        );
+      }
+      keyShape[key] = first;
+    }
+    return keyShape;
+  } else {
+    return opts.keys;
+  }
+}
+
+function checkKeys<T extends Row>(
+  row: RowPicker<T>,
+  shape: KeyShape<T>,
+  min: number,
+): void {
+  for (const [key, dom] of Object.entries(shape)) {
+    assert(dom instanceof Domain);
+
+    const cases = row.cases;
+    for (let i = 1; i < cases.length; i++) {
+      if (cases[i].shape[key] !== dom) {
+        throw new Error(
+          `property '${key}' is declared a unique key, but case ${i} doesn't match key domain`,
+        );
+      }
+    }
+
+    const count = countDistinct(dom, min);
+    if (count < min) {
+      const value = count === 1 ? "value" : "values";
+      throw new Error(
+        `property '${key}' has ${count} unique ${value}, but length.min is ${min}`,
+      );
+    }
+  }
+}
+
 function countDistinct(dom: Domain<unknown>, max: number): number {
   if (max === 0) {
     return 0;
@@ -85,63 +154,6 @@ function countDistinct(dom: Domain<unknown>, max: number): number {
   return count;
 }
 
-/** Defines the unique keys in a table. */
-export type KeyShape<T> = {
-  [K in keyof T]?: Domain<T[K]>;
-};
-
-/**
- * Constraints used when generating or validating tables.
- */
-export type TableOpts<T extends Record<string, unknown>> = ArrayOpts & {
-  keys?: (keyof T & string)[];
-};
-
-function parseKeyShape<T extends Row>(
-  row: RowPicker<T>,
-  opts?: TableOpts<T>,
-): KeyShape<T> {
-  const uniqueKeys = opts?.keys ?? [];
-  const cases = row.cases;
-
-  const keyShape: KeyShape<T> = {};
-  for (const key of uniqueKeys) {
-    const first = cases[0].shape[key];
-    if (!(first instanceof Domain)) {
-      throw new Error(
-        `property '${key}' is declared unique but not specified by a Domain`,
-      );
-    }
-
-    for (let i = 1; i < cases.length; i++) {
-      if (cases[i].shape[key] !== first) {
-        throw new Error(
-          `property '${key}' is declared unique, but case ${i} doesn't match case 0`,
-        );
-      }
-    }
-    keyShape[key] = first;
-  }
-
-  return keyShape;
-}
-
-function checkMinimumKeys<T extends Row>(
-  shape: KeyShape<T>,
-  min: number,
-): void {
-  for (const [key, dom] of Object.entries(shape)) {
-    assert(dom instanceof Domain);
-    const count = countDistinct(dom, min);
-    if (count < min) {
-      const value = count === 1 ? "value" : "values";
-      throw new Error(
-        `property '${key}' has ${count} unique ${value}, but length.min is ${min}`,
-      );
-    }
-  }
-}
-
 /**
  * Creates an Arbitrary that generates arrays of objects.
  *
@@ -157,9 +169,9 @@ export function table<R extends Record<string, unknown>>(
   opts?: TableOpts<R>,
 ): Arbitrary<R[]> {
   const { min, max } = parseArrayOpts(opts);
-  const keyShape = parseKeyShape(row, opts);
+  const keyShape = parseKeyOpts(row, opts);
 
-  checkMinimumKeys(keyShape, min);
+  checkKeys(row, keyShape, min);
 
   const startRegionSize = 20;
   const [startBias, extendedBias] = arrayLengthBiases(max - min, {

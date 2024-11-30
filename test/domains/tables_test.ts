@@ -326,7 +326,7 @@ describe("table", () => {
     assertThrows(
       () => dom.table(dom.object({}), { keys: ["id"] }),
       Error,
-      "unique key 'id' not defined",
+      "property 'id' is declared a unique key, but not defined",
     );
   });
 
@@ -342,7 +342,7 @@ describe("table", () => {
     assertThrows(
       () => dom.table(row, { keys: ["id"] }),
       Error,
-      "unique key 'id' not defined the same way in each case",
+      "property 'id' is declared a unique key, but case 1 doesn't match key domain",
     );
   });
 });
