@@ -186,42 +186,65 @@ export function runRep<T>(
   system: SystemConsole,
   coverage: Coverage,
 ): Success<void> | RepFailure<T> {
+  let firstArg: T | undefined = undefined;
+  let firstError: unknown = undefined;
+
   const interesting = (arg: T) => {
     const innerConsole = new CountingTestConsole(coverage);
     try {
       rep.test(arg, innerConsole);
       return innerConsole.errorCount > 0;
-    } catch (_e) {
+    } catch (e) {
+      if (firstError === undefined) {
+        firstArg = arg;
+        firstError = e;
+      }
       return true;
     }
   };
+
   if (!interesting(rep.arg.val)) {
     return success();
   }
+
   system.log("\nTest failed. Shrinking...");
   const shrunk = shrink(rep.arg, interesting);
 
   // Rerun the test using the shrunk value and the original console.
   const innerConsole = new FailingTestConsole(system);
-  try {
-    rep.test(shrunk.val, innerConsole);
-    if (innerConsole.errorCount > 0) {
+
+  for (let i = 0; i < 5; i++) {
+    try {
+      rep.test(shrunk.val, innerConsole);
+      if (innerConsole.errorCount > 0) {
+        return {
+          ok: false,
+          key: rep.key,
+          arg: shrunk.val,
+          caught: new Error("test called console.error()"),
+        };
+      }
+    } catch (e) {
       return {
         ok: false,
         key: rep.key,
         arg: shrunk.val,
-        caught: new Error("test called console.error()"),
+        caught: e,
       };
     }
-    throw new Error("flaky test passed after shrinking");
-  } catch (e) {
-    return {
-      ok: false,
-      key: rep.key,
-      arg: shrunk.val,
-      caught: e,
-    };
+    if (i === 0) {
+      system.log("Flaky test passed after shrinking. Retrying...");
+    }
   }
+
+  system.log("Test passes after shrinking. Reporting original error.");
+
+  return {
+    ok: false,
+    key: rep.key,
+    arg: firstArg,
+    caught: firstError,
+  };
 }
 
 export function runReps<T>(

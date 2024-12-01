@@ -14,7 +14,10 @@ export function assertRoundTrip<T>(
   console?: SystemConsole,
 ) {
   const picks = dom.pickify(val);
-  assert(picks.ok);
+  if (!picks.ok) {
+    console?.log("picks:", picks);
+    fail(`can't pickify value:\n${Deno.inspect(val)}`);
+  }
   const gen = Gen.build(dom, picks.val);
   if (!gen.ok) {
     console?.log("gen:", gen);

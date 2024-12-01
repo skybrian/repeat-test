@@ -6,6 +6,7 @@ import { repeatTest } from "@/runner.ts";
 import { Arbitrary } from "@/arbitrary.ts";
 import * as dom from "@/doms.ts";
 import { arb } from "@/mod.ts";
+import { systemConsole } from "../../src/console.ts";
 
 describe("uniqueArray", () => {
   const bools = dom.uniqueArray(dom.boolean());
@@ -330,19 +331,23 @@ describe("table", () => {
     );
   });
 
-  it("throws for a union with inconsistent id types", () => {
+  it("round trips a union with different keys in each case", () => {
     const row = dom.taggedUnion<{ id: number; kind: "a" | "b" }>(
       "kind",
       [
-        dom.object({ id: dom.int(1, 10), kind: dom.of("a") }),
-        dom.object({ id: dom.int(11, 20), kind: dom.of("b") }),
+        dom.object({ id: dom.int(1, 2), kind: dom.of("a") }),
+        dom.object({ id: dom.int(2, 3), kind: dom.of("b") }),
       ],
     );
+    const table = dom.table(row, { keys: { id: dom.int(1, 3) } });
+    assertRoundTrip(table, [
+      { id: 2, kind: "b" },
+      { id: 3, kind: "b" },
+      { id: 1, kind: "a" },
+    ], systemConsole);
 
-    assertThrows(
-      () => dom.table(row, { keys: ["id"] }),
-      Error,
-      "property 'id' is declared a unique key, but case 1 doesn't match key domain",
-    );
+    repeatTest(table, (rows, console) => {
+      assertRoundTrip(table, rows, console);
+    });
   });
 });

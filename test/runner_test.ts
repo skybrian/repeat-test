@@ -422,7 +422,7 @@ describe("runRep", () => {
     const rep = makeDefaultRep(arb.int(1, 10), (_) => {
       if (firstTime) {
         firstTime = false;
-        throw new Error("test failed");
+        throw new Error("a flaky test");
       }
     });
     const result = runRep(rep, con, coverage);
@@ -431,8 +431,10 @@ describe("runRep", () => {
     if (!(result.caught instanceof Error)) {
       fail("expected caught to be an Error");
     }
-    assertEquals(result.caught.message, "flaky test passed after shrinking");
+    assertEquals(result.caught.message, "a flaky test");
     con.loggedTestFailed();
+    con.logged("Flaky test passed after shrinking. Retrying...");
+    con.logged("Test passes after shrinking. Reporting original error.");
     con.checkEmpty();
   });
 });

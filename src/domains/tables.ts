@@ -1,4 +1,4 @@
-import type { Row, RowShape } from "@/arbitrary.ts";
+import type { Row } from "@/arbitrary.ts";
 import type { RowDomain } from "./rows.ts";
 
 import { assert } from "@std/assert";
@@ -8,7 +8,7 @@ import * as arb from "@/arbs.ts";
 import { PickTree } from "../pick_tree.ts";
 import { checkArray, parseArrayOpts } from "../options.ts";
 import { Gen } from "../gen_class.ts";
-import { parseKeyOpts } from "../arbitraries/tables.ts";
+import { type KeyShape, parseKeyOpts } from "../arbitraries/tables.ts";
 
 /**
  * Creates a Domain that accepts arrays where each item is different.
@@ -78,7 +78,7 @@ export function table<R extends Record<string, unknown>>(
       return undefined;
     }
 
-    const out = new TableWriter(item, Object.keys(keyShape), sendErr);
+    const out = new TableWriter(item, keyShape, sendErr);
 
     for (const row of rows as unknown[]) {
       if (out.rowCount >= min) {
@@ -119,11 +119,11 @@ function pickifyRow<R extends Row>(
   }
 
   let rowAt = `${out.rowCount}`;
-  if (out.uniqueKeys.length > 0) {
-    const key = out.uniqueKeys[0];
-    const val = row[key];
-    if (pat.shape[key].matches(val)) {
-      rowAt = `[${key}=${val}]`;
+  const keyCol = out.keyColumnName;
+  if (keyCol !== undefined) {
+    const val = row[keyCol];
+    if (pat.shape[keyCol].matches(val)) {
+      rowAt = `[${keyCol}=${val}]`;
     }
   }
 
@@ -137,7 +137,7 @@ function pickifyRow<R extends Row>(
     );
     if (replies === undefined) return false;
 
-    if (!fieldAdded(pat.shape, key, propVal, replies, out)) {
+    if (!fieldAdded(key, propVal, replies, out)) {
       return false;
     }
 
@@ -147,7 +147,6 @@ function pickifyRow<R extends Row>(
 }
 
 function fieldAdded<R extends Row>(
-  shape: RowShape<R>,
   key: string,
   val: unknown,
   replies: Iterable<number>,
@@ -157,9 +156,10 @@ function fieldAdded<R extends Row>(
   if (!seen) {
     return true; // not a unique key
   }
+  const colDom = out.columnDoms[key];
 
   // Regenerate because we need both requests and replies.
-  const gen = Gen.build(shape[key], replies);
+  const gen = Gen.build(colDom, replies);
   assert(gen.ok, "can't regenerate a previously accepted value");
 
   if (!seen.prune(gen)) {
@@ -172,16 +172,23 @@ function fieldAdded<R extends Row>(
 
 class TableWriter<R extends Row> {
   columnTrees: Record<string, PickTree> = {};
+  columnDoms: Record<string, Domain<unknown>> = {};
+  keyColumnName: string | undefined = undefined;
   rowCount = 0;
   readonly buf: number[] = [];
 
   constructor(
     readonly item: RowDomain<R>,
-    readonly uniqueKeys: string[],
+    readonly keyShape: KeyShape<R>,
     readonly sendErr: SendErr,
   ) {
-    for (const key of uniqueKeys) {
+    for (const [key, dom] of Object.entries(keyShape)) {
+      assert(dom instanceof Domain);
+      if (this.keyColumnName === undefined) {
+        this.keyColumnName = key;
+      }
       this.columnTrees[key] = new PickTree();
+      this.columnDoms[key] = dom;
     }
   }
 }

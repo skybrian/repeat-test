@@ -1,4 +1,10 @@
-import type { Arbitrary, PickFunction, Row, RowPicker } from "@/arbitrary.ts";
+import type {
+  Arbitrary,
+  Pickable,
+  PickFunction,
+  Row,
+  RowPicker,
+} from "@/arbitrary.ts";
 import type { ArrayOpts } from "../options.ts";
 
 import { assert } from "@std/assert/assert";
@@ -85,7 +91,7 @@ export function parseKeyOpts<T extends Row>(
   if (!opts?.keys) {
     return {};
   } else if (Array.isArray(opts?.keys)) {
-    const uniqueKeys = opts?.keys ?? [];
+    const uniqueKeys = opts.keys;
 
     const keyShape: KeyShape<T> = {};
     for (const key of uniqueKeys) {
@@ -113,44 +119,44 @@ function checkKeys<T extends Row>(
   shape: KeyShape<T>,
   min: number,
 ): void {
-  for (const [key, dom] of Object.entries(shape)) {
+  for (const [columnName, dom] of Object.entries(shape)) {
     assert(dom instanceof Domain);
 
-    const cases = row.cases;
-    for (let i = 1; i < cases.length; i++) {
-      if (cases[i].shape[key] !== dom) {
-        throw new Error(
-          `property '${key}' is declared a unique key, but case ${i} doesn't match key domain`,
-        );
-      }
-    }
+    const keyCases: Pickable<unknown>[] = row.cases.map((c) =>
+      c.shape[columnName]
+    );
+    const keys = arb.oneOf(...keyCases);
 
-    const count = countDistinct(dom, min);
+    const count = countDistinct(keys, dom, min);
     if (count < min) {
       const value = count === 1 ? "value" : "values";
       throw new Error(
-        `property '${key}' has ${count} unique ${value}, but length.min is ${min}`,
+        `property '${columnName}' has ${count} unique ${value}, but length.min is ${min}`,
       );
     }
   }
 }
 
-function countDistinct(dom: Domain<unknown>, max: number): number {
+function countDistinct<T>(
+  source: Pickable<T>,
+  filter: Domain<T>,
+  max: number,
+): number {
   if (max === 0) {
     return 0;
   }
   const remaining = new PickTree();
   let count = 0;
-  for (const gen of generateAll(dom)) {
-    const regen = dom.regenerate(gen.val);
-    assert(regen.ok);
-    if (remaining.prune(regen)) {
+  for (const gen of generateAll(source)) {
+    const regen = filter.regenerate(gen.val);
+    if (regen.ok && remaining.prune(regen)) {
       count++;
       if (count >= max) {
         return max;
       }
     }
   }
+
   return count;
 }
 

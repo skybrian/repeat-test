@@ -14,6 +14,7 @@ import { orderedPlayouts } from "./ordered.ts";
 import { Domain } from "./domain_class.ts";
 import { scriptFrom } from "./scripts/scriptFrom.ts";
 import { scriptOf } from "./scripts/scriptOf.ts";
+import { Filtered } from "@/arbitrary.ts";
 
 /**
  * Picks from all items in a Domain, without replacement.
@@ -99,7 +100,9 @@ export class Jar<T> {
           if (req instanceof PickRequest) {
             const innerReq = walk.narrow(req);
             const n = pick(innerReq);
-            assert(walk.push(req, n));
+            if (!walk.push(req, n)) {
+              throw new Filtered("pruned by jar");
+            }
             return n as T;
           } else {
             return pick(req, opts);
@@ -269,11 +272,7 @@ export class RowJar<T extends Record<string, unknown>> {
       const keyCases: Domain<unknown>[] = [];
       for (let i = 0; i < cases.length; i++) {
         const c = cases[i].shape[key];
-        if (!c) {
-          throw new Error(`case ${i} is missing key ${key}`);
-        } else if (!(c instanceof Domain)) {
-          throw new Error(`case ${i} has non-domain property ${key}`);
-        }
+        assert(c instanceof Domain);
         keyCases.push(c);
       }
 
@@ -307,14 +306,16 @@ export class RowJar<T extends Record<string, unknown>> {
     const c = this.cases[index];
 
     const row: Record<string, unknown> = {};
-    for (const key of Object.keys(c.shape)) {
-      const keyJar = this.keyJars[key];
+    for (const columnName of Object.keys(c.shape)) {
+      const keyJar = this.keyJars[columnName];
       if (keyJar) {
         const keyVal = keyJar.takeAt(index, pick);
-        assert(keyVal !== undefined);
-        row[key] = keyVal;
+        if (keyVal === undefined) {
+          throw new Filtered("no keys left for chosen case");
+        }
+        row[columnName] = keyVal;
       } else {
-        row[key] = pick(c.shape[key]);
+        row[columnName] = pick(c.shape[columnName]);
       }
     }
     return row as T;

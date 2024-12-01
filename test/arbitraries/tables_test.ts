@@ -113,16 +113,17 @@ describe("table", () => {
       );
     });
 
-    it("throws an Error if a unique key isn't the same in all cases", () => {
+    it("generates keys that aren't the same in each case", () => {
       const row = arb.union<{ k: number }>(
-        arb.object({ k: dom.int(1, 10) }),
-        arb.object({ k: dom.int(1, 11) }),
+        arb.object({ k: dom.int(1, 2) }),
+        arb.object({ k: dom.int(2, 3) }),
       );
-      assertThrows(
-        () => arb.table(row, { keys: ["k"] }),
-        Error,
-        "property 'k' is declared a unique key, but case 1 doesn't match key domain",
-      );
+      const table = arb.table(row, { keys: { "k": dom.int(1, 3) } });
+      // Note: duplicate picks are allowed between different tables, but not within a single table
+      repeatTest(table, (table) => {
+        const keys = table.map((row) => row.k);
+        assertEquals(keys.length, new Set(keys).size);
+      });
     });
   });
 
