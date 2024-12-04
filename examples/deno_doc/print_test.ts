@@ -26,7 +26,7 @@ describe("linesFromDenoDoc", () => {
     const example = makeDenoDocSchema({
       typeName: dom.of("Foo", "Bar", "Baz", "Quux"),
       typeParamName: dom.of("T", "A", "B", "C"),
-      valName: dom.asciiLetter(),
+      valName: dom.asciiChar(/[a-z]/),
       text: dom.of("some text"),
       maxItems: 10,
     });

@@ -170,7 +170,7 @@ function maybe<T>(d: Domain<T>) {
 }
 
 function maybeNull<T>(d: Domain<T>) {
-  return dom.firstOf(dom.of(null), d);
+  return dom.firstOf(dom.of(null).with({ weight: 0.2 }), d);
 }
 
 /**
@@ -311,7 +311,7 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
 
   const typeAliasDef = object({
     tsType,
-    typeParams: table(object({ name: typeName })),
+    typeParams: table(object({ name: typeParamName })),
   });
 
   const construct: Domain<Constructor> = object({
@@ -346,7 +346,7 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
   });
 
   const interfaceDef = object({
-    typeParams: dom.table(dom.object({ name: typeName }), {
+    typeParams: dom.table(dom.object({ name: typeParamName }), {
       keys: ["name"],
     }),
     callSignatures: dom.array(fnOrConstructor),
@@ -356,50 +356,47 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
 
   const variableDef = object({ tsType });
 
-  // TODO: distinguish type names and val names
-  const name = valName;
-
   const node = dom.taggedUnion<Node>("kind", [
     object({
       kind: dom.of("typeAlias"),
-      name,
+      name: typeName,
       typeAliasDef,
     }),
     object({
       kind: dom.of("class"),
-      name,
+      name: typeName,
       classDef,
     }),
     object({
       kind: dom.of("interface"),
-      name,
+      name: typeName,
       interfaceDef,
     }),
     object({
       kind: dom.of("function"),
-      name,
+      name: valName,
       functionDef,
     }),
     object({
       kind: dom.of("variable"),
-      name,
+      name: valName,
       variableDef,
     }),
     object({
       kind: dom.of("moduleDoc"),
-      name,
+      name: valName,
       moduleDoc: maybe(text),
     }),
     object({
       kind: dom.of("namespace"),
-      name,
+      name: valName,
       // TODO: more fields
     }),
   ]).with({ name: "Node" });
 
   const denoDoc: Domain<DenoDoc> = object({
     version: dom.of(1),
-    nodes: dom.table(node, { keys: ["name"] }),
+    nodes: dom.table(node, { keys: { "name": dom.string() } }),
   });
 
   return denoDoc;
