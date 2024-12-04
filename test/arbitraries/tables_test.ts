@@ -89,11 +89,22 @@ describe("uniqueArray", () => {
 });
 
 describe("table", () => {
-  describe("for an object row", () => {
+  describe("for an object row and list of keys", () => {
     it("throws an Error if a unique key isn't a Domain", () => {
       const row = arb.object({ k: arb.boolean() });
       assertThrows(
         () => arb.table(row, { keys: ["k"] }),
+        Error,
+        "property 'k' is declared a unique key, but not defined as a Domain",
+      );
+    });
+  });
+
+  describe("for an object row and key shape", () => {
+    it("throws an Error if a unique key isn't a Domain", () => {
+      const row = arb.object({ k: arb.boolean() });
+      assertThrows(
+        () => arb.table(row, { keys: { "k": dom.boolean() } }),
         Error,
         "property 'k' is declared a unique key, but not defined as a Domain",
       );
@@ -316,6 +327,31 @@ describe("table", () => {
         console.sometimes(
           "the second case is picked",
           rows.some((r) => Object.keys(r).includes("color")),
+        );
+      });
+    });
+  });
+
+  describe("with two objects shapes having different string keys", () => {
+    const row = arb.union<{ id: string }>(
+      arb.object({ id: dom.of("a") }),
+      arb.object({ id: dom.of("b") }),
+    );
+
+    it("generates both kinds of rows", () => {
+      const table = arb.table(row, { keys: { "id": dom.string() } });
+      repeatTest(table, (rows, console) => {
+        const ids = new Set(rows.map((row) => row.id));
+        assertEquals(ids.size, rows.length, "id should be unique");
+
+        console.sometimes(
+          "the first case is picked",
+          rows.some((r) => r.id === "a"),
+        );
+
+        console.sometimes(
+          "the second case is picked",
+          rows.some((r) => r.id === "b"),
         );
       });
     });

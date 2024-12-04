@@ -272,7 +272,7 @@ export class RowJar<T extends Record<string, unknown>> {
       const keyCases: Domain<unknown>[] = [];
       for (let i = 0; i < cases.length; i++) {
         const c = cases[i].shape[key];
-        assert(c instanceof Domain);
+        assert(c instanceof Domain, "key must be a Domain");
         keyCases.push(c);
       }
 

@@ -88,13 +88,9 @@ export function parseKeyOpts<T extends Row>(
   row: RowPicker<T>,
   opts?: TableOpts<T>,
 ): KeyShape<T> {
-  if (!opts?.keys) {
-    return {};
-  } else if (Array.isArray(opts?.keys)) {
-    const uniqueKeys = opts.keys;
-
-    const keyShape: KeyShape<T> = {};
-    for (const key of uniqueKeys) {
+  let keyShape: KeyShape<T> = {};
+  if (Array.isArray(opts?.keys)) {
+    for (const key of opts?.keys) {
       const first = row.cases[0].shape[key];
       if (!(first instanceof Domain)) {
         if (first === undefined) {
@@ -108,10 +104,22 @@ export function parseKeyOpts<T extends Row>(
       }
       keyShape[key] = first;
     }
-    return keyShape;
-  } else {
-    return opts.keys;
+  } else if (opts?.keys) {
+    keyShape = opts.keys;
   }
+
+  for (const columnName in keyShape) {
+    for (const c of row.cases) {
+      const dom = c.shape[columnName];
+      if (!(dom instanceof Domain)) {
+        throw new Error(
+          `property '${columnName}' is declared a unique key, but not defined as a Domain`,
+        );
+      }
+    }
+  }
+
+  return keyShape;
 }
 
 function checkKeys<T extends Row>(
@@ -167,8 +175,8 @@ function countDistinct<T>(
  *
  * Properties whose names appear in {@link TableOpts.keys} will be constrained
  * to be unique columns. Each possible row shape must define a property for each
- * unique column. The property definitions for a unique column must all use the
- * same Domain.
+ * unique column. The property definitions for a unique column must all be
+ * Domains.
  */
 export function table<R extends Record<string, unknown>>(
   row: RowPicker<R>,
