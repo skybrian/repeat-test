@@ -14,7 +14,7 @@ import {
 
 import { filtered } from "../src/results.ts";
 import { Filtered } from "../src/pickable.ts";
-import { PickRequest } from "../src/picks.ts";
+import { IntRequest } from "../src/picks.ts";
 import { minPlayout } from "../src/backtracking.ts";
 import { generate } from "../src/gen_class.ts";
 import { Arbitrary } from "../src/arbitrary_class.ts";
@@ -534,8 +534,8 @@ describe("repeatTest", () => {
     con.checkEmpty();
   });
 
-  it("accepts a PickRequest", () => {
-    repeatTest(PickRequest.bit, collect);
+  it("accepts an IntRequest", () => {
+    repeatTest(IntRequest.bit, collect);
     assertEquals(collectArgs, [0, 1]);
     con.checkEmpty;
   });

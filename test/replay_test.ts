@@ -1,7 +1,7 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
 
-import { Filtered, PickRequest } from "@/arbitrary.ts";
+import { Filtered, IntRequest } from "@/arbitrary.ts";
 import { filtered } from "../src/results.ts";
 import { keep, replaceOnce } from "../src/edits.ts";
 import { CallBuffer } from "../src/calls.ts";
@@ -15,7 +15,7 @@ import {
 } from "../src/replay.ts";
 
 const roll = Script.make("roll", (pick) => {
-  return pick(new PickRequest(1, 6));
+  return pick(new IntRequest(1, 6));
 });
 
 const rollStr = Script.make("rollStr", (pick) => {
@@ -101,7 +101,7 @@ describe("replay", () => {
 
   describe("for a pick call followed by a cachable script call", () => {
     const rollAndStr = Script.make("rollAndStr", (pick) => {
-      return `${pick(new PickRequest(1, 6))}, ${pick(cachableRoll)}`;
+      return `${pick(new IntRequest(1, 6))}, ${pick(cachableRoll)}`;
     });
 
     it("uses the cached value if the script call matches", () => {
@@ -148,7 +148,7 @@ describe("replay", () => {
 
   describe("for a cachable script call followed by a pick call", () => {
     const script = Script.make("strAndRoll", (pick) => {
-      return `${pick(cachableRoll)}, ${pick(new PickRequest(1, 6))}`;
+      return `${pick(cachableRoll)}, ${pick(new IntRequest(1, 6))}`;
     });
 
     it("uses the cached value if the script call matches", () => {
@@ -276,7 +276,7 @@ describe("replayWithEdits", () => {
 
   describe("for a script that makes one pick (split)", () => {
     const roll = Script.make("roll", (pick) => {
-      return pick(new PickRequest(1, 6));
+      return pick(new IntRequest(1, 6));
     }, { logCalls: true });
 
     it("makes no change if there is no call to edit", () => {

@@ -167,7 +167,7 @@ export class Gen<T> implements Success<T> {
   }
 
   /**
-   * The replies to the PickRequests sent by the script, in the order they were
+   * The replies to the IntRequests sent by the script, in the order they were
    * sent.
    */
   get replies(): Iterable<number> {
@@ -178,7 +178,7 @@ export class Gen<T> implements Success<T> {
    * Writes the requests and replies used to generate this value to the given
    * target.
    *
-   * (Only includes PickRequests, not calls to other scripts.)
+   * (Only includes IntRequests, not calls to other scripts.)
    *
    * Returns true if the target accepted every pick.
    */

@@ -9,7 +9,7 @@ import * as dom from "@/doms.ts";
 
 import { minMaxVal } from "./lib/ranges.ts";
 
-import { PickList, PickRequest } from "../src/picks.ts";
+import { IntRequest, PickList } from "../src/picks.ts";
 import { Script } from "../src/script_class.ts";
 import { scriptFrom } from "../src/scripts/scriptFrom.ts";
 import { Gen } from "@/arbitrary.ts";
@@ -48,7 +48,7 @@ function assertNoChange<T>(
   assertShrinks(dom, interesting, start, start, console);
 }
 
-function seedFrom(reqs: PickRequest[], replies: number[]): Gen<number[]> {
+function seedFrom(reqs: IntRequest[], replies: number[]): Gen<number[]> {
   const build = Script.make("seedFrom", (pick) => {
     const out: number[] = [];
     for (const req of reqs) {
@@ -63,8 +63,8 @@ const emptySeed = seedFrom([], []);
 
 const acceptAll = () => true;
 
-const bitReq = new PickRequest(0, 1);
-const roll = new PickRequest(1, 6);
+const bitReq = new IntRequest(0, 1);
+const roll = new IntRequest(1, 6);
 
 describe("Shrinker", () => {
   describe("removeGroups", () => {
@@ -146,7 +146,7 @@ describe("Shrinker", () => {
 
     it("shrinks random picks to nothing", () => {
       repeatTest(nonEmptySeeds, (recs) => {
-        const reqs = recs.map((r) => new PickRequest(r.min, r.max));
+        const reqs = recs.map((r) => new IntRequest(r.min, r.max));
         const replies = recs.map((r) => r.val);
         const seed = seedFrom(reqs, replies);
 
@@ -265,8 +265,8 @@ describe("Shrinker", () => {
     });
 
     it("shrinks to default picks", () => {
-      const lo = new PickRequest(1, 2);
-      const hi = new PickRequest(3, 4);
+      const lo = new IntRequest(1, 2);
+      const hi = new IntRequest(3, 4);
       const seed = seedFrom([lo, hi], [2, 4]);
       const s = new Shrinker(seed, acceptAll);
       assert(s.shrinkAllPicks());
@@ -275,10 +275,10 @@ describe("Shrinker", () => {
     });
 
     it("shrinks two picks", () => {
-      const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
+      const bit = Script.make("bit", (pick) => pick(IntRequest.bit));
       const twoBits = Script.make("two bits", (pick) => {
         const a = pick(bit);
-        return [a, pick(PickRequest.bit)];
+        return [a, pick(IntRequest.bit)];
       }, { logCalls: true });
 
       const seed = Gen.mustBuild(twoBits, [1, 1]);
@@ -322,7 +322,7 @@ describe("Shrinker", () => {
       assertFalse(s.shrinkOnePick(0, 0));
     });
 
-    const roll = new PickRequest(1, 6);
+    const roll = new IntRequest(1, 6);
     it("can't shrink a pick already at the minimum", () => {
       const seed = seedFrom([roll], [1]);
       const s = new Shrinker(seed, acceptAll);
@@ -459,11 +459,11 @@ describe("shrink", () => {
   });
 
   describe("for a script with logCalls turned on", () => {
-    const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
+    const bit = Script.make("bit", (pick) => pick(IntRequest.bit));
 
     const twoBits = Script.make("two bits", (pick) => {
       const a = pick(bit);
-      return [a, pick(PickRequest.bit)];
+      return [a, pick(IntRequest.bit)];
     }, { logCalls: true });
 
     it("can't shrink the default value", () => {

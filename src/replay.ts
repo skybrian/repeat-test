@@ -8,7 +8,7 @@ import type { Script } from "./script_class.ts";
 import { assert } from "@std/assert";
 import { Filtered } from "@/arbitrary.ts";
 import { filtered } from "./results.ts";
-import { PickRequest } from "./picks.ts";
+import { IntRequest } from "./picks.ts";
 import { scriptFrom } from "./scripts/scriptFrom.ts";
 import { makePickFunction } from "./build.ts";
 import { EditResponder, keep } from "./edits.ts";
@@ -116,7 +116,7 @@ class Replay {
     req: Pickable<T>,
     opts?: PickFunctionOpts<T>,
   ): T {
-    if (req instanceof PickRequest) {
+    if (req instanceof IntRequest) {
       return this.handlePick(req, input.group, edit);
     }
 
@@ -130,7 +130,7 @@ class Replay {
   }
 
   private handlePick<T>(
-    req: PickRequest,
+    req: IntRequest,
     group: PickList,
     groupEdit: GroupEdit,
   ): T {

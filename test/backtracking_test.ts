@@ -2,10 +2,10 @@ import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { randomPicker } from "../src/random.ts";
 
-import { PickRequest } from "../src/picks.ts";
+import { IntRequest } from "../src/picks.ts";
 import { onePlayout } from "../src/backtracking.ts";
 
-const bit = new PickRequest(0, 1);
+const bit = new IntRequest(0, 1);
 
 describe("SinglePlayoutPicker", () => {
   it("records one playout", () => {

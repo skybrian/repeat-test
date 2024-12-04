@@ -5,7 +5,7 @@ import type { Gen } from "./gen_class.ts";
 import { assert } from "@std/assert";
 import { filtered } from "./results.ts";
 import { Filtered } from "./pickable.ts";
-import { PickRequest } from "./picks.ts";
+import { IntRequest } from "./picks.ts";
 import { Backtracker } from "./backtracking.ts";
 import { PickTree } from "./pick_tree.ts";
 import { makePickFunction } from "./build.ts";
@@ -39,12 +39,12 @@ export class OrderedTracker implements Tracker {
     this.#pass.trim(depth);
   }
 
-  maybePick(req: PickRequest): number | undefined {
+  maybePick(req: IntRequest): number | undefined {
     let replaced = req;
 
     let maxSize = this.#currentPass - this.#pass.depth + 1;
     if (this.#currentPass > 10) {
-      // Widen more rapidly to handle scanning over a very wide PickRequest like
+      // Widen more rapidly to handle scanning over a very wide IntRequest like
       // char16 without an excessive number of passes. (Which pass to start at
       // doesn't seem to effect performance that much.)
       maxSize *= this.#currentPass - 10;
@@ -52,7 +52,7 @@ export class OrderedTracker implements Tracker {
     if (maxSize < 1 || this.#pass.depth >= this.#currentPass) maxSize = 1;
 
     if (maxSize < req.size) {
-      replaced = new PickRequest(req.min, req.min + maxSize - 1);
+      replaced = new IntRequest(req.min, req.min + maxSize - 1);
       this.#filteredThisPass = true;
     }
 

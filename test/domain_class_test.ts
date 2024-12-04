@@ -6,7 +6,7 @@ import {
   assertThrows,
 } from "@std/assert";
 
-import { PickRequest } from "../src/picks.ts";
+import { IntRequest } from "../src/picks.ts";
 import {
   Domain,
   ParseError,
@@ -34,11 +34,11 @@ describe("ParseError", () => {
   });
 });
 
-const sixSided = new PickRequest(1, 6);
+const sixSided = new IntRequest(1, 6);
 
 describe("Domain", () => {
   describe("make", () => {
-    it("sets maxSize when based on a PickRequest", () => {
+    it("sets maxSize when based on an IntRequest", () => {
       const dom = Domain.make(sixSided, (val) => {
         if (typeof val !== "number") return undefined;
         if (val < 1 || val > 6) return undefined;
@@ -84,7 +84,7 @@ describe("Domain", () => {
   });
 
   const bit = Domain.make(
-    new PickRequest(0, 1),
+    new IntRequest(0, 1),
     (v) => {
       return (v === 0 || v === 1) ? [v] : undefined;
     },

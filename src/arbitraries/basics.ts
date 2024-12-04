@@ -1,6 +1,6 @@
 import type { BuildFunction, Pickable } from "@/arbitrary.ts";
 
-import { Arbitrary, biasedBitRequest, PickRequest } from "@/arbitrary.ts";
+import { Arbitrary, biasedBitRequest, IntRequest } from "@/arbitrary.ts";
 import { scriptFromCases } from "../scripts/scriptFromCases.ts";
 
 /**
@@ -56,9 +56,9 @@ export function int(
 ): Arbitrary<number> {
   const name = `int(${min}, ${max})`;
   if (min >= 0) {
-    return Arbitrary.from(new PickRequest(min, max)).with({ name });
+    return Arbitrary.from(new IntRequest(min, max)).with({ name });
   } else if (max <= 0) {
-    return Arbitrary.from(new PickRequest(-max, -min)).map((v) => -v).with({
+    return Arbitrary.from(new IntRequest(-max, -min)).map((v) => -v).with({
       name,
     });
   } else {

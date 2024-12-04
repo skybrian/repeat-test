@@ -1,4 +1,4 @@
-import type { IntPicker, PickRequest } from "./picks.ts";
+import type { IntPicker, IntRequest } from "./picks.ts";
 import type { Tracker } from "./backtracking.ts";
 
 import { alwaysPickMin } from "./picks.ts";
@@ -33,7 +33,7 @@ export class PartialTracker implements Tracker {
     this.odds.length = depth;
   }
 
-  maybePick(req: PickRequest): number {
+  maybePick(req: IntRequest): number {
     const depth = this.odds.length;
     const newOdds = depth > 0 ? this.odds[depth - 1] * (1 / req.size) : 1;
     this.odds.push(newOdds);

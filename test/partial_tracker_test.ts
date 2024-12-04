@@ -11,13 +11,13 @@ import { repeatTest } from "@/runner.ts";
 import * as arb from "@/arbs.ts";
 
 import { filtered } from "../src/results.ts";
-import { alwaysPick, alwaysPickMin, PickRequest } from "../src/picks.ts";
+import { alwaysPick, alwaysPickMin, IntRequest } from "../src/picks.ts";
 import { randomPicker, randomPlayouts } from "../src/random.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
 import { generate } from "../src/gen_class.ts";
 import { Backtracker } from "../src/backtracking.ts";
 
-const bit = new PickRequest(0, 1);
+const bit = new IntRequest(0, 1);
 
 describe("PartialTracker", () => {
   let tracker = new PartialTracker(alwaysPickMin);
@@ -48,7 +48,7 @@ describe("PartialTracker", () => {
 
     it("prunes a pick in a wide node", () => {
       assert(stream.startAt(0));
-      const uint32 = new PickRequest(0, 2 ** 32 - 1);
+      const uint32 = new IntRequest(0, 2 ** 32 - 1);
       const pick = stream.nextPick(uint32);
       assertEquals(pick, 0);
       stream.endPlayout();
@@ -60,7 +60,7 @@ describe("PartialTracker", () => {
       assert(stream.startAt(0));
       assertEquals(stream.nextPick(bit), 0);
       stream.startAt(0);
-      assertThrows(() => stream.nextPick(new PickRequest(-1, 0)), Error);
+      assertThrows(() => stream.nextPick(new IntRequest(-1, 0)), Error);
     });
 
     describe("when using a random underlying picker", () => {
@@ -77,11 +77,11 @@ describe("PartialTracker", () => {
           assert(stream.startAt(0));
           const pick = stream.nextPick(bit);
           if (pick === 1) {
-            stream.nextPick(new PickRequest(1, 2 ** 40));
+            stream.nextPick(new IntRequest(1, 2 ** 40));
             counts.other++;
           } else {
             assert(pick === 0);
-            stream.nextPick(new PickRequest(1, 2));
+            stream.nextPick(new IntRequest(1, 2));
             counts.constants++;
           }
         }
@@ -102,9 +102,9 @@ describe("PartialTracker", () => {
 
     it("ends the search when the root has no other children", () => {
       assert(stream.startAt(0));
-      stream.nextPick(new PickRequest(0, 1));
+      stream.nextPick(new IntRequest(0, 1));
       assert(stream.startAt(0));
-      stream.nextPick(new PickRequest(0, 1));
+      stream.nextPick(new IntRequest(0, 1));
       assertFalse(stream.startAt(0));
     });
 
@@ -161,7 +161,7 @@ describe("PartialTracker", () => {
       ),
       arb.int(-(2 ** 32), (2 ** 32) - 1).map((seed) => randomPicker(seed)),
     );
-    const digit = new PickRequest(0, 9);
+    const digit = new IntRequest(0, 9);
 
     repeatTest(underlyingPickers, (underlying) => {
       const tracker = new PartialTracker(underlying);

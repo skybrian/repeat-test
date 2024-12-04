@@ -1,6 +1,6 @@
 import { assert } from "@std/assert/assert";
 import type { Pickable } from "../pickable.ts";
-import { PickRequest, type RandomPicker } from "../picks.ts";
+import { IntRequest, type RandomPicker } from "../picks.ts";
 import { Script } from "../script_class.ts";
 import { scriptFrom } from "./scriptFrom.ts";
 
@@ -72,7 +72,7 @@ export function scriptFromCases<T>(
     };
   }
 
-  const req = new PickRequest(0, cases.length - 1, { bias });
+  const req = new IntRequest(0, cases.length - 1, { bias });
 
   return Script.make("oneOf", (pick) => {
     const index = pick(req);

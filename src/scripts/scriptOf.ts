@@ -1,4 +1,4 @@
-import { PickRequest } from "../picks.ts";
+import { IntRequest } from "../picks.ts";
 import { Script } from "../script_class.ts";
 
 /**
@@ -33,7 +33,7 @@ export function scriptOf<T>(
     return Script.make(name, () => val, { maxSize: 1, lazyInit: true });
   }
 
-  const req = new PickRequest(0, examples.length - 1);
+  const req = new IntRequest(0, examples.length - 1);
   const maxSize = examples.length;
 
   return Script.make(`${examples.length} examples`, (pick) => {

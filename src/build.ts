@@ -3,7 +3,7 @@ import type { IntPicker, Range } from "./picks.ts";
 import type { Script } from "./script_class.ts";
 
 import { Filtered } from "./pickable.ts";
-import { PickRequest } from "./picks.ts";
+import { IntRequest } from "./picks.ts";
 import { scriptFrom } from "./scripts/scriptFrom.ts";
 
 export interface PickResponder {
@@ -11,7 +11,7 @@ export interface PickResponder {
   startAt(depth: number): boolean;
 
   /** Returns undefined if the current playout is filtered out. */
-  nextPick(req: PickRequest): number | undefined;
+  nextPick(req: IntRequest): number | undefined;
 
   get depth(): number;
 }
@@ -25,7 +25,7 @@ export function responderFromPicker(wrapped: IntPicker): PickResponder {
       // can't backtrack; no alternative picks available
       return newDepth === depth;
     },
-    nextPick(req: PickRequest): number {
+    nextPick(req: IntRequest): number {
       const reply = wrapped.pick(req);
       depth++;
       return reply;
@@ -49,7 +49,7 @@ export function responderFromReplies(replies: number[]): PickResponder {
       // can't backtrack; no alternative picks available
       return newDepth === depth;
     },
-    nextPick(req: PickRequest): number | undefined {
+    nextPick(req: IntRequest): number | undefined {
       if (depth >= replies.length) {
         depth++; // prevent backtracking
         return req.min;
@@ -155,10 +155,10 @@ export function makePickFunction<T>(
   }
 
   function dispatch<T>(arg: Pickable<T>, opts?: PickFunctionOpts<T>): T {
-    if (arg instanceof PickRequest) {
-      let req: PickRequest = arg;
+    if (arg instanceof IntRequest) {
+      let req: IntRequest = arg;
       if (limit !== undefined && playouts.depth >= limit) {
-        req = new PickRequest(arg.min, arg.min);
+        req = new IntRequest(arg.min, arg.min);
       }
       const pick = playouts.nextPick(req);
       if (pick === undefined) throw new Filtered("cancelled in PlayoutSource");

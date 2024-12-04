@@ -8,7 +8,7 @@ import {
 
 import { filtered } from "../../src/results.ts";
 import { repeatTest } from "@/runner.ts";
-import { Arbitrary, PickRequest } from "@/arbitrary.ts";
+import { Arbitrary, IntRequest } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
 import { generate } from "../../src/gen_class.ts";
 import { onePlayout } from "../../src/backtracking.ts";
@@ -20,7 +20,7 @@ describe("alias", () => {
   const recurse: Arbitrary<number> = arb.alias(() => depth);
 
   const depth = Arbitrary.from((pick) => {
-    if (pick(PickRequest.bit) === 0) {
+    if (pick(IntRequest.bit) === 0) {
       return 0;
     }
     return pick(recurse) + 1;

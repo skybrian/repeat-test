@@ -3,7 +3,7 @@ import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { filtered } from "../src/results.ts";
 import { Filtered } from "../src/pickable.ts";
-import { PickRequest, PlaybackPicker } from "../src/picks.ts";
+import { IntRequest, PlaybackPicker } from "../src/picks.ts";
 import { keep, replace, snip } from "../src/edits.ts";
 import { neverReturns, Script } from "../src/script_class.ts";
 import { Gen, generate, MutableGen } from "../src/gen_class.ts";
@@ -14,11 +14,11 @@ import { orderedPlayouts } from "../src/ordered.ts";
 import { randomPicker } from "../src/random.ts";
 import { repeatTest } from "../src/runner.ts";
 
-const bitReq = PickRequest.bit;
+const bitReq = IntRequest.bit;
 
-const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
+const bit = Script.make("bit", (pick) => pick(IntRequest.bit));
 
-const rollReq = new PickRequest(1, 6);
+const rollReq = new IntRequest(1, 6);
 
 const roll = Script.make("roll", (pick) => pick(rollReq));
 
@@ -31,8 +31,8 @@ const frozen = Script.make("frozen", () => Object.freeze(["frozen"]));
 const mutable = Script.make("mutable", () => ["mutable"]);
 
 const twoBits = Script.make("twoBits", (pick) => {
-  const a = pick(PickRequest.bit);
-  const b = pick(PickRequest.bit);
+  const a = pick(IntRequest.bit);
+  const b = pick(IntRequest.bit);
   return `(${a}, ${b})`;
 }, { logCalls: true });
 
@@ -133,7 +133,7 @@ describe("Gen", () => {
         "firstPickFiltered",
         (pick) => {
           const a = pick(neverReturns);
-          const b = pick(PickRequest.bit);
+          const b = pick(IntRequest.bit);
           return `(${a}, ${b})`;
         },
       );
@@ -216,7 +216,7 @@ describe("MutableGen", () => {
       assertEquals(propsFromGen(mut.gen), {
         name: "bit",
         val: 0,
-        reqs: [PickRequest.bit],
+        reqs: [IntRequest.bit],
         replies: [0],
       });
     });
@@ -230,7 +230,7 @@ describe("MutableGen", () => {
       assertEquals(propsFromGen(mut.gen), {
         name: "twoBits",
         val: `(0, 1)`,
-        reqs: [PickRequest.bit, PickRequest.bit],
+        reqs: [IntRequest.bit, IntRequest.bit],
         replies: [0, 1],
       });
     });
@@ -244,13 +244,13 @@ describe("MutableGen", () => {
       assertEquals(propsFromGen(mut.gen), {
         name: "twoBits",
         val: `(1, 0)`,
-        reqs: [PickRequest.bit, PickRequest.bit],
+        reqs: [IntRequest.bit, IntRequest.bit],
         replies: [1, 0],
       });
     });
 
     const evenRoll = Script.make("evenRoll", (pick) => {
-      const roll = pick(new PickRequest(1, 6));
+      const roll = pick(new IntRequest(1, 6));
       if (roll % 2 !== 0) {
         throw new Filtered("that's odd");
       }
@@ -259,7 +259,7 @@ describe("MutableGen", () => {
 
     const evenDoubles = Script.make("evenDoubles", (pick) => {
       const a = pick(evenRoll);
-      const b = pick(new PickRequest(1, 6));
+      const b = pick(new IntRequest(1, 6));
       if (a !== b) {
         throw new Filtered("not a double");
       }
@@ -317,7 +317,7 @@ describe("generate", () => {
     });
 
     it("can limit generation to the provided number of picks", () => {
-      const biased = new PickRequest(0, 1, {
+      const biased = new IntRequest(0, 1, {
         bias: () => 1,
       });
 
@@ -329,7 +329,7 @@ describe("generate", () => {
         return picks;
       });
 
-      repeatTest(new PickRequest(0, 10000), (limit) => {
+      repeatTest(new IntRequest(0, 10000), (limit) => {
         const gen = generate(deep, onePlayout(randomPicker(123)), { limit });
         assert(gen !== filtered);
         assertEquals(gen.val, limit);
@@ -393,14 +393,14 @@ describe("generate", () => {
     it("regenerates a result that can't be cached", () => {
       const cached = Script.make("uncached", (pick) => {
         const val = pick(frozen);
-        return val.concat(["" + pick(PickRequest.bit)]);
+        return val.concat(["" + pick(IntRequest.bit)]);
       }, { logCalls: true });
 
       const gen = generate(cached, minPlayout());
 
       assertEquals(propsFromGen(gen), {
         name: "uncached",
-        reqs: [PickRequest.bit],
+        reqs: [IntRequest.bit],
         replies: [0],
         val: ["frozen", "0"],
       });

@@ -3,7 +3,7 @@ import type { Pickable } from "../../src/pickable.ts";
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
 import { scriptFrom } from "../../src/scripts/scriptFrom.ts";
-import { PickRequest } from "@/arbitrary.ts";
+import { IntRequest } from "@/arbitrary.ts";
 import { usePicks } from "../../src/build.ts";
 
 describe("scriptFrom", () => {
@@ -15,8 +15,8 @@ describe("scriptFrom", () => {
     );
   });
 
-  it("works with a PickRequest", () => {
-    const script = scriptFrom(new PickRequest(1, 6));
+  it("works with an IntRequest", () => {
+    const script = scriptFrom(new IntRequest(1, 6));
     assertEquals(1, script.directBuild(usePicks(1)));
   });
 });

@@ -15,14 +15,14 @@ import { invalidIntRange } from "./lib/ranges.ts";
 import {
   alwaysPick,
   biasedBitRequest,
+  IntRequest,
   PickBuffer,
   PickList,
-  PickRequest,
   PlaybackPicker,
 } from "../src/picks.ts";
 import { RecordingConsole } from "../src/console.ts";
 
-describe("PickRequest.random", () => {
+describe("IntRequest.random", () => {
   let calls = 0;
 
   beforeEach(() => {
@@ -45,7 +45,7 @@ describe("PickRequest.random", () => {
     it("returns the only possible value", () => {
       repeatTest(min, (min) => {
         calls = 0;
-        assertEquals(new PickRequest(min, min).random(mock()), min);
+        assertEquals(new IntRequest(min, min).random(mock()), min);
         assertEquals(calls, 0);
       });
     });
@@ -66,7 +66,7 @@ describe("PickRequest.random", () => {
           const counts = new Array(size).fill(0);
           for (let i = rangeStart; i < rangeStart + size; i++) {
             calls = 0;
-            const actual = new PickRequest(min, max).random(mock(i));
+            const actual = new IntRequest(min, max).random(mock(i));
             assertEquals(calls, 1);
             assert(min <= actual && actual <= max);
             counts[actual - min]++;
@@ -91,7 +91,7 @@ describe("PickRequest.random", () => {
         const max = min + size - 1;
         const next = mock(0x7fffffff, -0x80000000);
         calls = 0;
-        assertEquals(new PickRequest(min, max).random(next), min);
+        assertEquals(new IntRequest(min, max).random(next), min);
         assertEquals(calls, 2);
       });
     });
@@ -114,7 +114,7 @@ describe("PickRequest.random", () => {
       repeatTest(max, (max) => {
         const next = mock(max - 0x80000000);
         calls = 0;
-        const actual = new PickRequest(0, max).random(next);
+        const actual = new IntRequest(0, max).random(next);
         assertEquals(actual, max);
         assertEquals(calls, 1);
       });
@@ -132,7 +132,7 @@ describe("PickRequest.random", () => {
         const [hi, lo] = splitInt(max);
         const next = mock(hi - 0x80000000, lo - 0x80000000);
         calls = 0;
-        const actual = new PickRequest(0, max).random(next);
+        const actual = new IntRequest(0, max).random(next);
         assertEquals(actual, max);
         assertEquals(calls, 2, "expected 2 calls to next()");
       });
@@ -149,7 +149,7 @@ describe("PickRequest.random", () => {
       Number.MAX_SAFE_INTEGER - 1,
       Number.MAX_SAFE_INTEGER,
     );
-    const req = new PickRequest(0, Number.MAX_SAFE_INTEGER);
+    const req = new IntRequest(0, Number.MAX_SAFE_INTEGER);
 
     it("round-trips a value in two picks", () => {
       repeatTest(n, (n) => {
@@ -200,11 +200,11 @@ describe("PickRequest.random", () => {
   });
 });
 
-describe("PickRequest", () => {
+describe("IntRequest", () => {
   describe("constructor", () => {
     it("throws when given an invalid range", () => {
       repeatTest(invalidIntRange({ minMin: 0 }), ({ min, max }) => {
-        assertThrows(() => new PickRequest(min, max));
+        assertThrows(() => new IntRequest(min, max));
       });
     });
   });
@@ -212,7 +212,7 @@ describe("PickRequest", () => {
   describe("directBuild", () => {
     it("works in a build script", () => {
       // Verbose, but valid.
-      const bit = arb.from((pick) => PickRequest.bit.directBuild(pick));
+      const bit = arb.from((pick) => IntRequest.bit.directBuild(pick));
       repeatTest(bit, (val, console) => {
         console.sometimes("is zero", val === 0);
         console.sometimes("is one", val === 1);
@@ -222,28 +222,28 @@ describe("PickRequest", () => {
 
   describe("toString", () => {
     it("prints the range", () => {
-      assertEquals(new PickRequest(0, 1).toString(), "0..1");
+      assertEquals(new IntRequest(0, 1).toString(), "0..1");
     });
   });
 
   it("compares equal to a value with the same range", () => {
-    const a = new PickRequest(0, 1);
-    const b = new PickRequest(0, 1);
+    const a = new IntRequest(0, 1);
+    const b = new IntRequest(0, 1);
     assert(equal(a, b));
     assertEquals(a, b);
   });
 
   it("compares differently when min is different", () => {
-    assertFalse(equal(new PickRequest(0, 2), new PickRequest(1, 2)));
+    assertFalse(equal(new IntRequest(0, 2), new IntRequest(1, 2)));
   });
 
   it("compares differently when max is different", () => {
-    assertFalse(equal(new PickRequest(0, 1), new PickRequest(0, 2)));
+    assertFalse(equal(new IntRequest(0, 1), new IntRequest(0, 2)));
   });
 });
 
 describe("biasedBitRequest", () => {
-  function scan(req: PickRequest, bins: number): number[] {
+  function scan(req: IntRequest, bins: number): number[] {
     const out: number[] = [];
     for (let i = 0; i < bins; i++) {
       const input = 0x100000000 * (i / (bins - 1)) - 0x80000000;
@@ -278,8 +278,8 @@ describe("PickList", () => {
   });
 
   describe("equality", () => {
-    const zero = new PickRequest(0, 0);
-    const bit = PickRequest.bit;
+    const zero = new IntRequest(0, 0);
+    const bit = IntRequest.bit;
 
     it("two empty lists are equal", () => {
       const a = PickList.wrap([], []);
@@ -303,7 +303,7 @@ describe("PickList", () => {
   describe("logTo", () => {
     it("logs to a console", () => {
       const con = new RecordingConsole();
-      const picks = PickList.wrap([new PickRequest(1, 10)], [1]);
+      const picks = PickList.wrap([new IntRequest(1, 10)], [1]);
       picks.logTo(con);
       con.logged(["0: 1..10 =>", 1]);
       con.checkEmpty();
@@ -332,7 +332,7 @@ describe("alwaysPick", () => {
   it("throws if the pick isn't within the range", () => {
     const threes = alwaysPick(3);
     assertThrows(
-      () => threes.pick(new PickRequest(0, 1)),
+      () => threes.pick(new IntRequest(0, 1)),
       Error,
       "can't satisfy request (0, 1) with 3",
     );

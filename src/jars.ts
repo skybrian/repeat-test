@@ -5,7 +5,7 @@ import type { RowCase } from "./arbitraries/rows.ts";
 import type { RowShape } from "./domain_class.ts";
 
 import { assert } from "@std/assert";
-import { PickRequest } from "./picks.ts";
+import { IntRequest } from "./picks.ts";
 import { filtered } from "./results.ts";
 import { Script } from "./script_class.ts";
 import { generate } from "./gen_class.ts";
@@ -97,7 +97,7 @@ export class Jar<T> {
           req: Pickable<T>,
           opts?: PickFunctionOpts<T>,
         ): T {
-          if (req instanceof PickRequest) {
+          if (req instanceof IntRequest) {
             const innerReq = walk.narrow(req);
             const n = pick(innerReq);
             if (!walk.push(req, n)) {
@@ -282,7 +282,7 @@ export class RowJar<T extends Record<string, unknown>> {
     if (cases.length === 1) {
       this.chooseCase = scriptOf([0]);
     } else {
-      this.chooseCase = scriptFrom(new PickRequest(0, cases.length - 1));
+      this.chooseCase = scriptFrom(new IntRequest(0, cases.length - 1));
     }
   }
 

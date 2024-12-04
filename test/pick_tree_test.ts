@@ -6,16 +6,16 @@ import { repeatTest } from "@/runner.ts";
 import * as arb from "../src/arbitraries/basics.ts";
 import { array } from "../src/arbitraries/arrays.ts";
 
-import { PickList, PickRequest } from "../src/picks.ts";
+import { IntRequest, PickList } from "../src/picks.ts";
 import { PickTree } from "../src/pick_tree.ts";
 
-function playout(reqs: PickRequest[], replies: number[]) {
+function playout(reqs: IntRequest[], replies: number[]) {
   return PickList.wrap(reqs, replies);
 }
 
 describe("PickTree", () => {
   describe("prune", () => {
-    const bit = new PickRequest(0, 1);
+    const bit = new IntRequest(0, 1);
     it("prunes the entire tree when given an empty playout", () => {
       const tree = new PickTree();
       assert(tree.prune(playout([], [])));
@@ -39,7 +39,7 @@ describe("PickTree", () => {
       });
       repeatTest(example, ({ min, max, path }) => {
         const tree = new PickTree();
-        const req = new PickRequest(min, max);
+        const req = new IntRequest(min, max);
         const reqs = path.map((_) => req);
         assert(tree.prune(playout(reqs, path)));
         assertFalse(tree.available(path), "not pruned");
@@ -51,7 +51,7 @@ describe("PickTree", () => {
     });
     it("removes picks in order", () => {
       const tree = new PickTree();
-      const bit = new PickRequest(0, 1);
+      const bit = new IntRequest(0, 1);
       assert(tree.prune(playout([bit, bit], [0, 0])));
       assertEquals(tree.branchesLeft([]), 2);
       assert(tree.prune(playout([bit, bit], [0, 1])));
@@ -73,7 +73,7 @@ describe("PickTree", () => {
         return { min, max, picks: [first, second, third] };
       });
       repeatTest(example, ({ min, max, picks }) => {
-        const req = new PickRequest(min, max);
+        const req = new IntRequest(min, max);
         const path = (pick: number) => playout([req], [pick]);
         const tree = new PickTree();
         let expectRemaining = max - min + 1;
@@ -88,11 +88,11 @@ describe("PickTree", () => {
         }
       });
     });
-    it("throws an Error if a PickRequest's range doesn't match the tree", () => {
+    it("throws an Error if an IntRequest's range doesn't match the tree", () => {
       const tree = new PickTree();
-      const bit = new PickRequest(0, 1);
+      const bit = new IntRequest(0, 1);
       assert(tree.prune(playout([bit, bit], [0, 0])));
-      const roll = new PickRequest(1, 6);
+      const roll = new IntRequest(1, 6);
       assertThrows(
         () => tree.prune(playout([roll], [3])),
         Error,
@@ -100,7 +100,7 @@ describe("PickTree", () => {
     });
   });
   describe("branchesLeft", () => {
-    const bit = new PickRequest(0, 1);
+    const bit = new IntRequest(0, 1);
 
     it("returns undefined for an unexplored tree", () => {
       const tree = new PickTree();
@@ -153,17 +153,17 @@ describe("Walk", () => {
       assertEquals(walk.firstUnprunedInRange(0, 1), 0);
     });
     it("returns the minmum value from the tree", () => {
-      tree.walk().push(new PickRequest(1, 2), 0);
+      tree.walk().push(new IntRequest(1, 2), 0);
       assertEquals(tree.walk().firstUnprunedInRange(0, 1), 1);
     });
     it("returns undefined if all overlapping values were pruned", () => {
-      const bit = new PickRequest(0, 1);
+      const bit = new IntRequest(0, 1);
       tree.walk().push(bit, 1);
       assert(tree.prune(playout([bit], [1])));
       assertEquals(tree.walk().firstUnprunedInRange(1, 2), undefined);
     });
     it("returns undefined if there is no overlap", () => {
-      const bit = new PickRequest(0, 1);
+      const bit = new IntRequest(0, 1);
       tree.walk().push(bit, 1);
       assertEquals(tree.walk().firstUnprunedInRange(2, 3), undefined);
     });

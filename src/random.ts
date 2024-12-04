@@ -1,4 +1,4 @@
-import type { IntPicker, PickRequest } from "./picks.ts";
+import type { IntPicker, IntRequest } from "./picks.ts";
 
 import { assert } from "@std/assert";
 import prand from "pure-rand";
@@ -18,7 +18,7 @@ function makePicker(rng: prand.RandomGenerator): IntPicker {
   const next = rng.unsafeNext.bind(rng);
 
   return {
-    pick(req: PickRequest) {
+    pick(req: IntRequest) {
       return req.random(next);
     },
   };

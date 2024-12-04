@@ -1,4 +1,4 @@
-import type { IntPicker, PickRequest } from "./picks.ts";
+import type { IntPicker, IntRequest } from "./picks.ts";
 import type { PickResponder } from "./build.ts";
 
 import { assert } from "@std/assert";
@@ -19,7 +19,7 @@ export interface Tracker {
   /**
    * Returns the next pick, or undefined if it's filtered by the tracker.
    */
-  maybePick(req: PickRequest): number | undefined;
+  maybePick(req: IntRequest): number | undefined;
 
   /**
    * Finishes the current pick sequence and moves to the next one.
@@ -73,7 +73,7 @@ export class Backtracker implements PickResponder {
    *
    * Returns undefined if the current playout is cancelled.
    */
-  nextPick(req: PickRequest): number | undefined {
+  nextPick(req: IntRequest): number | undefined {
     assert(this.state === "picking", "nextPick called in the wrong state");
 
     const result = this.tracker.maybePick(req);
@@ -143,7 +143,7 @@ class SinglePlayoutTracker implements Tracker {
     this.started = true;
   }
 
-  maybePick(req: PickRequest): number {
+  maybePick(req: IntRequest): number {
     return this.picker.pick(req);
   }
 

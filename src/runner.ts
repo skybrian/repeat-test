@@ -7,7 +7,7 @@ import type { Coverage, SystemConsole, TestConsole } from "./console.ts";
 import { assert, assertEquals, AssertionError } from "@std/assert";
 
 import { failure, filtered, success } from "./results.ts";
-import { alwaysPickMin, PickRequest, PlaybackPicker } from "./picks.ts";
+import { alwaysPickMin, IntRequest, PlaybackPicker } from "./picks.ts";
 import { generate } from "./gen_class.ts";
 import { PartialTracker } from "./partial_tracker.ts";
 import { Arbitrary } from "./arbitrary_class.ts";
@@ -169,7 +169,7 @@ export function* generateReps<T>(
   // Generate the rest of the reps randomly.
   const picker = randomPicker(seed);
   while (sources.length > 0) {
-    const choice = picker.pick(new PickRequest(0, sources.length - 1));
+    const choice = picker.pick(new IntRequest(0, sources.length - 1));
     const src = sources[choice];
     const rep = src.generateRandom(opts);
     if (rep === undefined) {

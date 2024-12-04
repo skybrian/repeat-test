@@ -7,7 +7,7 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { Arbitrary, Filtered } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
 
-import { alwaysPick, PickBuffer, PickRequest } from "../src/picks.ts";
+import { alwaysPick, IntRequest, PickBuffer } from "../src/picks.ts";
 import { CallBuffer, regen } from "../src/calls.ts";
 import { Backtracker } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
@@ -20,7 +20,7 @@ import {
 } from "../src/build.ts";
 import { Script } from "../src/script_class.ts";
 
-const bitReq = PickRequest.bit;
+const bitReq = IntRequest.bit;
 
 describe("makePickFunction", () => {
   let buf = new CallBuffer();
@@ -57,7 +57,7 @@ describe("makePickFunction", () => {
     assertEquals(actual, expected);
   }
 
-  it("accepts a PickRequest", () => {
+  it("accepts an IntRequest", () => {
     pick = logCalls(0);
     assertEquals(pick(bitReq), 0);
     checkCalls({ name: "0..1", val: 0, reqs: [bitReq], replies: [0] });
@@ -105,7 +105,7 @@ describe("makePickFunction", () => {
     checkCalls({ name: "untitled", val: regen, reqs: [], replies: [] });
   });
 
-  it("accepts a PickRequest followed by a Script", () => {
+  it("accepts an IntRequest followed by a Script", () => {
     const hi = Script.make("hi", () => "hello");
     pick = logCalls(1, 0);
     assertEquals(pick(bitReq), 1);
@@ -206,7 +206,7 @@ describe("makePickFunction", () => {
   });
 
   it("retries a pick with a different playout", () => {
-    const roll = new PickRequest(1, 6);
+    const roll = new IntRequest(1, 6);
     const arb = Arbitrary.from((pick) => {
       const n = pick(roll);
       if (n === 3) {
@@ -226,17 +226,17 @@ describe("makePickFunction", () => {
 
   it("throws an error when given an invalid argument", () => {
     assertThrows(
-      () => pick("hi" as unknown as PickRequest),
+      () => pick("hi" as unknown as IntRequest),
       Error,
       "pick function called with an invalid argument",
     );
     assertThrows(
-      () => pick({ buildScript: null } as unknown as PickRequest),
+      () => pick({ buildScript: null } as unknown as IntRequest),
       Error,
       "pick function called with an invalid argument",
     );
     assertThrows(
-      () => pick({ buildScript: { build: "hi" } } as unknown as PickRequest),
+      () => pick({ buildScript: { build: "hi" } } as unknown as IntRequest),
       Error,
       "pick function called with an invalid argument",
     );

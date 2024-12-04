@@ -9,7 +9,7 @@ import type { ArrayOpts } from "../options.ts";
 
 import { assert } from "@std/assert/assert";
 import { Domain, Jar } from "@/domain.ts";
-import { PickRequest } from "../picks.ts";
+import { IntRequest } from "../picks.ts";
 import { parseArrayOpts } from "../options.ts";
 import { generateAll } from "../ordered.ts";
 import { PickTree } from "../pick_tree.ts";
@@ -61,7 +61,7 @@ export function uniqueArray<T>(
     while (out.length < max) {
       if (jar.isEmpty()) {
         // Add an ending pick to match a regular array.
-        pick(new PickRequest(0, 0));
+        pick(new IntRequest(0, 0));
         return out;
       } else if (!wantItem(out.length, pick)) {
         return out;
@@ -231,7 +231,7 @@ export function table<R extends Record<string, unknown>>(
     }
     if (jar.isEmpty()) {
       // Add an ending pick to match a regular array.
-      pick(new PickRequest(0, 0));
+      pick(new IntRequest(0, 0));
     }
     return rows;
   }).with({ name: "table" });

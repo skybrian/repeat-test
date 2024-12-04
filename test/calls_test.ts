@@ -1,14 +1,14 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals } from "@std/assert";
 
-import { PickRequest } from "@/arbitrary.ts";
+import { IntRequest } from "@/arbitrary.ts";
 import { CallBuffer } from "../src/calls.ts";
 
 import { replay } from "../src/replay.ts";
 import { Script } from "../src/script_class.ts";
 
 const roll = Script.make("roll", (pick) => {
-  return pick(new PickRequest(1, 6));
+  return pick(new IntRequest(1, 6));
 });
 
 const cachableRoll = Script.make("rollStr", (pick) => {

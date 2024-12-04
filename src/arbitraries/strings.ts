@@ -2,7 +2,7 @@ import type { PickFunction, RandomSource } from "@/arbitrary.ts";
 import type { ArrayOpts } from "../options.ts";
 
 import { assert } from "@std/assert/assert";
-import { Arbitrary, PickRequest } from "@/arbitrary.ts";
+import { Arbitrary, IntRequest } from "@/arbitrary.ts";
 import * as arb from "./basics.ts";
 import { makeItemFunction, off } from "./arrays.ts";
 import { parseArrayOpts } from "../options.ts";
@@ -62,7 +62,7 @@ export const asciiSymbol: () => Arbitrary<string> = asciiChar(
   /[^ a-zA-Z0-9\x00-\x1f\x7f]/,
 ).asFunction();
 
-const char16Req = new PickRequest(0, 0xffff, {
+const char16Req = new IntRequest(0, 0xffff, {
   bias: (next: RandomSource) => {
     const r = next();
     if (r < -0x70000000) {
@@ -96,7 +96,7 @@ export const char16: () => Arbitrary<string> = Arbitrary.from(
 
 const basicPlaneCount = supplementalPlaneStart - surrogateGap;
 
-const codePointReq = new PickRequest(0, unicodeMax - surrogateGap, {
+const codePointReq = new IntRequest(0, unicodeMax - surrogateGap, {
   bias: (next: RandomSource) => {
     const r = next();
     const plane = r & 0x1f;

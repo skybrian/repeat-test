@@ -4,7 +4,7 @@ import { assertFirstValues, assertValues } from "../lib/asserts.ts";
 import { repeatTest } from "../../src/runner.ts";
 
 import { Filtered } from "../../src/pickable.ts";
-import { PickRequest } from "../../src/picks.ts";
+import { IntRequest } from "../../src/picks.ts";
 
 import { Script } from "../../src/script_class.ts";
 import { scriptFrom } from "../../src/scripts/scriptFrom.ts";
@@ -12,7 +12,7 @@ import * as arb from "@/arbs.ts";
 import { filter } from "../../src/scripts/filter.ts";
 
 describe("filter", () => {
-  const sixSided = scriptFrom(new PickRequest(1, 6)).with({
+  const sixSided = scriptFrom(new IntRequest(1, 6)).with({
     name: "sixSided",
   });
 
@@ -59,7 +59,7 @@ describe("filter", () => {
   });
 
   it("filters an arbitrary created from multiple picks", () => {
-    const bit = new PickRequest(0, 1);
+    const bit = new IntRequest(0, 1);
     const bitCount = 2;
     const accepted = new Set(["[0,1]", "[1,0]"]);
 
@@ -108,7 +108,7 @@ describe("filter", () => {
 
   it("recovers cleanly when the filtered script throws Pruned", () => {
     const original = Script.make("skip2", (pick) => {
-      const n = pick(new PickRequest(1, 3));
+      const n = pick(new IntRequest(1, 3));
       if (n === 2) throw new Filtered("skip 2");
       return n;
     });

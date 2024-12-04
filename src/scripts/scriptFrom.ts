@@ -1,7 +1,7 @@
 import type { Pickable, PickFunction } from "../pickable.ts";
 import type { HasScript } from "../script_class.ts";
 
-import { PickRequest } from "../picks.ts";
+import { IntRequest } from "../picks.ts";
 import { Script } from "../script_class.ts";
 
 /**
@@ -16,7 +16,7 @@ export function scriptFrom<T>(
 ): Script<T> {
   if (arg instanceof Script) {
     return arg;
-  } else if (arg instanceof PickRequest) {
+  } else if (arg instanceof IntRequest) {
     const name = `${arg.min}..${arg.max}`;
     const maxSize = arg.max - arg.min + 1;
 

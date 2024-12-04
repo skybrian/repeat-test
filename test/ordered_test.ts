@@ -6,7 +6,7 @@ import { assert, assertEquals, assertThrows, fail } from "@std/assert";
 import { Arbitrary } from "@/arbitrary.ts";
 
 import { Filtered } from "../src/pickable.ts";
-import { PickList, PickRequest } from "../src/picks.ts";
+import { IntRequest, PickList } from "../src/picks.ts";
 import { Script } from "../src/script_class.ts";
 
 import { assertGenerated, assertValues } from "./lib/asserts.ts";
@@ -53,7 +53,7 @@ function walkFunction(
   depth: number,
   ...solutions: string[]
 ): WalkFunction {
-  const branch = new PickRequest(0, width - 1);
+  const branch = new IntRequest(0, width - 1);
 
   function walk(tracker: Tracker): string | undefined {
     tracker.startPlayout(0);
@@ -222,7 +222,7 @@ describe("takeGenerated", () => {
     assertGenerated(one, [{ val: 1, picks: [] }]);
   });
 
-  it("generates a valid PickRequest for an array of examples", () => {
+  it("generates a valid IntRequest for an array of examples", () => {
     const examples = Arbitrary.of(1, 2, 3);
     const gens = takeGenerated(examples, 4);
     assertEquals(gens.length, 3);
@@ -239,7 +239,7 @@ describe("takeGenerated", () => {
   });
 
   it("generates each value an integer range", () => {
-    const oneTwoThree = Arbitrary.from(new PickRequest(1, 3));
+    const oneTwoThree = Arbitrary.from(new IntRequest(1, 3));
     assertGenerated(oneTwoThree, [
       { val: 1, picks: [1] },
       { val: 2, picks: [2] },
@@ -248,7 +248,7 @@ describe("takeGenerated", () => {
   });
 
   it("generates both values for a boolean", () => {
-    const boolean = Arbitrary.from(new PickRequest(0, 1)).map((b) => b === 1);
+    const boolean = Arbitrary.from(new IntRequest(0, 1)).map((b) => b === 1);
     assertGenerated(boolean, [
       { val: false, picks: [0] },
       { val: true, picks: [1] },
@@ -256,7 +256,7 @@ describe("takeGenerated", () => {
   });
 
   it("generates the accepted values from a filter", () => {
-    const bit = Arbitrary.from(new PickRequest(0, 1))
+    const bit = Arbitrary.from(new IntRequest(0, 1))
       .filter((b) => b === 0);
     assertGenerated(bit, [
       { val: 0, picks: [0] },
@@ -274,7 +274,7 @@ describe("takeGenerated", () => {
   });
 
   it("generates every combination for an odometer", () => {
-    const digit = new PickRequest(0, 9);
+    const digit = new IntRequest(0, 9);
     const digits = Arbitrary.from((pick) => {
       const a = pick(digit);
       const b = pick(digit);
@@ -339,7 +339,7 @@ describe("take", () => {
   });
 
   it("works for a script with logCalls turned on", () => {
-    const bit = Script.make("bit", (pick) => pick(PickRequest.bit));
+    const bit = Script.make("bit", (pick) => pick(IntRequest.bit));
 
     const twoBits = Script.make("twoBits", (pick) => {
       const a = pick(bit);
@@ -362,7 +362,7 @@ describe("take", () => {
 
   it("throws if the build function throws", () => {
     const one = Arbitrary.from((pick) => {
-      if (pick(new PickRequest(0, 1)) === 0) return 0;
+      if (pick(new IntRequest(0, 1)) === 0) return 0;
       throw new Error("oh no!");
     });
     assertThrows(() => take(one, 2), Error, "oh no!");
@@ -375,7 +375,7 @@ describe("takeAll", () => {
     assertValues(one, [1]);
   });
 
-  const bit = Arbitrary.from(new PickRequest(0, 1));
+  const bit = Arbitrary.from(new IntRequest(0, 1));
   it("returns both bit values", () => {
     assertValues(bit, [0, 1]);
   });
@@ -387,7 +387,7 @@ describe("takeAll", () => {
 
   it("handles filtering by throwing an exception", () => {
     const notTwo = Arbitrary.from((pick) => {
-      const n = pick(new PickRequest(1, 3));
+      const n = pick(new IntRequest(1, 3));
       if (n === 2) throw new Filtered("skip 2");
       return n;
     });

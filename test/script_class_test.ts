@@ -2,11 +2,11 @@ import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { filtered } from "../src/results.ts";
-import { PickRequest } from "../src/picks.ts";
+import { IntRequest } from "../src/picks.ts";
 import { usePicks } from "../src/build.ts";
 import { Script } from "../src/script_class.ts";
 
-const bool = Script.make("bool", (pick) => pick(PickRequest.bit) === 1);
+const bool = Script.make("bool", (pick) => pick(IntRequest.bit) === 1);
 
 describe("Script", () => {
   describe("run", () => {

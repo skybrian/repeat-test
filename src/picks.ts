@@ -83,8 +83,8 @@ export type Range = {
   readonly max: number;
 };
 
-/** Options on a {@link PickRequest}. */
-export type PickRequestOpts = {
+/** Options on a {@link IntRequest}. */
+export type IntRequestOpts = {
   /**
    * Overrides the random distribution for this request. The output should be in
    * range for the request.
@@ -101,7 +101,7 @@ export type PickRequestOpts = {
  * When picking randomly, the {@link random} function implements the requested
  * probability distribution.
  */
-export class PickRequest implements Pickable<number>, Range {
+export class IntRequest implements Pickable<number>, Range {
   #random: RandomPicker;
 
   /**
@@ -115,7 +115,7 @@ export class PickRequest implements Pickable<number>, Range {
   constructor(
     readonly min: number,
     readonly max: number,
-    opts?: PickRequestOpts,
+    opts?: IntRequestOpts,
   ) {
     if (min < 0) {
       throw new Error(`min must be non-negative; got ${min}`);
@@ -136,7 +136,7 @@ export class PickRequest implements Pickable<number>, Range {
   /**
    * The function to call when picking randomly.
    *
-   * The output is assumed to satisfy {@link PickRequest.inRange}.
+   * The output is assumed to satisfy {@link IntRequest.inRange}.
    */
   random(source: RandomSource): number {
     return this.#random(source);
@@ -145,9 +145,9 @@ export class PickRequest implements Pickable<number>, Range {
   /**
    * Equivalent to `pick(request)`.
    *
-   * Because evaluating a PickRequest is a primitive operation, it has to be
-   * handled as a special case by the *pick* function. Therefore, calling
-   * `directBuild` on a PickRequest isn't very useful, other than to satisfy the
+   * Evaluating an IntRequest is a primitive operation, so it has to be handled
+   * as a special case by the *pick* function. Therefore, calling `directBuild`
+   * on a IntRequest isn't very useful. It's only needed to satisfy the
    * {@link Pickable} interface.
    */
   directBuild(pick: PickFunction): number {
@@ -172,22 +172,22 @@ export class PickRequest implements Pickable<number>, Range {
   /**
    * A request for a single bit.
    */
-  static readonly bit: PickRequest = new PickRequest(0, 1);
+  static readonly bit: IntRequest = new IntRequest(0, 1);
 }
 
 /**
- * Creates a PickRequest where {@link PickRequest.random} chooses 0 or 1
+ * Creates a IntRequest where {@link IntRequest.random} chooses 0 or 1
  * with the given probability.
  *
  * @param probOne The probability of picking 1.
  */
-export function biasedBitRequest(probOne: number): PickRequest {
+export function biasedBitRequest(probOne: number): IntRequest {
   // There are 2**32 bins and (2**32 + 1) places to put a partition.
   const threshold = Math.floor((1 - probOne) * 0x100000001) - 0x80000000;
   const bias = (next: RandomSource) => {
     return next() < threshold ? 0 : 1;
   };
-  return new PickRequest(0, 1, { bias });
+  return new IntRequest(0, 1, { bias });
 }
 
 /** A request-reply pair. */
@@ -392,9 +392,9 @@ export class PickList implements Pushable {
 export interface IntPicker {
   /**
    * Transitions to a new state and returns a pick satisfying
-   * {@link PickRequest.inRange}.
+   * {@link IntRequest.inRange}.
    */
-  pick(req: PickRequest): number;
+  pick(req: IntRequest): number;
 }
 
 export const alwaysPickMin: IntPicker = {
@@ -443,7 +443,7 @@ export class PlaybackPicker implements IntPicker {
     }
   }
 
-  pick(req: PickRequest): number {
+  pick(req: IntRequest): number {
     if (this.depth >= this.expected.length) {
       this.depth++;
       return req.min;

@@ -6,16 +6,16 @@ import { assertFirstGenerated, assertValues } from "./lib/asserts.ts";
 import { repeatTest } from "../src/runner.ts";
 
 import { Filtered } from "../src/pickable.ts";
-import { PickRequest } from "../src/picks.ts";
+import { IntRequest } from "../src/picks.ts";
 
 import { Arbitrary } from "@/arbitrary.ts";
 import * as arb from "@/arbs.ts";
 
-const bit = new PickRequest(0, 1);
+const bit = new IntRequest(0, 1);
 
 describe("Arbitrary", () => {
   describe("from", () => {
-    describe("given a PickRequest", () => {
+    describe("given an Intequest", () => {
       it("generates both values", () => {
         const arb = Arbitrary.from(bit);
         assertEquals("0..1", arb.name);
@@ -84,14 +84,14 @@ describe("Arbitrary", () => {
 
   describe("map", () => {
     it("changes the default", () => {
-      const original = Arbitrary.from(new PickRequest(1, 6));
+      const original = Arbitrary.from(new IntRequest(1, 6));
       assertFirstGenerated(original, [{ val: 1, picks: [1] }]);
 
       const mapped = original.map((n) => n * 2);
       assertFirstGenerated(mapped, [{ val: 2, picks: [1] }]);
     });
     it("has a name by default", () => {
-      const original = Arbitrary.from(new PickRequest(1, 6));
+      const original = Arbitrary.from(new IntRequest(1, 6));
       const mapped = original.map((n) => n * 2);
       assertEquals(mapped.name, "map");
     });
@@ -106,19 +106,19 @@ describe("Arbitrary", () => {
   });
 
   describe("maxSize", () => {
-    describe("when the Arbitrary is based on a PickRequest", () => {
-      it("returns the size of of the PickRequest", () => {
-        const oneTwoThree = Arbitrary.from(new PickRequest(1, 3));
+    describe("when the Arbitrary is based on an IntRequest", () => {
+      it("returns the size of of the IntRequest", () => {
+        const oneTwoThree = Arbitrary.from(new IntRequest(1, 3));
         assertEquals(oneTwoThree.maxSize, 3);
       });
       it("returns same size after mapping", () => {
-        const oneTwoThree = Arbitrary.from(new PickRequest(1, 3)).map((n) =>
+        const oneTwoThree = Arbitrary.from(new IntRequest(1, 3)).map((n) =>
           n + 1
         );
         assertEquals(oneTwoThree.maxSize, 3);
       });
       it("returns same size after filtering", () => {
-        const oneTwoThree = Arbitrary.from(new PickRequest(1, 3)).filter(
+        const oneTwoThree = Arbitrary.from(new IntRequest(1, 3)).filter(
           (n) => n % 2 == 0,
         );
         assertEquals(oneTwoThree.maxSize, 3);

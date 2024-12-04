@@ -1,7 +1,7 @@
 import type { Pushable, RandomSource, Range } from "./picks.ts";
 
 import { assert } from "@std/assert";
-import { PickRequest } from "./picks.ts";
+import { IntRequest } from "./picks.ts";
 
 /** Indicates that the subtree rooted at a branch has been fully explored. */
 export const PRUNED = Symbol("pruned");
@@ -15,9 +15,9 @@ export const PRUNED = Symbol("pruned");
 type Branch = undefined | Node | typeof PRUNED;
 
 /**
- * A search tree node corresponding to one {@link PickRequest} in a playout.
+ * A search tree node corresponding to one {@link IntRequest} in a playout.
  *
- * It has a branch for each possible pick in the PickRequest's range. When all
+ * It has a branch for each possible pick in the IntRequest's range. When all
  * possibilities have been exhausted for a pick, it can be set to {@link PRUNED}
  * to avoid needlessly visiting it again.
  */
@@ -298,9 +298,9 @@ export class Walk {
   }
 
   /**
-   * Decreases the range of a PickRequest to match the current branch.
+   * Decreases the range of a IntRequest to match the current branch.
    */
-  narrow(req: PickRequest): PickRequest {
+  narrow(req: IntRequest): IntRequest {
     const branch = this.parent.getBranch(this.lastReply);
     if (branch instanceof Node) {
       const min = branch.findUnpruned(0);
@@ -310,7 +310,7 @@ export class Walk {
           const pick = req.random(source);
           return pick < min ? min : pick;
         };
-        return new PickRequest(min, req.max, { bias });
+        return new IntRequest(min, req.max, { bias });
       }
     }
     return req;

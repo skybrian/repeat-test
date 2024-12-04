@@ -1,10 +1,10 @@
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, fail } from "@std/assert";
 
-import { type IntPicker, PickRequest } from "../src/picks.ts";
+import { type IntPicker, IntRequest } from "../src/picks.ts";
 import { randomPickers } from "../src/random.ts";
 
-function checkReturnsAllNumbers(picker: IntPicker, req: PickRequest) {
+function checkReturnsAllNumbers(picker: IntPicker, req: IntRequest) {
   const size = req.max - req.min + 1;
   const expected = new Array(size).fill(0).map((_, i) => i + req.min);
   const counts = new Array(size).fill(0);
@@ -24,7 +24,7 @@ function checkReturnsAllNumbers(picker: IntPicker, req: PickRequest) {
   }
 }
 
-const diceRoll = new PickRequest(1, 6);
+const diceRoll = new IntRequest(1, 6);
 
 function rolls(picker: IntPicker): number[] {
   const result = [];
@@ -46,7 +46,7 @@ describe("randomPickers", () => {
     const picker = randomPickers(12345).next().value;
     for (const min of [0, 1, 10, 100]) {
       for (const max of [min + 1, min + 3, min + 10, min + 100]) {
-        checkReturnsAllNumbers(picker, new PickRequest(min, max));
+        checkReturnsAllNumbers(picker, new IntRequest(min, max));
       }
     }
   });
