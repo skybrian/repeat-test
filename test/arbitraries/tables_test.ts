@@ -333,13 +333,17 @@ describe("table", () => {
   });
 
   describe("with two objects shapes having different string keys", () => {
-    const row = arb.union<{ id: string }>(
-      arb.object({ id: dom.of("a") }),
-      arb.object({ id: dom.of("b") }),
-    );
-
     it("generates both kinds of rows", () => {
-      const table = arb.table(row, { keys: { "id": dom.string() } });
+      const row = arb.union<{ id: string }>(
+        arb.object({ id: dom.of("A", "B") }),
+        arb.object({ id: dom.asciiLetter() }),
+      );
+
+      const table = arb.table(row, {
+        keys: { "id": dom.string() },
+        length: { max: 3 }, // TODO: increase length
+      });
+
       repeatTest(table, (rows, console) => {
         const ids = new Set(rows.map((row) => row.id));
         assertEquals(ids.size, rows.length, "id should be unique");
