@@ -14,7 +14,7 @@ import { alwaysPickMin } from "../src/picks.ts";
 import { depthFirstPlayouts } from "../src/partial_tracker.ts";
 import { orderedPlayouts } from "../src/ordered.ts";
 import { randomPlayouts } from "../src/random.ts";
-import { RowJar, UnionJar } from "../src/jar_class.ts";
+import { RowJar, UnionJar } from "../src/jars.ts";
 
 describe("Jar", () => {
   let pick = makePickFunction(depthFirstPlayouts());

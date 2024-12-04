@@ -11,4 +11,4 @@ export type { RowPattern } from "../domains/rows.ts";
 
 export { Domain, ParseError } from "../domain_class.ts";
 export { RowDomain } from "../domains/rows.ts";
-export { Jar } from "../jar_class.ts";
+export { Jar } from "../jars.ts";

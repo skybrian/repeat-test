@@ -17,7 +17,7 @@ import { arrayLengthBiases } from "../math.ts";
 import { Script } from "../script_class.ts";
 
 import * as arb from "./basics.ts";
-import { RowJar } from "../jar_class.ts";
+import { RowJar } from "../jars.ts";
 
 /**
  * Defines an Arbitrary that generates an array by taking distinct values from a
