@@ -6,7 +6,6 @@ import { repeatTest } from "@/runner.ts";
 import { Arbitrary } from "@/arbitrary.ts";
 import * as dom from "@/doms.ts";
 import { arb } from "@/mod.ts";
-import { systemConsole } from "../../src/console.ts";
 
 describe("uniqueArray", () => {
   const bools = dom.uniqueArray(dom.boolean());
@@ -344,10 +343,10 @@ describe("table", () => {
       { id: 2, kind: "b" },
       { id: 3, kind: "b" },
       { id: 1, kind: "a" },
-    ], systemConsole);
+    ]);
 
-    repeatTest(table, (rows, console) => {
-      assertRoundTrip(table, rows, console);
+    repeatTest(table, (rows) => {
+      assertRoundTrip(table, rows);
     });
   });
 });

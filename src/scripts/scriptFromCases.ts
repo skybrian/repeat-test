@@ -7,13 +7,17 @@ import { scriptFrom } from "./scriptFrom.ts";
 /**
  * Creates a script that randomly picks a pickable to call.
  */
-export function scriptFromCases<T>(cases: Pickable<T>[]): Script<T> {
+export function scriptFromCases<T>(
+  cases: Pickable<T>[],
+  opts?: { caller: string },
+): Script<T> {
+  const caller = opts?.caller ?? "scriptFromCases";
   if (cases.length === 0) {
-    throw new Error("oneOf() requires at least one alternative");
+    throw new Error(`${caller}() requires at least one case`);
   }
 
   const scripts = cases.map((c) => scriptFrom(c));
-  if (scripts.length === 1) {
+  if (scripts.length === 1 && scripts[0].weight > 0) {
     return scripts[0];
   }
 
@@ -43,7 +47,7 @@ export function scriptFromCases<T>(cases: Pickable<T>[]): Script<T> {
   if (!allDefaultWeights) {
     if (totalWeight === 0) {
       throw new Error(
-        "oneOf() requires at least one alternative with weight > 0",
+        `${caller}() requires at least one case with weight > 0`,
       );
     }
 
@@ -58,13 +62,13 @@ export function scriptFromCases<T>(cases: Pickable<T>[]): Script<T> {
     bias = (next) => {
       const n = next(); // unsigned 32-bit integer
       let sum = -0x80000000;
-      for (let i = 0; i < weights.length; i++) {
+      for (let i = 0; i < weights.length - 1; i++) {
         sum += weights[i];
         if (n < sum) {
           return i;
         }
       }
-      assert(false, "unreachable");
+      return weights.length - 1;
     };
   }
 

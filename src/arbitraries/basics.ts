@@ -93,5 +93,6 @@ export function biased(probabilityTrue: number): Arbitrary<boolean> {
  * Defines an Arbitrary that generates a value using any of the given PickSets.
  */
 export function oneOf<T>(...cases: Pickable<T>[]): Arbitrary<T> {
-  return Arbitrary.from(scriptFromCases(cases));
+  const script = scriptFromCases(cases, { caller: "oneOf" });
+  return Arbitrary.from(script);
 }

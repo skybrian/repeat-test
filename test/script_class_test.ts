@@ -43,5 +43,14 @@ describe("Script", () => {
       const cached = original.with({ cachable: true });
       assert(cached.opts.cachable);
     });
+
+    it("throws if the new weight is negative", () => {
+      const original = Script.make("original", () => true);
+      assertThrows(
+        () => original.with({ weight: -1 }),
+        Error,
+        "weight must be non-negative",
+      );
+    });
   });
 });

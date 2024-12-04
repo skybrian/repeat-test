@@ -123,3 +123,19 @@ describe("union", () => {
     assertEquals(ab.cases[2].weight, 0.75);
   });
 });
+
+describe("RowPicker", () => {
+  describe("with", () => {
+    it("can change the name", () => {
+      const row = arb.object({ a: arb.int(1, 2) }).with({ name: "foo" });
+      assertEquals(row.name, "foo");
+      assertEquals(row.buildScript.weight, 1);
+    });
+
+    it("can change the weight", () => {
+      const row = arb.object({ a: arb.int(1, 2) }).with({ weight: 3 });
+      assertEquals(row.name, "object");
+      assertEquals(row.buildScript.weight, 3);
+    });
+  });
+});

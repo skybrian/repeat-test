@@ -6,22 +6,21 @@ import { take, takeAll, takeGenerated } from "../../src/ordered.ts";
 import { randomPicker } from "../../src/random.ts";
 import { usePicker } from "../../src/build.ts";
 import { Gen } from "@/arbitrary.ts";
-import type { SystemConsole } from "@/runner.ts";
 
 export function assertRoundTrip<T>(
   dom: Domain<T>,
   val: T,
-  console?: SystemConsole,
 ) {
-  const picks = dom.pickify(val);
+  const picks = dom.pickify(val, "can't pickify value");
   if (!picks.ok) {
-    console?.log("picks:", picks);
-    fail(`can't pickify value:\n${Deno.inspect(val)}`);
+    fail(`${picks.message}:\n${Deno.inspect(val)}`);
   }
+
   const gen = Gen.build(dom, picks.val);
   if (!gen.ok) {
-    console?.log("gen:", gen);
-    fail(`can't generate value from picks ${picks.val}:\n${Deno.inspect(val)}`);
+    fail(
+      `${gen.message}\n${Deno.inspect(picks.val)}:\n${Deno.inspect(val)}`,
+    );
   }
   assertEquals(gen.val, val, "regenerated value didn't match");
 }

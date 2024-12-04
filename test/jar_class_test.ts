@@ -14,7 +14,7 @@ import { alwaysPickMin } from "../src/picks.ts";
 import { depthFirstPlayouts } from "../src/partial_tracker.ts";
 import { orderedPlayouts } from "../src/ordered.ts";
 import { randomPlayouts } from "../src/random.ts";
-import { UnionJar } from "../src/jar_class.ts";
+import { RowJar, UnionJar } from "../src/jar_class.ts";
 
 describe("Jar", () => {
   let pick = makePickFunction(depthFirstPlayouts());
@@ -232,6 +232,18 @@ describe("UnionJar", () => {
       assertEquals(jar.take(2), false);
       assertEquals(jar.take(3), true);
       assert(jar.isEmpty());
+    });
+  });
+});
+
+describe("RowJar", () => {
+  describe("constructor", () => {
+    it("throws if there are no cases", () => {
+      assertThrows(
+        () => new RowJar([], {}),
+        Error,
+        "must have at least one case",
+      );
     });
   });
 });

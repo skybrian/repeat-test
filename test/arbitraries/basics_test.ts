@@ -134,7 +134,7 @@ describe("oneOf", () => {
     assertThrows(
       () => arb.oneOf(),
       Error,
-      "oneOf() requires at least one alternative",
+      "oneOf() requires at least one case",
     );
   });
 
