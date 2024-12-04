@@ -341,7 +341,6 @@ describe("table", () => {
 
       const table = arb.table(row, {
         keys: { "id": dom.string() },
-        length: { max: 3 }, // TODO: increase length
       });
 
       repeatTest(table, (rows, console) => {

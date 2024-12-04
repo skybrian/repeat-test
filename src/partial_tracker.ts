@@ -13,8 +13,8 @@ import { Backtracker } from "./backtracking.ts";
  * For a small search trees, it records every pick. Eventually every playout
  * will be pruned and no more playouts will be generated. The search will end.
  *
- * For very wide search trees, sometimes playouts won't be recorded to save
- * memory. This happens when the probability of revisiting them is too low.
+ * For very wide search trees, playouts won't be recorded until the same node
+ * is visited enough times, to save memory.
  */
 export class PartialTracker implements Tracker {
   readonly tree: PickTree = new PickTree();
@@ -38,10 +38,12 @@ export class PartialTracker implements Tracker {
     const newOdds = depth > 0 ? this.odds[depth - 1] * (1 / req.size) : 1;
     this.odds.push(newOdds);
 
+    // Track the pick if the odds of coming back are high enough, or
+    // we revisited this node enough times that the odds are probably wrong.
+    const track = newOdds > 0.000001 || this.walk.untrackedVisits > req.size;
+
     const firstChoice = this.pickSource.pick(req);
-    const pick = this.walk.pushUnpruned(firstChoice, req, {
-      track: newOdds > 0.000001,
-    });
+    const pick = this.walk.pushUnpruned(firstChoice, req, { track });
     return pick;
   }
 

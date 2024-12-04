@@ -39,6 +39,9 @@ class Node {
   /** The number of children that have been added to this node. */
   #children = 0;
 
+  /** Counts the number of times a child was visited without being tracked. */
+  #untrackedVisits = 0;
+
   /** A dummy node for pointing to the root of a tree. */
   static makeStart(): Node {
     return new Node(0, 0);
@@ -160,6 +163,14 @@ class Node {
       this.prune(this.#min);
     }
   }
+
+  get untrackedVisits(): number {
+    return this.#untrackedVisits;
+  }
+
+  countVisit() {
+    this.#untrackedVisits++;
+  }
 }
 
 /**
@@ -262,6 +273,13 @@ export class Walk {
   /** Returns true if the Walk points to a pruned branch. */
   get pruned(): boolean {
     return this.parent.getBranch(this.lastReply) === PRUNED;
+  }
+
+  /**
+   * Returns the number of times an untracked child was visited.
+   */
+  get untrackedVisits(): number {
+    return this.parent.untrackedVisits;
   }
 
   /**
@@ -380,6 +398,8 @@ export class Walk {
       if (track) {
         branch = parent.addChild(lastPick, req);
       } else {
+        // Count this visit instead of tracking it.
+        parent.countVisit();
         branch = Node.from(req);
       }
     } else {
