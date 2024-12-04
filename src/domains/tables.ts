@@ -127,21 +127,33 @@ function pickifyRow<R extends Row>(
     }
   }
 
-  const keys = Object.keys(pat.shape) as (keyof R & string)[];
-  for (const key of keys) {
-    const propVal = row[key];
-    const replies = pat.shape[key].innerPickify(
+  function serializeField(colName: string, dom: Domain<unknown>): boolean {
+    const propVal = row[colName];
+    const replies = dom.innerPickify(
       propVal,
       out.sendErr,
-      `${rowAt}.${key}`,
+      `${rowAt}.${colName}`,
     );
-    if (replies === undefined) return false;
-
-    if (!fieldAdded(key, propVal, replies, out)) {
+    if (replies === undefined) {
       return false;
     }
-
+    if (!fieldAdded(colName, propVal, replies, out)) {
+      return false;
+    }
     out.buf.push(...replies);
+    return true;
+  }
+
+  // Serialize keys first.
+
+  const keyColNames = Object.keys(out.keyShape);
+  const nonKeyColNames = Object.keys(pat.shape).filter((k) => !out.keyShape[k]);
+  const colNames = [...keyColNames, ...nonKeyColNames];
+
+  for (const colName of colNames) {
+    if (!serializeField(colName, pat.shape[colName])) {
+      return false;
+    }
   }
   return true;
 }

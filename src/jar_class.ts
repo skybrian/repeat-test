@@ -306,15 +306,21 @@ export class RowJar<T extends Record<string, unknown>> {
     const c = this.cases[index];
 
     const row: Record<string, unknown> = {};
+
+    // Generate key columns.
+    for (const columnName of Object.keys(this.keyJars)) {
+      const keyJar = this.keyJars[columnName];
+      const keyVal = keyJar.takeAt(index, pick);
+      if (keyVal === undefined) {
+        throw new Filtered("no keys left for chosen case");
+      }
+      row[columnName] = keyVal;
+    }
+
+    // Generate non-key columns.
     for (const columnName of Object.keys(c.shape)) {
       const keyJar = this.keyJars[columnName];
-      if (keyJar) {
-        const keyVal = keyJar.takeAt(index, pick);
-        if (keyVal === undefined) {
-          throw new Filtered("no keys left for chosen case");
-        }
-        row[columnName] = keyVal;
-      } else {
+      if (!keyJar) {
         row[columnName] = pick(c.shape[columnName]);
       }
     }
