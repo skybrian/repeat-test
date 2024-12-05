@@ -1,4 +1,4 @@
-import type { Pickable } from "@/arbitrary.ts";
+import type { Pickable } from "../../src/entrypoints/core.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals } from "@std/assert";

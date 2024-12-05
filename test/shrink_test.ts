@@ -1,4 +1,4 @@
-import type { Domain } from "@/domain.ts";
+import type { Domain } from "@/core.ts";
 import type { SystemConsole } from "@/runner.ts";
 
 import { describe, it } from "@std/testing/bdd";
@@ -12,7 +12,7 @@ import { minMaxVal } from "./lib/ranges.ts";
 import { IntRequest, PickList } from "../src/picks.ts";
 import { Script } from "../src/script_class.ts";
 import { scriptFrom } from "../src/scripts/scriptFrom.ts";
-import { Gen } from "@/arbitrary.ts";
+import { Gen } from "@/core.ts";
 import { CountingTestConsole } from "../src/console.ts";
 
 import { shrink, Shrinker } from "../src/shrink.ts";

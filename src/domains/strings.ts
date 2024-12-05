@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { Domain } from "@/domain.ts";
+import { Domain } from "@/core.ts";
 import * as arb from "@/arbs.ts";
 
 import * as unicode from "../unicode.ts";

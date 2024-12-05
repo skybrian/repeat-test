@@ -1,8 +1,11 @@
-import type { Row, RowPicker, RowShape } from "@/arbitrary.ts";
-import type { PickifyFunction, SendErr } from "@/domain.ts";
+import type { Row } from "../arbitraries/rows.ts";
+import type { RowShape } from "../domain_class.ts";
+
+import type { RowPicker } from "../arbitraries/rows.ts";
+import type { PickifyFunction, SendErr } from "@/core.ts";
 
 import * as arb from "@/arbs.ts";
-import { Domain } from "@/domain.ts";
+import { Domain } from "../domain_class.ts";
 import { assert } from "@std/assert";
 
 /**

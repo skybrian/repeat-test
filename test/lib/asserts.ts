@@ -1,11 +1,11 @@
-import type { Arbitrary, Pickable } from "@/arbitrary.ts";
-import type { Domain } from "@/domain.ts";
+import type { Arbitrary, Pickable } from "../../src/entrypoints/core.ts";
+import type { Domain } from "@/core.ts";
 
 import { assert, assertEquals, fail } from "@std/assert";
 import { take, takeAll, takeGenerated } from "../../src/ordered.ts";
 import { randomPicker } from "../../src/random.ts";
 import { usePicker } from "../../src/build.ts";
-import { Gen } from "@/arbitrary.ts";
+import { Gen } from "../../src/entrypoints/core.ts";
 
 export function assertRoundTrip<T>(
   dom: Domain<T>,

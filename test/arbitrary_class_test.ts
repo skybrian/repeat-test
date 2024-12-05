@@ -8,7 +8,7 @@ import { repeatTest } from "../src/runner.ts";
 import { Filtered } from "../src/pickable.ts";
 import { IntRequest } from "../src/picks.ts";
 
-import { Arbitrary } from "@/arbitrary.ts";
+import { Arbitrary } from "../src/entrypoints/core.ts";
 import * as arb from "@/arbs.ts";
 
 const bit = new IntRequest(0, 1);

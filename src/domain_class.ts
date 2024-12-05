@@ -1,4 +1,5 @@
-import type { BuildFunction, HasScript, Pickable } from "@/arbitrary.ts";
+import type { BuildFunction, Pickable } from "./pickable.ts";
+import type { HasScript } from "./script_class.ts";
 import type { Failure, Success } from "./results.ts";
 import type { SendErr } from "./options.ts";
 

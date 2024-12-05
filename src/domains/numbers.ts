@@ -1,4 +1,4 @@
-import type { Domain } from "@/domain.ts";
+import type { Domain } from "@/core.ts";
 import * as dom from "./basics.ts";
 
 /**

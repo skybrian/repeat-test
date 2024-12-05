@@ -8,7 +8,7 @@ import {
 
 import { filtered } from "../../src/results.ts";
 import { repeatTest } from "@/runner.ts";
-import { Arbitrary, IntRequest } from "@/arbitrary.ts";
+import { Arbitrary, IntRequest } from "../../src/entrypoints/core.ts";
 import * as arb from "@/arbs.ts";
 import { generate } from "../../src/gen_class.ts";
 import { onePlayout } from "../../src/backtracking.ts";

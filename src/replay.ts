@@ -1,4 +1,4 @@
-import type { Pickable, PickFunctionOpts } from "@/arbitrary.ts";
+import type { Pickable, PickFunctionOpts } from "./pickable.ts";
 import type { PickFunction } from "./pickable.ts";
 import type { GroupEdit, MultiEdit } from "./edits.ts";
 import type { PickList } from "./picks.ts";
@@ -6,7 +6,7 @@ import type { CallBuffer } from "./calls.ts";
 import type { Script } from "./script_class.ts";
 
 import { assert } from "@std/assert";
-import { Filtered } from "@/arbitrary.ts";
+import { Filtered } from "./pickable.ts";
 import { filtered } from "./results.ts";
 import { IntRequest } from "./picks.ts";
 import { scriptFrom } from "./scripts/scriptFrom.ts";

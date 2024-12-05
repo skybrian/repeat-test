@@ -3,7 +3,7 @@ import type { Pickable } from "../../src/pickable.ts";
 import { describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
 import { scriptFrom } from "../../src/scripts/scriptFrom.ts";
-import { IntRequest } from "@/arbitrary.ts";
+import { IntRequest } from "../../src/entrypoints/core.ts";
 import { usePicks } from "../../src/build.ts";
 
 describe("scriptFrom", () => {

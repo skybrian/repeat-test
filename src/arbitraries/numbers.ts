@@ -1,4 +1,4 @@
-import type { Arbitrary } from "@/arbitrary.ts";
+import type { Arbitrary } from "../entrypoints/core.ts";
 import { int } from "./basics.ts";
 
 /**

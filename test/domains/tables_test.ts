@@ -3,7 +3,7 @@ import { describe, it } from "@std/testing/bdd";
 import { assertEncoding, assertRoundTrip } from "../lib/asserts.ts";
 
 import { repeatTest } from "@/runner.ts";
-import { Arbitrary } from "@/arbitrary.ts";
+import { Arbitrary } from "../../src/entrypoints/core.ts";
 import * as dom from "@/doms.ts";
 import { arb } from "@/mod.ts";
 

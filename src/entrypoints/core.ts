@@ -6,6 +6,9 @@
 
 export type { Failure, Success } from "../results.ts";
 
+export type { SendErr } from "../options.ts";
+export type { RowPattern } from "../domains/rows.ts";
+
 export type {
   BuildFunction,
   ObjectShape,
@@ -24,8 +27,8 @@ export type {
   Range,
 } from "../picks.ts";
 
-export type { RowShape } from "../domain_class.ts";
 export type { Row } from "../arbitraries/rows.ts";
+export type { PickifyFunction, RowShape } from "../domain_class.ts";
 
 export { Filtered } from "../pickable.ts";
 export { filtered } from "../results.ts";
@@ -34,3 +37,7 @@ export { Gen } from "../gen_class.ts";
 export { Script } from "../script_class.ts";
 export { Arbitrary } from "../arbitrary_class.ts";
 export { RowPicker } from "../arbitraries/rows.ts";
+
+export { Domain, ParseError } from "../domain_class.ts";
+export { RowDomain } from "../domains/rows.ts";
+export { Jar } from "../jars.ts";

@@ -1,7 +1,7 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals } from "@std/assert";
 
-import { IntRequest } from "@/arbitrary.ts";
+import { IntRequest } from "../src/entrypoints/core.ts";
 import { CallBuffer } from "../src/calls.ts";
 
 import { replay } from "../src/replay.ts";

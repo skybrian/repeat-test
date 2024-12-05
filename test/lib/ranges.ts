@@ -1,4 +1,4 @@
-import { Arbitrary } from "@/arbitrary.ts";
+import { Arbitrary } from "../../src/entrypoints/core.ts";
 import * as arb from "@/arbs.ts";
 
 export type Range = { min: number; max: number };

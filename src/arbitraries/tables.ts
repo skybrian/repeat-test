@@ -4,11 +4,11 @@ import type {
   PickFunction,
   Row,
   RowPicker,
-} from "@/arbitrary.ts";
+} from "../entrypoints/core.ts";
 import type { ArrayOpts } from "../options.ts";
 
 import { assert } from "@std/assert/assert";
-import { Domain, Jar } from "@/domain.ts";
+import { Domain, Jar } from "@/core.ts";
 import { IntRequest } from "../picks.ts";
 import { parseArrayOpts } from "../options.ts";
 import { generateAll } from "../ordered.ts";

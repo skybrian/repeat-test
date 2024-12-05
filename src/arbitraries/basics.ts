@@ -1,6 +1,10 @@
-import type { BuildFunction, Pickable } from "@/arbitrary.ts";
+import type { BuildFunction, Pickable } from "../entrypoints/core.ts";
 
-import { Arbitrary, biasedBitRequest, IntRequest } from "@/arbitrary.ts";
+import {
+  Arbitrary,
+  biasedBitRequest,
+  IntRequest,
+} from "../entrypoints/core.ts";
 import { scriptFromCases } from "../scripts/scriptFromCases.ts";
 
 /**

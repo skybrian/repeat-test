@@ -1,10 +1,10 @@
-import type { PickFunction } from "@/arbitrary.ts";
+import type { PickFunction } from "../src/entrypoints/core.ts";
 import type { GenProps } from "./lib/props.ts";
 
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
 
-import { Arbitrary, Filtered } from "@/arbitrary.ts";
+import { Arbitrary, Filtered } from "../src/entrypoints/core.ts";
 import * as arb from "@/arbs.ts";
 
 import { alwaysPick, IntRequest, PickBuffer } from "../src/picks.ts";

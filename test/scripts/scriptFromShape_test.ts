@@ -1,7 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
 
 import { assertEquals } from "@std/assert";
-import { Gen } from "@/arbitrary.ts";
+import { Gen } from "../../src/entrypoints/core.ts";
 import { propsFromGen } from "../lib/props.ts";
 import { scriptFromShape } from "../../src/scripts/scriptFromShape.ts";
 import { arb } from "@/mod.ts";

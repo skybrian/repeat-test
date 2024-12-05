@@ -1,8 +1,8 @@
-import type { Row } from "@/arbitrary.ts";
+import type { Row } from "../entrypoints/core.ts";
 import type { RowDomain } from "./rows.ts";
 
 import { assert } from "@std/assert";
-import { Domain, type SendErr } from "@/domain.ts";
+import { Domain, type SendErr } from "@/core.ts";
 import * as arb from "@/arbs.ts";
 
 import { PickTree } from "../pick_tree.ts";

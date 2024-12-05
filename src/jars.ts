@@ -14,7 +14,7 @@ import { orderedPlayouts } from "./ordered.ts";
 import { Domain } from "./domain_class.ts";
 import { scriptFrom } from "./scripts/scriptFrom.ts";
 import { scriptOf } from "./scripts/scriptOf.ts";
-import { Filtered } from "@/arbitrary.ts";
+import { Filtered } from "./pickable.ts";
 
 /**
  * Picks from all items in a Domain, without replacement.

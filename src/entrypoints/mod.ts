@@ -6,8 +6,7 @@
  * for defining new Arbitraries.
  */
 
-export * from "@/arbitrary.ts";
-export * from "@/domain.ts";
+export * from "@/core.ts";
 export * from "@/runner.ts";
 export * as arb from "@/arbs.ts";
 export * as dom from "@/doms.ts";

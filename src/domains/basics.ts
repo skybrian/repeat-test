@@ -1,7 +1,7 @@
-import type { SendErr } from "@/domain.ts";
+import type { SendErr } from "@/core.ts";
 
 import * as arb from "@/arbs.ts";
-import { Domain } from "@/domain.ts";
+import { Domain } from "@/core.ts";
 import { checkArray, parseArrayOpts } from "../options.ts";
 
 /**

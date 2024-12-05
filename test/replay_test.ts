@@ -1,7 +1,7 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
 
-import { Filtered, IntRequest } from "@/arbitrary.ts";
+import { Filtered, IntRequest } from "../src/entrypoints/core.ts";
 import { filtered } from "../src/results.ts";
 import { keep, replaceOnce } from "../src/edits.ts";
 import { CallBuffer } from "../src/calls.ts";

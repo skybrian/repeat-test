@@ -1,4 +1,4 @@
-import type { RowShape } from "@/domain.ts";
+import type { RowShape } from "@/core.ts";
 
 import { describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows } from "@std/assert";
@@ -11,7 +11,7 @@ import {
   assertRoundTrip,
   assertSometimes,
 } from "../lib/asserts.ts";
-import { ParseError } from "@/domain.ts";
+import { ParseError } from "@/core.ts";
 import { propsFromGen } from "../lib/props.ts";
 
 describe("object", () => {

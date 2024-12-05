@@ -4,7 +4,7 @@ import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { repeatTest } from "@/runner.ts";
-import { Jar } from "@/domain.ts";
+import { Jar } from "@/core.ts";
 import * as arb from "@/arbs.ts";
 import * as dom from "@/doms.ts";
 

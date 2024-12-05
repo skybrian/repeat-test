@@ -1,8 +1,10 @@
-import type { PickFunction, RandomSource } from "@/arbitrary.ts";
+import type { PickFunction } from "../pickable.ts";
+import type { RandomSource } from "../picks.ts";
 import type { ArrayOpts } from "../options.ts";
 
 import { assert } from "@std/assert/assert";
-import { Arbitrary, IntRequest } from "@/arbitrary.ts";
+import { Arbitrary } from "../arbitrary_class.ts";
+import { IntRequest } from "../picks.ts";
 import * as arb from "./basics.ts";
 import { makeItemFunction, off } from "./arrays.ts";
 import { parseArrayOpts } from "../options.ts";
@@ -84,15 +86,19 @@ const char16Req = new IntRequest(0, 0xffff, {
  * surrogates. This is useful when you want to test your code to handle
  * badly-formed strings.
  */
-export const char16: () => Arbitrary<string> = Arbitrary.from(
-  function char16Callback(pick) {
+export function char16(): Arbitrary<string> {
+  function char16Callback(pick: PickFunction): string {
     const code = pick(char16Req);
     if (code < 128) {
       return pickToAscii[code];
     }
     return String.fromCodePoint(code);
-  },
-).with({ name: "char16", cachable: true }).asFunction();
+  }
+  return Arbitrary.from(char16Callback).with({
+    name: "char16",
+    cachable: true,
+  });
+}
 
 const basicPlaneCount = supplementalPlaneStart - surrogateGap;
 

@@ -3,7 +3,7 @@ import type { Tracker } from "../src/backtracking.ts";
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { assert, assertEquals, assertThrows, fail } from "@std/assert";
 
-import { Arbitrary } from "@/arbitrary.ts";
+import { Arbitrary } from "../src/entrypoints/core.ts";
 
 import { Filtered } from "../src/pickable.ts";
 import { IntRequest, PickList } from "../src/picks.ts";

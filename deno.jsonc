@@ -20,8 +20,7 @@
   },
   "exports": {
     ".": "./src/entrypoints/mod.ts",
-    "./arbitrary": "./src/entrypoints/arbitrary.ts",
-    "./domain": "./src/entrypoints/domain.ts",
+    "./core": "./src/entrypoints/core.ts",
     "./arbs": "./src/entrypoints/arbs.ts",
     "./doms": "./src/entrypoints/doms.ts",
     "./runner": "./src/entrypoints/runner.ts"

@@ -11,7 +11,7 @@ import {
 } from "../lib/asserts.ts";
 import { intRange, invalidIntRange, minMaxVal } from "../lib/ranges.ts";
 import { MutableGen } from "../../src/gen_class.ts";
-import { Domain, ParseError } from "@/domain.ts";
+import { Domain, ParseError } from "@/core.ts";
 
 describe("of", () => {
   describe("for a single-item domain", () => {
