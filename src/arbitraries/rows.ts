@@ -1,11 +1,9 @@
-import type { ObjectShape } from "../pickable.ts";
+import type { ObjectShape, Row } from "../pickable.ts";
 
 import { scriptFromShape } from "../scripts/scriptFromShape.ts";
 import { scriptFromCases } from "../scripts/scriptFromCases.ts";
 import { Arbitrary } from "../arbitrary_class.ts";
 import { assert } from "@std/assert/assert";
-
-export type Row = Record<string, unknown>;
 
 export type RowCase<T extends Row> = {
   readonly name: string;
@@ -59,6 +57,11 @@ export function union<T extends Row>(
  * An Arbitrary that generates objects from a list of possible shapes.
  */
 export class RowPicker<T extends Row> extends Arbitrary<T> {
+  /**
+   * Assembles a RowPicker.
+   *
+   * (This is more easily done using {@link object} or {@link union}.)
+   */
   constructor(
     readonly cases: RowCase<T>[],
     opts: { name: string; weight?: number },

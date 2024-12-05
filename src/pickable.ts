@@ -1,7 +1,7 @@
 /**
  * Indicates that a value can't be built from the chosen picks.
  *
- * The build function should be retried if different picks are available.
+ * A build function may be retried if different picks are available.
  */
 export class Filtered extends Error {
   /** Creates an error with the given message. */
@@ -83,10 +83,19 @@ export type Pickable<T> = {
 };
 
 /**
+ * An object that can serve as a row in a table.
+ *
+ * String-keyed properties may be used as columns.
+ */
+export type Row = Record<string, unknown>;
+
+/**
  * Specifies how to generate each property of an object.
  *
  * The properties are independently generated, with no constraints between them.
+ *
+ * (Only string-keyed properties are supported.)
  */
-export type ObjectShape<T extends Record<string, unknown>> = {
+export type ObjectShape<T extends Row> = {
   [K in keyof T]: Pickable<T[K]>;
 };

@@ -15,6 +15,7 @@ export type {
   Pickable,
   PickFunction,
   PickFunctionOpts,
+  Row,
 } from "../pickable.ts";
 
 export type { HasScript, ScriptOpts } from "../script_class.ts";
@@ -27,7 +28,6 @@ export type {
   Range,
 } from "../picks.ts";
 
-export type { Row } from "../arbitraries/rows.ts";
 export type { PickifyFunction, RowShape } from "../domain_class.ts";
 
 export { Filtered } from "../pickable.ts";

@@ -1,4 +1,4 @@
-import type { Row } from "../arbitraries/rows.ts";
+import type { Row } from "../pickable.ts";
 import type { RowShape } from "../domain_class.ts";
 
 import type { RowPicker } from "../arbitraries/rows.ts";
@@ -53,19 +53,36 @@ export function taggedUnion<T extends Row>(
 }
 
 /**
- * A RowPattern describes one object shape in a tagged union.
+ * A RowPattern describes one possible object shape in a {@link RowDomain}.
  *
  * A RowPattern has *tags*, which are the properties that distinguish this case from others in the same union.
  */
 export class RowPattern<T extends Row> {
+  /**
+   * Defines the Domain to use for validating or generating the value in each column.
+   */
   readonly shape: RowShape<T>;
+
   /** The index of this case in the tagged union. */
   readonly index: number;
   /** The names of the properties to use for checking if this is the right case. */
   readonly tags: string[];
+
+  /**
+   * If true, no other properties are allowed (according to Object.keys).
+   */
   readonly strict: boolean;
+
+  /**
+   * Picks rows for this case in the tagged union.
+   */
   readonly rowPicker: RowPicker<T>;
 
+  /**
+   * Creates a bare RowPattern.
+   *
+   * (RowPatterns are usually created as part of a {@link RowDomain}, via {@link object}.)
+   */
   constructor(
     shape: RowShape<T>,
     opts: {
