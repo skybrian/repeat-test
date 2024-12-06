@@ -2,7 +2,7 @@ import type { Pickable, PickFunction, PickFunctionOpts } from "./pickable.ts";
 import type { Backtracker } from "./backtracking.ts";
 import type { Gen } from "./gen_class.ts";
 import type { RowCase } from "./arbitraries/rows.ts";
-import type { RowShape } from "./domain_class.ts";
+import type { RowShape } from "./domains/rows.ts";
 
 import { assert } from "@std/assert";
 import { IntRequest } from "./picks.ts";

@@ -1,6 +1,17 @@
-import type { ObjectShape, PickFunction } from "../pickable.ts";
+import type { Pickable, PickFunction } from "../pickable.ts";
 import { Script } from "../script_class.ts";
 import { scriptFrom } from "./scriptFrom.ts";
+
+/**
+ * Specifies how to generate each property of an object.
+ *
+ * The properties are independently generated, with no constraints between them.
+ *
+ * (Only string-keyed properties are supported.)
+ */
+export type ObjectShape<T extends Record<string, unknown>> = {
+  [K in keyof T]: Pickable<T[K]>;
+};
 
 /**
  * Makes a new script the generates an object with the given shape.

@@ -1,17 +1,25 @@
-import type { Row } from "../pickable.ts";
-import type { RowShape } from "../domain_class.ts";
-
-import type { ArbRow } from "../arbitraries/rows.ts";
-import type { PickifyFunction, SendErr } from "@/core.ts";
+import type { ArbRow, Row } from "../arbitraries/rows.ts";
+import type { PickifyFunction } from "../domain_class.ts";
+import type { SendErr } from "../options.ts";
 
 import * as arb from "@/arbs.ts";
 import { Domain } from "../domain_class.ts";
 import { assert } from "@std/assert";
 
 /**
- * Options for validating an object using {@link RowShape}.
+ * Defines which values are allowed for multiple properties on an object.
+ *
+ * Each property is independent. Any other properties that the object might have
+ * are unrestricted.
  */
-export type RowShapeOpts = {
+export type RowShape<T> = {
+  [K in keyof T]: Domain<T[K]>;
+};
+
+/**
+ * Options for validating an object.
+ */
+export type ObjectOpts = {
   /**
    * If set, the Object.keys() list for an object will only be allowed to have
    * the keys given by the {@link RowShape}.
@@ -28,7 +36,7 @@ export type RowShapeOpts = {
  */
 export function object<T extends Row>(
   shape: RowShape<T>,
-  opts?: RowShapeOpts,
+  opts?: ObjectOpts,
 ): RowDomain<T> {
   return RowDomain.object(shape, opts);
 }
@@ -250,7 +258,7 @@ export class RowDomain<T extends Row> extends Domain<T> {
   /** Creates a RowDomain with a single case and no tag properties. */
   static object<T extends Row>(
     shape: RowShape<T>,
-    opts?: RowShapeOpts,
+    opts?: ObjectOpts,
   ): RowDomain<T> {
     const name = Object.keys(shape).length > 0 ? "object" : "empty object";
     const pat = new RowPattern(shape, {

@@ -5,17 +5,16 @@
  */
 
 export type { Failure, Success } from "../results.ts";
-
 export type { SendErr } from "../options.ts";
-export type { RowPattern } from "../domains/rows.ts";
+export type { ObjectShape } from "../scripts/scriptFromShape.ts";
+export type { Row } from "../arbitraries/rows.ts";
+export type { RowPattern, RowShape } from "../domains/rows.ts";
 
 export type {
   BuildFunction,
-  ObjectShape,
   Pickable,
   PickFunction,
   PickFunctionOpts,
-  Row,
 } from "../pickable.ts";
 
 export type { HasScript, ScriptOpts } from "../script_class.ts";
@@ -28,7 +27,7 @@ export type {
   Range,
 } from "../picks.ts";
 
-export type { PickifyFunction, RowShape } from "../domain_class.ts";
+export type { PickifyFunction } from "../domain_class.ts";
 
 export { Filtered } from "../pickable.ts";
 export { filtered } from "../results.ts";

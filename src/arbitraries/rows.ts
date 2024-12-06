@@ -1,9 +1,16 @@
-import type { ObjectShape, Row } from "../pickable.ts";
+import type { ObjectShape } from "../scripts/scriptFromShape.ts";
 
 import { scriptFromShape } from "../scripts/scriptFromShape.ts";
 import { scriptFromCases } from "../scripts/scriptFromCases.ts";
 import { Arbitrary } from "../arbitrary_class.ts";
 import { assert } from "@std/assert/assert";
+
+/**
+ * An object that can serve as a row in a table.
+ *
+ * String-keyed properties may be used as columns.
+ */
+export type Row = Record<string, unknown>;
 
 /**
  * Defines an Arbitrary that creates objects with the given shape.
