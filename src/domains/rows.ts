@@ -1,7 +1,7 @@
 import type { Row } from "../pickable.ts";
 import type { RowShape } from "../domain_class.ts";
 
-import type { RowPicker } from "../arbitraries/rows.ts";
+import type { ArbRow } from "../arbitraries/rows.ts";
 import type { PickifyFunction, SendErr } from "@/core.ts";
 
 import * as arb from "@/arbs.ts";
@@ -76,7 +76,7 @@ export class RowPattern<T extends Row> {
   /**
    * Picks rows for this case in the tagged union.
    */
-  readonly rowPicker: RowPicker<T>;
+  readonly arbRow: ArbRow<T>;
 
   /**
    * Creates a bare RowPattern.
@@ -96,11 +96,11 @@ export class RowPattern<T extends Row> {
     this.index = opts.index;
     this.tags = opts.tags;
     this.strict = opts.strict;
-    this.rowPicker = arb.object(shape).with({ weight: opts.weight });
+    this.arbRow = arb.object(shape).with({ weight: opts.weight });
   }
 
   get weight(): number {
-    return this.rowPicker.buildScript.weight;
+    return this.arbRow.buildScript.weight;
   }
 
   /**
@@ -171,7 +171,7 @@ function checkIsRow(
  */
 export class RowDomain<T extends Row> extends Domain<T> {
   #tagProp: string | undefined;
-  #rowPicker: RowPicker<T>;
+  #arbRow: ArbRow<T>;
 
   private constructor(
     name: string,
@@ -197,19 +197,17 @@ export class RowDomain<T extends Row> extends Domain<T> {
       return patterns.length > 1 ? [pat.index, ...picks] : picks;
     };
 
-    const rowPicker = arb.union(...patterns.map((c) => c.rowPicker)).with({
-      name,
-      weight,
-    });
+    const arbRow = arb.union(...patterns.map((c) => c.arbRow))
+      .with({ name, weight });
 
-    super(pickify, rowPicker.buildScript);
+    super(pickify, arbRow.buildScript);
 
     this.#tagProp = tagProp;
-    this.#rowPicker = rowPicker;
+    this.#arbRow = arbRow;
   }
 
-  get rowPicker(): RowPicker<T> {
-    return this.#rowPicker;
+  get arbRow(): ArbRow<T> {
+    return this.#arbRow;
   }
 
   /**

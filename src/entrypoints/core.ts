@@ -36,7 +36,7 @@ export { biasedBitRequest, IntRequest } from "../picks.ts";
 export { Gen } from "../gen_class.ts";
 export { Script } from "../script_class.ts";
 export { Arbitrary } from "../arbitrary_class.ts";
-export { RowPicker } from "../arbitraries/rows.ts";
+export { ArbRow } from "../arbitraries/rows.ts";
 
 export { Domain, ParseError } from "../domain_class.ts";
 export { RowDomain } from "../domains/rows.ts";

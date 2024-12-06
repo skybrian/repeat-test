@@ -12,28 +12,23 @@ export type RowCase<T extends Row> = {
 };
 
 /**
- * Creates an Arbitrary that generates objects that all have the same shape.
+ * Defines an Arbitrary that creates objects with the given shape.
  *
- * That is, the property keys are fixed, and the value for each key is generated
- * by a given Pickable.
- *
- * (The prototype is always `Object.prototype`.)
+ * The objects will always have the same keys. The possible values for each key
+ * are independent and generated using the corresponding Pickable. The prototype
+ * will always be `Object.prototype`.
  */
-export function object<T extends Row>(
-  shape: ObjectShape<T>,
-): RowPicker<T> {
+export function object<T extends Row>(shape: ObjectShape<T>): ArbRow<T> {
   const propCount = Object.keys(shape).length;
   const name = propCount === 0 ? "empty object" : "object";
   const c = Object.freeze({ name, weight: 1, shape });
-  return new RowPicker([c], { name });
+  return new ArbRow([c], { name });
 }
 
 /**
- * Creates an Arbitrary that chooses between different object shapes.
+ * Defines an Arbitrary that chooses between different object shapes.
  */
-export function union<T extends Row>(
-  ...cases: RowPicker<T>[]
-): RowPicker<T> {
+export function union<T extends Row>(...cases: ArbRow<T>[]): ArbRow<T> {
   const rowCases: RowCase<T>[] = [];
   for (const arb of cases) {
     const weight = arb.buildScript.weight;
@@ -50,18 +45,13 @@ export function union<T extends Row>(
     }
   }
 
-  return new RowPicker(rowCases, { name: "union" });
+  return new ArbRow(rowCases, { name: "union" });
 }
 
 /**
- * An Arbitrary that generates objects from a list of possible shapes.
+ * An Arbitrary that generates row objects that can be used in a table.
  */
-export class RowPicker<T extends Row> extends Arbitrary<T> {
-  /**
-   * Assembles a RowPicker.
-   *
-   * (This is more easily done using {@link object} or {@link union}.)
-   */
+export class ArbRow<T extends Row> extends Arbitrary<T> {
   constructor(
     readonly cases: RowCase<T>[],
     opts: { name: string; weight?: number },
@@ -83,9 +73,9 @@ export class RowPicker<T extends Row> extends Arbitrary<T> {
     super(build.with(opts));
   }
 
-  override with(opts: { name?: string; weight?: number }): RowPicker<T> {
+  override with(opts: { name?: string; weight?: number }): ArbRow<T> {
     const name = opts?.name ?? this.name;
     const weight = opts?.weight ?? this.buildScript.opts.weight;
-    return new RowPicker(this.cases, { name, weight });
+    return new ArbRow(this.cases, { name, weight });
   }
 }

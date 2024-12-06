@@ -68,9 +68,9 @@ export function table<R extends Record<string, unknown>>(
   opts?: arb.TableOpts<R>,
 ): Domain<R[]> {
   const { min, max } = parseArrayOpts(opts);
-  const keyShape = parseKeyOpts(item.rowPicker, opts);
+  const keyShape = parseKeyOpts(item.arbRow, opts);
 
-  const buildRow = arb.union(...item.patterns.map((c) => c.rowPicker));
+  const buildRow = arb.union(...item.patterns.map((c) => c.arbRow));
   const build = arb.table(buildRow, opts);
 
   function pickifyTable(rows: unknown, sendErr: SendErr) {

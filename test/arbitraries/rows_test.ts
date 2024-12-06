@@ -124,7 +124,7 @@ describe("union", () => {
   });
 });
 
-describe("RowPicker", () => {
+describe("ArbRow", () => {
   describe("with", () => {
     it("can change the name", () => {
       const row = arb.object({ a: arb.int(1, 2) }).with({ name: "foo" });
