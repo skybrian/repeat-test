@@ -1,5 +1,6 @@
 import type { Row } from "../entrypoints/core.ts";
-import type { RowDomain } from "./rows.ts";
+import type { RowDomain, RowPattern } from "./rows.ts";
+import type { KeyShape } from "../arbitraries/tables.ts";
 
 import { assert } from "@std/assert";
 import { Domain, type SendErr } from "@/core.ts";
@@ -8,7 +9,8 @@ import * as arb from "@/arbs.ts";
 import { PickTree } from "../pick_tree.ts";
 import { checkArray, parseArrayOpts } from "../options.ts";
 import { Gen } from "../gen_class.ts";
-import { type KeyShape, parseKeyOpts } from "../arbitraries/tables.ts";
+import { findPattern, patternsFromDomain } from "./rows.ts";
+import { parseKeyOpts } from "../arbitraries/tables.ts";
 
 /**
  * Creates a Domain that accepts arrays where each item is different.
@@ -70,7 +72,8 @@ export function table<R extends Record<string, unknown>>(
   const { min, max } = parseArrayOpts(opts);
   const keyShape = parseKeyOpts(item.arbRow, opts);
 
-  const buildRow = arb.union(...item.patterns.map((c) => c.arbRow));
+  const patterns = patternsFromDomain(item);
+  const buildRow = arb.union(...patterns.map((c) => c.arbRow));
   const build = arb.table(buildRow, opts);
 
   function pickifyTable(rows: unknown, sendErr: SendErr) {
@@ -109,12 +112,12 @@ function pickifyRow<R extends Row>(
   }
   const row = val as Row;
 
-  const pat = out.item.findPattern(row, out.sendErr, { at: out.rowCount });
+  const pat = findPattern(out.item, row, out.sendErr, { at: out.rowCount });
   if (pat === undefined) {
     return false;
   }
 
-  if (out.item.patterns.length > 1) {
+  if (out.patterns.length > 1) {
     out.buf.push(pat.index);
   }
 
@@ -186,6 +189,8 @@ class TableWriter<R extends Row> {
   columnTrees: Record<string, PickTree> = {};
   columnDoms: Record<string, Domain<unknown>> = {};
   keyColumnName: string | undefined = undefined;
+  patterns: RowPattern<R>[] = [];
+
   rowCount = 0;
   readonly buf: number[] = [];
 
@@ -202,5 +207,6 @@ class TableWriter<R extends Row> {
       this.columnTrees[key] = new PickTree();
       this.columnDoms[key] = dom;
     }
+    this.patterns = patternsFromDomain(item);
   }
 }

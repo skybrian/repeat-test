@@ -13,6 +13,7 @@ import {
 } from "../lib/asserts.ts";
 import { ParseError } from "@/core.ts";
 import { propsFromGen } from "../lib/props.ts";
+import { patternsFromDomain } from "../../src/domains/rows.ts";
 
 describe("object", () => {
   describe("constructor", () => {
@@ -200,8 +201,10 @@ describe("taggedUnion", () => {
       dom.object({ kind: dom.of("b") }).with({ weight: 3 }),
     ]);
     assertEquals(ab.buildScript.weight, 1);
-    assertEquals(ab.patterns[0].weight, 1);
-    assertEquals(ab.patterns[1].weight, 3);
+
+    const patterns = patternsFromDomain(ab);
+    assertEquals(patterns[0].weight, 1);
+    assertEquals(patterns[1].weight, 3);
     assertSometimes(ab, (v) => v.kind === "b", 70, 80);
   });
 

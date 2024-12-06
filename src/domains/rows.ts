@@ -180,20 +180,21 @@ function checkIsRow(
 export class RowDomain<T extends Row> extends Domain<T> {
   #tagProp: string | undefined;
   #arbRow: ArbRow<T>;
+  #patterns: RowPattern<T>[];
 
   private constructor(
     name: string,
     weight: number,
     tagProp: string | undefined,
     /** The possible shapes for objects in this domain. */
-    readonly patterns: RowPattern<T>[],
+    patterns: RowPattern<T>[],
   ) {
     const pickify: PickifyFunction = (val, sendErr) => {
       if (!checkIsRow(val, sendErr)) {
         return undefined;
       }
 
-      const pat = this.findPattern(val, sendErr);
+      const pat = findPattern(this, val, sendErr);
       if (pat === undefined) {
         return undefined;
       }
@@ -212,47 +213,18 @@ export class RowDomain<T extends Row> extends Domain<T> {
 
     this.#tagProp = tagProp;
     this.#arbRow = arbRow;
+    this.#patterns = patterns;
   }
 
   get arbRow(): ArbRow<T> {
     return this.#arbRow;
   }
 
-  /**
-   * Given a value, returns the first RowPattern that matches it.
-   */
-  findPattern(
-    val: Row,
-    sendErr: SendErr,
-    opts?: { at: number | string },
-  ): RowPattern<T> | undefined {
-    if (this.#tagProp !== undefined && typeof val[this.#tagProp] !== "string") {
-      sendErr(`'${this.#tagProp}' property is not a string`, val, opts);
-      return undefined;
-    }
-
-    for (const pat of this.patterns) {
-      if (pat.tagsMatch(val)) {
-        return pat;
-      }
-    }
-
-    const tags: Row = {};
-    for (const pat of this.patterns) {
-      for (const tag of pat.tags) {
-        tags[tag] = val[tag];
-      }
-    }
-
-    sendErr(`tags didn't match any case in '${this.name}'`, tags);
-    return undefined;
-  }
-
   /** Renames the domain. */
   override with(opts: { name?: string; weight?: number }): RowDomain<T> {
     const name = opts.name ?? this.name;
     const weight = opts.weight ?? this.buildScript.weight;
-    return new RowDomain(name, weight, this.#tagProp, this.patterns);
+    return new RowDomain(name, weight, this.#tagProp, this.#patterns);
   }
 
   /** Creates a RowDomain with a single case and no tag properties. */
@@ -282,11 +254,11 @@ export class RowDomain<T extends Row> extends Domain<T> {
     const pats: RowPattern<T>[] = [];
     for (const c of cases) {
       const weight = c.buildScript.weight;
-      const childTotal = c.patterns.reduce((sum, pat) => sum + pat.weight, 0);
+      const childTotal = c.#patterns.reduce((sum, pat) => sum + pat.weight, 0);
       assert(childTotal > 0, "child total must be positive");
       const adjustment = weight / childTotal;
 
-      for (const pat of c.patterns) {
+      for (const pat of c.#patterns) {
         let tags = pat.tags;
         if (!tags.includes(tagProp)) {
           if (!pat.shape[tagProp]) {
@@ -304,4 +276,44 @@ export class RowDomain<T extends Row> extends Domain<T> {
 
     return new RowDomain("taggedUnion", 1, tagProp, pats);
   }
+
+  private static patternsFromDomain<T extends Row>(
+    dom: RowDomain<T>,
+  ): RowPattern<T>[] {
+    return dom.#patterns;
+  }
+
+  /**
+   * Given a value, returns the first RowPattern that matches it.
+   */
+  private static findPattern<T extends Row>(
+    dom: RowDomain<T>,
+    val: Row,
+    sendErr: SendErr,
+    opts?: { at: number | string },
+  ): RowPattern<T> | undefined {
+    if (dom.#tagProp !== undefined && typeof val[dom.#tagProp] !== "string") {
+      sendErr(`'${dom.#tagProp}' property is not a string`, val, opts);
+      return undefined;
+    }
+
+    for (const pat of dom.#patterns) {
+      if (pat.tagsMatch(val)) {
+        return pat;
+      }
+    }
+
+    const tags: Row = {};
+    for (const pat of dom.#patterns) {
+      for (const tag of pat.tags) {
+        tags[tag] = val[tag];
+      }
+    }
+
+    sendErr(`tags didn't match any case in '${dom.name}'`, tags);
+    return undefined;
+  }
 }
+
+export const patternsFromDomain = RowDomain["patternsFromDomain"];
+export const findPattern = RowDomain["findPattern"];

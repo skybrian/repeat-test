@@ -8,7 +8,7 @@ export type { Failure, Success } from "../results.ts";
 export type { SendErr } from "../options.ts";
 export type { ObjectShape } from "../scripts/scriptFromShape.ts";
 export type { Row } from "../arbitraries/rows.ts";
-export type { RowPattern, RowShape } from "../domains/rows.ts";
+export type { RowShape } from "../domains/rows.ts";
 
 export type {
   BuildFunction,
