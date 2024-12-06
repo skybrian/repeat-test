@@ -4,14 +4,18 @@ import { assertGenerated, assertSometimes } from "../lib/asserts.ts";
 import { generateDefault } from "../../src/ordered.ts";
 import * as arb from "@/arbs.ts";
 
+import { casesFromArb } from "../../src/arbitraries/rows.ts";
+
 describe("object", () => {
   it("can generate empty objects", () => {
     const empty = arb.object({});
     assertEquals(empty.buildScript.name, "empty object");
     assertEquals(empty.buildScript.opts.maxSize, 1);
     assertGenerated(empty, [{ val: {}, picks: [] }]);
-    assertEquals(empty.cases.length, 1);
-    assertEquals(Object.keys(empty.cases[0].shape), []);
+
+    const cases = casesFromArb(empty);
+    assertEquals(cases.length, 1);
+    assertEquals(Object.keys(cases[0].shape), []);
   });
 
   it("can generate constant objects", () => {
@@ -24,8 +28,10 @@ describe("object", () => {
     assertGenerated(example, [
       { val: { a: 1, b: 2 }, picks: [] },
     ]);
-    assertEquals(example.cases.length, 1);
-    assertEquals(Object.keys(example.cases[0].shape), ["a", "b"]);
+
+    const cases = casesFromArb(example);
+    assertEquals(cases.length, 1);
+    assertEquals(Object.keys(cases[0].shape), ["a", "b"]);
   });
 
   it("can generate one int property", () => {
@@ -103,8 +109,10 @@ describe("union", () => {
       arb.object({ name: arb.of("a") }),
       arb.object({ name: arb.of("b") }).with({ weight: 3 }),
     );
-    assertEquals(ab.cases[0].weight, 1);
-    assertEquals(ab.cases[1].weight, 3);
+
+    const cases = casesFromArb(ab);
+    assertEquals(cases[0].weight, 1);
+    assertEquals(cases[1].weight, 3);
 
     assertSometimes(ab, (v) => v.name === "a", 20, 30);
   });
@@ -118,9 +126,10 @@ describe("union", () => {
       ),
     );
 
-    assertEquals(ab.cases[0].weight, 1);
-    assertEquals(ab.cases[1].weight, 0.25);
-    assertEquals(ab.cases[2].weight, 0.75);
+    const cases = casesFromArb(ab);
+    assertEquals(cases[0].weight, 1);
+    assertEquals(cases[1].weight, 0.25);
+    assertEquals(cases[2].weight, 0.75);
   });
 });
 

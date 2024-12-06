@@ -18,6 +18,7 @@ import { Script } from "../script_class.ts";
 
 import * as arb from "./basics.ts";
 import { RowJar } from "../jars.ts";
+import { casesFromArb } from "./rows.ts";
 
 /**
  * Defines an Arbitrary that generates an array by taking distinct values from a
@@ -88,10 +89,12 @@ export function parseKeyOpts<T extends Row>(
   row: ArbRow<T>,
   opts?: TableOpts<T>,
 ): KeyShape<T> {
+  const cases = casesFromArb(row);
+
   let keyShape: KeyShape<T> = {};
   if (Array.isArray(opts?.keys)) {
     for (const key of opts?.keys) {
-      const first = row.cases[0].shape[key];
+      const first = cases[0].shape[key];
       if (!(first instanceof Domain)) {
         if (first === undefined) {
           throw new Error(
@@ -109,7 +112,7 @@ export function parseKeyOpts<T extends Row>(
   }
 
   for (const columnName in keyShape) {
-    for (const c of row.cases) {
+    for (const c of cases) {
       const dom = c.shape[columnName];
       if (!(dom instanceof Domain)) {
         throw new Error(
@@ -127,12 +130,12 @@ function checkKeys<T extends Row>(
   shape: KeyShape<T>,
   min: number,
 ): void {
+  const cases = casesFromArb(row);
+
   for (const [columnName, dom] of Object.entries(shape)) {
     assert(dom instanceof Domain);
 
-    const keyCases: Pickable<unknown>[] = row.cases.map((c) =>
-      c.shape[columnName]
-    );
+    const keyCases: Pickable<unknown>[] = cases.map((c) => c.shape[columnName]);
     const keys = arb.oneOf(...keyCases);
 
     const count = countDistinct(keys, dom, min);
@@ -203,8 +206,10 @@ export function table<R extends Record<string, unknown>>(
     }
   }
 
+  const cases = casesFromArb(row);
+
   return arb.from((pick) => {
-    const jar = new RowJar(row.cases, keyShape);
+    const jar = new RowJar(cases, keyShape);
 
     const rows: R[] = [];
 
