@@ -137,7 +137,7 @@ export class Arbitrary<T> implements Pickable<T>, HasScript<T> {
   }
 
   /**
-   * Returns a new Arbitrary with a different name or other options.
+   * Returns a copy with a different name or other options.
    */
   with(
     opts: { name?: string; weight?: number; cachable?: boolean },

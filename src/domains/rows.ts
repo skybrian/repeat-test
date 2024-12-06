@@ -216,11 +216,12 @@ export class RowDomain<T extends Row> extends Domain<T> {
     this.#patterns = patterns;
   }
 
-  get arbRow(): ArbRow<T> {
+  /** Returns the Arbitrary that generates objects in this domain. */
+  get arbitrary(): ArbRow<T> {
     return this.#arbRow;
   }
 
-  /** Renames the domain. */
+  /** Returns a copy with a different name or weight. */
   override with(opts: { name?: string; weight?: number }): RowDomain<T> {
     const name = opts.name ?? this.name;
     const weight = opts.weight ?? this.buildScript.weight;
@@ -277,6 +278,7 @@ export class RowDomain<T extends Row> extends Domain<T> {
     return new RowDomain("taggedUnion", 1, tagProp, pats);
   }
 
+  /** Returns info about each shape that this Domain accepts. */
   private static patternsFromDomain<T extends Row>(
     dom: RowDomain<T>,
   ): RowPattern<T>[] {

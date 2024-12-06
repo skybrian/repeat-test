@@ -57,19 +57,31 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
   #pickify: PickifyFunction;
   #build: Script<T>;
 
+  /**
+   * Creates a Domain that parses values with the given pickify function and
+   * generates them with the given Script.
+   *
+   * (A round-trip test should be used to verify that all generated values can
+   * be parsed.)
+   */
   protected constructor(pickify: PickifyFunction, build: Script<T>) {
     this.#pickify = pickify;
     this.#build = build;
   }
 
+  /**
+   * Returns the name used for this Domain in error messages.
+   */
   get name(): string {
     return this.#build.name;
   }
 
+  /** Returns a function that generates values in this Domain. */
   get directBuild(): BuildFunction<T> {
     return this.#build.directBuild;
   }
 
+  /** Returns the script that generates values in this Domain. */
   get buildScript(): Script<T> {
     return this.#build;
   }

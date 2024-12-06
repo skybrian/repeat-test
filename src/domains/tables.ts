@@ -70,7 +70,7 @@ export function table<R extends Record<string, unknown>>(
   opts?: arb.TableOpts<R>,
 ): Domain<R[]> {
   const { min, max } = parseArrayOpts(opts);
-  const keyShape = parseKeyOpts(item.arbRow, opts);
+  const keyShape = parseKeyOpts(item.arbitrary, opts);
 
   const patterns = patternsFromDomain(item);
   const buildRow = arb.union(...patterns.map((c) => c.arbRow));

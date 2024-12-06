@@ -66,12 +66,16 @@ export class ArbRow<T extends Row> extends Arbitrary<T> {
     this.#cases = cases;
   }
 
+  /** Returns a copy with a different name or weight. */
   override with(opts: { name?: string; weight?: number }): ArbRow<T> {
     const name = opts?.name ?? this.name;
     const weight = opts?.weight ?? this.buildScript.opts.weight;
     return new ArbRow(this.#cases, { name, weight });
   }
 
+  /**
+   * Defines a RowArb that creates objects with a single shape.
+   */
   static object<T extends Row>(shape: ObjectShape<T>): ArbRow<T> {
     const propCount = Object.keys(shape).length;
     const name = propCount === 0 ? "empty object" : "object";
@@ -79,6 +83,9 @@ export class ArbRow<T extends Row> extends Arbitrary<T> {
     return new ArbRow([c], { name });
   }
 
+  /**
+   * Defines a RowArb that creates objects from multiple object shapes.
+   */
   static union<T extends Row>(...cases: ArbRow<T>[]): ArbRow<T> {
     const rowCases: RowCase<T>[] = [];
     for (const arb of cases) {
@@ -99,7 +106,8 @@ export class ArbRow<T extends Row> extends Arbitrary<T> {
     return new ArbRow(rowCases, { name: "union" });
   }
 
-  private static casesFromArb<T extends Row>(row: ArbRow<T>) {
+  /** Returns info about each shape that this ArbRow can generate. */
+  private static casesFromArb<T extends Row>(row: ArbRow<T>): RowCase<T>[] {
     return row.#cases;
   }
 }
