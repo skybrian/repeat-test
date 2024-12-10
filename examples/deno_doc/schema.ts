@@ -53,6 +53,11 @@ export type TypeLiteral = {
   properties: Property[];
 };
 
+export type TypePredicate = {
+  param: { type: "identifier"; name: string };
+  type: TsType;
+};
+
 export type TsType =
   | { kind: "literal"; literal: Literal }
   | { kind: "keyword"; keyword: string }
@@ -67,7 +72,8 @@ export type TsType =
   | { kind: "intersection"; intersection: TsType[] }
   | { kind: "array"; array: TsType }
   | { kind: "parenthesized"; parenthesized: TsType }
-  | { kind: "typeQuery" };
+  | { kind: "typeQuery" }
+  | { kind: "typePredicate"; typePredicate: TypePredicate };
 
 /** A top-level type definition. */
 export type TypeAliasDef = {
@@ -277,6 +283,11 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
     properties: array(property),
   });
 
+  const typePredicate: Domain<TypePredicate> = object({
+    param: object({ type: dom.of("identifier"), name: valName }),
+    type: innerType,
+  });
+
   const tsType: Domain<TsType> = dom.taggedUnion<TsType>("kind", [
     object({ kind: dom.of("literal"), literal }),
     object({
@@ -307,6 +318,7 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
       parenthesized: innerType,
     }),
     object({ kind: dom.of("typeQuery") }), // TODO: more fields
+    object({ kind: dom.of("typePredicate"), typePredicate }),
   ]).with({ name: "tsType" });
 
   const typeAliasDef = object({
