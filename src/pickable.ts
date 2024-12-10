@@ -71,7 +71,7 @@ export type BuildFunction<T> = (pick: PickFunction) => T;
  *
  * Alternatively, a set of possible values to pick from.
  */
-export type Pickable<T> = {
+export interface Pickable<T> {
   /**
    * Builds a value from the given source of picks.
    *
@@ -80,4 +80,4 @@ export type Pickable<T> = {
    * retry, so performance will be different.
    */
   directBuild(pick: PickFunction): T;
-};
+}
