@@ -1,6 +1,6 @@
-import type { Row } from "../entrypoints/core.ts";
+import type { ArrayOpts, Row } from "../entrypoints/core.ts";
 import type { RowDomain, RowPattern } from "./rows.ts";
-import type { KeyShape } from "../arbitraries/tables.ts";
+import type { KeyShape, TableOpts } from "../arbitraries/tables.ts";
 
 import { assert } from "@std/assert";
 import { Domain, type SendErr } from "@/core.ts";
@@ -19,7 +19,7 @@ import { parseKeyOpts } from "../arbitraries/tables.ts";
  */
 export function uniqueArray<T>(
   item: Domain<T>,
-  opts?: arb.ArrayOpts,
+  opts?: ArrayOpts,
 ): Domain<T[]> {
   const generator = arb.uniqueArray(item, opts);
   const { min, max } = parseArrayOpts(opts);
@@ -67,7 +67,7 @@ export function uniqueArray<T>(
  */
 export function table<R extends Record<string, unknown>>(
   item: RowDomain<R>,
-  opts?: arb.TableOpts<R>,
+  opts?: TableOpts<R>,
 ): Domain<R[]> {
   const { min, max } = parseArrayOpts(opts);
   const keyShape = parseKeyOpts(item.arbitrary, opts);

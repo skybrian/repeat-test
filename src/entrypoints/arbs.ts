@@ -4,9 +4,6 @@
  * @module arbs
  */
 
-export type { ArrayOpts } from "../options.ts";
-export type { TableOpts } from "../arbitraries/tables.ts";
-
 export * from "../arbitraries/basics.ts";
 export { array } from "../arbitraries/arrays.ts";
 export { object, union } from "../arbitraries/rows.ts";

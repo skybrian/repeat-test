@@ -1,4 +1,4 @@
-import type { SendErr } from "@/core.ts";
+import type { ArrayOpts, SendErr } from "@/core.ts";
 
 import * as arb from "@/arbs.ts";
 import { Domain } from "@/core.ts";
@@ -73,7 +73,7 @@ export function int(min: number, max: number): Domain<number> {
  */
 export function array<T>(
   item: Domain<T>,
-  opts?: arb.ArrayOpts,
+  opts?: ArrayOpts,
 ): Domain<T[]> {
   const gen = arb.array(item, opts);
   const { min, max } = parseArrayOpts(opts);

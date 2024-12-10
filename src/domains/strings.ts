@@ -3,7 +3,7 @@ import { Domain } from "@/core.ts";
 import * as arb from "@/arbs.ts";
 
 import * as unicode from "../unicode.ts";
-import { parseArrayOpts } from "../options.ts";
+import { type ArrayOpts, parseArrayOpts } from "../options.ts";
 import { asciiToPick } from "../ascii.ts";
 
 const arbAscii = arb.asciiChar();
@@ -71,7 +71,7 @@ export const char16: () => Domain<string> = Domain.make(
  *
  * (That is, they may contain unpaired surrogates.)
  */
-export function string(opts?: arb.ArrayOpts): Domain<string> {
+export function string(opts?: ArrayOpts): Domain<string> {
   const { min, max } = parseArrayOpts(opts);
   return Domain.make(arb.string(opts), (val, sendErr) => {
     if (typeof val !== "string") {
@@ -111,7 +111,7 @@ export function string(opts?: arb.ArrayOpts): Domain<string> {
  *
  * (That is, they don't contain unpaired surrogates.)
  */
-export function wellFormedString(opts?: arb.ArrayOpts): Domain<string> {
+export function wellFormedString(opts?: ArrayOpts): Domain<string> {
   const { min, max } = parseArrayOpts(opts);
   return Domain.make(
     arb.wellFormedString(opts),

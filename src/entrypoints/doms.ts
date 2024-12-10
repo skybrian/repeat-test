@@ -3,8 +3,9 @@
  *
  * @module doms
  */
+
 export * from "../domains/basics.ts";
 export * from "../domains/numbers.ts";
 export * from "../domains/strings.ts";
-export * from "../domains/rows.ts";
+export { object, RowDomain, taggedUnion } from "../domains/rows.ts";
 export * from "../domains/tables.ts";
