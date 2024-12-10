@@ -48,9 +48,17 @@ export type Property = {
   tsType: TsType | null;
 };
 
+export type TypeMethod = {
+  kind: "method";
+  name: string;
+  params: Param[];
+  returnType: TsType;
+};
+
 /** An object type such as `{ a: string, b: number }` */
 export type TypeLiteral = {
   properties: Property[];
+  methods: TypeMethod[];
 };
 
 export type TypePredicate = {
@@ -81,16 +89,16 @@ export type TypeAliasDef = {
   typeParams: { name: string }[];
 };
 
-/** A function definition. (Also used in a method.) */
-export type FunctionDef = {
-  params: Param[];
-  returnType: TsType | null;
-};
-
 /** A constructor appearing in a class. */
 export type Constructor = {
   name: string;
   params: Param[];
+};
+
+/** A function definition. (Also used in a method.) */
+export type FunctionDef = {
+  params: Param[];
+  returnType: TsType | null;
 };
 
 /** A method appearing in a class. */
@@ -279,8 +287,16 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
     indexType: innerType,
   });
 
+  const typeMethod: Domain<TypeMethod> = object({
+    kind: dom.of("method"),
+    name: valName,
+    params,
+    returnType: innerType,
+  });
+
   const typeLiteral: Domain<TypeLiteral> = object({
     properties: array(property),
+    methods: array(typeMethod),
   });
 
   const typePredicate: Domain<TypePredicate> = object({
@@ -333,7 +349,7 @@ export function makeDenoDocSchema(opts?: DenoDocSchemaOpts) {
 
   const functionDef: Domain<FunctionDef> = object({
     params,
-    returnType: maybeNull(tsType),
+    returnType: maybeNull(innerType),
   });
 
   const method: RowDomain<Method> = object({

@@ -9,6 +9,7 @@ import type {
   Property,
   TsType,
   TypeLiteral,
+  TypeMethod,
   TypeRef,
 } from "./schema.ts";
 
@@ -30,12 +31,24 @@ function stringFromProperty({ name, tsType }: Property, indent: number) {
   return `${name}${type}`;
 }
 
+function stringFromTypeMethod(
+  { name, params, returnType }: TypeMethod,
+  indent: number,
+) {
+  const ind = "  ".repeat(indent);
+  const paramList = params.map(stringFromParam).join(", ");
+  return `${ind}${name}(${paramList}) => ${stringFromType(returnType, indent)}`;
+}
+
 function stringFromTypeLiteral(lit: TypeLiteral, indent: number) {
   const ind = "  ".repeat(indent);
-  const propNames = lit.properties.map((p) =>
+  const props = lit.properties.map((p) =>
     `${ind}  ${stringFromProperty(p, indent)}\n`
   );
-  return `{\n${propNames.join("")}${ind}}`;
+  const methods = lit.methods.map((m) =>
+    `${ind}  ${stringFromTypeMethod(m, indent)}\n`
+  );
+  return `{\n${props.join("")}${methods.join("")}${ind}}`;
 }
 
 function stringFromTypeRef({ typeName, typeParams }: TypeRef) {
