@@ -590,3 +590,24 @@ fail to shrink a 1k string                    31.0 ms          32.3 ( 30.7 ms �
 fail to shrink var length 1k string           60.0 ms          16.7 ( 59.6 ms …  60.7 ms)  60.1 ms  60.7 ms  60.7 ms
 shrink an array of strings                    12.7 ms          78.9 (  9.8 ms …  15.8 ms)  13.9 ms  15.8 ms  15.8 ms
 ```
+
+### Just before 0.5.0 release - some regressions
+
+```
+    CPU | Apple M2
+Runtime | Deno 2.1.2 (aarch64-apple-darwin)
+
+file:///Users/skybrian/Projects/deno/repeat-test/performance/benchmarks.ts
+
+benchmark                             time/iter (avg)        iter/s      (min … max)           p75      p99     p995
+------------------------------------- ----------------------------- --------------------- --------------------------
+generate a string                              8.3 µs       121,000 (  7.5 µs … 460.7 µs)   8.0 µs  11.3 µs  14.8 µs
+take 10k char16                                4.3 ms         230.3 (  4.3 ms …   4.5 ms)   4.4 ms   4.5 ms   4.5 ms
+uniqueArray of 5 ints                         78.0 µs        12,830 ( 71.9 µs … 665.9 µs)  75.3 µs 139.9 µs 149.0 µs
+uniqueArray of 6 ints                         81.8 µs        12,220 ( 78.1 µs … 207.8 µs)  79.5 µs 144.2 µs 148.3 µs
+uniqueArray of 100 ints                      764.0 µs         1,309 (722.2 µs … 913.0 µs) 795.2 µs 835.2 µs 842.4 µs
+generate 10k strings                         137.3 ms           7.3 (135.9 ms … 141.8 ms) 138.4 ms 141.8 ms 141.8 ms
+fail to shrink a 1k string                    33.2 ms          30.1 ( 33.1 ms …  33.6 ms)  33.3 ms  33.6 ms  33.6 ms
+fail to shrink var length 1k string           63.2 ms          15.8 ( 61.9 ms …  65.4 ms)  63.3 ms  65.4 ms  65.4 ms
+shrink an array of strings                    19.2 ms          52.0 ( 17.8 ms …  25.5 ms)  18.8 ms  25.5 ms  25.5 ms
+```
