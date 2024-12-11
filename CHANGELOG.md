@@ -1,3 +1,53 @@
+## 0.5.0
+
+Lots of changes. Some highlights:
+
+### API for generating test data:
+
+* PickSet is renamed to Pickable; this is the common API for anything that can
+  generate test data.
+
+* A Script is slightly fancier; it's a build function that's been given a name
+  and some options.
+
+* Arbitrary has been simplified by moving functionality to Script, but is
+  otherwise pretty much the same.
+
+* When choosing between different alternatives (such as with arb.oneOf), each
+  case can be given a different weight, which controls how often that choice
+  will be randomly picked.
+
+* arb.table() is more flexible: it takes an arb.object() or an arb.union(). This
+  allows a table to have a rows of different shapes. How unique keys are
+  generated can be different in each case too. (They need to be parsable by a
+  common Domain, though.)
+
+* PickRequest is renamed to IntRequest, which better explains what it does.
+
+* Generated<T> is renamed to Gen<T> and has an extended API for 
+
+### API for parsing data (Domains):
+
+* dom.oneOf() is renamed to dom.firstOf() which better describes what it does.
+
+* dom.taggedUnion() can be used to pick a case based on type tags.
+
+* dom.table() takes a dom.object() or a dom.taggedUnion(), allowing tables
+to have rows of different shapes.
+
+### Examples:
+
+* examples/deno_doc contains an extended example that parses the output of
+  `deno doc --json` and prints an API summary. This is the largest schema I've
+  written so far using Domains. It's still incomplete, though.
+
+### Internals:
+
+* How shrinking works has changed quite a bit. Before, it was a flat array of
+  picks. That representation is still used by Domains, but internally, picks are
+  also sometimes grouped by pick() call. This makes mutations a bit easier.
+  Groups of picks don't nest; that's left for some other time.
+
 ## 0.4.0
 
 * API: add console.debugger() and console.sometimes().
