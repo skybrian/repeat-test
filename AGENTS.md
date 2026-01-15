@@ -170,3 +170,9 @@ const tree: Arbitrary<Tree> = arb.alias(() =>
 - `docs/3_multiple_inputs.md` - Multiple test inputs
 - `examples/` - Runnable examples
 - Run `deno doc src/entrypoints/arbs.ts` for full API docs
+
+## Benchmarks
+
+Run benchmarks with: `deno bench performance/benchmarks.ts`
+
+Record results in `performance/exe_dev_benchmarks.md` (see that file for instructions).

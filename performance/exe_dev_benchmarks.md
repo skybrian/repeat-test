@@ -2,9 +2,23 @@
 
 Machine: Intel Xeon Platinum 8259CL @ 2.50GHz (x86_64-unknown-linux-gnu)
 
+## How to Update
+
+1. Ensure working directory is clean (`git status` shows no changes)
+2. Run benchmarks: `deno bench performance/benchmarks.ts`
+3. Record results below with:
+   - Version number (from deno.jsonc)
+   - Deno version
+   - Git commit hash (first 7 chars): `git rev-parse --short HEAD`
+   - Date
+   - Brief description of what changed (if relevant)
+4. Commit the updated file
+
+---
+
 ## Version 0.5.0
 
-Deno 2.6.5
+Commit: 13ab692 | Deno 2.6.5 | 2025-01-15 | Initial baseline
 
 ```
 | benchmark                             | time/iter (avg) |        iter/s |      (min … max)      |      p75 |      p99 |     p995 |
