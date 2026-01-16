@@ -85,33 +85,20 @@ async function checkExamples(): Promise<CheckResult[]> {
   return results;
 }
 
-async function checkDenoDocs(): Promise<CheckResult[]> {
-  const entrypoints = [
-    "src/entrypoints/mod.ts",
-    "src/entrypoints/core.ts",
-    "src/entrypoints/arbs.ts",
-    "src/entrypoints/doms.ts",
-    "src/entrypoints/runner.ts",
-  ];
+async function checkDenoDocs(): Promise<CheckResult> {
+  console.log(`\n=== Deno Doc Lint ===`);
 
-  console.log(`\n=== Deno Docs ===`);
+  // Must pass all entrypoints in one call due to:
+  // https://github.com/denoland/deno/issues/25188
+  // Use bash for glob expansion
+  const { success } = await run(
+    ["bash", "-c", "deno doc --lint src/entrypoints/*.ts"],
+  );
 
-  const results: CheckResult[] = [];
-  for (const entrypoint of entrypoints) {
-    const name = entrypoint.replace("src/entrypoints/", "");
-    console.log(`  ${name}...`);
-
-    const { success } = await run(["deno", "doc", entrypoint], {
-      captureOutput: true,
-    });
-
-    if (!success) {
-      console.log(`    FAILED`);
-    }
-    results.push({ name: `deno doc: ${name}`, ok: success });
+  if (!success) {
+    console.log(`FAILED`);
   }
-
-  return results;
+  return { name: "deno doc --lint", ok: success };
 }
 
 async function isWorkingDirectoryClean(): Promise<boolean> {
@@ -151,8 +138,8 @@ async function main(): Promise<number> {
   // Examples
   results.push(...await checkExamples());
 
-  // Deno docs
-  results.push(...await checkDenoDocs());
+  // Deno doc lint
+  results.push(await checkDenoDocs());
 
   // Working directory clean
   console.log(`\n=== Working Directory ===`);
