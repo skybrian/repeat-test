@@ -1,5 +1,6 @@
 import { Arbitrary } from "../../src/entrypoints/core.ts";
 import * as arb from "@/arbs.ts";
+import { frozen } from "../../src/frozen.ts";
 
 export type Range = { min: number; max: number };
 
@@ -32,10 +33,10 @@ export function intRange(opts?: IntRangeOptions): Arbitrary<Range> {
 
   const examples: Range[] = [];
   if (minMin <= 0) {
-    examples.push(Object.freeze({ min: 0, max: minSize - 1 }));
+    examples.push(frozen({ min: 0, max: minSize - 1 }));
   }
   if (minMin <= -1) {
-    examples.push(Object.freeze({ min: -1, max: minSize - 2 }));
+    examples.push(frozen({ min: -1, max: minSize - 2 }));
   }
 
   return arb.oneOf<Range>(
@@ -94,7 +95,7 @@ export function invalidIntRange(opts?: { minMin: number }): Arbitrary<Range> {
   }
 
   return arb.oneOf<Range>(
-    Arbitrary.of(Object.freeze({ min: 1, max: 0 })),
+    Arbitrary.of(frozen({ min: 1, max: 0 })),
     arb.object({ min: validMin, max: nonInteger() }),
     arb.object({ min: invalidMin, max: arb.int32() }),
   );

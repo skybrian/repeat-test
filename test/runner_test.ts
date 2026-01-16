@@ -23,6 +23,7 @@ import * as dom from "@/doms.ts";
 import { success } from "../src/results.ts";
 import { generateDefault } from "../src/ordered.ts";
 import { RecordingConsole } from "../src/console.ts";
+import { frozen } from "../src/frozen.ts";
 
 import {
   generateReps,
@@ -55,7 +56,7 @@ const badKey = arb.oneOf(
   arb.object({ id: arb.of(0), seed: arb.int32(), index: arb.int(-100, -1) }),
   arb.object({ id: arb.of(0), seed: strangeNumber, index: arb.int(0, 100) }),
   arb.object({ id: arb.of(0), seed: arb.int32(), index: strangeNumber }),
-  arb.of(Object.freeze({ id: 0, seed: Number.MAX_SAFE_INTEGER, index: 0 })),
+  arb.of(frozen({ id: 0, seed: Number.MAX_SAFE_INTEGER, index: 0 })),
 );
 
 describe("parseRepKey", () => {

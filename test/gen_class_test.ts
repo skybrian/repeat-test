@@ -13,6 +13,7 @@ import { depthFirstPlayouts } from "../src/partial_tracker.ts";
 import { orderedPlayouts } from "../src/ordered.ts";
 import { randomPicker } from "../src/random.ts";
 import { repeatTest } from "../src/runner.ts";
+import { frozen } from "../src/frozen.ts";
 
 const bitReq = IntRequest.bit;
 
@@ -26,7 +27,7 @@ const fails = Script.make("fails", () => {
   throw new Error("oops!");
 });
 
-const frozen = Script.make("frozen", () => Object.freeze(["frozen"]));
+const frozenScript = Script.make("frozen", () => frozen(["frozen"]));
 
 const mutable = Script.make("mutable", () => ["mutable"]);
 
@@ -150,7 +151,7 @@ describe("Gen", () => {
 
   describe("val", () => {
     it("doesn't regenerate a frozen object", () => {
-      const gen = Gen.mustBuild(frozen, []);
+      const gen = Gen.mustBuild(frozenScript, []);
       const first = gen.val;
       assertEquals(first, ["frozen"]);
       assert(gen.val === first);
@@ -392,7 +393,7 @@ describe("generate", () => {
 
     it("regenerates a result that can't be cached", () => {
       const cached = Script.make("uncached", (pick) => {
-        const val = pick(frozen);
+        const val = pick(frozenScript);
         return val.concat(["" + pick(IntRequest.bit)]);
       }, { logCalls: true });
 
