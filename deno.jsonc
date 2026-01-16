@@ -30,6 +30,7 @@
     "test": "deno test",
     "test:quick": "QUICKREPS=5 deno test --allow-env",
     "status": "deno run --allow-run --allow-env scripts/status.ts",
+    "release-check": "deno run --allow-run --allow-read scripts/release-check.ts",
     "summarize": "deno --allow-read --allow-run examples/deno_doc/bin/summarize.ts"
   }
 }
