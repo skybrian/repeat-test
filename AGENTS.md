@@ -4,13 +4,14 @@ A property-based testing library for Deno/TypeScript, similar to fast-check or Q
 
 > **Using repeat-test in another project?** See [docs/reference.md](./docs/reference.md) for API documentation and usage guidelines.
 
-## Quick Reference
+## Task Quick Reference
 
 ```bash
-deno task status       # Check + lint + quick test (only if files changed)
-deno task test         # Run all tests
-deno task test:quick   # Quick smoke test (QUICKREPS=5)
-deno task coverage     # Run tests with coverage
+deno task status        # Check + lint + quick test (only if files changed)
+deno task test          # Run all tests
+deno task test:quick    # Quick smoke test (QUICKREPS=5)
+deno task release-check # Checks everything more thoroughly in preparation for a release
+deno task coverage      # Run tests with coverage
 ```
 
 ## Project Structure
@@ -18,14 +19,14 @@ deno task coverage     # Run tests with coverage
 ```
 src/
   entrypoints/       # Public API entry points
-    mod.ts           # Main entry: repeatTest, arb, dom namespaces
-    core.ts          # Core types: Arbitrary, Domain, Script, Gen, etc.
-    arbs.ts          # Arbitrary builders (arb.int, arb.string, etc.)
-    doms.ts          # Domain builders (dom.int, dom.string, etc.)
-    runner.ts        # Test runner exports
-  arbitraries/       # Arbitrary implementations
-  domains/           # Domain implementations (Arbitraries with parsers)
-  scripts/           # Script implementations
+    mod.ts           # All-in-one entry point with arb and dom namespaces
+    core.ts          # Just the core types: Arbitrary, Domain, Script, Gen, etc.
+    arbs.ts          # Just the Arbitrary builders (arb.int, arb.string, etc.)
+    doms.ts          # Just the Domain builders (dom.int, dom.string, etc.)
+    runner.ts        # Just the test runner and closely-related types.
+  arbitraries/       # Arbitrary builder implementations
+  domains/           # Domain builder implementations (Arbitraries with parsers)
+  scripts/           # Script builder implementations (Pickables with a name and flags)
   *.ts               # Core implementation files
 test/                # Tests mirror src/ structure
 examples/            # Usage examples
@@ -33,19 +34,24 @@ docs/                # Documentation (see docs/reference.md for API)
 scripts/             # Build/dev scripts
 ```
 
-## Key Concepts
+## The most-used concepts
 
-- **Arbitrary<T>**: Generates random values of type T for testing
-- **Domain<T>**: An Arbitrary that can also parse/validate values (bidirectional)
-- **Script**: A composable building block for Arbitraries
-- **Gen**: A generated value with its pick sequence (for shrinking)
 - **repeatTest(examples, testFn)**: Main entry point for running property tests
+- **Arbitrary<T>**: Generates values of type T for testing, usually randomly
+- **arb.from(callbackFn)**: Defines a new Arbitrary based on a callback
+
+## Concepts that are mostly used internally
+
+- **Pickable<T>** Most-general supertype of Arbitrary; something that picks values
+- **Script<T>**: A named function that generates values (extends Pickable)
+- **Domain<T>**: An Arbitrary that can also parse/validate values (bidirectional)
+- **Gen**: A generated value with its pick sequence (for shrinking)
 
 ## Test Conventions
 
 - Tests use `@std/testing/bdd` style (describe/it)
 - Test files are in `test/` with `_test.ts` suffix
-- Use `takeAll()` from `test/lib/ordered.ts` to enumerate all values of small Arbitraries
+- Use `takeAll()` from `src/ordered.ts` to enumerate all values of small Arbitraries
 - Use `assertRoundTrip()` from `test/lib/asserts.ts` for Domain round-trip tests
 - Use `frozen()` instead of `Object.freeze()` for test examples
 

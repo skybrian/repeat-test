@@ -248,5 +248,4 @@ QUICKREPS=5 deno test --allow-env  # Run only 5 reps per test
 ```
 
 Note: `QUICKREPS` skips `sometimes()` validation since low rep counts may not
-satisfy coverage requirements. See [Controlling Reps](./controlling_reps.md)
-for details.
+satisfy coverage requirements.

@@ -2,11 +2,14 @@ The *repeat-test* library is my attempt to come up with a nicer API for writing 
 
 ## Warning
 
-This library is brand new, incomplete, and should be considered experimental.
-I've only used *repeat-test* to test itself. It only works with Deno. I don't plan to stabilize the API or support more platforms until
-I've gained more experience with it.
+While well-tested, this library is new and incomplete. I use it in my own projects, but
+haven't heard of anyone else using it. For now, this library only works with Deno.
 
-Also, though it seems promising, I don't know how long I'll keep working on it!
+The API should be considered unstable. I like to rename
+symbols when I think of a better name and might still make major changes before it reaches 1.0 (if it ever does).
+
+So if you use it, I recommend pinning to a specific version. Perhaps using
+a coding agent will make upgrades easier?
 
 If you're looking for a full-featured, popular, stable property-testing library, I recommend [fast-check](https://fast-check.dev/).
 
