@@ -29,6 +29,7 @@
     "coverage": "rm -f lcov.info && deno test --coverage --clean && deno coverage --lcov > lcov.info && deno coverage --exclude=coverage_exclusions.ts",
     "test": "deno test",
     "test:quick": "QUICKREPS=5 deno test --allow-env",
+    "status": "./scripts/status.sh",
     "summarize": "deno --allow-read --allow-run examples/deno_doc/bin/summarize.ts"
   }
 }
