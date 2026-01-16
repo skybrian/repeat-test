@@ -528,7 +528,7 @@ describe("repeatTest", () => {
   });
 
   it("accepts a list containing an Arbitrary", () => {
-    repeatTest([1, 2, 3, arb.int32()], collect);
+    repeatTest([1, 2, 3, arb.int32()], collect, { reps: 1000 });
     assertEquals(collectArgs.length, 1004, "unexpected number of test runs");
     assertEquals(collectArgs.slice(0, 4), [1, 2, 3, 0]);
     con.checkEmpty();
@@ -588,14 +588,14 @@ describe("repeatTest", () => {
     };
 
     it("passes when sometimes true", () => {
-      repeatTest(arb.int(0, 1), sometimesZero, { console: con });
+      repeatTest(arb.int(0, 1), sometimesZero, { reps: 10, console: con });
       con.checkEmpty();
     });
 
     it("fails when never true", () => {
       assertThrows(
         () => {
-          repeatTest(arb.int(1, 2), sometimesZero, { console: con });
+          repeatTest(arb.int(1, 2), sometimesZero, { reps: 10, console: con });
         },
         AssertionError,
         "sometimes(zero) was never true",
@@ -607,7 +607,7 @@ describe("repeatTest", () => {
     it("fails when never false", () => {
       assertThrows(
         () => {
-          repeatTest(arb.of(0), sometimesZero, { console: con });
+          repeatTest(arb.of(0), sometimesZero, { reps: 10, console: con });
         },
         AssertionError,
         "sometimes(zero) was never false",

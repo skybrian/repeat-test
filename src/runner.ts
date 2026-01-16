@@ -251,6 +251,7 @@ export function runReps<T>(
   reps: Iterable<Rep<T> | RepFailure<unknown>>,
   count: number,
   console: SystemConsole,
+  opts?: { skipSometimesCheck?: boolean },
 ): Success<number> | RepFailure<unknown> {
   let passed = 0;
   const coverage: Coverage = {};
@@ -261,28 +262,30 @@ export function runReps<T>(
     passed++;
     if (passed >= count) break;
   }
-  let err: AssertionError | undefined = undefined;
-  for (const key in coverage) {
-    const covered = coverage[key];
-    if (covered.true === 0) {
-      if (err === undefined) {
-        err = new AssertionError(`sometimes(${key}) was never true`);
-      }
-    }
-    if (covered.false === 0) {
-      if (err === undefined) {
-        err = new AssertionError(`sometimes(${key}) was never false`);
-      }
-    }
-  }
-  if (err !== undefined) {
+  if (!opts?.skipSometimesCheck) {
+    let err: AssertionError | undefined = undefined;
     for (const key in coverage) {
       const covered = coverage[key];
-      console.log(
-        `sometimes(${key}): true: ${covered.true}, false: ${covered.false}`,
-      );
+      if (covered.true === 0) {
+        if (err === undefined) {
+          err = new AssertionError(`sometimes(${key}) was never true`);
+        }
+      }
+      if (covered.false === 0) {
+        if (err === undefined) {
+          err = new AssertionError(`sometimes(${key}) was never false`);
+        }
+      }
     }
-    throw err;
+    if (err !== undefined) {
+      for (const key in coverage) {
+        const covered = coverage[key];
+        console.log(
+          `sometimes(${key}): true: ${covered.true}, false: ${covered.false}`,
+        );
+      }
+      throw err;
+    }
   }
   return success(passed);
 }
@@ -326,6 +329,27 @@ export type RepeatOpts = {
 };
 
 const maxPicksDefault = 10_000;
+const defaultReps = 1000;
+
+/**
+ * Reads the QUICKREPS environment variable.
+ * Returns undefined if not set, not a valid positive integer, or if
+ * environment access is not permitted.
+ */
+function getQuickReps(): number | undefined {
+  try {
+    const envVal = Deno.env.get("QUICKREPS");
+    if (envVal !== undefined) {
+      const n = parseInt(envVal, 10);
+      if (Number.isInteger(n) && n > 0) {
+        return n;
+      }
+    }
+  } catch {
+    // Permission denied - env access not allowed, silently ignore
+  }
+  return undefined;
+}
 
 function parseOnlyOption(input: string): RepKey {
   const parsed = parseRepKey(input);
@@ -409,10 +433,16 @@ export function repeatTest<T>(
     skipCount++;
   }
 
-  const count = opts?.only ? 1 : arbs.length + (opts?.reps ?? 1000);
+  // Determine rep count and whether to skip sometimes checks
+  const quickReps = getQuickReps();
+  const isQuickMode = quickReps !== undefined && opts?.reps === undefined;
+  const repCount = opts?.reps ?? quickReps ?? defaultReps;
+  const count = opts?.only ? 1 : arbs.length + repCount;
 
   const outerConsole = opts?.console ?? systemConsole;
-  const ran = runReps(reps, count, outerConsole);
+  const ran = runReps(reps, count, outerConsole, {
+    skipSometimesCheck: isQuickMode,
+  });
   if (!ran.ok) {
     reportFailure(ran, outerConsole);
   } else if (ran.val === 0) {
