@@ -151,10 +151,47 @@ const tree: Arbitrary<Tree> = arb.alias(() =>
 
 ## Testing Guidelines
 
+### Project Conventions
+
 - Tests use `@std/testing/bdd` style (describe/it)
 - Test files are in `test/` with `_test.ts` suffix
 - Use `takeAll()` from `test/lib/ordered.ts` to enumerate all values of small Arbitraries
 - Use `assertRoundTrip()` from `test/lib/asserts.ts` for Domain round-trip tests
+
+### Writing Property Tests
+
+- **Verify variety**: Use `console.sometimes(key, condition)` assertions to ensure
+  arbitraries generate sufficient variety of examples. The test fails if the
+  condition is never true or never false across all repetitions.
+
+- **Assert invariants**: Property tests should verify that generated values
+  satisfy expected constraints (e.g., `assert(n >= 0 && n <= 100)`).
+
+- **Combine checks**: Put all checks for the same arbitrary in a single
+  `repeatTest` call for better performance.
+
+### Writing Custom Arbitraries
+
+- **Prefer shorter lengths**: For strings and arrays, test shorter values more
+  often. Built-in arbitraries already do this, so generating an array and
+  mapping it works well. Alternatively, use `arb.from()` to pick between adding
+  an item or ending (shrinks better).
+
+- **Test your arbitraries**: Write property tests for custom arbitraries using
+  `console.sometimes()` to verify they generate the expected variety of values.
+
+### Quick Testing
+
+Use `QUICKREPS` environment variable for faster iteration:
+
+```bash
+QUICKREPS=5 deno test --allow-env  # Quick smoke test
+deno task test:quick               # Same, via task
+deno task status                   # Only runs if files changed
+```
+
+Note: `QUICKREPS` skips `sometimes()` validation since low rep counts may not
+satisfy coverage requirements.
 
 ## Implementation Notes
 
