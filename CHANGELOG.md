@@ -1,3 +1,24 @@
+## Unreleased
+
+### New Features
+
+* **QUICKREPS environment variable**: Run quick smoke tests from the command line.
+  Set `QUICKREPS=N` to run N repetitions instead of 1000, and skip `sometimes()`
+  assertion validation. Useful for fast CI status checks.
+  ```bash
+  QUICKREPS=5 deno test --allow-env
+  ```
+
+* **frozen() utility**: Deep-freeze objects for use as test examples.
+  ```typescript
+  import { frozen, repeatTest } from '@skybrian/repeat-test';
+  repeatTest([frozen({ a: 1 }), frozen({ b: { nested: 2 } })], test);
+  ```
+
+### Tasks
+
+* Added `deno task test:quick` as a shortcut for quick smoke tests.
+
 ## 0.5.0
 
 Lots of changes. Some highlights:
