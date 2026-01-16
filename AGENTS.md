@@ -2,6 +2,8 @@
 
 A property-based testing library for Deno/TypeScript, similar to fast-check or QuickCheck.
 
+> **Using repeat-test in another project?** See [docs/reference.md](./docs/reference.md) for API documentation and usage guidelines.
+
 ## Quick Reference
 
 ```bash
