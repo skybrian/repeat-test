@@ -10,3 +10,4 @@ export * from "@/core.ts";
 export * from "@/runner.ts";
 export * as arb from "@/arbs.ts";
 export * as dom from "@/doms.ts";
+export { frozen } from "../frozen.ts";
