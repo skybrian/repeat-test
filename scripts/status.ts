@@ -55,7 +55,7 @@ async function main(): Promise<number> {
     args: ["test", "--allow-env"],
     stdout: "inherit",
     stderr: "inherit",
-    env: { ...Deno.env.toObject(), QUICKREPS: "5" },
+    env: { ...Deno.env.toObject(), REPS: "1%" },
   });
   const { success: testSuccess } = await testCmd.output();
   if (!testSuccess) {

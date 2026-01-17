@@ -9,7 +9,7 @@ A property-based testing library for Deno/TypeScript, similar to fast-check or Q
 ```bash
 deno task status        # Check + lint + quick test (only if files changed)
 deno task test          # Run all tests
-deno task test:quick    # Quick smoke test (QUICKREPS=5)
+deno task test:quick    # Quick smoke test (REPS=1%)
 deno task release-check # Checks everything more thoroughly in preparation for a release
 deno task coverage      # Run tests with coverage
 ```

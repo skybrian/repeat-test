@@ -2,17 +2,22 @@
 
 (This release was co-authored with AI.)
 
-### QUICKREPS environment variable
+### REPS environment variable
 
-* We added a way to run property tests with fewer repetitions, for a quick sanity check without running the full test suite. Example:
+The `REPS` environment variable controls how many repetitions to run, relative to the baseline (default 1000, or `opts.reps` if specified). This is useful for quick sanity checks or thorough testing.
+
+Supported formats:
+- **Percentage**: `REPS=5%` runs 5% of baseline reps
+- **Multiplier**: `REPS=5x` runs 5× baseline reps
+
+Examples:
 
 ```bash
-QUICKREPS=5 deno test --allow-env
+REPS=1% deno test --allow-env   # Quick smoke test (~10 reps)
+REPS=5x deno test --allow-env   # Thorough testing (5000 reps)
 ```
 
-This runs 5 repetitions [^1] instead of the test's default, which is usually 1000, but a test can explicity set it using the `reps` parameter. It also skips `sometimes()` assertions because they aren't expected to pass if you run a property test for fewer reps than normal.
-
-[^1]: Actually six repetitions, because repeat-test always does a smoke test using a default value before generating data randomly.
+When the multiplier is less than 1 (e.g., `5%`), `sometimes()` assertions are skipped since they aren't expected to pass with fewer repetitions.
 
 ### `frozen()` utility function
 
