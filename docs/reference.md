@@ -209,6 +209,8 @@ returning its own default. For `IntRequest`, the default is always the minimum
 of the range. For `arb.boolean()`, the default is `false`. For `arb.oneOf()`,
 the default comes from the first case.
 
+See [defaults.md](./defaults.md) for a complete table of default values.
+
 ### Performance Tips
 
 Here are some tips to make property tests run faster:
