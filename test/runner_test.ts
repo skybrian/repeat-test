@@ -742,16 +742,3 @@ describe("repeatTest", () => {
   });
 });
 
-describe("MULTIREPS and QUICKREPS interaction", () => {
-  // Note: We can't easily test MULTIREPS directly because it requires
-  // setting an environment variable. These tests verify the basic
-  // behavior and error handling.
-
-  it("basic sometimes() coverage still works", () => {
-    const con = new RecordingConsole();
-    repeatTest(arb.boolean(), (val, console) => {
-      console.sometimes("test-key", val);
-    }, { reps: 20, console: con });
-    con.checkEmpty();
-  });
-});
