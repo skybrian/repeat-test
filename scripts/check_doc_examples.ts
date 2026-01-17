@@ -7,7 +7,7 @@
  *
  * ## How it works
  *
- * 1. Extracts all ```ts code blocks from each markdown file
+ * 1. Extracts all ```ts/```typescript code blocks from each markdown file
  * 2. Extracts any <!-- doc-imports --> for page-level imports
  * 3. Merges all imports (deduplicating by source)
  * 4. Concatenates all code blocks
@@ -37,11 +37,12 @@
  *    ```
  *
  * 3. **Use `ignore` for non-runnable snippets**: Mark blocks that shouldn't
- *    be checked with ```ts ignore
+ *    be checked with ```ts ignore or ```typescript ignore
  *
  * ## Modifiers
  *
  * - ```ts ignore - Skip this block entirely
+ * - ```typescript ignore - Same as above
  */
 
 function extractAndConcatenate(content: string): {
@@ -68,7 +69,7 @@ function extractAndConcatenate(content: string): {
   let skipped = 0;
 
   for (const line of lines) {
-    if (!inBlock && line.match(/^```ts/)) {
+    if (!inBlock && line.match(/^```(?:ts|typescript)/)) {
       inBlock = true;
       skip = line.includes("ignore");
       blockLines = [];
@@ -182,6 +183,11 @@ async function checkDocFile(
   const content = await Deno.readTextFile(filePath);
   const { code, blockCount, skipped } = extractAndConcatenate(content);
 
+  // Skip files with no code blocks
+  if (blockCount === 0 && skipped === 0) {
+    return true;
+  }
+
   console.log(`\n📄 ${filePath}`);
   console.log(`   ${blockCount} blocks${skipped > 0 ? `, ${skipped} skipped` : ""}`);
 
@@ -189,6 +195,12 @@ async function checkDocFile(
     console.log("\n   Concatenated code:");
     console.log(code.split("\n").map((l) => `   │ ${l}`).join("\n"));
     console.log();
+  }
+
+  // If all blocks were skipped, that's fine
+  if (blockCount === 0) {
+    console.log(`   ✅ All blocks skipped`);
+    return true;
   }
 
   const result = await typeCheck(code);
@@ -214,11 +226,13 @@ async function main() {
   const files = args.filter((a) => !a.startsWith("--"));
 
   if (files.length === 0) {
-    // Default: check all doc files
+    // Default: check all doc files with code examples
     files.push(
+      "README.md",
       "docs/1_getting_started.md",
       "docs/2_generating_examples.md",
       "docs/3_multiple_inputs.md",
+      "docs/reference.md",
     );
   }
 
@@ -227,8 +241,14 @@ async function main() {
   let allPassed = true;
 
   for (const file of files) {
-    const passed = await checkDocFile(file, verbose);
-    if (!passed) allPassed = false;
+    try {
+      const passed = await checkDocFile(file, verbose);
+      if (!passed) allPassed = false;
+    } catch (e) {
+      console.log(`\n📄 ${file}`);
+      console.log(`   ❌ Error: ${e instanceof Error ? e.message : e}`);
+      allPassed = false;
+    }
   }
 
   console.log(`\n${"═".repeat(50)}`);

@@ -18,8 +18,9 @@ repeatTest(arb.int(0, 100), (n, console) => {
   assert(n >= 0);
 });
 
-// Multiple inputs
-repeatTest([arb.string(), arb.int(0, 10)], (s, n, console) => {
+// Multiple inputs using arb.object
+const input = arb.object({ s: arb.string(), n: arb.int(0, 10) });
+repeatTest(input, ({ s, n }, console) => {
   // Test with string s and int n
 });
 
@@ -133,6 +134,8 @@ const pair = arb.int(1, 10).chain(n =>
 ## Recursive Types
 
 ```typescript
+import { arb, type Arbitrary } from "@skybrian/repeat-test";
+
 type Tree = { value: number; children: Tree[] };
 
 const tree: Arbitrary<Tree> = arb.alias(() =>
@@ -178,7 +181,7 @@ repeatTest(arb.array(arb.int(0, 100)), (arr, console) => {
 Put all checks for the same arbitrary in a single `repeatTest` call for better
 performance:
 
-```typescript
+```typescript ignore
 // Good: one repeatTest with multiple assertions
 repeatTest(myArbitrary, (val, console) => {
   console.sometimes("case A", checkA(val));
@@ -215,7 +218,7 @@ const shortList = arb.from((pick) => {
 Write property tests for custom arbitraries using `console.sometimes()` to
 verify they generate the expected variety:
 
-```typescript
+```typescript ignore
 repeatTest(myCustomArbitrary, (val, console) => {
   console.sometimes("has property X", hasPropertyX(val));
   console.sometimes("has property Y", hasPropertyY(val));
