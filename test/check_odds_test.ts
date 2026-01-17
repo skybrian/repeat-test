@@ -108,4 +108,22 @@ describe("checkOdds", () => {
     assertStringIncludes(error.message, "expected 0.9");
     assertStringIncludes(error.message, "observed 0.5");
   });
+
+  it("skips check when CI spans [0,1] due to small sample with p=0.5", () => {
+    // Temporarily disable the multiplier for this test
+    setRepsForTesting(null);
+    try {
+      const con = new RecordingConsole();
+      // With n=10 and p=0.5, the 99.9% CI spans [0, 1] which is too wide.
+      // repeatTest runs the default first, so reps=9 gives us n=10 total.
+      // Use a large arbitrary so it won't be exhausted.
+      repeatTest(arb.int(0, 1000000), (val, console) => {
+        console.checkOdds("even", 0.5, val % 2 === 0);
+      }, { reps: 9, console: con });
+      // Should not throw - the check is skipped
+    } finally {
+      // Restore the multiplier for subsequent tests
+      setRepsForTesting({ multiplier: 5 });
+    }
+  });
 });
