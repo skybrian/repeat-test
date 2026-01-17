@@ -4,7 +4,7 @@
 
 ### REPS environment variable
 
-The `REPS` environment variable controls how many repetitions to run, relative to the baseline (default 1000, or `opts.reps` if specified). This is useful for quick sanity checks or thorough testing.
+The `REPS` environment variable controls how many random repetitions to run, relative to the baseline (default 1000, or `opts.reps` if specified). This is useful for quick sanity checks or more thorough testing.
 
 Supported formats:
 - **Percentage**: `REPS=5%` runs 5% of baseline reps
@@ -67,7 +67,7 @@ repeatTest(pelicans, (pelican) => {
 
 ### docs/reference.md
 
-We wrote some documentation primarily targeted at coding agents.
+This is the start of a reference manual, primarily targeted at coding agents.
 Ask your coding agent to look at [docs/reference.md](docs/reference.md) before writing property tests using repeat-test, and hopefully you'll get better results.
 
 ## 0.5.0

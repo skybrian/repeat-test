@@ -45,7 +45,7 @@
  * - ```typescript ignore - Same as above
  */
 
-import { walk } from "jsr:@std/fs@1/walk";
+import { walk } from "@std/fs/walk";
 
 function extractAndConcatenate(content: string): {
   code: string;
