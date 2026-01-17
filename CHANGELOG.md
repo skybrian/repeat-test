@@ -19,6 +19,19 @@ REPS=5x deno test --allow-env   # Thorough testing (5000 reps)
 
 When the multiplier is less than 1 (e.g., `5%`), `sometimes()` assertions are skipped since they aren't expected to pass with fewer repetitions.
 
+### `generateDefault()` function
+
+Every Arbitrary has a default value (e.g., `arb.string()` defaults to the empty string). The `generateDefault()` function returns the default value wrapped in a `Gen` object:
+
+```typescript
+import { arb, generateDefault } from "@skybrian/repeat-test";
+
+const gen = generateDefault(arb.int(1, 10));
+console.log(gen.val);  // 1
+```
+
+This is useful for testing custom Arbitraries to verify their default value is what you expect.
+
 ### `frozen()` utility function
 
 For safety, the `repeatTest` function fails if the list of examples contains any objects that aren't frozen. The `frozen` function does a deep freeze, so you can freeze an entire example list at once. Example:

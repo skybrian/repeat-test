@@ -5,5 +5,6 @@
  */
 
 export { repeatTest } from "../runner.ts";
+export { generateDefault } from "../ordered.ts";
 export type { SystemConsole, TestConsole } from "../console.ts";
 export type { Examples, RepeatOpts, TestFunction } from "../runner.ts";

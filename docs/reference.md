@@ -196,6 +196,21 @@ repeatTest(myArbitrary, (val, t) => t.sometimes("case A", checkA(val)));
 
 ## Writing Custom Arbitraries
 
+### Default Values
+
+Every Arbitrary has a default value. For example, the default for `arb.string()`
+is the empty string, and the default for `arb.int(0, 100)` is 0. When
+`repeatTest` runs an Arbitrary, it tries the default value first as a smoke
+test before generating random values.
+
+When writing a custom Arbitrary with `arb.from()`, think about what the default
+value should be. The default is determined by each nested `pick()` call
+returning its own default. For `IntRequest`, the default is always the minimum
+of the range. For `arb.boolean()`, the default is `false`. For `arb.oneOf()`,
+the default comes from the first case.
+
+### Performance Tips
+
 Here are some tips to make property tests run faster:
 
 ### Prefer Shorter Lengths
@@ -264,6 +279,20 @@ repeatTest(myCustomArbitrary, (val, console) => {
   // Verify invariants always hold
   assert(isValid(val));
 });
+```
+
+Also consider verifying the default value is what you expect:
+
+```typescript ignore
+import { assertEquals } from "@std/assert";
+import { arb, generateDefault } from "@skybrian/repeat-test";
+
+const myArbitrary = arb.from((pick) => {
+  // ... build logic ...
+});
+
+// Test the default value directly
+assertEquals(generateDefault(myArbitrary).val, expectedDefault);
 ```
 
 ## Utilities
