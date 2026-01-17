@@ -571,7 +571,8 @@ describe("repeatTest", () => {
     };
     assertThrows(
       () => {
-        repeatTest(arb.int32(), test, { console: con });
+        // Explicit reps to ensure random values are generated (not affected by REPS env var)
+        repeatTest(arb.int32(), test, { reps: 1000, console: con });
       },
       Error,
       "test failed with 10",

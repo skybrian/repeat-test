@@ -443,7 +443,10 @@ export function repeatTest<T>(
   let coverageThreshold = 0;
   let minRepsForStats = 0;
 
-  if (repsConfig !== undefined && !isOnlyMode) {
+  // REPS env var is ignored when opts.reps is explicitly set or in only mode
+  const useRepsConfig = repsConfig !== undefined && !isOnlyMode && opts?.reps === undefined;
+
+  if (useRepsConfig) {
     // REPS env var is set - apply multiplier to baseline
     repCount = Math.max(1, Math.round(baselineReps * repsConfig.multiplier));
     skipSometimesCheck = repsConfig.multiplier < 1;
