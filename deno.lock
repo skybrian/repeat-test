@@ -59,6 +59,7 @@
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@^1.0.1",
+      "jsr:@std/fs@1",
       "jsr:@std/testing@^1.0.5",
       "npm:pure-rand@^6.1.0"
     ]
