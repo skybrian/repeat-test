@@ -20,6 +20,13 @@ import {
 } from "./console.ts";
 import { shrink } from "./shrink.ts";
 import { Backtracker } from "./backtracking.ts";
+import {
+  defaultReps,
+  getMultiReps,
+  getQuickReps,
+  maxPicksDefault,
+} from "./runner/config.ts";
+import { analyzeCoverage } from "./runner/coverage.ts";
 
 /**
  * A function that runs a test, using generated input.
@@ -342,28 +349,7 @@ export type RepeatOpts = {
   console?: SystemConsole;
 };
 
-const maxPicksDefault = 10_000;
-const defaultReps = 1000;
 
-/**
- * Reads the QUICKREPS environment variable.
- * Returns undefined if not set, not a valid positive integer, or if
- * environment access is not permitted.
- */
-function getQuickReps(): number | undefined {
-  try {
-    const envVal = Deno.env.get("QUICKREPS");
-    if (envVal !== undefined) {
-      const n = parseInt(envVal, 10);
-      if (Number.isInteger(n) && n > 0) {
-        return n;
-      }
-    }
-  } catch {
-    // Permission denied - env access not allowed, silently ignore
-  }
-  return undefined;
-}
 
 function parseOnlyOption(input: string): RepKey {
   const parsed = parseRepKey(input);
@@ -498,71 +484,4 @@ export function repeatTest<T>(
   }
 }
 
-function getMultiReps(): number | undefined {
-  try {
-    const envVal = Deno.env.get("MULTIREPS");
-    if (envVal !== undefined) {
-      const n = parseInt(envVal, 10);
-      if (Number.isInteger(n) && n > 0) {
-        return n;
-      }
-    }
-  } catch {
-    // Permission denied - env access not allowed, silently ignore
-  }
-  return undefined;
-}
 
-type LowCoverageEntry = {
-  key: string;
-  nTrue: number;
-  nFalse: number;
-  probTrue: number;
-  issue: "rarely true" | "rarely false";
-};
-
-function analyzeCoverage(
-  coverage: Coverage,
-  coverageThreshold: number,
-  minRepsForStats: number,
-  console: SystemConsole,
-  totalReps: number,
-): void {
-  const keys = Object.keys(coverage);
-  if (keys.length === 0) return;
-
-  console.log(`sometimes() coverage summary for ${totalReps} reps:`);
-  const lowCoverage: LowCoverageEntry[] = [];
-
-  for (const key of keys) {
-    const { true: nTrue, false: nFalse } = coverage[key];
-    const n = nTrue + nFalse;
-    const probTrue = n === 0 ? 0 : nTrue / n;
-    console.log(
-      `  ${key}: true: ${nTrue}, false: ${nFalse}, p(true)≈${probTrue.toFixed(4)} (n=${n})`,
-    );
-
-    if (n >= minRepsForStats) {
-      if (probTrue > 0 && probTrue < coverageThreshold) {
-        lowCoverage.push({ key, nTrue, nFalse, probTrue, issue: "rarely true" });
-      } else if (probTrue < 1 && (1 - probTrue) < coverageThreshold) {
-        lowCoverage.push({ key, nTrue, nFalse, probTrue, issue: "rarely false" });
-      }
-    }
-  }
-
-  if (lowCoverage.length > 0) {
-    console.log(
-      `sometimes() coverage below threshold (< ${coverageThreshold.toFixed(6)}):`,
-    );
-    for (const entry of lowCoverage) {
-      const prob = entry.issue === "rarely true" ? entry.probTrue : 1 - entry.probTrue;
-      console.log(
-        `  ${entry.key}: ${entry.issue}, p=${prob.toFixed(6)} (true: ${entry.nTrue}, false: ${entry.nFalse})`,
-      );
-    }
-    throw new AssertionError(
-      `sometimes() coverage below threshold for keys: ${lowCoverage.map((e) => e.key).join(", ")}`,
-    );
-  }
-}
