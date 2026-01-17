@@ -22,8 +22,7 @@ import { shrink } from "./shrink.ts";
 import { Backtracker } from "./backtracking.ts";
 import {
   defaultReps,
-  getMultiReps,
-  getQuickReps,
+  getReps,
   maxPicksDefault,
 } from "./runner/config.ts";
 import { analyzeCoverage } from "./runner/coverage.ts";
@@ -434,37 +433,36 @@ export function repeatTest<T>(
   }
 
   // Determine rep count and whether to skip sometimes checks
-  const quickReps = getQuickReps();
-  const multiReps = getMultiReps();
-  if (quickReps !== undefined && multiReps !== undefined) {
-    throw new Error("QUICKREPS and MULTIREPS cannot both be set");
-  }
-
+  const repsConfig = getReps();
   const baselineReps = opts?.reps ?? defaultReps;
   const isOnlyMode = opts?.only !== undefined;
 
   let repCount: number;
-  let isQuickMode: boolean;
+  let skipSometimesCheck: boolean;
   let collectCoverage = false;
   let coverageThreshold = 0;
   let minRepsForStats = 0;
 
-  if (multiReps !== undefined && !isOnlyMode) {
-    repCount = baselineReps * multiReps;
-    isQuickMode = false;
-    collectCoverage = true;
-    coverageThreshold = 3 / baselineReps;
-    minRepsForStats = baselineReps;
+  if (repsConfig !== undefined && !isOnlyMode) {
+    // REPS env var is set - apply multiplier to baseline
+    repCount = Math.max(1, Math.round(baselineReps * repsConfig.multiplier));
+    skipSometimesCheck = repsConfig.multiplier < 1;
+    collectCoverage = repsConfig.multiplier > 1;
+    if (collectCoverage) {
+      coverageThreshold = 3 / baselineReps;
+      minRepsForStats = baselineReps;
+    }
   } else {
-    isQuickMode = quickReps !== undefined && opts?.reps === undefined;
-    repCount = opts?.reps ?? quickReps ?? defaultReps;
+    // Normal mode - use baseline reps with standard sometimes() checks
+    repCount = baselineReps;
+    skipSometimesCheck = false;
   }
 
   const count = opts?.only ? 1 : arbs.length + repCount;
 
   const outerConsole = opts?.console ?? systemConsole;
   const ran = runReps(reps, count, outerConsole, {
-    skipSometimesCheck: isQuickMode,
+    skipSometimesCheck,
     collectCoverage,
   });
   if (!ran.ok) {

@@ -1,11 +1,11 @@
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals, assertThrows } from "@std/assert";
+import { assertEquals } from "@std/assert";
 
 import {
   defaultReps,
-  getMultiReps,
-  getQuickReps,
+  getReps,
   maxPicksDefault,
+  parseReps,
 } from "../../src/runner/config.ts";
 import { repeatTest } from "../../src/runner.ts";
 import * as arb from "@/arbs.ts";
@@ -21,29 +21,55 @@ describe("config constants", () => {
   });
 });
 
-describe("getQuickReps", () => {
-  // Note: We can't easily mock Deno.env in tests, so we test the behavior
-  // when the env var is not set (returns undefined)
-  it("returns undefined when QUICKREPS is not set", () => {
-    // This assumes QUICKREPS is not set in the test environment
-    const result = getQuickReps();
-    // Result is either undefined (not set) or a number (if set)
+describe("parseReps", () => {
+  it("parses percentage format", () => {
+    assertEquals(parseReps("5%"), { multiplier: 0.05 });
+    assertEquals(parseReps("100%"), { multiplier: 1 });
+    assertEquals(parseReps("200%"), { multiplier: 2 });
+    assertEquals(parseReps("0.5%"), { multiplier: 0.005 });
+  });
+
+  it("parses multiplier format", () => {
+    assertEquals(parseReps("5x"), { multiplier: 5 });
+    assertEquals(parseReps("1x"), { multiplier: 1 });
+    assertEquals(parseReps("0.5x"), { multiplier: 0.5 });
+    assertEquals(parseReps("10x"), { multiplier: 10 });
+  });
+
+  it("handles whitespace", () => {
+    assertEquals(parseReps(" 5% "), { multiplier: 0.05 });
+    assertEquals(parseReps(" 5x "), { multiplier: 5 });
+  });
+
+  it("accepts zero", () => {
+    assertEquals(parseReps("0%"), { multiplier: 0 });
+    assertEquals(parseReps("0x"), { multiplier: 0 });
+  });
+
+  it("returns undefined for invalid formats", () => {
+    assertEquals(parseReps("5"), undefined);      // no suffix
+    assertEquals(parseReps("abc"), undefined);    // not a number
+    assertEquals(parseReps("5X"), undefined);     // uppercase X
+    assertEquals(parseReps("%5"), undefined);     // wrong order
+    assertEquals(parseReps("x5"), undefined);     // wrong order
+    assertEquals(parseReps("-5%"), undefined);    // negative
+    assertEquals(parseReps("-5x"), undefined);    // negative
+    assertEquals(parseReps(""), undefined);       // empty
+  });
+});
+
+describe("getReps", () => {
+  it("returns undefined when REPS is not set", () => {
+    // This assumes REPS is not set in the test environment
+    const result = getReps();
+    // Result is either undefined (not set) or a RepsConfig (if set)
     if (result !== undefined) {
-      assertEquals(typeof result, "number");
+      assertEquals(typeof result.multiplier, "number");
     }
   });
 });
 
-describe("getMultiReps", () => {
-  it("returns undefined when MULTIREPS is not set", () => {
-    const result = getMultiReps();
-    if (result !== undefined) {
-      assertEquals(typeof result, "number");
-    }
-  });
-});
-
-describe("QUICKREPS and MULTIREPS interaction", () => {
+describe("repeatTest with REPS", () => {
   it("basic sometimes() coverage still works", () => {
     const con = new RecordingConsole();
     repeatTest(arb.boolean(), (val, console) => {

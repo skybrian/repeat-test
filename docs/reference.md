@@ -241,42 +241,37 @@ repeatTest([frozen({ a: 1 }), frozen({ nested: { b: 2 } })], (obj) => {
 });
 ```
 
-## Quick Testing
+## Controlling Repetitions with REPS
 
-Use the `QUICKREPS` environment variable for faster iteration during
-development:
+Use the `REPS` environment variable to control how many repetitions each test
+runs. The value is specified as either a percentage or a multiplier relative
+to the baseline rep count (default 1000, or `opts.reps` if specified).
 
-```bash
-QUICKREPS=5 deno test --allow-env  # Run only 5 reps per test
-```
+### Quick Testing (< 100%)
 
-Note: `QUICKREPS` skips `sometimes()` validation since low rep counts may not
-satisfy coverage requirements.
-
-## Deep Probabilistic Testing
-
-### MULTIREPS
-
-Use the `MULTIREPS` environment variable to run property tests for many more
-repetitions than usual and to get a probabilistic report for `console.sometimes()`
-coverage.
-
-- `MULTIREPS` must be a positive integer.
-- It is **mutually exclusive** with `QUICKREPS`. If both are set, `repeatTest`
-  throws an error.
-- For each `repeatTest` call, the **baseline** rep count is:
-  - `opts.reps` if provided, otherwise
-  - `1000` (the default).
-- With `MULTIREPS=N`, `repeatTest` runs exactly `N × baseline` random
-  reps (plus the usual examples/defaults).
-
-Example:
+For faster iteration during development, use a low percentage:
 
 ```bash
-MULTIREPS=20 deno test --allow-env  # ~20x the usual number of reps
+REPS=1% deno test --allow-env   # ~10 reps per test (1% of 1000)
+REPS=5% deno test --allow-env   # ~50 reps per test
+REPS=0.5x deno test --allow-env # ~500 reps per test
 ```
 
-During a `MULTIREPS` run:
+When the multiplier is less than 1, `sometimes()` validation is skipped since
+low rep counts may not satisfy coverage requirements.
+
+Note: The rep count is always at least 1, so `REPS=0%` runs 1 rep per test.
+
+### Deep Probabilistic Testing (> 100%)
+
+For thorough testing that detects rarely-hit branches, use a high multiplier:
+
+```bash
+REPS=5x deno test --allow-env   # 5000 reps per test
+REPS=500% deno test --allow-env # 5000 reps per test (same as 5x)
+```
+
+When the multiplier is greater than 1:
 
 - `console.sometimes(key, cond)` is still required to be **sometimes true and
   sometimes false** (same invariant as normal runs).
@@ -293,5 +288,9 @@ This mode is useful for:
 - Validating that your arbitraries actually generate the variety you expect
   when run for many more repetitions than usual.
 
-Note: `MULTIREPS` is ignored when `repeatTest` is called with the `only`
+### Normal Testing (100% / 1x)
+
+`REPS=100%` or `REPS=1x` is equivalent to not setting REPS at all.
+
+Note: `REPS` is ignored when `repeatTest` is called with the `only`
 option, since that mode is intended for reproducing a specific failing rep.
