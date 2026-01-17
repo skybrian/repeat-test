@@ -119,10 +119,12 @@ type OddsCheckResult = {
  *
  * @param oddsChecks - The odds check data collected during the test run
  * @param console - Where to log the summary
+ * @param exhausted - Whether the test stopped early due to exhausting all values
  */
 export function analyzeOddsChecks(
   oddsChecks: OddsChecks,
   console: SystemConsole,
+  exhausted: boolean,
 ): void {
   const keys = Object.keys(oddsChecks);
   if (keys.length === 0) return;
@@ -163,6 +165,18 @@ export function analyzeOddsChecks(
         return `${f.key} (expected ${f.expectedProb}, observed ${f.observedProb.toFixed(4)}, ` +
           `outside CI [${ci[0].toFixed(4)}, ${ci[1].toFixed(4)}])`;
       }).join(", ")}`,
+    );
+  }
+
+  // Error if values were exhausted and all checks were skipped
+  const skipped = results.filter((r) => r.status === "skipped");
+  if (exhausted && skipped.length > 0 && skipped.length === results.length) {
+    throw new AssertionError(
+      `checkOdds() had insufficient samples for all checks: ${
+        skipped.map((s) => `${s.key} (n=${s.n})`).join(", ")
+      }. ` +
+      `The test input was exhausted before enough samples could be collected. ` +
+      `Try pairing with a larger arbitrary (e.g., arb.object({ s: arb.string(), ... })).`,
     );
   }
 }

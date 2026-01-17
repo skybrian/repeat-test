@@ -462,7 +462,8 @@ export function repeatTest<T>(
   } else {
     // Always analyze checkOdds() calls
     if (ran.val.oddsChecks && Object.keys(ran.val.oddsChecks).length > 0) {
-      analyzeOddsChecks(ran.val.oddsChecks, outerConsole);
+      const exhausted = ran.val.passed < count;
+      analyzeOddsChecks(ran.val.oddsChecks, outerConsole, exhausted);
     }
   }
 }

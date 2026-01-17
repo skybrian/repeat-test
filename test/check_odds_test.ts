@@ -78,4 +78,24 @@ describe("checkOdds", () => {
     }
     assertStringIncludes(error.message, "checkOdds() failed");
   });
+
+  it("fails when all values are exhausted before enough samples", () => {
+    const con = new RecordingConsole();
+    let error: Error | undefined;
+    try {
+      // arb.boolean() only has 2 values, so the test will exhaust quickly
+      // and checkOdds won't have enough samples
+      repeatTest(arb.boolean(), (val, console) => {
+        console.checkOdds("true", 0.5, val);
+      }, { reps: 1000, console: con });
+    } catch (e) {
+      error = e as Error;
+    }
+    if (!error) {
+      console.log("Recorded messages:", con.messages);
+      throw new Error("Expected checkOdds to fail due to insufficient samples");
+    }
+    assertStringIncludes(error.message, "insufficient samples");
+    assertStringIncludes(error.message, "n=2");
+  });
 });

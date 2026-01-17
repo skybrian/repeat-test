@@ -33,8 +33,9 @@ describe("alias", () => {
 
 describe("boolean", () => {
   it("is true about half the time", () => {
-    repeatTest(arb.boolean(), (val, console) => {
-      console.checkOdds("true", 0.5, val);
+    const example = arb.object({ s: arb.string(), b: arb.boolean() });
+    repeatTest(example, ({ b }, console) => {
+      console.checkOdds("true", 0.5, b);
     });
   });
   it("generates both values", () => {
