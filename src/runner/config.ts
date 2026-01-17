@@ -45,21 +45,12 @@ export function parseReps(value: string): RepsConfig | undefined {
 }
 
 /**
- * Reads the REPS environment variable.
- *
- * The REPS variable controls how many repetitions to run relative to the
- * baseline (default 1000, or opts.reps if specified):
- *
- * - `REPS=5%` - Run 5% of baseline reps, skip sometimes() validation
- * - `REPS=5x` - Run 5× baseline reps, enable coverage threshold analysis
- * - `REPS=100%` or `REPS=1x` - Normal behavior (same as not setting REPS)
- *
- * When multiplier < 1: sometimes() validation is skipped (quick mode)
- * When multiplier > 1: coverage threshold analysis is enabled (deep mode)
- *
- * @returns RepsConfig if set and valid, undefined otherwise
+ * Cached REPS configuration, validated once at module load time.
+ * - undefined: REPS not set or env access denied
+ * - RepsConfig: valid REPS value
+ * If REPS is set but invalid, an error is thrown at module load time.
  */
-export function getReps(): RepsConfig | undefined {
+const repsConfig: RepsConfig | undefined = (() => {
   let envVal: string | undefined;
   try {
     envVal = Deno.env.get("REPS");
@@ -80,4 +71,26 @@ export function getReps(): RepsConfig | undefined {
     );
   }
   return config;
+})();
+
+/**
+ * Returns the REPS environment variable configuration.
+ *
+ * The REPS variable controls how many repetitions to run relative to the
+ * baseline (default 1000, or opts.reps if specified):
+ *
+ * - `REPS=5%` - Run 5% of baseline reps, skip sometimes() validation
+ * - `REPS=5x` - Run 5× baseline reps, enable coverage threshold analysis
+ * - `REPS=100%` or `REPS=1x` - Normal behavior (same as not setting REPS)
+ *
+ * When multiplier < 1: sometimes() validation is skipped (quick mode)
+ * When multiplier > 1: coverage threshold analysis is enabled (deep mode)
+ *
+ * The value is validated once at module load time. If REPS is set but invalid,
+ * an error is thrown immediately (before any tests run).
+ *
+ * @returns RepsConfig if set and valid, undefined otherwise
+ */
+export function getReps(): RepsConfig | undefined {
+  return repsConfig;
 }
