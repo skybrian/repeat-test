@@ -15,7 +15,7 @@
  *
  * ## Usage
  *
- *   deno task check-docs              # Type-check all docs
+ *   deno task check-docs              # Type-check all .md files
  *   deno task check-docs --verbose    # Show the concatenated code
  *   deno task check-docs file.md      # Check specific file(s)
  *
@@ -44,6 +44,8 @@
  * - ```ts ignore - Skip this block entirely
  * - ```typescript ignore - Same as above
  */
+
+import { walk } from "jsr:@std/fs@1/walk";
 
 function extractAndConcatenate(content: string): {
   code: string;
@@ -220,35 +222,61 @@ async function checkDocFile(
   }
 }
 
+async function findMarkdownFiles(): Promise<string[]> {
+  const files: string[] = [];
+  for await (const entry of walk(".", {
+    exts: [".md"],
+    skip: [/node_modules/, /\.git/],
+  })) {
+    if (entry.isFile) {
+      files.push(entry.path);
+    }
+  }
+  return files.sort();
+}
+
 async function main() {
   const args = Deno.args;
   const verbose = args.includes("--verbose");
-  const files = args.filter((a) => !a.startsWith("--"));
+  let files = args.filter((a) => !a.startsWith("--"));
 
   if (files.length === 0) {
-    // Default: check all doc files with code examples
-    files.push(
-      "README.md",
-      "docs/1_getting_started.md",
-      "docs/2_generating_examples.md",
-      "docs/3_multiple_inputs.md",
-      "docs/reference.md",
-    );
+    // Default: find all .md files
+    files = await findMarkdownFiles();
   }
 
   console.log(`🔍 Checking documentation examples`);
 
   let allPassed = true;
+  let checkedCount = 0;
 
   for (const file of files) {
     try {
+      const content = await Deno.readTextFile(file);
+      const { blockCount, skipped } = extractAndConcatenate(content);
+      
+      // Only count files that have code blocks
+      if (blockCount > 0 || skipped > 0) {
+        checkedCount++;
+      }
+      
       const passed = await checkDocFile(file, verbose);
       if (!passed) allPassed = false;
     } catch (e) {
-      console.log(`\n📄 ${file}`);
-      console.log(`   ❌ Error: ${e instanceof Error ? e.message : e}`);
-      allPassed = false;
+      if (e instanceof Deno.errors.NotFound) {
+        console.log(`\n📄 ${file}`);
+        console.log(`   ❌ File not found`);
+        allPassed = false;
+      } else {
+        console.log(`\n📄 ${file}`);
+        console.log(`   ❌ Error: ${e instanceof Error ? e.message : e}`);
+        allPassed = false;
+      }
     }
+  }
+
+  if (checkedCount === 0) {
+    console.log("\n   No TypeScript code blocks found in any files.");
   }
 
   console.log(`\n${"═".repeat(50)}`);
