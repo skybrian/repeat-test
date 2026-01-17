@@ -196,6 +196,8 @@ repeatTest(myArbitrary, (val, t) => t.sometimes("case A", checkA(val)));
 
 ## Writing Custom Arbitraries
 
+Here are some tips to make property tests run faster:
+
 ### Prefer Shorter Lengths
 
 For strings and arrays, test shorter values more often. Built-in arbitraries
@@ -212,6 +214,43 @@ const shortList = arb.from((pick) => {
   return items;
 });
 ```
+
+### Combine pick calls (advanced)
+
+For further performance optimization, the number of pick calls can sometimes be
+reduced by using a single pick to make multiple decisions. This is an advanced
+technique that uses `IntRequest` directly instead of higher-level Arbitraries.
+
+`IntRequest` is the low-level primitive that all Arbitraries are built on. It
+picks a non-negative integer in a range, and its default value is always the
+minimum of the range. By carefully choosing ranges, you can encode multiple
+decisions in one pick:
+
+```typescript
+import { arb, IntRequest } from "@skybrian/repeat-test";
+
+// IntRequest(0, 201) gives 202 values:
+// - 0-100: stop (~50% chance; 0 is default, so empty list is default)
+// - 101-201: continue with value 0-100 (~50% chance)
+const stopOrValue = new IntRequest(0, 201);
+
+const shortList = arb.from((pick) => {
+  const items: number[] = [];
+  while (true) {
+    const choice = pick(stopOrValue);
+    if (choice <= 100) {
+      break;  // stop
+    }
+    items.push(choice - 101);  // map 101-201 to 0-100
+  }
+  return items;
+});
+```
+
+This encodes both the "continue or stop" decision and the item value in a single
+pick call, reducing overhead. The key insight is that the default (0) must
+correspond to termination, otherwise the default value generation will loop
+forever.
 
 ### Test Your Arbitraries
 
