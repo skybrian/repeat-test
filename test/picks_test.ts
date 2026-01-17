@@ -214,8 +214,7 @@ describe("IntRequest", () => {
       // Verbose, but valid.
       const bit = arb.from((pick) => IntRequest.bit.directBuild(pick));
       repeatTest(bit, (val, console) => {
-        console.sometimes("is zero", val === 0);
-        console.sometimes("is one", val === 1);
+        console.checkOdds("is zero", 0.5, val === 0);
       });
     });
   });

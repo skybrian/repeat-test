@@ -32,9 +32,9 @@ describe("alias", () => {
 });
 
 describe("boolean", () => {
-  it("is sometimes true", () => {
+  it("is true about half the time", () => {
     repeatTest(arb.boolean(), (val, console) => {
-      console.sometimes("true", val);
+      console.checkOdds("true", 0.5, val);
     });
   });
   it("generates both values", () => {
