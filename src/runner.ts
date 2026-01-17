@@ -460,14 +460,14 @@ export function repeatTest<T>(
   let repCount: number;
   let isQuickMode: boolean;
   let collectCoverage = false;
-  let minTrueProb = 0;
+  let coverageThreshold = 0;
   let minRepsForStats = 0;
 
   if (multiReps !== undefined && !isOnlyMode) {
     repCount = baselineReps * multiReps;
     isQuickMode = false;
     collectCoverage = true;
-    minTrueProb = 3 / baselineReps;
+    coverageThreshold = 3 / baselineReps;
     minRepsForStats = baselineReps;
   } else {
     isQuickMode = quickReps !== undefined && opts?.reps === undefined;
@@ -490,7 +490,7 @@ export function repeatTest<T>(
   } else if (collectCoverage && ran.val.coverage) {
     analyzeCoverage(
       ran.val.coverage,
-      minTrueProb,
+      coverageThreshold,
       minRepsForStats,
       outerConsole,
       count,
@@ -513,9 +513,17 @@ function getMultiReps(): number | undefined {
   return undefined;
 }
 
+type LowCoverageEntry = {
+  key: string;
+  nTrue: number;
+  nFalse: number;
+  probTrue: number;
+  issue: "rarely true" | "rarely false";
+};
+
 function analyzeCoverage(
   coverage: Coverage,
-  minTrueProb: number,
+  coverageThreshold: number,
   minRepsForStats: number,
   console: SystemConsole,
   totalReps: number,
@@ -524,37 +532,33 @@ function analyzeCoverage(
   if (keys.length === 0) return;
 
   console.log(`sometimes() coverage summary for ${totalReps} reps:`);
+  const lowCoverage: LowCoverageEntry[] = [];
+
   for (const key of keys) {
-    const covered = coverage[key];
-    const nTrue = covered.true;
-    const nFalse = covered.false;
+    const { true: nTrue, false: nFalse } = coverage[key];
     const n = nTrue + nFalse;
     const probTrue = n === 0 ? 0 : nTrue / n;
     console.log(
       `  ${key}: true: ${nTrue}, false: ${nFalse}, p(true)≈${probTrue.toFixed(4)} (n=${n})`,
     );
-  }
 
-  const lowCoverage: { key: string; nTrue: number; nFalse: number; probTrue: number }[] = [];
-  for (const key of keys) {
-    const covered = coverage[key];
-    const nTrue = covered.true;
-    const nFalse = covered.false;
-    const n = nTrue + nFalse;
-    if (n < minRepsForStats) continue;
-    const probTrue = nTrue / n;
-    if (probTrue > 0 && probTrue < minTrueProb) {
-      lowCoverage.push({ key, nTrue, nFalse, probTrue });
+    if (n >= minRepsForStats) {
+      if (probTrue > 0 && probTrue < coverageThreshold) {
+        lowCoverage.push({ key, nTrue, nFalse, probTrue, issue: "rarely true" });
+      } else if (probTrue < 1 && (1 - probTrue) < coverageThreshold) {
+        lowCoverage.push({ key, nTrue, nFalse, probTrue, issue: "rarely false" });
+      }
     }
   }
 
   if (lowCoverage.length > 0) {
     console.log(
-      `sometimes() coverage below threshold (p(true) < ${minTrueProb.toFixed(6)}) for:`,
+      `sometimes() coverage below threshold (< ${coverageThreshold.toFixed(6)}):`,
     );
     for (const entry of lowCoverage) {
+      const prob = entry.issue === "rarely true" ? entry.probTrue : 1 - entry.probTrue;
       console.log(
-        `  ${entry.key}: true: ${entry.nTrue}, false: ${entry.nFalse}, p(true)≈${entry.probTrue.toFixed(6)}`,
+        `  ${entry.key}: ${entry.issue}, p=${prob.toFixed(6)} (true: ${entry.nTrue}, false: ${entry.nFalse})`,
       );
     }
     throw new AssertionError(

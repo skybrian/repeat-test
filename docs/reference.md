@@ -267,7 +267,7 @@ coverage.
 - For each `repeatTest` call, the **baseline** rep count is:
   - `opts.reps` if provided, otherwise
   - `1000` (the default).
-- With `MULTIREPS=N`, `repeatTest` runs approximately `N × baseline` random
+- With `MULTIREPS=N`, `repeatTest` runs exactly `N × baseline` random
   reps (plus the usual examples/defaults).
 
 Example:
@@ -283,8 +283,9 @@ During a `MULTIREPS` run:
 - Additionally, `repeatTest` logs a summary of how often each key was true
   and false, and estimates `p(true)` for each key.
 - If a key is observed often enough (at least the baseline number of reps) but
-  has an estimated `p(true)` that is "too small" relative to the baseline,
-  `repeatTest` fails with an `AssertionError` that lists the offending keys.
+  has an estimated probability that is "too small" for either branch (true or
+  false), `repeatTest` fails with an `AssertionError` that lists the offending
+  keys. This catches both rarely-true and rarely-false conditions.
 
 This mode is useful for:
 
