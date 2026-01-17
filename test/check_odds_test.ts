@@ -79,23 +79,33 @@ describe("checkOdds", () => {
     assertStringIncludes(error.message, "checkOdds() failed");
   });
 
-  it("fails when all values are exhausted before enough samples", () => {
+  it("passes with exact comparison when all values are exhausted", () => {
+    const con = new RecordingConsole();
+    // arb.boolean() only has 2 values {true, false}, so we see all of them.
+    // The exact ratio is 1/2 = 0.5, which matches the expected probability.
+    repeatTest(arb.boolean(), (val, console) => {
+      console.checkOdds("true", 0.5, val);
+    }, { reps: 1000, console: con });
+    // Should pass with exact comparison
+  });
+
+  it("fails with exact comparison when exhausted ratio doesn't match", () => {
     const con = new RecordingConsole();
     let error: Error | undefined;
     try {
-      // arb.boolean() only has 2 values, so the test will exhaust quickly
-      // and checkOdds won't have enough samples
+      // arb.boolean() has exact ratio 0.5, but we claim 0.9
       repeatTest(arb.boolean(), (val, console) => {
-        console.checkOdds("true", 0.5, val);
+        console.checkOdds("true", 0.9, val);
       }, { reps: 1000, console: con });
     } catch (e) {
       error = e as Error;
     }
     if (!error) {
       console.log("Recorded messages:", con.messages);
-      throw new Error("Expected checkOdds to fail due to insufficient samples");
+      throw new Error("Expected checkOdds to fail due to mismatched ratio");
     }
-    assertStringIncludes(error.message, "insufficient samples");
-    assertStringIncludes(error.message, "n=2");
+    assertStringIncludes(error.message, "checkOdds() failed");
+    assertStringIncludes(error.message, "expected 0.9");
+    assertStringIncludes(error.message, "observed 0.5");
   });
 });

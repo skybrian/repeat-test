@@ -211,13 +211,10 @@ describe("IntRequest", () => {
 
   describe("directBuild", () => {
     it("works in a build script", () => {
-      // Verbose, but valid. Pair with a string to avoid exhausting the space.
-      const example = arb.object({
-        s: arb.string(),
-        bit: arb.from((pick) => IntRequest.bit.directBuild(pick)),
-      });
-      repeatTest(example, ({ bit }, console) => {
-        console.checkOdds("is zero", 0.5, bit === 0);
+      // Verbose, but valid.
+      const bit = arb.from((pick) => IntRequest.bit.directBuild(pick));
+      repeatTest(bit, (val, console) => {
+        console.checkOdds("is zero", 0.5, val === 0);
       });
     });
   });

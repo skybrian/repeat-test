@@ -136,24 +136,43 @@ export function analyzeOddsChecks(
     const { expectedProb, trueCount, falseCount } = oddsChecks[key];
     const n = trueCount + falseCount;
     const observedProb = n === 0 ? 0 : trueCount / n;
-    const ci = binomialConfidenceInterval(n, expectedProb);
 
     let status: "pass" | "fail" | "skipped";
-    if (ci === null) {
-      status = "skipped";
-    } else if (observedProb >= ci[0] && observedProb <= ci[1]) {
-      status = "pass";
+    let ci: [number, number] | null = null;
+    let statusDetail: string;
+
+    if (exhausted && n > 0) {
+      // When we've seen all values, the observed ratio is exact, not an estimate.
+      // Compare directly with a small tolerance for floating point.
+      const tolerance = 1e-9;
+      if (Math.abs(observedProb - expectedProb) <= tolerance) {
+        status = "pass";
+        statusDetail = "exact";
+      } else {
+        status = "fail";
+        statusDetail = "exact";
+      }
     } else {
-      status = "fail";
+      // Use statistical test for sampled data
+      ci = binomialConfidenceInterval(n, expectedProb);
+      if (ci === null) {
+        status = "skipped";
+        statusDetail = "n/a";
+      } else if (observedProb >= ci[0] && observedProb <= ci[1]) {
+        status = "pass";
+        statusDetail = `[${ci[0].toFixed(2)}, ${ci[1].toFixed(2)}]`;
+      } else {
+        status = "fail";
+        statusDetail = `[${ci[0].toFixed(2)}, ${ci[1].toFixed(2)}]`;
+      }
     }
 
     results.push({ key, expectedProb, observedProb, n, ci, status });
 
-    const ciStr = ci ? `[${ci[0].toFixed(4)}, ${ci[1].toFixed(4)}]` : "n/a";
     const statusStr = status === "pass" ? "✓" : status === "fail" ? "✗" : "skipped";
     console.log(
-      `  ${key}: expected=${expectedProb}, observed=${observedProb.toFixed(4)}, ` +
-        `n=${n}, CI=${ciStr} ${statusStr}`,
+      `  ${key}: expected=${expectedProb}, observed=${observedProb.toFixed(2)}, ` +
+        `n=${n}, CI=${statusDetail} ${statusStr}`,
     );
   }
 
@@ -161,22 +180,13 @@ export function analyzeOddsChecks(
   if (failures.length > 0) {
     throw new AssertionError(
       `checkOdds() failed for: ${failures.map((f) => {
-        const ci = f.ci!;
-        return `${f.key} (expected ${f.expectedProb}, observed ${f.observedProb.toFixed(4)}, ` +
-          `outside CI [${ci[0].toFixed(4)}, ${ci[1].toFixed(4)}])`;
+        if (f.ci) {
+          return `${f.key} (expected ${f.expectedProb}, observed ${f.observedProb.toFixed(2)}, ` +
+            `outside CI [${f.ci[0].toFixed(2)}, ${f.ci[1].toFixed(2)}])`;
+        } else {
+          return `${f.key} (expected ${f.expectedProb}, observed ${f.observedProb.toFixed(2)})`;
+        }
       }).join(", ")}`,
-    );
-  }
-
-  // Error if values were exhausted and all checks were skipped
-  const skipped = results.filter((r) => r.status === "skipped");
-  if (exhausted && skipped.length > 0 && skipped.length === results.length) {
-    throw new AssertionError(
-      `checkOdds() had insufficient samples for all checks: ${
-        skipped.map((s) => `${s.key} (n=${s.n})`).join(", ")
-      }. ` +
-      `The test input was exhausted before enough samples could be collected. ` +
-      `Try pairing with a larger arbitrary (e.g., arb.object({ s: arb.string(), ... })).`,
     );
   }
 }
