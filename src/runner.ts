@@ -247,12 +247,22 @@ export function runRep<T>(
   };
 }
 
+type RunRepsOpts = {
+  skipSometimesCheck?: boolean;
+  collectCoverage?: boolean;
+};
+
+export type RunRepsResult = {
+  passed: number;
+  coverage?: Coverage;
+};
+
 export function runReps<T>(
   reps: Iterable<Rep<T> | RepFailure<unknown>>,
   count: number,
   console: SystemConsole,
-  opts?: { skipSometimesCheck?: boolean },
-): Success<number> | RepFailure<unknown> {
+  opts?: RunRepsOpts,
+): Success<RunRepsResult> | RepFailure<unknown> {
   let passed = 0;
   const coverage: Coverage = {};
   for (const rep of reps) {
@@ -287,7 +297,11 @@ export function runReps<T>(
       throw err;
     }
   }
-  return success(passed);
+  const result: RunRepsResult = { passed };
+  if (opts?.collectCoverage) {
+    result.coverage = coverage;
+  }
+  return success(result);
 }
 
 export function reportFailure(
@@ -435,19 +449,116 @@ export function repeatTest<T>(
 
   // Determine rep count and whether to skip sometimes checks
   const quickReps = getQuickReps();
-  const isQuickMode = quickReps !== undefined && opts?.reps === undefined;
-  const repCount = opts?.reps ?? quickReps ?? defaultReps;
+  const multiReps = getMultiReps();
+  if (quickReps !== undefined && multiReps !== undefined) {
+    throw new Error("QUICKREPS and MULTIREPS cannot both be set");
+  }
+
+  const baselineReps = opts?.reps ?? defaultReps;
+  const isOnlyMode = opts?.only !== undefined;
+
+  let repCount: number;
+  let isQuickMode: boolean;
+  let collectCoverage = false;
+  let minTrueProb = 0;
+  let minRepsForStats = 0;
+
+  if (multiReps !== undefined && !isOnlyMode) {
+    repCount = baselineReps * multiReps;
+    isQuickMode = false;
+    collectCoverage = true;
+    minTrueProb = 3 / baselineReps;
+    minRepsForStats = baselineReps;
+  } else {
+    isQuickMode = quickReps !== undefined && opts?.reps === undefined;
+    repCount = opts?.reps ?? quickReps ?? defaultReps;
+  }
+
   const count = opts?.only ? 1 : arbs.length + repCount;
 
   const outerConsole = opts?.console ?? systemConsole;
   const ran = runReps(reps, count, outerConsole, {
     skipSometimesCheck: isQuickMode,
+    collectCoverage,
   });
   if (!ran.ok) {
     reportFailure(ran, outerConsole);
-  } else if (ran.val === 0) {
+  } else if (ran.val.passed === 0) {
     throw new Error(`skipped all ${skipCount} reps`);
   } else if (opts?.only !== undefined) {
     throw new Error(`only option is set`);
+  } else if (collectCoverage && ran.val.coverage) {
+    analyzeCoverage(
+      ran.val.coverage,
+      minTrueProb,
+      minRepsForStats,
+      outerConsole,
+      count,
+    );
+  }
+}
+
+function getMultiReps(): number | undefined {
+  try {
+    const envVal = Deno.env.get("MULTIREPS");
+    if (envVal !== undefined) {
+      const n = parseInt(envVal, 10);
+      if (Number.isInteger(n) && n > 0) {
+        return n;
+      }
+    }
+  } catch {
+    // Permission denied - env access not allowed, silently ignore
+  }
+  return undefined;
+}
+
+function analyzeCoverage(
+  coverage: Coverage,
+  minTrueProb: number,
+  minRepsForStats: number,
+  console: SystemConsole,
+  totalReps: number,
+): void {
+  const keys = Object.keys(coverage);
+  if (keys.length === 0) return;
+
+  console.log(`sometimes() coverage summary for ${totalReps} reps:`);
+  for (const key of keys) {
+    const covered = coverage[key];
+    const nTrue = covered.true;
+    const nFalse = covered.false;
+    const n = nTrue + nFalse;
+    const probTrue = n === 0 ? 0 : nTrue / n;
+    console.log(
+      `  ${key}: true: ${nTrue}, false: ${nFalse}, p(true)≈${probTrue.toFixed(4)} (n=${n})`,
+    );
+  }
+
+  const lowCoverage: { key: string; nTrue: number; nFalse: number; probTrue: number }[] = [];
+  for (const key of keys) {
+    const covered = coverage[key];
+    const nTrue = covered.true;
+    const nFalse = covered.false;
+    const n = nTrue + nFalse;
+    if (n < minRepsForStats) continue;
+    const probTrue = nTrue / n;
+    if (probTrue > 0 && probTrue < minTrueProb) {
+      lowCoverage.push({ key, nTrue, nFalse, probTrue });
+    }
+  }
+
+  if (lowCoverage.length > 0) {
+    console.log(
+      `sometimes() coverage below threshold (p(true) < ${minTrueProb.toFixed(6)}) for:`,
+    );
+    for (const entry of lowCoverage) {
+      console.log(
+        `  ${entry.key}: true: ${entry.nTrue}, false: ${entry.nFalse}, p(true)≈${entry.probTrue.toFixed(6)}`,
+      );
+    }
+    throw new AssertionError(
+      `sometimes() coverage below threshold for keys: ${lowCoverage.map((e) => e.key).join(", ")}`,
+    );
   }
 }
