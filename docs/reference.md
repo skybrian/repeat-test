@@ -251,7 +251,7 @@ import { arb, IntRequest } from "@skybrian/repeat-test";
 // - 101-201: continue with value 0-100 (~50% chance)
 const stopOrValue = new IntRequest(0, 201);
 
-const shortList = arb.from((pick) => {
+const shortListOptimized = arb.from((pick) => {
   const items: number[] = [];
   while (true) {
     const choice = pick(stopOrValue);

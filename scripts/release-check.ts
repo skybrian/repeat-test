@@ -141,6 +141,18 @@ async function main(): Promise<number> {
   // Deno doc lint
   results.push(await checkDenoDocs());
 
+  // Doc examples type-check
+  results.push(
+    await check("Doc Examples", [
+      "deno",
+      "run",
+      "--allow-read",
+      "--allow-write",
+      "--allow-run",
+      "scripts/check_doc_examples.ts",
+    ]),
+  );
+
   // Working directory clean
   console.log(`\n=== Working Directory ===`);
   const clean = await isWorkingDirectoryClean();
