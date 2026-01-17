@@ -162,6 +162,26 @@ repeatTest(arb.int(-100, 100), (n, console) => {
 });
 ```
 
+### Verify Probabilities with `checkOdds()`
+
+Use `console.checkOdds(key, expectedProb, condition)` to verify a condition
+occurs with an expected probability:
+
+```typescript
+repeatTest(arb.int(0, 99), (n, console) => {
+  // Verify divisibility by 10 occurs ~10% of the time
+  console.checkOdds("divisible by 10", 0.1, n % 10 === 0);
+});
+
+// Also works with small sets using exact comparison
+repeatTest(arb.boolean(), (val, console) => {
+  console.checkOdds("true", 0.5, val);  // exactly 1/2 of {true, false}
+});
+```
+
+For small sets where all values are enumerated, it compares the exact ratio.
+For larger sampled sets, it performs a statistical test.
+
 ### Assert Invariants
 
 Property tests should verify that generated values satisfy expected constraints:

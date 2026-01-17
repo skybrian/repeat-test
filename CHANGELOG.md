@@ -30,7 +30,7 @@ repeatTest(arb.int(0, 9999), (val, console) => {
 });
 ```
 
-Unlike `sometimes()` which just checks that a condition is both true and false at least once, `checkOdds()` performs a statistical test to verify the observed proportion matches the expected probability. If the sample size is too small for a reliable test, the check is skipped.
+Unlike `sometimes()` which just checks that a condition is both true and false at least once, `checkOdds()` verifies the observed proportion matches the expected probability. For small sets where all values are enumerated, it compares the exact ratio. For larger sampled sets, it performs a statistical test using confidence intervals.
 
 ### `generateDefault()` function
 
