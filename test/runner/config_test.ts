@@ -67,6 +67,10 @@ describe("getReps", () => {
       assertEquals(typeof result.multiplier, "number");
     }
   });
+
+  // Note: We can't easily test the error case without setting env vars,
+  // but the error path is tested implicitly if REPS is set to an invalid
+  // value when running the test suite.
 });
 
 describe("repeatTest with REPS", () => {

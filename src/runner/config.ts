@@ -60,13 +60,24 @@ export function parseReps(value: string): RepsConfig | undefined {
  * @returns RepsConfig if set and valid, undefined otherwise
  */
 export function getReps(): RepsConfig | undefined {
+  let envVal: string | undefined;
   try {
-    const envVal = Deno.env.get("REPS");
-    if (envVal !== undefined) {
-      return parseReps(envVal);
-    }
+    envVal = Deno.env.get("REPS");
   } catch {
     // Permission denied - env access not allowed, silently ignore
+    return undefined;
   }
-  return undefined;
+
+  if (envVal === undefined) {
+    return undefined;
+  }
+
+  const config = parseReps(envVal);
+  if (config === undefined) {
+    throw new Error(
+      `Invalid REPS value: "${envVal}". ` +
+        `Use percentage (e.g., "5%") or multiplier (e.g., "5x") format.`,
+    );
+  }
+  return config;
 }
