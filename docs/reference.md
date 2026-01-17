@@ -292,6 +292,5 @@ This mode is useful for:
 
 `REPS=100%` or `REPS=1x` is equivalent to not setting REPS at all.
 
-Note: `REPS` is ignored when:
-- `repeatTest` is called with the `only` option (for reproducing failures)
-- `repeatTest` is called with an explicit `reps` option (test controls its own rep count)
+Note: `REPS` is ignored when `repeatTest` is called with the `only`
+option, since that mode is intended for reproducing a specific failing rep.

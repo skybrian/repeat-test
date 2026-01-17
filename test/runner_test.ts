@@ -2,7 +2,7 @@ import type { Coverage, TestConsole } from "../src/console.ts";
 import type { Domain } from "../src/domain_class.ts";
 import type { Rep, RepFailure, TestFunction } from "../src/runner.ts";
 
-import { beforeEach, describe, it } from "@std/testing/bdd";
+import { afterEach, beforeEach, describe, it } from "@std/testing/bdd";
 import {
   assert,
   assertEquals,
@@ -24,6 +24,7 @@ import { success } from "../src/results.ts";
 import { generateDefault } from "../src/ordered.ts";
 import { RecordingConsole } from "../src/console.ts";
 import { frozen } from "../src/frozen.ts";
+import { setRepsForTesting } from "../src/runner/config.ts";
 
 import {
   generateReps,
@@ -516,6 +517,13 @@ describe("repeatTest", () => {
   beforeEach(() => {
     collectArgs = [];
     con = new RecordingConsole();
+    // Disable REPS override so tests run with expected behavior
+    setRepsForTesting(undefined);
+  });
+
+  afterEach(() => {
+    // Clear override after each test
+    setRepsForTesting(null);
   });
 
   const collect = (val: number) => {
@@ -571,8 +579,7 @@ describe("repeatTest", () => {
     };
     assertThrows(
       () => {
-        // Explicit reps to ensure random values are generated (not affected by REPS env var)
-        repeatTest(arb.int32(), test, { reps: 1000, console: con });
+        repeatTest(arb.int32(), test, { console: con });
       },
       Error,
       "test failed with 10",

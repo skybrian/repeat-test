@@ -53,7 +53,7 @@ export function parseReps(value: string): RepsConfig | undefined {
  * - RepsConfig: valid REPS value
  * If REPS is set but invalid, an error is thrown at module load time.
  */
-const repsConfig: RepsConfig | undefined = (() => {
+const repsConfigFromEnv: RepsConfig | undefined = (() => {
   let envVal: string | undefined;
   try {
     envVal = Deno.env.get("REPS");
@@ -77,6 +77,12 @@ const repsConfig: RepsConfig | undefined = (() => {
 })();
 
 /**
+ * Override for REPS config, used internally for testing.
+ * When set, this takes precedence over the environment variable.
+ */
+let repsConfigOverride: RepsConfig | undefined | null = null;
+
+/**
  * Returns the REPS environment variable configuration.
  *
  * The REPS variable controls how many repetitions to run relative to the
@@ -95,5 +101,19 @@ const repsConfig: RepsConfig | undefined = (() => {
  * @returns RepsConfig if set and valid, undefined otherwise
  */
 export function getReps(): RepsConfig | undefined {
-  return repsConfig;
+  if (repsConfigOverride !== null) {
+    return repsConfigOverride;
+  }
+  return repsConfigFromEnv;
+}
+
+/**
+ * Sets an override for the REPS configuration.
+ * Used internally for testing to ensure tests run with expected behavior
+ * regardless of the REPS environment variable.
+ *
+ * @param config - The config to use, or undefined to disable REPS, or null to clear override
+ */
+export function setRepsForTesting(config: RepsConfig | undefined | null): void {
+  repsConfigOverride = config;
 }
