@@ -59,10 +59,10 @@ export interface TestConsole extends SystemConsole {
   /**
    * Records a condition and checks that it occurs with the expected probability.
    *
-   * Unlike `sometimes()`, this performs a statistical test at the end of the
-   * test run to verify that the observed proportion is consistent with the
-   * expected probability. If the sample size is too small for a reliable test,
-   * the check is skipped.
+   * Unlike `sometimes()`, this verifies the observed proportion matches the
+   * expected probability. For small sets where all values are enumerated
+   * (e.g., `arb.boolean()`), it compares the exact ratio. For larger sampled
+   * sets, it performs a statistical test using confidence intervals.
    *
    * @param key - A unique identifier for this check
    * @param expectedProb - The expected probability (0 to 1) that condition is true
