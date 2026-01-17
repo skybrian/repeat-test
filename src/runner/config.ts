@@ -30,7 +30,10 @@ export type RepsConfig = {
  */
 export function parseReps(value: string): RepsConfig | undefined {
   const trimmed = value.trim();
-  if (trimmed.endsWith("%")) {
+  if (trimmed === "0") {
+    // Special case: "0" is unambiguous (0% and 0x are the same)
+    return { multiplier: 0 };
+  } else if (trimmed.endsWith("%")) {
     const n = parseFloat(trimmed.slice(0, -1));
     if (isFinite(n) && n >= 0) {
       return { multiplier: n / 100 };

@@ -42,6 +42,7 @@ describe("parseReps", () => {
   });
 
   it("accepts zero", () => {
+    assertEquals(parseReps("0"), { multiplier: 0 });
     assertEquals(parseReps("0%"), { multiplier: 0 });
     assertEquals(parseReps("0x"), { multiplier: 0 });
   });
