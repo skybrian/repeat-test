@@ -332,31 +332,17 @@ low rep counts may not satisfy coverage requirements.
 
 Note: The rep count is always at least 1, so `REPS=0%` runs 1 rep per test.
 
-### Deep Probabilistic Testing (> 100%)
+### Thorough Testing (> 100%)
 
-For thorough testing that detects rarely-hit branches, use a high multiplier:
+For more thorough testing, use a higher multiplier:
 
 ```bash
 REPS=5x deno test --allow-env   # 5000 reps per test
 REPS=500% deno test --allow-env # 5000 reps per test (same as 5x)
 ```
 
-When the multiplier is greater than 1:
-
-- `console.sometimes(key, cond)` is still required to be **sometimes true and
-  sometimes false** (same invariant as normal runs).
-- Additionally, `repeatTest` logs a summary of how often each key was true
-  and false, and estimates `p(true)` for each key.
-- If a key is observed often enough (at least the baseline number of reps) but
-  has an estimated probability that is "too small" for either branch (true or
-  false), `repeatTest` fails with an `AssertionError` that lists the offending
-  keys. This catches both rarely-true and rarely-false conditions.
-
-This mode is useful for:
-
-- Detecting flaky `sometimes()` checks whose conditions only rarely hold.
-- Validating that your arbitraries actually generate the variety you expect
-  when run for many more repetitions than usual.
+This simply runs more repetitions, which increases the chance of finding bugs
+that only occur with specific combinations of random inputs.
 
 ### Normal Testing (100% / 1x)
 

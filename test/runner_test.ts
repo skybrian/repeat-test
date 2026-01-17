@@ -1,4 +1,4 @@
-import type { Coverage, TestConsole } from "../src/console.ts";
+import type { Coverage, OddsChecks, TestConsole } from "../src/console.ts";
 import type { Domain } from "../src/domain_class.ts";
 import type { Rep, RepFailure, TestFunction } from "../src/runner.ts";
 
@@ -326,15 +326,17 @@ function makeRep<T>(input: Domain<T>, arg: T, test: TestFunction<T>): Rep<T> {
 describe("runRep", () => {
   let con = new RecordingConsole();
   let coverage: Coverage = {};
+  let oddsChecks: OddsChecks = {};
 
   beforeEach(() => {
     con = new RecordingConsole();
     coverage = {};
+    oddsChecks = {};
   });
 
   it("returns success if the test passes", () => {
     const rep = makeDefaultRep(arb.int(1, 10), () => {});
-    assertEquals(runRep(rep, con, coverage), success());
+    assertEquals(runRep(rep, con, coverage, oddsChecks), success());
     con.checkEmpty();
   });
 
@@ -343,7 +345,7 @@ describe("runRep", () => {
       assertFalse(console.on);
       console.log("hello");
     });
-    assertEquals(runRep(rep, con, coverage), success());
+    assertEquals(runRep(rep, con, coverage, oddsChecks), success());
     con.checkEmpty();
   });
 
@@ -351,7 +353,7 @@ describe("runRep", () => {
     const rep = makeDefaultRep(arb.int(1, 10), () => {
       throw new Error("test failed");
     });
-    const result = runRep(rep, con, coverage);
+    const result = runRep(rep, con, coverage, oddsChecks);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     assertEquals(result.arg, rep.arg.val);
@@ -371,7 +373,7 @@ describe("runRep", () => {
       console.log("hello");
       throw new Error("test failed");
     });
-    const result = runRep(rep, con, coverage);
+    const result = runRep(rep, con, coverage, oddsChecks);
     if (result.ok) fail("expected a failure");
 
     con.loggedTestFailed();
@@ -385,7 +387,7 @@ describe("runRep", () => {
     const rep = makeDefaultRep(arb.int(1, 10), (_, console) => {
       console.error("oops!");
     });
-    const result = runRep(rep, con, coverage);
+    const result = runRep(rep, con, coverage, oddsChecks);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     assertEquals(result.arg, rep.arg.val);
@@ -407,7 +409,7 @@ describe("runRep", () => {
       }
     };
     const rep = makeRep(input, 100, test);
-    const result = runRep(rep, con, coverage);
+    const result = runRep(rep, con, coverage, oddsChecks);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     if (!(result.caught instanceof Error)) {
@@ -427,7 +429,7 @@ describe("runRep", () => {
         throw new Error("a flaky test");
       }
     });
-    const result = runRep(rep, con, coverage);
+    const result = runRep(rep, con, coverage, oddsChecks);
     if (result.ok) fail("expected a failure");
     assertEquals(result.key, rep.key);
     if (!(result.caught instanceof Error)) {

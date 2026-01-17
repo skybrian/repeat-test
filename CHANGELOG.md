@@ -19,6 +19,19 @@ REPS=5x deno test --allow-env   # Thorough testing (5000 reps)
 
 When the multiplier is less than 1 (e.g., `5%`), `sometimes()` assertions are skipped since they aren't expected to pass with fewer repetitions.
 
+### `console.checkOdds()` method
+
+A new method for verifying that a condition occurs with an expected probability:
+
+```typescript
+repeatTest(arb.int(0, 9999), (val, console) => {
+  // Verify that val is divisible by 10 about 10% of the time
+  console.checkOdds("divisible by 10", 0.1, val % 10 === 0);
+});
+```
+
+Unlike `sometimes()` which just checks that a condition is both true and false at least once, `checkOdds()` performs a statistical test to verify the observed proportion matches the expected probability. If the sample size is too small for a reliable test, the check is skipped.
+
 ### `generateDefault()` function
 
 Every Arbitrary has a default value (e.g., `arb.string()` defaults to the empty string). The `generateDefault()` function returns the default value wrapped in a `Gen` object:

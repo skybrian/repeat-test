@@ -55,6 +55,21 @@ export interface TestConsole extends SystemConsole {
    * Returns the value passed in.
    */
   sometimes(key: string, val: boolean): boolean;
+
+  /**
+   * Records a condition and checks that it occurs with the expected probability.
+   *
+   * Unlike `sometimes()`, this performs a statistical test at the end of the
+   * test run to verify that the observed proportion is consistent with the
+   * expected probability. If the sample size is too small for a reliable test,
+   * the check is skipped.
+   *
+   * @param key - A unique identifier for this check
+   * @param expectedProb - The expected probability (0 to 1) that condition is true
+   * @param condition - The condition to check
+   * @returns The condition value passed in
+   */
+  checkOdds(key: string, expectedProb: number, condition: boolean): boolean;
 }
 
 /**
@@ -62,10 +77,24 @@ export interface TestConsole extends SystemConsole {
  */
 export type Coverage = Record<string, Record<"true" | "false", number>>;
 
+/**
+ * Records calls to {@link TestConsole.checkOdds}.
+ */
+export type OddsCheck = {
+  expectedProb: number;
+  trueCount: number;
+  falseCount: number;
+};
+
+export type OddsChecks = Record<string, OddsCheck>;
+
 export class CountingTestConsole implements TestConsole {
   #errorCount = 0;
 
-  constructor(readonly coverage: Coverage = {}) {}
+  constructor(
+    readonly coverage: Coverage = {},
+    readonly oddsChecks: OddsChecks = {},
+  ) {}
 
   get errorCount(): number {
     return this.#errorCount;
@@ -89,6 +118,18 @@ export class CountingTestConsole implements TestConsole {
       this.coverage[key].false++;
     }
     return val;
+  }
+
+  checkOdds(key: string, expectedProb: number, condition: boolean): boolean {
+    if (!(key in this.oddsChecks)) {
+      this.oddsChecks[key] = { expectedProb, trueCount: 0, falseCount: 0 };
+    }
+    if (condition) {
+      this.oddsChecks[key].trueCount++;
+    } else {
+      this.oddsChecks[key].falseCount++;
+    }
+    return condition;
   }
 }
 
@@ -120,6 +161,12 @@ export class FailingTestConsole extends CountingTestConsole {
     super.sometimes(key, val);
     this.log(`sometimes(${key}) =>`, val);
     return val;
+  }
+
+  override checkOdds(key: string, expectedProb: number, condition: boolean): boolean {
+    super.checkOdds(key, expectedProb, condition);
+    this.log(`checkOdds(${key}, ${expectedProb}) =>`, condition);
+    return condition;
   }
 }
 

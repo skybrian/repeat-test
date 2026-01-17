@@ -2,7 +2,7 @@ import type { Failure, Success } from "./results.ts";
 import type { Pickable } from "./pickable.ts";
 import type { IntPicker } from "./picks.ts";
 import type { Gen, GenerateOpts } from "./gen_class.ts";
-import type { Coverage, SystemConsole, TestConsole } from "./console.ts";
+import type { Coverage, OddsChecks, SystemConsole, TestConsole } from "./console.ts";
 
 import { assert, assertEquals, AssertionError } from "@std/assert";
 
@@ -25,7 +25,7 @@ import {
   getReps,
   maxPicksDefault,
 } from "./runner/config.ts";
-import { analyzeCoverage } from "./runner/coverage.ts";
+import { analyzeOddsChecks } from "./runner/coverage.ts";
 
 /**
  * A function that runs a test, using generated input.
@@ -191,12 +191,13 @@ export function runRep<T>(
   rep: Rep<T>,
   system: SystemConsole,
   coverage: Coverage,
+  oddsChecks: OddsChecks,
 ): Success<void> | RepFailure<T> {
   let firstArg: T | undefined = undefined;
   let firstError: unknown = undefined;
 
   const interesting = (arg: T) => {
-    const innerConsole = new CountingTestConsole(coverage);
+    const innerConsole = new CountingTestConsole(coverage, oddsChecks);
     try {
       rep.test(arg, innerConsole);
       return innerConsole.errorCount > 0;
@@ -255,12 +256,11 @@ export function runRep<T>(
 
 type RunRepsOpts = {
   skipSometimesCheck?: boolean;
-  collectCoverage?: boolean;
 };
 
 export type RunRepsResult = {
   passed: number;
-  coverage?: Coverage;
+  oddsChecks?: OddsChecks;
 };
 
 export function runReps<T>(
@@ -271,9 +271,10 @@ export function runReps<T>(
 ): Success<RunRepsResult> | RepFailure<unknown> {
   let passed = 0;
   const coverage: Coverage = {};
+  const oddsChecks: OddsChecks = {};
   for (const rep of reps) {
     if (!rep.ok) return rep;
-    const ran = runRep(rep, console, coverage);
+    const ran = runRep(rep, console, coverage, oddsChecks);
     if (!ran.ok) return ran;
     passed++;
     if (passed >= count) break;
@@ -303,11 +304,7 @@ export function runReps<T>(
       throw err;
     }
   }
-  const result: RunRepsResult = { passed };
-  if (opts?.collectCoverage) {
-    result.coverage = coverage;
-  }
-  return success(result);
+  return success({ passed, oddsChecks });
 }
 
 export function reportFailure(
@@ -439,19 +436,11 @@ export function repeatTest<T>(
 
   let repCount: number;
   let skipSometimesCheck: boolean;
-  let collectCoverage = false;
-  let coverageThreshold = 0;
-  let minRepsForStats = 0;
 
   if (repsConfig !== undefined && !isOnlyMode) {
     // REPS env var is set - apply multiplier to baseline
     repCount = Math.max(1, Math.round(baselineReps * repsConfig.multiplier));
     skipSometimesCheck = repsConfig.multiplier < 1;
-    collectCoverage = repsConfig.multiplier > 1;
-    if (collectCoverage) {
-      coverageThreshold = 3 / baselineReps;
-      minRepsForStats = baselineReps;
-    }
   } else {
     // Normal mode - use baseline reps with standard sometimes() checks
     repCount = baselineReps;
@@ -463,7 +452,6 @@ export function repeatTest<T>(
   const outerConsole = opts?.console ?? systemConsole;
   const ran = runReps(reps, count, outerConsole, {
     skipSometimesCheck,
-    collectCoverage,
   });
   if (!ran.ok) {
     reportFailure(ran, outerConsole);
@@ -471,14 +459,11 @@ export function repeatTest<T>(
     throw new Error(`skipped all ${skipCount} reps`);
   } else if (opts?.only !== undefined) {
     throw new Error(`only option is set`);
-  } else if (collectCoverage && ran.val.coverage) {
-    analyzeCoverage(
-      ran.val.coverage,
-      coverageThreshold,
-      minRepsForStats,
-      outerConsole,
-      count,
-    );
+  } else {
+    // Always analyze checkOdds() calls
+    if (ran.val.oddsChecks && Object.keys(ran.val.oddsChecks).length > 0) {
+      analyzeOddsChecks(ran.val.oddsChecks, outerConsole);
+    }
   }
 }
 
