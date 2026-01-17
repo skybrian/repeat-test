@@ -1,23 +1,43 @@
-## Unreleased
+## 0.5.1 (unreleased)
 
-### New Features
+(This release was co-authored with AI.)
 
-* **QUICKREPS environment variable**: Run quick smoke tests from the command line.
-  Set `QUICKREPS=N` to run N repetitions instead of 1000, and skip `sometimes()`
-  assertion validation. Useful for fast CI status checks.
-  ```bash
-  QUICKREPS=5 deno test --allow-env
-  ```
+### QUICKREPS environment variable
 
-* **frozen() utility**: Deep-freeze objects for use as test examples.
-  ```typescript
-  import { frozen, repeatTest } from '@skybrian/repeat-test';
-  repeatTest([frozen({ a: 1 }), frozen({ b: { nested: 2 } })], test);
-  ```
+* We added a way to run property tests with fewer repetitions, for a quick sanity check without running the full test suite. Example:
 
-### Tasks
+```bash
+QUICKREPS=5 deno test --allow-env
+```
 
-* Added `deno task test:quick` as a shortcut for quick smoke tests.
+This runs 5 repetitions [^1] instead of the test's default, which is usually 1000, but a test can explicity set it using the `reps` parameter. It also skips `sometimes()` assertions because they aren't expected to pass if you run a property test for fewer reps than normal.
+
+[^1]: Actually six repetitions, because repeat-test always does a smoke test using a default value before generating data randomly.
+
+### `frozen()` utility function
+
+For safety, the `repeatTest` function fails if the list of examples contains any objects that aren't frozen. The `frozen` function does a deep freeze, so you can freeze an entire example list at once. Example:
+
+```typescript
+import { assert } from "@std/assert";
+import { frozen, repeatTest } from "@skybrian/repeat-test";
+
+type Pelican = { name: string; pouch: { fishCount: number } };
+
+const pelicans: Pelican[] = frozen([
+  { name: "Pete", pouch: { fishCount: 3 } },
+  { name: "Penny", pouch: { fishCount: 7 } },
+]);
+
+repeatTest(pelicans, (pelican) => {
+  assert(pelican.pouch.fishCount > 0, `${pelican.name}'s pouch is empty!`);
+});
+```
+
+### docs/reference.md
+
+We wrote some documentation primarily targeted at coding agents.
+Ask your coding agent to look at [docs/reference.md](docs/reference.md) before writing property tests using repeat-test, and hopefully you'll get better results.
 
 ## 0.5.0
 

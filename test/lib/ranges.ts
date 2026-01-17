@@ -31,13 +31,12 @@ export function intRange(opts?: IntRangeOptions): Arbitrary<Range> {
   const maxSize = opts?.maxSize ?? 10;
   if (maxSize < minSize) throw new Error("maxSize must be >= minSize");
 
-  const examples: Range[] = [];
-  if (minMin <= 0) {
-    examples.push(frozen({ min: 0, max: minSize - 1 }));
-  }
-  if (minMin <= -1) {
-    examples.push(frozen({ min: -1, max: minSize - 2 }));
-  }
+  const examples: Range[] = frozen(
+    [
+      ...(minMin <= 0 ? [{ min: 0, max: minSize - 1 }] : []),
+      ...(minMin <= -1 ? [{ min: -1, max: minSize - 2 }] : []),
+    ],
+  );
 
   return arb.oneOf<Range>(
     Arbitrary.of(...examples),
