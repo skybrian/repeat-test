@@ -35,7 +35,7 @@ Since the test passes, running it doesn't print anything.
 Let's edit the test data so that it fails:
 
 ```ts
-const examples = ["hello", "world!"]; // Second example is longer now.
+const failingExamples = ["hello", "world!"]; // Second example is longer now.
 ```
 
 When I run it again, the output looks like this:
@@ -77,7 +77,7 @@ passing and failing test runs is pretty spammy. So, the `repeatTest` function
 provides a better way:
 
 ```ts
-repeatTest(examples, (word, console) => { // added another argument
+repeatTest(failingExamples, (word, console) => { // added another argument
   console.log("word:", word, "length:", word.length);
   assertEquals(word.length, 5);
 });
@@ -117,7 +117,7 @@ the test passes or fails.
 Here is a better way:
 
 ```ts
-repeatTest(examples, (word, console) => {
+repeatTest(failingExamples, (word, console) => {
   if (console.on) {
     debugger; // Only stop when the test will fail.
   }
@@ -141,7 +141,7 @@ This rather terse message is a hint that provides a way to skip over passing
 examples and get to the example that failed. Here is how to use it:
 
 ```ts
-repeatTest(examples, (word, console) => {
+repeatTest(failingExamples, (word, console) => {
   console.log("word:", word, "length:", word.length);
   assertEquals(word.length, 5);
 }, {only: "1"}); // added the 'only' option

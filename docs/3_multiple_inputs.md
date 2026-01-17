@@ -1,5 +1,10 @@
 # Part 3: Multiple inputs
 
+<!-- doc-imports
+import { assert } from "@std/assert";
+import { arb, repeatTest } from "@skybrian/repeat-test";
+-->
+
 ## Independent choices
 
 In [Part 2](./2_generating_examples.md) we saw that `arb.string()` is very
@@ -14,12 +19,12 @@ repeatTest(arb.string(), (s) => {
 But we can make that happen by generating two strings and combining them:
 
 ```ts
-const example = arb.object({
+const objectExample = arb.object({
   prefix: arb.string(),
   suffix: arb.string(),
 });
 
-repeatTest(example, ({ prefix, suffix }) => {
+repeatTest(objectExample, ({ prefix, suffix }) => {
   const s = prefix + "fnord" + suffix;
   assert(s.includes("fnord"));
 });
@@ -37,13 +42,13 @@ depends on the first. Here is an example that generates a random string and then
 a random offset into that string:
 
 ```ts
-const example = arb.from((pick) => {
+const dependentExample = arb.from((pick) => {
   const s = pick(arb.string());
   const offset = pick(arb.int(0, s.length));
   return { s, offset };
 });
 
-repeatTest(example, ({ s, offset }) => {
+repeatTest(dependentExample, ({ s, offset }) => {
   assert(offset >= 0 && offset <= s.length);
 });
 ```

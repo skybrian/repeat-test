@@ -5,7 +5,7 @@
 In [Part 1](./1_getting_started.md) we saw a test that uses two examples, defined like this:
 
 ```ts
-const examples = ["hello", "world"];
+const arrayExamples = ["hello", "world"];
 ```
 
 Here's how to do the same thing using an *Arbitrary* instead:
@@ -148,14 +148,14 @@ We can get the best of both worlds using an array that contains both examples an
 import { assert } from "@std/assert";
 import { arb, type Examples, repeatTest } from "@skybrian/repeat-test";
 
-const examples: Examples<string> = [
+const mixedExamples: Examples<string> = [
   "hello",
   "world",
   "fnord",
   arb.string(),
 ];
 
-repeatTest(examples, (s) => {
+repeatTest(mixedExamples, (s) => {
   assert(s.length >= 0); // runs 1004 times
 });
 ```
