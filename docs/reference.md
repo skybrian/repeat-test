@@ -252,3 +252,45 @@ QUICKREPS=5 deno test --allow-env  # Run only 5 reps per test
 
 Note: `QUICKREPS` skips `sometimes()` validation since low rep counts may not
 satisfy coverage requirements.
+
+## Deep Probabilistic Testing
+
+### MULTIREPS
+
+Use the `MULTIREPS` environment variable to run property tests for many more
+repetitions than usual and to get a probabilistic report for `console.sometimes()`
+coverage.
+
+- `MULTIREPS` must be a positive integer.
+- It is **mutually exclusive** with `QUICKREPS`. If both are set, `repeatTest`
+  throws an error.
+- For each `repeatTest` call, the **baseline** rep count is:
+  - `opts.reps` if provided, otherwise
+  - `1000` (the default).
+- With `MULTIREPS=N`, `repeatTest` runs approximately `N × baseline` random
+  reps (plus the usual examples/defaults).
+
+Example:
+
+```bash
+MULTIREPS=20 deno test --allow-env  # ~20x the usual number of reps
+```
+
+During a `MULTIREPS` run:
+
+- `console.sometimes(key, cond)` is still required to be **sometimes true and
+  sometimes false** (same invariant as normal runs).
+- Additionally, `repeatTest` logs a summary of how often each key was true
+  and false, and estimates `p(true)` for each key.
+- If a key is observed often enough (at least the baseline number of reps) but
+  has an estimated `p(true)` that is "too small" relative to the baseline,
+  `repeatTest` fails with an `AssertionError` that lists the offending keys.
+
+This mode is useful for:
+
+- Detecting flaky `sometimes()` checks whose conditions only rarely hold.
+- Validating that your arbitraries actually generate the variety you expect
+  when run for many more repetitions than usual.
+
+Note: `MULTIREPS` is ignored when `repeatTest` is called with the `only`
+option, since that mode is intended for reproducing a specific failing rep.
