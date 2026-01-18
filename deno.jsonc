@@ -1,6 +1,6 @@
 {
   "name": "@skybrian/repeat-test",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "compilerOptions": {
     "noImplicitOverride": true
   },
@@ -16,7 +16,12 @@
       "./README.md", "./LICENSE", "./CHANGELOG.md",
       "./docs",
       "./examples/*.ts",
-      "./src/*.ts", "./src/entrypoints/*.ts", "./src/arbitraries/*.ts", "./src/domains/*.ts", "./src/scripts/*.ts"
+      "./src/*.ts",
+      "./src/entrypoints/*.ts",
+      "./src/arbitraries/*.ts",
+      "./src/domains/*.ts",
+      "./src/runner/*.ts",
+      "./src/scripts/*.ts"
     ]
   },
   "exports": {
