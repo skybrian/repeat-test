@@ -1,4 +1,4 @@
-## 0.5.1 (unreleased)
+## 0.5.1
 
 (This release was co-authored with AI.)
 
