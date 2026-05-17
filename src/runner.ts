@@ -2,7 +2,12 @@ import type { Failure, Success } from "./results.ts";
 import type { Pickable } from "./pickable.ts";
 import type { IntPicker } from "./picks.ts";
 import type { Gen, GenerateOpts } from "./gen_class.ts";
-import type { Coverage, OddsChecks, SystemConsole, TestConsole } from "./console.ts";
+import type {
+  Coverage,
+  OddsChecks,
+  SystemConsole,
+  TestConsole,
+} from "./console.ts";
 
 import { assert, assertEquals, AssertionError } from "@std/assert";
 
@@ -20,11 +25,7 @@ import {
 } from "./console.ts";
 import { shrink } from "./shrink.ts";
 import { Backtracker } from "./backtracking.ts";
-import {
-  defaultReps,
-  getReps,
-  maxPicksDefault,
-} from "./runner/config.ts";
+import { defaultReps, getReps, maxPicksDefault } from "./runner/config.ts";
 import { analyzeOddsChecks } from "./runner/coverage.ts";
 
 /**
@@ -345,8 +346,6 @@ export type RepeatOpts = {
   console?: SystemConsole;
 };
 
-
-
 function parseOnlyOption(input: string): RepKey {
   const parsed = parseRepKey(input);
   if (!parsed.ok) throw Error(`can't parse 'only' option: ${parsed.message}`);
@@ -467,5 +466,3 @@ export function repeatTest<T>(
     }
   }
 }
-
-

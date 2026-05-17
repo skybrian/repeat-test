@@ -13,7 +13,9 @@
   },
   "publish": {
     "include": [
-      "./README.md", "./LICENSE", "./CHANGELOG.md",
+      "./README.md",
+      "./LICENSE",
+      "./CHANGELOG.md",
       "./docs",
       "./examples/*.ts",
       "./src/*.ts",

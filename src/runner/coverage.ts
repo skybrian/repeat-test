@@ -76,30 +76,52 @@ export function analyzeCoverage(
     const n = nTrue + nFalse;
     const probTrue = n === 0 ? 0 : nTrue / n;
     console.log(
-      `  ${key}: true: ${nTrue}, false: ${nFalse}, p(true)≈${probTrue.toFixed(4)} (n=${n})`,
+      `  ${key}: true: ${nTrue}, false: ${nFalse}, p(true)≈${
+        probTrue.toFixed(4)
+      } (n=${n})`,
     );
 
     if (n >= minRepsForStats) {
       if (probTrue > 0 && probTrue < coverageThreshold) {
-        lowCoverage.push({ key, nTrue, nFalse, probTrue, issue: "rarely true" });
+        lowCoverage.push({
+          key,
+          nTrue,
+          nFalse,
+          probTrue,
+          issue: "rarely true",
+        });
       } else if (probTrue < 1 && (1 - probTrue) < coverageThreshold) {
-        lowCoverage.push({ key, nTrue, nFalse, probTrue, issue: "rarely false" });
+        lowCoverage.push({
+          key,
+          nTrue,
+          nFalse,
+          probTrue,
+          issue: "rarely false",
+        });
       }
     }
   }
 
   if (lowCoverage.length > 0) {
     console.log(
-      `sometimes() coverage below threshold (< ${coverageThreshold.toFixed(6)}):`,
+      `sometimes() coverage below threshold (< ${
+        coverageThreshold.toFixed(6)
+      }):`,
     );
     for (const entry of lowCoverage) {
-      const prob = entry.issue === "rarely true" ? entry.probTrue : 1 - entry.probTrue;
+      const prob = entry.issue === "rarely true"
+        ? entry.probTrue
+        : 1 - entry.probTrue;
       console.log(
-        `  ${entry.key}: ${entry.issue}, p=${prob.toFixed(6)} (true: ${entry.nTrue}, false: ${entry.nFalse})`,
+        `  ${entry.key}: ${entry.issue}, p=${
+          prob.toFixed(6)
+        } (true: ${entry.nTrue}, false: ${entry.nFalse})`,
       );
     }
     throw new AssertionError(
-      `sometimes() coverage below threshold for keys: ${lowCoverage.map((e) => e.key).join(", ")}`,
+      `sometimes() coverage below threshold for keys: ${
+        lowCoverage.map((e) => e.key).join(", ")
+      }`,
     );
   }
 }
@@ -169,9 +191,15 @@ export function analyzeOddsChecks(
 
     results.push({ key, expectedProb, observedProb, n, ci, status });
 
-    const statusStr = status === "pass" ? "✓" : status === "fail" ? "✗" : "skipped";
+    const statusStr = status === "pass"
+      ? "✓"
+      : status === "fail"
+      ? "✗"
+      : "skipped";
     console.log(
-      `  ${key}: expected=${expectedProb}, observed=${observedProb.toFixed(2)}, ` +
+      `  ${key}: expected=${expectedProb}, observed=${
+        observedProb.toFixed(2)
+      }, ` +
         `n=${n}, CI=${statusDetail} ${statusStr}`,
     );
   }
@@ -179,14 +207,20 @@ export function analyzeOddsChecks(
   const failures = results.filter((r) => r.status === "fail");
   if (failures.length > 0) {
     throw new AssertionError(
-      `checkOdds() failed for: ${failures.map((f) => {
-        if (f.ci) {
-          return `${f.key} (expected ${f.expectedProb}, observed ${f.observedProb.toFixed(2)}, ` +
-            `outside CI [${f.ci[0].toFixed(2)}, ${f.ci[1].toFixed(2)}])`;
-        } else {
-          return `${f.key} (expected ${f.expectedProb}, observed ${f.observedProb.toFixed(2)})`;
-        }
-      }).join(", ")}`,
+      `checkOdds() failed for: ${
+        failures.map((f) => {
+          if (f.ci) {
+            return `${f.key} (expected ${f.expectedProb}, observed ${
+              f.observedProb.toFixed(2)
+            }, ` +
+              `outside CI [${f.ci[0].toFixed(2)}, ${f.ci[1].toFixed(2)}])`;
+          } else {
+            return `${f.key} (expected ${f.expectedProb}, observed ${
+              f.observedProb.toFixed(2)
+            })`;
+          }
+        }).join(", ")
+      }`,
     );
   }
 }

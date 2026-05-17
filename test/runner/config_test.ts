@@ -48,14 +48,14 @@ describe("parseReps", () => {
   });
 
   it("returns undefined for invalid formats", () => {
-    assertEquals(parseReps("5"), undefined);      // no suffix
-    assertEquals(parseReps("abc"), undefined);    // not a number
-    assertEquals(parseReps("5X"), undefined);     // uppercase X
-    assertEquals(parseReps("%5"), undefined);     // wrong order
-    assertEquals(parseReps("x5"), undefined);     // wrong order
-    assertEquals(parseReps("-5%"), undefined);    // negative
-    assertEquals(parseReps("-5x"), undefined);    // negative
-    assertEquals(parseReps(""), undefined);       // empty
+    assertEquals(parseReps("5"), undefined); // no suffix
+    assertEquals(parseReps("abc"), undefined); // not a number
+    assertEquals(parseReps("5X"), undefined); // uppercase X
+    assertEquals(parseReps("%5"), undefined); // wrong order
+    assertEquals(parseReps("x5"), undefined); // wrong order
+    assertEquals(parseReps("-5%"), undefined); // negative
+    assertEquals(parseReps("-5x"), undefined); // negative
+    assertEquals(parseReps(""), undefined); // empty
   });
 });
 

@@ -47,7 +47,7 @@ benchmark              time (avg)        iter/s             (min … max)       
 generate a string       9.77 µs/iter     102,364.6   (8.67 µs … 120.04 µs) 9.62 µs 12.96 µs 18.25 µs
 ```
 
-###  After migrating to PickRequest.random
+### After migrating to PickRequest.random
 
 ```
 cpu: Apple M2
@@ -226,7 +226,7 @@ uniqueArray of 6 ints             19.8 µs        50,490 ( 18.6 µs … 130.3 µ
 uniqueArray of 100 ints          246.1 µs         4,064 (233.6 µs … 372.0 µs) 242.7 µs 355.8 µs 363.6 µs
 ```
 
-### Partially track duplicates for random generation 
+### Partially track duplicates for random generation
 
 ```
     CPU | Apple M2

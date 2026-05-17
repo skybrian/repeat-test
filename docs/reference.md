@@ -14,7 +14,7 @@ import { assert } from "@std/assert";
 
 // Basic property test
 repeatTest(arb.int(0, 100), (n, console) => {
-  console.log("testing:", n);  // Only prints on failure
+  console.log("testing:", n); // Only prints on failure
   assert(n >= 0);
 });
 
@@ -36,72 +36,72 @@ Arbitraries generate random values for testing.
 
 ### Primitives
 
-| Function | Description |
-|----------|-------------|
-| `arb.int(min, max)` | Integer in range [min, max] |
-| `arb.int32()` | Signed 32-bit integer |
-| `arb.safeInt()` | Any safe integer |
-| `arb.boolean()` | true or false |
-| `arb.biased(p)` | Boolean with probability p of being true |
+| Function            | Description                              |
+| ------------------- | ---------------------------------------- |
+| `arb.int(min, max)` | Integer in range [min, max]              |
+| `arb.int32()`       | Signed 32-bit integer                    |
+| `arb.safeInt()`     | Any safe integer                         |
+| `arb.boolean()`     | true or false                            |
+| `arb.biased(p)`     | Boolean with probability p of being true |
 
 ### Strings
 
-| Function | Description |
-|----------|-------------|
-| `arb.string(opts?)` | Any JS string (may have unpaired surrogates) |
-| `arb.wellFormedString(opts?)` | Well-formed Unicode string |
-| `arb.asciiChar(regexp?)` | Single ASCII character |
-| `arb.asciiLetter()` | a-z or A-Z |
-| `arb.asciiDigit()` | 0-9 |
-| `arb.asciiSymbol()` | ASCII punctuation/symbols |
-| `arb.asciiWhitespace()` | ASCII whitespace |
-| `arb.char16()` | Any single 16-bit code unit |
-| `arb.unicodeChar()` | Single Unicode code point (1-2 chars) |
+| Function                      | Description                                  |
+| ----------------------------- | -------------------------------------------- |
+| `arb.string(opts?)`           | Any JS string (may have unpaired surrogates) |
+| `arb.wellFormedString(opts?)` | Well-formed Unicode string                   |
+| `arb.asciiChar(regexp?)`      | Single ASCII character                       |
+| `arb.asciiLetter()`           | a-z or A-Z                                   |
+| `arb.asciiDigit()`            | 0-9                                          |
+| `arb.asciiSymbol()`           | ASCII punctuation/symbols                    |
+| `arb.asciiWhitespace()`       | ASCII whitespace                             |
+| `arb.char16()`                | Any single 16-bit code unit                  |
+| `arb.unicodeChar()`           | Single Unicode code point (1-2 chars)        |
 
 ### Collections
 
-| Function | Description |
-|----------|-------------|
-| `arb.array(item, opts?)` | Array of items |
+| Function                       | Description                                   |
+| ------------------------------ | --------------------------------------------- |
+| `arb.array(item, opts?)`       | Array of items                                |
 | `arb.uniqueArray(item, opts?)` | Array with unique items (item must be Domain) |
-| `arb.object(shape)` | Object with given shape |
-| `arb.union(...cases)` | One of several object shapes |
-| `arb.table(row, opts?)` | Array of objects with optional unique keys |
+| `arb.object(shape)`            | Object with given shape                       |
+| `arb.union(...cases)`          | One of several object shapes                  |
+| `arb.table(row, opts?)`        | Array of objects with optional unique keys    |
 
 **ArrayOpts**: `{ length?: number | { min?: number, max?: number } }`
 
 ### Combinators
 
-| Function | Description |
-|----------|-------------|
-| `arb.of(...values)` | One of the given constant values |
+| Function             | Description                             |
+| -------------------- | --------------------------------------- |
+| `arb.of(...values)`  | One of the given constant values        |
 | `arb.oneOf(...arbs)` | Value from one of the given Arbitraries |
-| `arb.from(buildFn)` | Custom Arbitrary from build function |
-| `arb.alias(init)` | Lazy/recursive Arbitrary |
+| `arb.from(buildFn)`  | Custom Arbitrary from build function    |
+| `arb.alias(init)`    | Lazy/recursive Arbitrary                |
 
 ## dom.* Functions (Domains)
 
 Domains are Arbitraries that can also parse/validate values. Use when you need
 round-trip validation.
 
-| Function | Description |
-|----------|-------------|
-| `dom.int(min, max)` | Integer in range |
-| `dom.int32()` | Signed 32-bit integer |
-| `dom.boolean()` | Boolean |
-| `dom.string(opts?)` | Any JS string |
-| `dom.wellFormedString(opts?)` | Well-formed Unicode string |
-| `dom.asciiChar(regexp?)` | Single ASCII character |
-| `dom.asciiLetter()` | a-z or A-Z |
-| `dom.char16()` | Single 16-bit code unit |
-| `dom.array(item, opts?)` | Array of items |
-| `dom.uniqueArray(item, opts?)` | Array with unique items |
-| `dom.object(shape, opts?)` | Object with shape |
-| `dom.taggedUnion(tagProp, cases)` | Discriminated union |
-| `dom.table(row, opts?)` | Array of objects |
-| `dom.of(...values)` | One of given values |
-| `dom.firstOf(...doms)` | First matching domain |
-| `dom.alias(init)` | Lazy/recursive Domain |
+| Function                          | Description                |
+| --------------------------------- | -------------------------- |
+| `dom.int(min, max)`               | Integer in range           |
+| `dom.int32()`                     | Signed 32-bit integer      |
+| `dom.boolean()`                   | Boolean                    |
+| `dom.string(opts?)`               | Any JS string              |
+| `dom.wellFormedString(opts?)`     | Well-formed Unicode string |
+| `dom.asciiChar(regexp?)`          | Single ASCII character     |
+| `dom.asciiLetter()`               | a-z or A-Z                 |
+| `dom.char16()`                    | Single 16-bit code unit    |
+| `dom.array(item, opts?)`          | Array of items             |
+| `dom.uniqueArray(item, opts?)`    | Array with unique items    |
+| `dom.object(shape, opts?)`        | Object with shape          |
+| `dom.taggedUnion(tagProp, cases)` | Discriminated union        |
+| `dom.table(row, opts?)`           | Array of objects           |
+| `dom.of(...values)`               | One of given values        |
+| `dom.firstOf(...doms)`            | First matching domain      |
+| `dom.alias(init)`                 | Lazy/recursive Domain      |
 
 ## Custom Arbitraries
 
@@ -120,13 +120,13 @@ const point2 = arb.object({
 });
 
 // Filtering
-const evenInt = arb.int(0, 100).filter(n => n % 2 === 0);
+const evenInt = arb.int(0, 100).filter((n) => n % 2 === 0);
 
 // Mapping
-const doubled = arb.int(0, 50).map(n => n * 2);
+const doubled = arb.int(0, 50).map((n) => n * 2);
 
 // Chaining (dependent generation)
-const pair = arb.int(1, 10).chain(n => 
+const pair = arb.int(1, 10).chain((n) =>
   arb.array(arb.int(0, 100), { length: n })
 );
 ```
@@ -151,8 +151,8 @@ const tree: Arbitrary<Tree> = arb.alias(() =>
 ### Verify Variety with `sometimes()`
 
 Use `console.sometimes(key, condition)` to ensure arbitraries generate
-sufficient variety. The test fails if the condition is never true or never
-false across all repetitions.
+sufficient variety. The test fails if the condition is never true or never false
+across all repetitions.
 
 ```typescript
 repeatTest(arb.int(-100, 100), (n, console) => {
@@ -175,12 +175,12 @@ repeatTest(arb.int(0, 99), (n, console) => {
 
 // Also works with small sets using exact comparison
 repeatTest(arb.boolean(), (val, console) => {
-  console.checkOdds("true", 0.5, val);  // exactly 1/2 of {true, false}
+  console.checkOdds("true", 0.5, val); // exactly 1/2 of {true, false}
 });
 ```
 
-For small sets where all values are enumerated, it compares the exact ratio.
-For larger sampled sets, it performs a statistical test.
+For small sets where all values are enumerated, it compares the exact ratio. For
+larger sampled sets, it performs a statistical test.
 
 ### Assert Invariants
 
@@ -220,8 +220,8 @@ repeatTest(myArbitrary, (val, t) => t.sometimes("case A", checkA(val)));
 
 Every Arbitrary has a default value. For example, the default for `arb.string()`
 is the empty string, and the default for `arb.int(0, 100)` is 0. When
-`repeatTest` runs an Arbitrary, it tries the default value first as a smoke
-test before generating random values.
+`repeatTest` runs an Arbitrary, it tries the default value first as a smoke test
+before generating random values.
 
 When writing a custom Arbitrary with `arb.from()`, think about what the default
 value should be. The default is determined by each nested `pick()` call
@@ -245,7 +245,7 @@ picking between adding an item or ending:
 // This shrinks better than generating a length then filling
 const shortList = arb.from((pick) => {
   const items: number[] = [];
-  while (pick(arb.boolean())) {  // 50% chance to continue
+  while (pick(arb.boolean())) { // 50% chance to continue
     items.push(pick(arb.int(0, 100)));
   }
   return items;
@@ -276,9 +276,9 @@ const shortListOptimized = arb.from((pick) => {
   while (true) {
     const choice = pick(stopOrValue);
     if (choice <= 100) {
-      break;  // stop
+      break; // stop
     }
-    items.push(choice - 101);  // map 101-201 to 0-100
+    items.push(choice - 101); // map 101-201 to 0-100
   }
   return items;
 });
@@ -334,8 +334,8 @@ repeatTest([frozen({ a: 1 }), frozen({ nested: { b: 2 } })], (obj) => {
 ## Controlling Repetitions with REPS
 
 Use the `REPS` environment variable to control how many repetitions each test
-runs. The value is specified as either a percentage or a multiplier relative
-to the baseline rep count (default 1000, or `opts.reps` if specified).
+runs. The value is specified as either a percentage or a multiplier relative to
+the baseline rep count (default 1000, or `opts.reps` if specified).
 
 ### Quick Testing (< 100%)
 
@@ -368,5 +368,5 @@ that only occur with specific combinations of random inputs.
 
 `REPS=100%` or `REPS=1x` is equivalent to not setting REPS at all.
 
-Note: `REPS` is ignored when `repeatTest` is called with the `only`
-option, since that mode is intended for reproducing a specific failing rep.
+Note: `REPS` is ignored when `repeatTest` is called with the `only` option,
+since that mode is intended for reproducing a specific failing rep.

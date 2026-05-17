@@ -54,7 +54,7 @@ repeatTest(dependentExample, ({ s, offset }) => {
 ```
 
 The `arb.from()` function takes a callback function that generates one random
-value per call. The callback is given a *pick function* that it can use to
+value per call. The callback is given a _pick function_ that it can use to
 generate random values from Arbitraries. First it chooses a string, and then
 chooses an integer with the appropriate range, from zero up to and including the
 string's length. (Specifically, the `arb.int()` function creates an Arbitrary
@@ -71,20 +71,21 @@ callback has to follow some rules:
 
 This is because sometimes `repeatTest` will rerun a test using the same picks,
 and the result must always be equivalent as far as tests are concerned, or test
-failures won't be reproducible. 
+failures won't be reproducible.
 
 ## More Arbitraries
 
 You can browse the `arb` namespace to learn about functions that define other
 kinds of Arbitraries. The selection is still pretty limited compared to most
-property-testing frameworks, but *repeat-test* makes it easy to define your own.
+property-testing frameworks, but _repeat-test_ makes it easy to define your own.
 
 (To be continued.)
 
 [^1]: Like a cross join in SQL, the number of possible values escalates quickly.
-Considered in terms of sets, `arb.object()` takes multiple sets (Arbitraries) as
-input and returns a much bigger set as output. To get the size of the output
-set, you *multiply* the sizes of each *occurrence* of an input set.
+    Considered in terms of sets, `arb.object()` takes multiple sets
+    (Arbitraries) as input and returns a much bigger set as output. To get the
+    size of the output set, you _multiply_ the sizes of each _occurrence_ of an
+    input set.
 
 [^2]: Equivalent outputs don't have to be equal according to `===` or
     `assertEquals()`. Generating different values is allowed so long as the test

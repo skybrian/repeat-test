@@ -14,7 +14,7 @@ deno task check-docs --verbose # Show the concatenated code
 
 The `scripts/check_doc_examples.ts` script:
 
-1. Extracts all ` ```ts ` code blocks from each markdown file
+1. Extracts all `` ```ts `` code blocks from each markdown file
 2. Merges all imports (deduplicating by source module)
 3. Concatenates all code blocks into a single file
 4. Runs `deno check` on the result
@@ -30,35 +30,31 @@ When showing multiple examples that define the same variable, use different
 names. This allows all blocks to concatenate without redeclaration errors.
 
 **Instead of:**
+
 ```markdown
-Here's one way:
-` ` `ts
-const examples = ["hello", "world"];
-` ` `
+Here's one way: `` `ts
+const examples = ["hello", "world"];` ``
 
 Here's another way:
-` ` `ts
-const examples = arb.of("hello", "world");  // ERROR: redeclares 'examples'
-` ` `
+`` `ts
+const examples = arb.of("hello", "world");  // ERROR: redeclares 'examples'` ``
 ```
 
 **Do this:**
+
 ```markdown
-Here's one way:
-` ` `ts
-const arrayExamples = ["hello", "world"];
-` ` `
+Here's one way: `` `ts
+const arrayExamples = ["hello", "world"];` ``
 
 Here's another way:
-` ` `ts
-const arbExamples = arb.of("hello", "world");  // OK: different name
-` ` `
+`` `ts
+const arbExamples = arb.of("hello", "world");  // OK: different name` ``
 ```
 
 ### Use doc-imports for Cross-Page Context
 
-If a documentation page assumes imports from earlier pages in a series, add
-them in an HTML comment at the top of the file:
+If a documentation page assumes imports from earlier pages in a series, add them
+in an HTML comment at the top of the file:
 
 ```markdown
 # Part 3: Advanced Topics
@@ -79,10 +75,9 @@ For code blocks that shouldn't be type-checked (e.g., showing invalid syntax,
 pseudocode, or shell commands), use the `ignore` modifier:
 
 ```markdown
-` ` `ts ignore
+`` `ts ignore
 // This is conceptual, not real code
-someFunction(magic);
-` ` `
+someFunction(magic);` ``
 ```
 
 ## Adding to CI

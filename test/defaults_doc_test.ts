@@ -71,13 +71,16 @@ describe("documented default values", () => {
   });
 
   it("arb.array(..., { length: 3 }) defaults to [0, 0, 0]", () => {
-    assertEquals(generateDefault(arb.array(arb.int(0, 10), { length: 3 })).val, [0, 0, 0]);
+    assertEquals(
+      generateDefault(arb.array(arb.int(0, 10), { length: 3 })).val,
+      [0, 0, 0],
+    );
   });
 
   it("arb.object({...}) defaults to object with default values", () => {
     assertEquals(
       generateDefault(arb.object({ a: arb.int(1, 5), b: arb.boolean() })).val,
-      { a: 1, b: false }
+      { a: 1, b: false },
     );
   });
 
@@ -87,6 +90,9 @@ describe("documented default values", () => {
   });
 
   it("arb.oneOf(...) defaults to first case's default", () => {
-    assertEquals(generateDefault(arb.oneOf(arb.of(1), arb.of(2), arb.of(3))).val, 1);
+    assertEquals(
+      generateDefault(arb.oneOf(arb.of(1), arb.of(2), arb.of(3))).val,
+      1,
+    );
   });
 });

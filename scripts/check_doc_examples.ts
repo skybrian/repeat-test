@@ -56,10 +56,10 @@ function extractAndConcatenate(content: string): {
   const docImportsMatch = content.match(/<!--\s*doc-imports\s*([\s\S]*?)-->/);
   const docImports = docImportsMatch
     ? docImportsMatch[1]
-        .trim()
-        .split("\n")
-        .map((l) => l.trim())
-        .filter((l) => l)
+      .trim()
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l)
     : [];
 
   // Extract code blocks
@@ -138,7 +138,9 @@ function extractAndConcatenate(content: string): {
       if (aIsType !== bIsType) return aIsType ? 1 : -1;
       return a.localeCompare(b);
     });
-    mergedImports.push(`import { ${sortedItems.join(", ")} } from "${source}";`);
+    mergedImports.push(
+      `import { ${sortedItems.join(", ")} } from "${source}";`,
+    );
   }
 
   return {
@@ -191,7 +193,9 @@ async function checkDocFile(
   }
 
   console.log(`\n📄 ${filePath}`);
-  console.log(`   ${blockCount} blocks${skipped > 0 ? `, ${skipped} skipped` : ""}`);
+  console.log(
+    `   ${blockCount} blocks${skipped > 0 ? `, ${skipped} skipped` : ""}`,
+  );
 
   if (verbose) {
     console.log("\n   Concatenated code:");
@@ -224,10 +228,12 @@ async function checkDocFile(
 
 async function findMarkdownFiles(): Promise<string[]> {
   const files: string[] = [];
-  for await (const entry of walk(".", {
-    exts: [".md"],
-    skip: [/node_modules/, /\.git/],
-  })) {
+  for await (
+    const entry of walk(".", {
+      exts: [".md"],
+      skip: [/node_modules/, /\.git/],
+    })
+  ) {
     if (entry.isFile) {
       files.push(entry.path);
     }
@@ -254,12 +260,12 @@ async function main() {
     try {
       const content = await Deno.readTextFile(file);
       const { blockCount, skipped } = extractAndConcatenate(content);
-      
+
       // Only count files that have code blocks
       if (blockCount > 0 || skipped > 0) {
         checkedCount++;
       }
-      
+
       const passed = await checkDocFile(file, verbose);
       if (!passed) allPassed = false;
     } catch (e) {
@@ -281,9 +287,7 @@ async function main() {
 
   console.log(`\n${"═".repeat(50)}`);
   console.log(
-    allPassed
-      ? "✅ All documentation checks passed"
-      : "❌ Some checks failed",
+    allPassed ? "✅ All documentation checks passed" : "❌ Some checks failed",
   );
 
   if (!allPassed) {

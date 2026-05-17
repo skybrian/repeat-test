@@ -163,7 +163,11 @@ export class FailingTestConsole extends CountingTestConsole {
     return val;
   }
 
-  override checkOdds(key: string, expectedProb: number, condition: boolean): boolean {
+  override checkOdds(
+    key: string,
+    expectedProb: number,
+    condition: boolean,
+  ): boolean {
     super.checkOdds(key, expectedProb, condition);
     this.log(`checkOdds(${key}, ${expectedProb}) =>`, condition);
     return condition;

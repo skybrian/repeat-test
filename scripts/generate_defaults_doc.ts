@@ -27,7 +27,11 @@ function formatValue(val: unknown): string {
   return String(val);
 }
 
-function example(name: string, code: string, arb: { directBuild: unknown }): Example {
+function example(
+  name: string,
+  code: string,
+  arb: { directBuild: unknown },
+): Example {
   const gen = generateDefault(arb);
   return {
     name,
@@ -57,12 +61,24 @@ const examples: Example[] = [
 
   // Collections
   example("array", "arb.array(arb.int(0, 10))", arb.array(arb.int(0, 10))),
-  example("array (fixed length)", "arb.array(arb.int(0, 10), { length: 3 })", arb.array(arb.int(0, 10), { length: 3 })),
-  example("object", "arb.object({ a: arb.int(1, 5), b: arb.boolean() })", arb.object({ a: arb.int(1, 5), b: arb.boolean() })),
+  example(
+    "array (fixed length)",
+    "arb.array(arb.int(0, 10), { length: 3 })",
+    arb.array(arb.int(0, 10), { length: 3 }),
+  ),
+  example(
+    "object",
+    "arb.object({ a: arb.int(1, 5), b: arb.boolean() })",
+    arb.object({ a: arb.int(1, 5), b: arb.boolean() }),
+  ),
 
   // Combinators
-  example("of", "arb.of(\"a\", \"b\", \"c\")", arb.of("a", "b", "c")),
-  example("oneOf", "arb.oneOf(arb.of(1), arb.of(2), arb.of(3))", arb.oneOf(arb.of(1), arb.of(2), arb.of(3))),
+  example("of", 'arb.of("a", "b", "c")', arb.of("a", "b", "c")),
+  example(
+    "oneOf",
+    "arb.oneOf(arb.of(1), arb.of(2), arb.of(3))",
+    arb.oneOf(arb.of(1), arb.of(2), arb.of(3)),
+  ),
 ];
 
 function generateMarkdown(examples: Example[]): string {
@@ -85,15 +101,25 @@ function generateMarkdown(examples: Example[]): string {
   lines.push("");
   lines.push("## Notes");
   lines.push("");
-  lines.push("- `arb.int(min, max)`: Default is `min` for positive ranges, `-1` for negative ranges, or `0` if the range spans zero.");
+  lines.push(
+    "- `arb.int(min, max)`: Default is `min` for positive ranges, `-1` for negative ranges, or `0` if the range spans zero.",
+  );
   lines.push("- `arb.boolean()`: Default is `false`.");
-  lines.push("- `arb.string()` and other string arbitraries: Default is the empty string `\"\"`.");
-  lines.push("- `arb.array(...)`: Default is an empty array `[]`, unless a fixed length is specified.");
+  lines.push(
+    '- `arb.string()` and other string arbitraries: Default is the empty string `""`.',
+  );
+  lines.push(
+    "- `arb.array(...)`: Default is an empty array `[]`, unless a fixed length is specified.",
+  );
   lines.push("- `arb.of(...)`: Default is the first value.");
   lines.push("- `arb.oneOf(...)`: Default comes from the first case.");
-  lines.push("- `arb.object(...)`: Default has each property set to its arbitrary's default.");
+  lines.push(
+    "- `arb.object(...)`: Default has each property set to its arbitrary's default.",
+  );
   lines.push("");
-  lines.push("When writing custom Arbitraries with `arb.from()`, the default is determined by");
+  lines.push(
+    "When writing custom Arbitraries with `arb.from()`, the default is determined by",
+  );
   lines.push("each nested `pick()` call returning its own default value.");
   lines.push("");
 
@@ -104,9 +130,13 @@ const markdown = generateMarkdown(examples);
 
 if (Deno.args.includes("--check")) {
   // Check mode: compare with existing file
-  const existingContent = await Deno.readTextFile("docs/defaults.md").catch(() => "");
+  const existingContent = await Deno.readTextFile("docs/defaults.md").catch(
+    () => "",
+  );
   if (existingContent !== markdown) {
-    console.error("docs/defaults.md is out of date. Run: deno task generate-defaults");
+    console.error(
+      "docs/defaults.md is out of date. Run: deno task generate-defaults",
+    );
     Deno.exit(1);
   }
   console.log("docs/defaults.md is up to date.");

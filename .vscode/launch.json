@@ -1,39 +1,39 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Debug Current File",
-            "request": "launch",
-            "type": "node",
-            "program": "${file}",
-            "cwd": "${workspaceFolder}",
-            "env": {},
-            "runtimeExecutable": "/Users/skybrian/.deno/bin/deno",
-            "runtimeArgs": [
-                "--inspect-brk",
-                "--allow-all"
-            ],
-            "attachSimplePort": 9229,
-            "outputCapture": "std",
-        },
-        {
-            "name": "Debug Current Test",
-            "request": "launch",
-            "type": "node",
-            "program": "${file}",
-            "cwd": "${workspaceFolder}",
-            "env": {},
-            "runtimeExecutable": "/Users/skybrian/.deno/bin/deno",
-            "runtimeArgs": [
-                "test",
-                "--inspect-brk",
-                "--allow-all"
-            ],
-            "attachSimplePort": 9229,
-            "outputCapture": "std",
-        }
-    ]
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Current File",
+      "request": "launch",
+      "type": "node",
+      "program": "${file}",
+      "cwd": "${workspaceFolder}",
+      "env": {},
+      "runtimeExecutable": "/Users/skybrian/.deno/bin/deno",
+      "runtimeArgs": [
+        "--inspect-brk",
+        "--allow-all"
+      ],
+      "attachSimplePort": 9229,
+      "outputCapture": "std"
+    },
+    {
+      "name": "Debug Current Test",
+      "request": "launch",
+      "type": "node",
+      "program": "${file}",
+      "cwd": "${workspaceFolder}",
+      "env": {},
+      "runtimeExecutable": "/Users/skybrian/.deno/bin/deno",
+      "runtimeArgs": [
+        "test",
+        "--inspect-brk",
+        "--allow-all"
+      ],
+      "attachSimplePort": 9229,
+      "outputCapture": "std"
+    }
+  ]
 }

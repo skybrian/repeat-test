@@ -2,13 +2,14 @@
 
 ## Introducing Arbitraries
 
-In [Part 1](./1_getting_started.md) we saw a test that uses two examples, defined like this:
+In [Part 1](./1_getting_started.md) we saw a test that uses two examples,
+defined like this:
 
 ```ts
 const arrayExamples = ["hello", "world"];
 ```
 
-Here's how to do the same thing using an *Arbitrary* instead:
+Here's how to do the same thing using an _Arbitrary_ instead:
 
 ```ts
 import { arb } from "@skybrian/repeat-test";
@@ -16,14 +17,14 @@ import { arb } from "@skybrian/repeat-test";
 const examples = arb.of("hello", "world"); // Not an array anymore.
 ```
 
-The type of *examples* is now `Arbitrary<string>`, but it contains the same
+The type of _examples_ is now `Arbitrary<string>`, but it contains the same
 data, and `repeatTest` function will run the same examples.
 
 Each Arbitrary represents a set of possible examples. Arbitraries can represent
-small or large sets, sometimes *very* large; for example, `arb.string()`
-is the set of all possible small strings. Arbitraries *usually* generate
-fresh examples on demand, but `arb.of` is different; it picks from the examples
-it's given and returns them as-is. [^1]
+small or large sets, sometimes _very_ large; for example, `arb.string()` is the
+set of all possible small strings. Arbitraries _usually_ generate fresh examples
+on demand, but `arb.of` is different; it picks from the examples it's given and
+returns them as-is. [^1]
 
 ## Random testing
 
@@ -39,9 +40,9 @@ repeatTest(arb.string(), (s) => {
 ```
 
 This will run the test with the empty string, followed by a thousand more
-randomly generated strings. 
+randomly generated strings.
 
-More generally, every Arbitrary is required to have a *default value*. [^2] In
+More generally, every Arbitrary is required to have a _default value_. [^2] In
 this case, the empty string. The `repeatTest` function always calls the test
 function first with the Arbitrary's default, as a "smoke test." If the test
 fails with the default value, there's not much point looking further.
@@ -64,7 +65,7 @@ tests become shorter, more abstract, and in some ways, harder to review; it's
 difficult to say whether or not a specific case is covered. There's a danger
 that we will get a false sense of security about our test coverage.
 
-A *sometimes* assertion can help with that. For example, let's say we want to
+A _sometimes_ assertion can help with that. For example, let's say we want to
 know whether `arb.string()` automatically includes strings that are long enough
 to test something we care about. Here's how to explicitly assert that:
 
@@ -74,23 +75,23 @@ repeatTest(arb.string(), (s, console) => {
 });
 ```
 
-*Sometimes* assertions can be useful documentation, informing the reader that a
+_Sometimes_ assertions can be useful documentation, informing the reader that a
 particular case is covered. They also help ensure that a project's test coverage
 doesn't regress. For example, if the probability distribution for `arb.string()`
-were to change in a new release of *repeat-test,* a failed *sometimes* assertion
+were to change in a new release of _repeat-test,_ a failed _sometimes_ assertion
 would reveal that a test no longer covers what it should.
 
 ## What's a property test?
 
-Tests written in this style are called *property tests*. This has nothing to do
+Tests written in this style are called _property tests_. This has nothing to do
 with JavaScript properties. They're called that because each test has an
-interpretation as a *mathematical* property. For example, we wrote a test that
+interpretation as a _mathematical_ property. For example, we wrote a test that
 seems to be evidence for the assertion that "for all strings, length >= 0." It's
 a trivial mathemetical statement, and for JavaScript strings, we're pretty sure
 it's true.
 
 But it's important to remember that a mathematical interpretation of a property
-test is *conceptual* and sometimes misleading; the tests do something different.
+test is _conceptual_ and sometimes misleading; the tests do something different.
 Consider that this test also passes:
 
 ```ts
@@ -105,9 +106,9 @@ it's really saying is that, for the probability distribution used by
 `arb.string()`, strings that contain specific words are rare.
 
 It's helpful to define the mathematical properties for a function because it
-clarifies what *counts* as a bug. Also, a property test helps us gain confidence
+clarifies what _counts_ as a bug. Also, a property test helps us gain confidence
 that the property is rarely false. Such tests can surprise us by finding a new
-bug. But *rarely false* isn't the same as *always true.*
+bug. But _rarely false_ isn't the same as _always true._
 
 Here's another assertion that might look a little strange:
 
@@ -117,14 +118,15 @@ repeatTest(arb.string(), (s) => {
 });
 ```
 
-This is because by default, `arb.string` only generates *small* strings with length up to a thousand. 
+This is because by default, `arb.string` only generates _small_ strings with
+length up to a thousand.
 
 ## Using length constraints
 
-Maybe you don't want to test with *any* string, or you're specifically
-interested in *large* strings? Many arbitraries take options that adjust the
+Maybe you don't want to test with _any_ string, or you're specifically
+interested in _large_ strings? Many arbitraries take options that adjust the
 examples they generate. All built-in Arbitraries that generate strings or arrays
-take a *length* constraint, which can be used like this:
+take a _length_ constraint, which can be used like this:
 
 ```ts
 repeatTest(arb.string({ length: 2 }), (s) => {
@@ -142,7 +144,8 @@ repeatTest(arb.string({ length: { min: 1, max: 5 } }), (s) => {
 
 ## Combining deterministic and random testing
 
-We can get the best of both worlds using an array that contains both examples and Arbitraries:
+We can get the best of both worlds using an array that contains both examples
+and Arbitraries:
 
 ```ts
 import { assert } from "@std/assert";
@@ -171,19 +174,19 @@ more that are generated by the Arbitraries.
 ## More inputs
 
 So far we've only seen tests that rely on a single input. To learn about the
-different ways to generate *multiple* inputs, see [Part
-3](./3_multiple_inputs.md).
+different ways to generate _multiple_ inputs, see
+[Part 3](./3_multiple_inputs.md).
 
 [^1]: Since the values won't be regenerated, `arb.of()` requires them to be
-    *frozen*. This is automatically true for strings. For non-primitive objects,
+    _frozen_. This is automatically true for strings. For non-primitive objects,
     you can use `Object.freeze()`.
 
-[^2]: Yes, this means empty Arbitraries are not allowed in `repeat-test`.
-    Other property-testing libraries have Arbitraries that work differently.
+[^2]: Yes, this means empty Arbitraries are not allowed in `repeat-test`. Other
+    property-testing libraries have Arbitraries that work differently.
 
-[^3]: What if the Arbitraries don't *have* 1000 examples total? In that case,
+[^3]: What if the Arbitraries don't _have_ 1000 examples total? In that case,
     `repeat-test` stops when it runs out. For small Arbitraries, `repeatTest`
-    will do an exhaustive search, but in random order. For *large* Arbitraries,
+    will do an exhaustive search, but in random order. For _large_ Arbitraries,
     it's not possible to run out of examples, so duplicate tracking is partially
     disabled to save memory. As a result, duplicates are improbable, but could
     still theoretically happen.

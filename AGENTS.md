@@ -1,8 +1,11 @@
 # repeat-test
 
-A property-based testing library for Deno/TypeScript, similar to fast-check or QuickCheck.
+A property-based testing library for Deno/TypeScript, similar to fast-check or
+QuickCheck.
 
-> **Using repeat-test in another project?** See [docs/reference.md](./docs/reference.md) for API documentation and usage guidelines.
+> **Using repeat-test in another project?** See
+> [docs/reference.md](./docs/reference.md) for API documentation and usage
+> guidelines.
 
 ## Task Quick Reference
 
@@ -42,16 +45,19 @@ scripts/             # Build/dev scripts
 
 ## Concepts that are mostly used internally
 
-- **Pickable<T>** Most-general supertype of Arbitrary; something that picks values
+- **Pickable<T>** Most-general supertype of Arbitrary; something that picks
+  values
 - **Script<T>**: A named function that generates values (extends Pickable)
-- **Domain<T>**: An Arbitrary that can also parse/validate values (bidirectional)
+- **Domain<T>**: An Arbitrary that can also parse/validate values
+  (bidirectional)
 - **Gen**: A generated value with its pick sequence (for shrinking)
 
 ## Test Conventions
 
 - Tests use `@std/testing/bdd` style (describe/it)
 - Test files are in `test/` with `_test.ts` suffix
-- Use `takeAll()` from `src/ordered.ts` to enumerate all values of small Arbitraries
+- Use `takeAll()` from `src/ordered.ts` to enumerate all values of small
+  Arbitraries
 - Use `assertRoundTrip()` from `test/lib/asserts.ts` for Domain round-trip tests
 - Use `frozen()` instead of `Object.freeze()` for test examples
 
@@ -75,4 +81,5 @@ scripts/             # Build/dev scripts
 
 Run benchmarks with: `deno bench performance/benchmarks.ts`
 
-Record results in `performance/exe_dev_benchmarks.md` (see that file for instructions).
+Record results in `performance/exe_dev_benchmarks.md` (see that file for
+instructions).

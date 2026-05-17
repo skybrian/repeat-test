@@ -67,7 +67,9 @@ async function checkExamples(): Promise<CheckResult[]> {
 
     const ok = shouldFail ? !success : success;
     if (!ok) {
-      console.log(`    FAILED${shouldFail ? " (should have failed but passed)" : ""}`);
+      console.log(
+        `    FAILED${shouldFail ? " (should have failed but passed)" : ""}`,
+      );
     }
     results.push({ name: `example: ${entry.name}`, ok });
   }
@@ -176,7 +178,9 @@ async function main(): Promise<number> {
     console.log("  1. Update version in deno.jsonc");
     console.log("  2. Update CHANGELOG.md (rename Unreleased to version)");
     console.log("  3. deno publish --dry-run");
-    console.log("  4. git add deno.jsonc CHANGELOG.md && git commit -m 'Release vX.Y.Z'");
+    console.log(
+      "  4. git add deno.jsonc CHANGELOG.md && git commit -m 'Release vX.Y.Z'",
+    );
     console.log("  5. git tag vX.Y.Z");
     console.log("  6. git push origin main --tags");
     console.log("  7. deno publish");

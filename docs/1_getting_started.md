@@ -24,11 +24,11 @@ simply gave it an array of examples.
 The second argument is a test function to run. It takes an example as its first
 argument. Since there are only two examples, it will run twice.
 
- Here is how to run it:
+Here is how to run it:
 
- ```
- % deno ./examples/hello.ts                                                                                                              
- ```
+```
+% deno ./examples/hello.ts
+```
 
 Since the test passes, running it doesn't print anything.
 
@@ -62,7 +62,7 @@ error: Uncaught (in promise) AssertionError: Values are not equal.
     at runRep (file:///Users/skybrian/Projects/deno/repeat-test/src/runner.ts:182:9)
     at runReps (file:///Users/skybrian/Projects/deno/repeat-test/src/runner.ts:211:17)
     at repeatTest (file:///Users/skybrian/Projects/deno/repeat-test/src/runner.ts:353:15)
-    at file:///Users/skybrian/Projects/deno/repeat-test/examples/hello.ts:6:1                                                            
+    at file:///Users/skybrian/Projects/deno/repeat-test/examples/hello.ts:6:1
 ```
 
 From the message we can see that it failed the second time, since it prints the
@@ -100,9 +100,9 @@ attempt 2 FAILED, using: world!
 The console output appears on the second line. (It's not that useful in this
 case, but you can see that it worked.)
 
-Notice that the test failed first, *then* its output was printed? This is
-because a failed repetition gets run *again* with the TestConsole turned on. (A
-failing test will run *many* times due to *shrinking*, about which more later.)
+Notice that the test failed first, _then_ its output was printed? This is
+because a failed repetition gets run _again_ with the TestConsole turned on. (A
+failing test will run _many_ times due to _shrinking_, about which more later.)
 
 Normally we take `console.log` calls out when we're done debugging, but since
 TestConsole output is normally suppressed, feel free to leave the log statement
@@ -144,7 +144,7 @@ examples and get to the example that failed. Here is how to use it:
 repeatTest(failingExamples, (word, console) => {
   console.log("word:", word, "length:", word.length);
   assertEquals(word.length, 5);
-}, {only: "1"}); // added the 'only' option
+}, { only: "1" }); // added the 'only' option
 ```
 
 The third argument to `repeatTest` contains additional options that control
@@ -170,8 +170,8 @@ The `repeatTest` function doesn't care which test framework you use, and as
 we've seen, you don't need a test framework at all to write and run a test.
 
 But when you write many tests, it's often better to use a test framework. Here
-is how I do it using Deno's [bdd
-framework](https://docs.deno.com/runtime/fundamentals/testing/):
+is how I do it using Deno's
+[bdd framework](https://docs.deno.com/runtime/fundamentals/testing/):
 
 ```ts
 import { assertEquals } from "@std/assert";
