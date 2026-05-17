@@ -20,28 +20,6 @@ function checkRandomGenerate(script: Script<unknown>) {
   );
 }
 
-export type ArbitraryOpts = {
-  /**
-   * The name of this Arbitrary, for use in error messages.
-   */
-  name?: string;
-
-  /**
-   * How often this Arbitrary should be used, relative to other choices.
-   *
-   * This influences the behavior of arb.oneOf() and arb.union() when picking
-   * randomly.
-   *
-   * Defaults to 1.
-   */
-  weight?: number;
-
-  /**
-   * If true, picks from this Arbitrary may be cached when shrinking.
-   */
-  cachable?: boolean;
-};
-
 /**
  * A set of values that can be generated on demand.
  *

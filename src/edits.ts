@@ -125,8 +125,6 @@ export class EditResponder implements PickResponder {
 
 export type GroupKey = number | string;
 
-export const removeGroup = Symbol("removeGroup");
-
 /**
  * Returns the GroupEdit to use for each group.
  */
