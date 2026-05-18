@@ -135,17 +135,6 @@ export function* generateAll<T>(
   }
 }
 
-export function takeGenerated<T>(arg: Pickable<T>, n: number): Gen<T>[] {
-  const result = [];
-  for (const gen of generateAll(arg)) {
-    result.push(gen);
-    if (result.length >= n) {
-      break;
-    }
-  }
-  return result;
-}
-
 /**
  * Returns up to n examples from this Arbitrary, in the same order as
  * {@link generateAll}.

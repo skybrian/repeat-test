@@ -9,14 +9,13 @@ import { Filtered } from "../src/pickable.ts";
 import { IntRequest, PickList } from "../src/picks.ts";
 import { Script } from "../src/script_class.ts";
 
-import { assertGenerated, assertValues } from "./lib/asserts.ts";
+import { assertGenerated, assertValues, takeGenerated } from "./lib/asserts.ts";
 import {
   generateAll,
   orderedPlayouts,
   OrderedTracker,
   take,
   takeAll,
-  takeGenerated,
 } from "../src/ordered.ts";
 import { arb } from "@/mod.ts";
 

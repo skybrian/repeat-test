@@ -2,7 +2,7 @@ import type { Arbitrary, Pickable } from "../../src/entrypoints/core.ts";
 import type { Domain } from "@/core.ts";
 
 import { assert, assertEquals, fail } from "@std/assert";
-import { take, takeAll, takeGenerated } from "../../src/ordered.ts";
+import { generateAll, take, takeAll } from "../../src/ordered.ts";
 import { randomPicker } from "../../src/random.ts";
 import { usePicker } from "../../src/build.ts";
 import { Gen } from "../../src/entrypoints/core.ts";
@@ -69,6 +69,17 @@ export function assertSameExamples<T>(
   const actualVals = new Set(takeAll(actual));
   const expectedVals = new Set(takeAll(expected));
   assertEquals(actualVals, expectedVals);
+}
+
+export function takeGenerated<T>(arg: Pickable<T>, n: number): Gen<T>[] {
+  const result = [];
+  for (const gen of generateAll(arg)) {
+    result.push(gen);
+    if (result.length >= n) {
+      break;
+    }
+  }
+  return result;
 }
 
 type Generated<T> = { val: T; picks: number[] };
