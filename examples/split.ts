@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-debugger
 import { assertEquals } from "@std/assert";
 import { arb, repeatTest } from "@skybrian/repeat-test";
 
