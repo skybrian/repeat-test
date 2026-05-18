@@ -10,8 +10,9 @@ import {
   assertFirstValues,
   assertValues,
 } from "../lib/asserts.ts";
-import { generateDefault, takeAll } from "../../src/ordered.ts";
+import { generateDefault } from "../../src/ordered.ts";
 import { intRange } from "../lib/ranges.ts";
+import { takeAll } from "../lib/examples.ts";
 
 describe("uniqueArray", () => {
   it("defaults to an empty array", () => {

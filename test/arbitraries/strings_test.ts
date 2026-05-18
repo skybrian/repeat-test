@@ -17,7 +17,7 @@ import {
 import { isWellFormed } from "../../src/workarounds.ts";
 
 import { scriptFrom } from "../../src/scripts/scriptFrom.ts";
-import { takeAll } from "../../src/ordered.ts";
+import { takeAll } from "../lib/examples.ts";
 
 function assertCharCodeRange(
   set: Pickable<string>,
