@@ -9,11 +9,11 @@ import { neverReturns, Script } from "../src/script_class.ts";
 import { Gen, generate, MutableGen } from "../src/gen_class.ts";
 import { propsFromGen } from "./lib/props.ts";
 import { minPlayout, onePlayout } from "../src/backtracking.ts";
-import { depthFirstPlayouts } from "../src/partial_tracker.ts";
 import { orderedPlayouts } from "../src/ordered.ts";
 import { randomPicker } from "../src/random.ts";
 import { repeatTest } from "../src/runner.ts";
 import { frozen } from "../src/frozen.ts";
+import { depthFirstPlayouts } from "./lib/picks.ts";
 
 const bitReq = IntRequest.bit;
 

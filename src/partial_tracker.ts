@@ -1,9 +1,7 @@
 import type { IntPicker, IntRequest } from "./picks.ts";
 import type { Tracker } from "./backtracking.ts";
 
-import { alwaysPickMin } from "./picks.ts";
 import { PickTree } from "./pick_tree.ts";
-import { Backtracker } from "./backtracking.ts";
 
 /**
  * Picks playouts based on an IntPicker (usually random).
@@ -51,11 +49,4 @@ export class PartialTracker implements Tracker {
     this.walk.prune();
     return this.walk.pruned ? undefined : this.walk.depth;
   }
-}
-
-/**
- * Playouts in depth-first order, starting with all minimum picks.
- */
-export function depthFirstPlayouts(): Backtracker {
-  return new Backtracker(new PartialTracker(alwaysPickMin));
 }
