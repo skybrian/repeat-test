@@ -135,34 +135,6 @@ export function* generateAll<T>(
   }
 }
 
-/**
- * Returns the first generated value that satisfies the given predicate, if it's
- * within the given limit.
- *
- * It returns undefined if every possible value was tried.
- */
-export function find<T>(
-  arg: Pickable<T>,
-  predicate: (val: T) => boolean,
-  opts?: { limit: number },
-): Gen<T> | undefined {
-  const script = scriptFrom(arg);
-  const limit = opts?.limit ?? 1000;
-
-  let count = 0;
-  for (const gen of generateAll(arg)) {
-    if (predicate(gen.val)) {
-      return gen;
-    }
-    if (++count >= limit) {
-      throw new Error(
-        `find for '${script.name}': no match found in the first ${limit} values`,
-      );
-    }
-  }
-  return undefined;
-}
-
 export function takeGenerated<T>(arg: Pickable<T>, n: number): Gen<T>[] {
   const result = [];
   for (const gen of generateAll(arg)) {

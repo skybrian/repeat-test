@@ -11,7 +11,6 @@ import { Script } from "../src/script_class.ts";
 
 import { assertGenerated, assertValues } from "./lib/asserts.ts";
 import {
-  find,
   generateAll,
   orderedPlayouts,
   OrderedTracker,
@@ -287,26 +286,6 @@ describe("takeGenerated", () => {
     assertEquals(Array.from(vals[0].replies), [0, 0, 0]);
     assertEquals(vals[999].val, 999);
     assertEquals(Array.from(vals[999].replies), [9, 9, 9]);
-  });
-});
-
-describe("find", () => {
-  const letters = Arbitrary.of("a", "b", "c");
-  it("finds a generated value", () => {
-    const gen = find(letters, (v) => v === "b");
-    assert(gen !== undefined);
-    assertEquals(gen.val, "b");
-  });
-  it("throws if it doesn't find it", () => {
-    assertEquals(find(letters, (v) => v === "d"), undefined);
-  });
-  it("throws if it doesn't find it within the limit", () => {
-    const letters = Arbitrary.of("a", "b", "c");
-    assertThrows(
-      () => find(letters, (v) => v === "c", { limit: 2 }),
-      Error,
-      "find for '3 examples': no match found in the first 2 values",
-    );
   });
 });
 
