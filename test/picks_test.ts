@@ -13,7 +13,6 @@ import * as arb from "@/arbs.ts";
 import { invalidIntRange } from "./lib/ranges.ts";
 
 import {
-  alwaysPick,
   biasedBitRequest,
   IntRequest,
   PickBuffer,
@@ -324,17 +323,6 @@ describe("PickList", () => {
       assertEquals(picks.replies, [2, 3]);
       assertEquals(picks.trimmedLength, 2);
     });
-  });
-});
-
-describe("alwaysPick", () => {
-  it("throws if the pick isn't within the range", () => {
-    const threes = alwaysPick(3);
-    assertThrows(
-      () => threes.pick(new IntRequest(0, 1)),
-      Error,
-      "can't satisfy request (0, 1) with 3",
-    );
   });
 });
 

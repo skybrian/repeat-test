@@ -7,7 +7,7 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { Arbitrary, Filtered } from "../src/entrypoints/core.ts";
 import * as arb from "@/arbs.ts";
 
-import { alwaysPick, IntRequest, PickBuffer } from "../src/picks.ts";
+import { IntRequest, PickBuffer } from "../src/picks.ts";
 import { CallBuffer, regen } from "../src/calls.ts";
 import { Backtracker } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
@@ -19,6 +19,7 @@ import {
   usePicks,
 } from "../src/build.ts";
 import { Script } from "../src/script_class.ts";
+import { alwaysPick } from "./lib/picks.ts";
 
 const bitReq = IntRequest.bit;
 

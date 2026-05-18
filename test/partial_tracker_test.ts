@@ -11,11 +11,12 @@ import { repeatTest } from "@/runner.ts";
 import * as arb from "@/arbs.ts";
 
 import { filtered } from "../src/results.ts";
-import { alwaysPick, alwaysPickMin, IntRequest } from "../src/picks.ts";
+import { alwaysPickMin, IntRequest } from "../src/picks.ts";
 import { randomPicker, randomPlayouts } from "../src/random.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
 import { generate } from "../src/gen_class.ts";
 import { Backtracker } from "../src/backtracking.ts";
+import { alwaysPick } from "./lib/picks.ts";
 
 const bit = new IntRequest(0, 1);
 
