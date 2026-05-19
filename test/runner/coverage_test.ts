@@ -4,7 +4,7 @@ import { AssertionError } from "@std/assert";
 
 import { analyzeCoverage } from "../../src/runner/coverage.ts";
 import type { Coverage } from "../../src/console.ts";
-import { RecordingConsole } from "../../src/console.ts";
+import { RecordingConsole } from "../lib/console.ts";
 
 describe("analyzeCoverage", () => {
   it("does nothing for empty coverage", () => {

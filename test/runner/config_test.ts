@@ -9,7 +9,7 @@ import {
 } from "../../src/runner/config.ts";
 import { repeatTest } from "../../src/runner.ts";
 import * as arb from "@/arbs.ts";
-import { RecordingConsole } from "../../src/console.ts";
+import { RecordingConsole } from "../lib/console.ts";
 
 describe("config constants", () => {
   it("defaultReps is 1000", () => {

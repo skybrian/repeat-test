@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, it } from "@std/testing/bdd";
 import { assertStringIncludes } from "@std/assert";
 import { arb, repeatTest } from "../src/entrypoints/mod.ts";
 import { setRepsForTesting } from "../src/runner/config.ts";
-import { RecordingConsole } from "../src/console.ts";
+import { RecordingConsole } from "./lib/console.ts";
 
 describe("checkOdds", () => {
   beforeEach(() => {

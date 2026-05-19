@@ -19,7 +19,7 @@ import {
   PickList,
   PlaybackPicker,
 } from "../src/picks.ts";
-import { RecordingConsole } from "../src/console.ts";
+import { RecordingConsole } from "./lib/console.ts";
 
 describe("IntRequest.random", () => {
   let calls = 0;
