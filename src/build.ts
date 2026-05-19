@@ -40,39 +40,6 @@ export function usePicker(picker: IntPicker): PickFunction {
   return makePickFunction(responderFromPicker(picker));
 }
 
-/** Creates a simple, non-backtracking pick source. */
-export function responderFromReplies(replies: number[]): PickResponder {
-  let depth = 0;
-
-  return {
-    startAt(newDepth: number): boolean {
-      // can't backtrack; no alternative picks available
-      return newDepth === depth;
-    },
-    nextPick(req: IntRequest): number | undefined {
-      if (depth >= replies.length) {
-        depth++; // prevent backtracking
-        return req.min;
-      }
-      const pick = replies[depth++];
-      if (pick < req.min || pick > req.max) {
-        return undefined; // filtered out
-      }
-      return pick;
-    },
-    get depth(): number {
-      return depth;
-    },
-  };
-}
-
-/**
- * Creates a pick function that plays a single pick sequence.
- */
-export function usePicks(...replies: number[]): PickFunction {
-  return makePickFunction(responderFromReplies(replies));
-}
-
 /**
  * A destination for recording picks made via a pick function.
  */

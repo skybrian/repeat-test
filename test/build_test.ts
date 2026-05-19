@@ -12,14 +12,9 @@ import { CallBuffer, regen } from "../src/calls.ts";
 import { Backtracker } from "../src/backtracking.ts";
 import { PartialTracker } from "../src/partial_tracker.ts";
 import { randomPlayouts } from "../src/random.ts";
-import {
-  makePickFunction,
-  responderFromPicker,
-  responderFromReplies,
-  usePicks,
-} from "../src/build.ts";
+import { makePickFunction, responderFromPicker } from "../src/build.ts";
 import { Script } from "../src/script_class.ts";
-import { alwaysPick } from "./lib/picks.ts";
+import { alwaysPick, responderFromReplies, usePicks } from "./lib/picks.ts";
 
 const bitReq = IntRequest.bit;
 

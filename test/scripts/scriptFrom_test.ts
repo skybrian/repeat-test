@@ -4,7 +4,7 @@ import { describe, it } from "@std/testing/bdd";
 import { assertEquals, assertThrows } from "@std/assert";
 import { scriptFrom } from "../../src/scripts/scriptFrom.ts";
 import { IntRequest } from "../../src/entrypoints/core.ts";
-import { usePicks } from "../../src/build.ts";
+import { usePicks } from "../lib/picks.ts";
 
 describe("scriptFrom", () => {
   it("throws if given an invalid argument", () => {

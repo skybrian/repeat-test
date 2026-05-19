@@ -14,7 +14,7 @@ import { generate } from "../../src/gen_class.ts";
 import { onePlayout } from "../../src/backtracking.ts";
 import { randomPicker } from "../../src/random.ts";
 import { generateDefault } from "../../src/ordered.ts";
-import { usePicks } from "../../src/build.ts";
+import { usePicks } from "../lib/picks.ts";
 
 describe("alias", () => {
   const recurse: Arbitrary<number> = arb.alias(() => depth);

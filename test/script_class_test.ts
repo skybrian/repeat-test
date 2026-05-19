@@ -3,8 +3,8 @@ import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 
 import { filtered } from "../src/results.ts";
 import { IntRequest } from "../src/picks.ts";
-import { usePicks } from "../src/build.ts";
 import { Script } from "../src/script_class.ts";
+import { usePicks } from "./lib/picks.ts";
 
 const bool = Script.make("bool", (pick) => pick(IntRequest.bit) === 1);
 
