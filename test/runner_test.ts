@@ -511,12 +511,21 @@ describe("reportFailure", () => {
     con.checkEmpty();
   });
 
-  it("escapes string arguments including line separators", () => {
+  it("escapes string arguments containing invisible or formatting characters", () => {
     for (
       const [arg, expected] of [
         ["a\r b", '"a\\r b"'],
         ["\u2028", '"\\u2028"'],
         ["\u2029", '"\\u2029"'],
+        ["\u007f\u0080\u009f", '"\\u007f\\u0080\\u009f"'],
+        [
+          "\u00ad\u200b\u200c\u200d\u2060\ufeff",
+          '"\\u00ad\\u200b\\u200c\\u200d\\u2060\\ufeff"',
+        ],
+        [
+          "\u061c\u200e\u200f\u202a\u202e\u2066\u2069\u206f",
+          '"\\u061c\\u200e\\u200f\\u202a\\u202e\\u2066\\u2069\\u206f"',
+        ],
         ['"\\\n', '"\\"\\\\\\n"'],
       ]
     ) {
@@ -604,6 +613,9 @@ describe("repeatTest", () => {
         ["\r", '"\\r"'],
         ["\u2028", '"\\u2028"'],
         ["\u2029", '"\\u2029"'],
+        ["\u200b", '"\\u200b"'],
+        ["\u202e", '"\\u202e"'],
+        ["\u009b", '"\\u009b"'],
       ]
     ) {
       const seen: string[] = [];
