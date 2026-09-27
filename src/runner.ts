@@ -313,7 +313,13 @@ export function reportFailure(
   console: SystemConsole,
 ): never {
   const key = serializeRepKey(failure.key);
-  console.error(`attempt FAILED, using:`, failure.arg);
+  const arg = typeof failure.arg === "string"
+    ? JSON.stringify(failure.arg).replace(
+      /[\u007f-\u009f\u00ad\u061c\u200b-\u200f\u2028-\u202e\u2060\u2066-\u206f\ufeff]/g,
+      (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`,
+    )
+    : failure.arg;
+  console.error(`attempt FAILED, using:`, arg);
   console.log(`rerun using {only: "${key}"}`);
   throw failure.caught;
 }

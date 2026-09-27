@@ -510,6 +510,42 @@ describe("reportFailure", () => {
     con.logged('rerun using {only: "0:1:1"}');
     con.checkEmpty();
   });
+
+  it("escapes string arguments containing invisible or formatting characters", () => {
+    for (
+      const [arg, expected] of [
+        ["a\r b", '"a\\r b"'],
+        ["\u2028", '"\\u2028"'],
+        ["\u2029", '"\\u2029"'],
+        ["\u007f\u0080\u009f", '"\\u007f\\u0080\\u009f"'],
+        [
+          "\u00ad\u200b\u200c\u200d\u2060\ufeff",
+          '"\\u00ad\\u200b\\u200c\\u200d\\u2060\\ufeff"',
+        ],
+        [
+          "\u061c\u200e\u200f\u202a\u202e\u2066\u2069\u206f",
+          '"\\u061c\\u200e\\u200f\\u202a\\u202e\\u2066\\u2069\\u206f"',
+        ],
+        ['"\\\n', '"\\"\\\\\\n"'],
+      ]
+    ) {
+      const caught = new Error("oops");
+      assertThrows(
+        () =>
+          reportFailure({
+            ok: false,
+            key: { id: 0, seed: 1, index: 1 },
+            arg,
+            caught,
+          }, con),
+        Error,
+        "oops",
+      );
+      con.logged(["attempt FAILED, using:", expected], { type: "error" });
+      con.logged('rerun using {only: "0:1:1"}');
+      con.checkEmpty();
+    }
+  });
 });
 
 describe("repeatTest", () => {
@@ -569,6 +605,35 @@ describe("repeatTest", () => {
     // The failed test will be run a second time with logging enabled.
     assertEquals(inputs, [1, 2, 2]);
     con.loggedTestFailed();
+  });
+
+  it("reports escaped strings after shrinking", () => {
+    for (
+      const [value, expected] of [
+        ["\r", '"\\r"'],
+        ["\u2028", '"\\u2028"'],
+        ["\u2029", '"\\u2029"'],
+        ["\u200b", '"\\u200b"'],
+        ["\u202e", '"\\u202e"'],
+        ["\u009b", '"\\u009b"'],
+      ]
+    ) {
+      const seen: string[] = [];
+      assertThrows(
+        () =>
+          repeatTest(arb.of(value), (arg) => {
+            seen.push(arg);
+            throw new Error("oops");
+          }, { reps: 0, console: con }),
+        Error,
+        "oops",
+      );
+      assertEquals(seen, [value, value]);
+      con.loggedTestFailed();
+      con.logged(["attempt FAILED, using:", expected], { type: "error" });
+      con.logged('rerun using {only: "0"}');
+      con.checkEmpty();
+    }
   });
 
   it("shrinks the test input when a random test fails", () => {
