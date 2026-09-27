@@ -32,6 +32,12 @@ function makeRegenerateFunction<T>(
   };
 }
 
+/** A replayed edit; candidates may be committed after their predicate runs. */
+export type EditCandidate<T> =
+  | { kind: "filtered" }
+  | { kind: "unchanged" }
+  | { kind: "candidate"; val: T; commit(): void };
+
 export class MutableGen<T> {
   readonly #script: Script<T>;
   readonly #buf = new CallBuffer();
@@ -51,17 +57,10 @@ export class MutableGen<T> {
   tryEdits(edits: MultiEdit, test?: (val: T) => boolean): boolean {
     this.#buf.reset();
     const result = replayWithEdits(this.#script, this.#calls, edits, this.#buf);
-    if (result === filtered) {
-      return false; // edits didn't apply
-    } else if (result === unchanged) {
-      return true; // edits applied, but had no effect
-    }
-
-    if (test && !test(result)) {
-      return false; // didn't pass the test
-    }
-
-    this.commit(result);
+    if (result === filtered) return false;
+    if (result === unchanged) return true;
+    if (test && !test(result)) return false;
+    this.commit(result, this.#buf.take());
     return true;
   }
 
@@ -78,18 +77,44 @@ export class MutableGen<T> {
       end,
       this.#buf,
     );
-    if (result === filtered) {
-      return false; // edits didn't apply
-    } else if (result === unchanged) {
-      return true; // edits applied, but had no effect
-    }
-
-    if (test && !test(result)) {
-      return false; // didn't pass the test
-    }
-
-    this.commit(result);
+    if (result === filtered) return false;
+    if (result === unchanged) return true;
+    if (test && !test(result)) return false;
+    this.commit(result, this.#buf.take());
     return true;
+  }
+
+  /** Replays an edit without committing it until the caller accepts it. */
+  prepareEdits(edits: MultiEdit): EditCandidate<T> {
+    this.#buf.reset();
+    const result = replayWithEdits(this.#script, this.#calls, edits, this.#buf);
+    return this.candidate(result);
+  }
+
+  /** Replays a deletion without committing it until the caller accepts it. */
+  prepareDeleteRange(start: number, end: number): EditCandidate<T> {
+    this.#buf.reset();
+    const result = replayWithDeletedRange(
+      this.#script,
+      this.#calls,
+      start,
+      end,
+      this.#buf,
+    );
+    return this.candidate(result);
+  }
+
+  private candidate(
+    result: T | typeof filtered | typeof unchanged,
+  ): EditCandidate<T> {
+    if (result === filtered) return { kind: "filtered" };
+    if (result === unchanged) return { kind: "unchanged" };
+    const calls = this.#buf.take();
+    return {
+      kind: "candidate",
+      val: result,
+      commit: () => this.commit(result, calls),
+    };
   }
 
   get gen(): Gen<T> {
@@ -111,8 +136,7 @@ export class MutableGen<T> {
     return this.#gen.val;
   }
 
-  private commit(val: T): void {
-    const calls = this.#buf.take();
+  private commit(val: T, calls: Call[]): void {
     const regenerate = makeRegenerateFunction(this.#script, calls, val);
     this.#calls = calls;
     this.#gen = makeGen(this.#script, () => calls, regenerate);
