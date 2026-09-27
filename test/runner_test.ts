@@ -510,6 +510,33 @@ describe("reportFailure", () => {
     con.logged('rerun using {only: "0:1:1"}');
     con.checkEmpty();
   });
+
+  it("escapes string arguments including line separators", () => {
+    for (
+      const [arg, expected] of [
+        ["a\r b", '"a\\r b"'],
+        ["\u2028", '"\\u2028"'],
+        ["\u2029", '"\\u2029"'],
+        ['"\\\n', '"\\"\\\\\\n"'],
+      ]
+    ) {
+      const caught = new Error("oops");
+      assertThrows(
+        () =>
+          reportFailure({
+            ok: false,
+            key: { id: 0, seed: 1, index: 1 },
+            arg,
+            caught,
+          }, con),
+        Error,
+        "oops",
+      );
+      con.logged(["attempt FAILED, using:", expected], { type: "error" });
+      con.logged('rerun using {only: "0:1:1"}');
+      con.checkEmpty();
+    }
+  });
 });
 
 describe("repeatTest", () => {
@@ -569,6 +596,32 @@ describe("repeatTest", () => {
     // The failed test will be run a second time with logging enabled.
     assertEquals(inputs, [1, 2, 2]);
     con.loggedTestFailed();
+  });
+
+  it("reports escaped strings after shrinking", () => {
+    for (
+      const [value, expected] of [
+        ["\r", '"\\r"'],
+        ["\u2028", '"\\u2028"'],
+        ["\u2029", '"\\u2029"'],
+      ]
+    ) {
+      const seen: string[] = [];
+      assertThrows(
+        () =>
+          repeatTest(arb.of(value), (arg) => {
+            seen.push(arg);
+            throw new Error("oops");
+          }, { reps: 0, console: con }),
+        Error,
+        "oops",
+      );
+      assertEquals(seen, [value, value]);
+      con.loggedTestFailed();
+      con.logged(["attempt FAILED, using:", expected], { type: "error" });
+      con.logged('rerun using {only: "0"}');
+      con.checkEmpty();
+    }
   });
 
   it("shrinks the test input when a random test fails", () => {
