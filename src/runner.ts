@@ -23,7 +23,7 @@ import {
   FailingTestConsole,
   systemConsole,
 } from "./console.ts";
-import { shrink } from "./shrink.ts";
+import { shrinkMaybeAsync } from "./shrink_steps.ts";
 import { Backtracker } from "./backtracking.ts";
 import { defaultReps, getReps, maxPicksDefault } from "./runner/config.ts";
 import { analyzeOddsChecks } from "./runner/coverage.ts";
@@ -34,7 +34,10 @@ import { analyzeOddsChecks } from "./runner/coverage.ts";
  * @param console Tests can log output using this interface and they will only
  * be written to the actual console when the test fails.
  */
-export type TestFunction<T> = (arg: T, console: TestConsole) => void;
+export type TestFunction<T> = (
+  arg: T,
+  console: TestConsole,
+) => void | PromiseLike<void>;
 
 /** Identifies a repetition to run. */
 export type RepKey = {
@@ -187,72 +190,108 @@ export function* generateReps<T>(
   }
 }
 
-/** Runs one repetition. */
+type MaybePromise<T> = T | Promise<T>;
+
+function isPromiseLike<T>(
+  value: T | PromiseLike<T>,
+): value is PromiseLike<T> {
+  return value !== null &&
+    (typeof value === "object" || typeof value === "function") &&
+    typeof (value as PromiseLike<T>).then === "function";
+}
+
+function thenMaybe<T, U>(
+  value: T | PromiseLike<T>,
+  next: (value: T) => MaybePromise<U>,
+): MaybePromise<U> {
+  return isPromiseLike(value) ? Promise.resolve(value).then(next) : next(value);
+}
+
+/** Runs one repetition, preserving synchronous completion until a test awaits. */
+export function runRepMaybeAsync<T>(
+  rep: Rep<T>,
+  system: SystemConsole,
+  coverage: Coverage,
+  oddsChecks: OddsChecks,
+): MaybePromise<Success<void> | RepFailure<T>> {
+  let firstArg: T | undefined = undefined;
+  let firstError: unknown = undefined;
+
+  const invoke = (
+    arg: T,
+    con: TestConsole,
+  ): MaybePromise<{ threw: boolean; caught?: unknown }> => {
+    try {
+      const result = rep.test(arg, con);
+      return isPromiseLike(result)
+        ? Promise.resolve(result).then(
+          () => ({ threw: false }),
+          (caught) => ({ threw: true, caught }),
+        )
+        : { threw: false };
+    } catch (caught) {
+      return { threw: true, caught };
+    }
+  };
+
+  const interesting = (arg: T): MaybePromise<boolean> => {
+    const innerConsole = new CountingTestConsole(coverage, oddsChecks);
+    return thenMaybe(invoke(arg, innerConsole), (outcome) => {
+      if (outcome.threw) {
+        if (firstError === undefined) {
+          firstArg = arg;
+          firstError = outcome.caught;
+        }
+        return true;
+      }
+      return innerConsole.errorCount > 0;
+    });
+  };
+
+  return thenMaybe(interesting(rep.arg.val), (failed) => {
+    if (!failed) return success();
+
+    system.log("\nTest failed. Shrinking...");
+    return thenMaybe(shrinkMaybeAsync(rep.arg, interesting), (shrunk) => {
+      const innerConsole = new FailingTestConsole(system);
+      const rerun = (i: number): MaybePromise<RepFailure<T>> =>
+        thenMaybe(invoke(shrunk.val, innerConsole), (outcome) => {
+          if (outcome.threw || innerConsole.errorCount > 0) {
+            return {
+              ok: false,
+              key: rep.key,
+              arg: shrunk.val,
+              caught: outcome.threw
+                ? outcome.caught
+                : new Error("test called console.error()"),
+            };
+          }
+          if (i < 4) {
+            if (i === 0) {
+              system.log("Flaky test passed after shrinking. Retrying...");
+            }
+            return rerun(i + 1);
+          }
+          system.log("Test passes after shrinking. Reporting original error.");
+          return { ok: false, key: rep.key, arg: firstArg, caught: firstError };
+        });
+      return rerun(0);
+    });
+  });
+}
+
+/** Runs one repetition with a synchronous callback. */
 export function runRep<T>(
   rep: Rep<T>,
   system: SystemConsole,
   coverage: Coverage,
   oddsChecks: OddsChecks,
 ): Success<void> | RepFailure<T> {
-  let firstArg: T | undefined = undefined;
-  let firstError: unknown = undefined;
-
-  const interesting = (arg: T) => {
-    const innerConsole = new CountingTestConsole(coverage, oddsChecks);
-    try {
-      rep.test(arg, innerConsole);
-      return innerConsole.errorCount > 0;
-    } catch (e) {
-      if (firstError === undefined) {
-        firstArg = arg;
-        firstError = e;
-      }
-      return true;
-    }
-  };
-
-  if (!interesting(rep.arg.val)) {
-    return success();
+  const result = runRepMaybeAsync(rep, system, coverage, oddsChecks);
+  if (isPromiseLike(result)) {
+    throw new Error("runRep requires a synchronous callback");
   }
-
-  system.log("\nTest failed. Shrinking...");
-  const shrunk = shrink(rep.arg, interesting);
-
-  // Rerun the test using the shrunk value and the original console.
-  const innerConsole = new FailingTestConsole(system);
-
-  for (let i = 0; i < 5; i++) {
-    try {
-      rep.test(shrunk.val, innerConsole);
-      if (innerConsole.errorCount > 0) {
-        return {
-          ok: false,
-          key: rep.key,
-          arg: shrunk.val,
-          caught: new Error("test called console.error()"),
-        };
-      }
-    } catch (e) {
-      return {
-        ok: false,
-        key: rep.key,
-        arg: shrunk.val,
-        caught: e,
-      };
-    }
-    if (i === 0) {
-      system.log("Flaky test passed after shrinking. Retrying...");
-    }
-  }
-
-  system.log("Test passes after shrinking. Reporting original error.");
-
-  return {
-    ok: false,
-    key: rep.key,
-    arg: firstArg,
-    caught: firstError,
-  };
+  return result;
 }
 
 type RunRepsOpts = {
@@ -264,48 +303,78 @@ export type RunRepsResult = {
   oddsChecks?: OddsChecks;
 };
 
+export function runRepsMaybeAsync<T>(
+  reps: Iterable<Rep<T> | RepFailure<unknown>>,
+  count: number,
+  console: SystemConsole,
+  opts?: RunRepsOpts,
+): MaybePromise<Success<RunRepsResult> | RepFailure<unknown>> {
+  let passed = 0;
+  const coverage: Coverage = {};
+  const oddsChecks: OddsChecks = {};
+  const iterator = reps[Symbol.iterator]();
+
+  const finish = (): Success<RunRepsResult> => {
+    if (!opts?.skipSometimesCheck) {
+      let err: AssertionError | undefined = undefined;
+      for (const key in coverage) {
+        const covered = coverage[key];
+        if (covered.true === 0 && err === undefined) {
+          err = new AssertionError(`sometimes(${key}) was never true`);
+        }
+        if (covered.false === 0 && err === undefined) {
+          err = new AssertionError(`sometimes(${key}) was never false`);
+        }
+      }
+      if (err !== undefined) {
+        for (const key in coverage) {
+          const covered = coverage[key];
+          console.log(
+            `sometimes(${key}): true: ${covered.true}, false: ${covered.false}`,
+          );
+        }
+        throw err;
+      }
+    }
+    return success({ passed, oddsChecks });
+  };
+
+  const advance = (): MaybePromise<
+    Success<RunRepsResult> | RepFailure<unknown>
+  > => {
+    while (true) {
+      const next = iterator.next();
+      if (next.done) return finish();
+      const rep = next.value;
+      if (!rep.ok) return rep;
+      const ran = runRepMaybeAsync(rep, console, coverage, oddsChecks);
+      if (isPromiseLike(ran)) {
+        return Promise.resolve(ran).then((result) => {
+          if (!result.ok) return result;
+          passed++;
+          return passed >= count ? finish() : advance();
+        });
+      }
+      if (!ran.ok) return ran;
+      passed++;
+      if (passed >= count) return finish();
+    }
+  };
+  return advance();
+}
+
+/** Runs repetitions with synchronous callbacks. */
 export function runReps<T>(
   reps: Iterable<Rep<T> | RepFailure<unknown>>,
   count: number,
   console: SystemConsole,
   opts?: RunRepsOpts,
 ): Success<RunRepsResult> | RepFailure<unknown> {
-  let passed = 0;
-  const coverage: Coverage = {};
-  const oddsChecks: OddsChecks = {};
-  for (const rep of reps) {
-    if (!rep.ok) return rep;
-    const ran = runRep(rep, console, coverage, oddsChecks);
-    if (!ran.ok) return ran;
-    passed++;
-    if (passed >= count) break;
+  const result = runRepsMaybeAsync(reps, count, console, opts);
+  if (isPromiseLike(result)) {
+    throw new Error("runReps requires synchronous callbacks");
   }
-  if (!opts?.skipSometimesCheck) {
-    let err: AssertionError | undefined = undefined;
-    for (const key in coverage) {
-      const covered = coverage[key];
-      if (covered.true === 0) {
-        if (err === undefined) {
-          err = new AssertionError(`sometimes(${key}) was never true`);
-        }
-      }
-      if (covered.false === 0) {
-        if (err === undefined) {
-          err = new AssertionError(`sometimes(${key}) was never false`);
-        }
-      }
-    }
-    if (err !== undefined) {
-      for (const key in coverage) {
-        const covered = coverage[key];
-        console.log(
-          `sometimes(${key}): true: ${covered.true}, false: ${covered.false}`,
-        );
-      }
-      throw err;
-    }
-  }
-  return success({ passed, oddsChecks });
+  return result;
 }
 
 export function reportFailure(
@@ -378,14 +447,23 @@ export type Examples<T> = Pickable<T> | (T | Arbitrary<T>)[];
  * Information about the test failure and how to rerun the test will be printed
  * to the console.
  *
+ * Synchronous callbacks finish and throw synchronously. If a callback returns
+ * a Promise, this function returns a Promise; await or return it from the
+ * enclosing test so asynchronous failures are observed.
+ *
  * @param input A source of examples to run.
  * @param test A test function that requires input.
  */
+export function repeatTest<T, R extends void | PromiseLike<void>>(
+  input: Examples<T>,
+  test: (arg: T, console: TestConsole) => R,
+  opts?: RepeatOpts,
+): R extends PromiseLike<void> ? Promise<void> : void;
 export function repeatTest<T>(
   input: Examples<T>,
   test: TestFunction<T>,
   opts?: RepeatOpts,
-): void {
+): void | Promise<void> {
   const only = opts?.only ? parseOnlyOption(opts.only) : undefined;
   const randomReps = opts?.reps;
   if (randomReps !== undefined) {
@@ -455,20 +533,24 @@ export function repeatTest<T>(
   const count = opts?.only ? 1 : arbs.length + repCount;
 
   const outerConsole = opts?.console ?? systemConsole;
-  const ran = runReps(reps, count, outerConsole, {
+  const ran = runRepsMaybeAsync(reps, count, outerConsole, {
     skipSometimesCheck,
   });
-  if (!ran.ok) {
-    reportFailure(ran, outerConsole);
-  } else if (ran.val.passed === 0) {
-    throw new Error(`skipped all ${skipCount} reps`);
-  } else if (opts?.only !== undefined) {
-    throw new Error(`only option is set`);
-  } else {
-    // Always analyze checkOdds() calls
-    if (ran.val.oddsChecks && Object.keys(ran.val.oddsChecks).length > 0) {
-      const exhausted = ran.val.passed < count;
-      analyzeOddsChecks(ran.val.oddsChecks, outerConsole, exhausted);
+  return thenMaybe(ran, (result) => {
+    if (!result.ok) {
+      reportFailure(result, outerConsole);
+    } else if (result.val.passed === 0) {
+      throw new Error(`skipped all ${skipCount} reps`);
+    } else if (opts?.only !== undefined) {
+      throw new Error(`only option is set`);
+    } else {
+      // Always analyze checkOdds() calls
+      if (
+        result.val.oddsChecks && Object.keys(result.val.oddsChecks).length > 0
+      ) {
+        const exhausted = result.val.passed < count;
+        analyzeOddsChecks(result.val.oddsChecks, outerConsole, exhausted);
+      }
     }
-  }
+  });
 }

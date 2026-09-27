@@ -8,6 +8,7 @@ import {
   assertEquals,
   assertFalse,
   AssertionError,
+  assertRejects,
   assertThrows,
   fail,
 } from "@std/assert";
@@ -33,6 +34,7 @@ import {
   reportFailure,
   RepSource,
   runRep,
+  runRepMaybeAsync,
   runReps,
   serializeRepKey,
 } from "../src/runner.ts";
@@ -443,6 +445,39 @@ describe("runRep", () => {
   });
 });
 
+describe("async runRep", () => {
+  it("shrinks an asynchronous rejection to the smallest failing input", async () => {
+    const con = new RecordingConsole();
+    const rep = makeRep(dom.int(0, 100), 100, async (i) => {
+      await Promise.resolve();
+      if (i >= 10) throw new Error(`failed with ${i}`);
+    });
+    const result = await runRepMaybeAsync(rep, con, {}, {});
+    if (result.ok) fail("expected a failure");
+    assertEquals(result.arg, 10);
+    assertEquals((result.caught as Error).message, "failed with 10");
+    con.loggedTestFailed();
+    con.checkEmpty();
+  });
+
+  it("switches to async when a shrink candidate returns a Promise", async () => {
+    const con = new RecordingConsole();
+    const rep = makeRep(dom.int(0, 100), 100, (n) => {
+      if (n === 100) throw new Error("failed with 100");
+      return Promise.resolve().then(() => {
+        if (n >= 10) throw new Error(`failed with ${n}`);
+      });
+    });
+    const pending = runRepMaybeAsync(rep, con, {}, {});
+    assert(pending instanceof Promise);
+    const result = await pending;
+    if (result.ok) fail("expected a failure");
+    assertEquals(result.arg, 10);
+    con.loggedTestFailed();
+    con.checkEmpty();
+  });
+});
+
 describe("runReps", () => {
   let con = new RecordingConsole();
 
@@ -571,6 +606,78 @@ describe("repeatTest", () => {
   it("accepts a list of numbers", () => {
     repeatTest([1, 2, 3], collect);
     assertEquals(collectArgs, [1, 2, 3]);
+    con.checkEmpty();
+  });
+
+  it("awaits asynchronous callbacks before running the next rep", async () => {
+    const seen: number[] = [];
+    const pending: Promise<void> = repeatTest([1, 2, 3], async (n) => {
+      await Promise.resolve();
+      seen.push(n);
+    }, { reps: 0, console: con });
+    await pending;
+    assertEquals(seen, [1, 2, 3]);
+    con.checkEmpty();
+  });
+
+  it("switches to async when a later rep returns a Promise", async () => {
+    const seen: number[] = [];
+    const result = repeatTest([1, 2, 3], (n) => {
+      seen.push(n);
+      if (n === 2) return Promise.resolve();
+    }, { reps: 0, console: con });
+    assert(result instanceof Promise);
+    assertEquals(seen, [1, 2]);
+    await result;
+    assertEquals(seen, [1, 2, 3]);
+  });
+
+  it("reports an async rejection and reruns the failure", async () => {
+    const seen: number[] = [];
+    await assertRejects(
+      () =>
+        repeatTest([1, 2, 3], async (n) => {
+          seen.push(n);
+          await Promise.resolve();
+          if (n === 2) throw new Error("async failure");
+        }, { reps: 0, console: con }),
+      Error,
+      "async failure",
+    );
+    assertEquals(seen, [1, 2, 2]);
+    con.loggedTestFailed();
+    con.logged(["attempt FAILED, using:", 2], { type: "error" });
+    con.logged('rerun using {only: "1"}');
+    con.checkEmpty();
+  });
+
+  it("reports console.error after an await", async () => {
+    await assertRejects(
+      () =>
+        repeatTest([1], async (_n, console) => {
+          await Promise.resolve();
+          console.error("late error");
+        }, { reps: 0, console: con }),
+      Error,
+      "test called console.error()",
+    );
+    con.loggedTestFailed();
+    con.logged("late error", { type: "error" });
+    con.logged(["attempt FAILED, using:", 1], { type: "error" });
+    con.logged('rerun using {only: "0"}');
+    con.checkEmpty();
+  });
+
+  it("keeps the only option behavior for async callbacks", async () => {
+    await assertRejects(
+      () =>
+        repeatTest([1, 2], async (n) => {
+          await Promise.resolve();
+          assertEquals(n, 2);
+        }, { only: "1", console: con }),
+      Error,
+      "only option is set",
+    );
     con.checkEmpty();
   });
 
