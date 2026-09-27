@@ -314,9 +314,9 @@ export function reportFailure(
 ): never {
   const key = serializeRepKey(failure.key);
   const arg = typeof failure.arg === "string"
-    ? JSON.stringify(failure.arg).replace(/\u2028/g, "\\u2028").replace(
-      /\u2029/g,
-      "\\u2029",
+    ? JSON.stringify(failure.arg).replace(
+      /[\u007f-\u009f\u00ad\u061c\u200b-\u200f\u2028-\u202e\u2060\u2066-\u206f\ufeff]/g,
+      (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`,
     )
     : failure.arg;
   console.error(`attempt FAILED, using:`, arg);
