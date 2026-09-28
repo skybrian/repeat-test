@@ -342,6 +342,16 @@ describe("runRep", () => {
     con.checkEmpty();
   });
 
+  it("rejects asynchronous callbacks in the synchronous wrapper", () => {
+    const rep = makeRep(dom.int(0, 1), 1, () => Promise.resolve());
+    assertThrows(
+      () => runRep(rep, con, coverage, oddsChecks),
+      Error,
+      "runRep requires a synchronous callback",
+    );
+    con.checkEmpty();
+  });
+
   it("suppresses console output when the test passes", () => {
     const rep = makeDefaultRep(arb.int(1, 10), (_x, console) => {
       assertFalse(console.on);
@@ -544,6 +554,16 @@ describe("runReps", () => {
     con.loggedTestFailed();
     con.checkEmpty();
   });
+
+  it("rejects asynchronous callbacks in the synchronous wrapper", () => {
+    const rep = makeRep(dom.int(0, 1), 1, () => Promise.resolve());
+    assertThrows(
+      () => runReps([rep], 1, con),
+      Error,
+      "runReps requires synchronous callbacks",
+    );
+    con.checkEmpty();
+  });
 });
 
 describe("reportFailure", () => {
@@ -657,6 +677,33 @@ describe("repeatTest", () => {
     assertEquals(seen, [1, 2]);
     await result;
     assertEquals(seen, [1, 2, 3]);
+  });
+
+  it("handles every mix of synchronous and asynchronous reps", async () => {
+    for (let mask = 0; mask < 1 << 3; mask++) {
+      const asyncReps = [0, 1, 2].map((i) => (mask & (1 << i)) !== 0);
+      const seen: number[] = [];
+      const result = repeatTest([0, 1, 2], (n) => {
+        if (asyncReps[n]) {
+          return Promise.resolve().then(() => {
+            seen.push(n);
+          });
+        }
+        seen.push(n);
+      }, { reps: 0, console: con });
+
+      if (asyncReps.some(Boolean)) {
+        assert(
+          result instanceof Promise,
+          `mask ${mask} should return a Promise`,
+        );
+        await result;
+      } else {
+        assertEquals(result, undefined);
+      }
+      assertEquals(seen, [0, 1, 2], `wrong order for mask ${mask}`);
+    }
+    con.checkEmpty();
   });
 
   it("reports an async rejection and reruns the failure", async () => {
