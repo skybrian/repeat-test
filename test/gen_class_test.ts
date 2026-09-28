@@ -301,6 +301,29 @@ describe("MutableGen", () => {
       );
       assert(mut.gen === original);
     });
+
+    it("rejects async edits that filter the generated value", () => {
+      const evenRoll = Script.make("evenRoll", (pick) => {
+        const value = pick(rollReq);
+        if (value % 2 !== 0) throw new Filtered("that's odd");
+        return value;
+      });
+      const original = Gen.mustBuild(evenRoll, [2]);
+      const mut = MutableGen.from(original);
+      let tested = false;
+
+      assertFalse(
+        mut.tryEditsMaybeAsync(
+          () => () => snip(),
+          () => {
+            tested = true;
+            return true;
+          },
+        ),
+      );
+      assertFalse(tested, "a filtered candidate shouldn't call the test");
+      assert(mut.gen === original);
+    });
   });
 });
 

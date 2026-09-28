@@ -84,6 +84,83 @@ describe("async shrinking", () => {
     assertEquals(maxActive, 1);
   });
 
+  it("retries tail trimming after a rejected candidate", async () => {
+    const seed = dom.array(dom.string()).regenerate(["xyz"]);
+    assert(seed.ok);
+    const seen: string[] = [];
+    const smaller = await shrinkAsync(seed, async (value) => {
+      await Promise.resolve();
+      const candidate = value[0] ?? "";
+      seen.push(candidate);
+      return value.length === 1 && candidate.length >= 2;
+    });
+
+    assertEquals(smaller.val, ["aa"]);
+    assert(seen.includes("x"), "should reject a too-short tail trim");
+    assert(seen.includes("xy"), "should accept a shorter tail trim");
+  });
+
+  it("removes an unnecessary option asynchronously", async () => {
+    const seed = seedFrom([bitReq, bitReq], [1, 1]);
+    const smaller = await shrinkAsync(seed, async (value) => {
+      await Promise.resolve();
+      return value.includes(1);
+    });
+
+    assertEquals(smaller.val, [1, 0]);
+  });
+
+  it("removes only the unnecessary groups before and after a required one", async () => {
+    const rolls = Script.make("rolls", (pick) => {
+      const out: number[] = [];
+      for (let roll = pick(new IntRequest(1, 6)); roll !== 1;) {
+        out.push(roll);
+        roll = pick(new IntRequest(1, 6));
+      }
+      return out;
+    }, { logCalls: true });
+    const seed = Gen.mustBuild(rolls, [6, 2, 3, 4, 5, 1]);
+
+    const smaller = await shrinkAsync(seed, async (value) => {
+      await Promise.resolve();
+      return value.includes(3);
+    });
+
+    assertEquals(smaller.val, [3]);
+  });
+
+  it("extends a failed deletion around an empty option", async () => {
+    const bits = Script.make("bits", (pick) =>
+      [
+        pick(bitReq),
+        pick(bitReq),
+        pick(bitReq),
+        pick(bitReq),
+      ].join(""));
+    const seed = Gen.mustBuild(bits, [1, 0, 0, 1]);
+    const seen: Array<{ candidate: string; accepted: boolean }> = [];
+    const interesting = (value: string) => value === "1001" || value === "1100";
+    const smaller = await shrinkAsync(seed, async (value) => {
+      await Promise.resolve();
+      const accepted = interesting(value);
+      seen.push({ candidate: value, accepted });
+      return accepted;
+    });
+
+    const rejectedSingleDelete = seen.findIndex((x) =>
+      x.candidate === "1010" && !x.accepted
+    );
+    const acceptedExtendedDelete = seen.findIndex((x) =>
+      x.candidate === "1100" && x.accepted
+    );
+    assert(
+      rejectedSingleDelete >= 0 &&
+        acceptedExtendedDelete > rejectedSingleDelete,
+      "should retry a rejected empty-option deletion with the adjacent option",
+    );
+    assert(interesting(smaller.val), "shrinking should preserve the failure");
+  });
+
   it("can switch to async decisions during a shrink", async () => {
     const seed = dom.string().regenerate("xyz");
     assert(seed.ok);
