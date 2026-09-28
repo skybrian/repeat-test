@@ -305,21 +305,10 @@ export function shrinkMaybeAsync<T>(
 ): Gen<T> | Promise<Gen<T>> {
   const search = new ShrinkSearch(seed, console);
   const steps = search.steps();
-  const decide = (attempt: ShrinkAttempt): boolean | Promise<boolean> => {
-    const candidate = attempt.kind === "edit"
-      ? search.seed.prepareEdits(attempt.edits)
-      : search.seed.prepareDeleteRange(attempt.start, attempt.end);
-    if (candidate.kind === "filtered") return false;
-    if (candidate.kind === "unchanged") return true;
-    const accept = (passed: boolean) => {
-      if (passed) candidate.commit();
-      return passed;
-    };
-    const verdict = test(candidate.val);
-    return isPromiseLike(verdict)
-      ? Promise.resolve(verdict).then(accept)
-      : accept(verdict);
-  };
+  const decide = (attempt: ShrinkAttempt): boolean | Promise<boolean> =>
+    attempt.kind === "edit"
+      ? search.seed.tryEditsMaybeAsync(attempt.edits, test)
+      : search.seed.tryDeleteRangeMaybeAsync(attempt.start, attempt.end, test);
 
   const continueAsync = async (pending: Promise<boolean>): Promise<Gen<T>> => {
     let accepted = await pending;

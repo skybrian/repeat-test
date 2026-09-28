@@ -476,6 +476,33 @@ describe("async runRep", () => {
     con.loggedTestFailed();
     con.checkEmpty();
   });
+
+  it("waits for an interrupted synchronous shrink before switching", async () => {
+    const con = new RecordingConsole();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let firstCandidate = true;
+    const rep = makeRep(dom.int(0, 100), 100, (n) => {
+      if (n === 100) throw new Error("failure");
+      if (firstCandidate) {
+        firstCandidate = false;
+        return gate.then(() => {
+          if (n >= 10) throw new Error("failure");
+        });
+      }
+      if (n >= 10) throw new Error("failure");
+    });
+    const pending = runRepMaybeAsync(rep, con, {}, {});
+    assert(pending instanceof Promise);
+    release();
+    const result = await pending;
+    if (result.ok) fail("expected a failure");
+    assertEquals(result.arg, 10);
+    con.loggedTestFailed();
+    con.checkEmpty();
+  });
 });
 
 describe("runReps", () => {

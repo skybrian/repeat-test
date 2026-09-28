@@ -24,6 +24,7 @@ import {
   systemConsole,
 } from "./console.ts";
 import { shrinkMaybeAsync } from "./shrink_steps.ts";
+import { Shrinker } from "./shrink.ts";
 import { Backtracker } from "./backtracking.ts";
 import { defaultReps, getReps, maxPicksDefault } from "./runner/config.ts";
 import { analyzeOddsChecks } from "./runner/coverage.ts";
@@ -207,6 +208,31 @@ function thenMaybe<T, U>(
   return isPromiseLike(value) ? Promise.resolve(value).then(next) : next(value);
 }
 
+class AsyncShrinkBoundary {
+  constructor(readonly pending: Promise<boolean>) {}
+}
+
+function shrinkSyncUntilAsync<T>(
+  seed: Gen<T>,
+  test: (arg: T) => MaybePromise<boolean>,
+): MaybePromise<Gen<T>> {
+  const shrinker = new Shrinker(seed, (arg) => {
+    const result = test(arg);
+    if (isPromiseLike(result)) {
+      throw new AsyncShrinkBoundary(Promise.resolve(result));
+    }
+    return result;
+  });
+  try {
+    return shrinker.shrink();
+  } catch (error) {
+    if (!(error instanceof AsyncShrinkBoundary)) throw error;
+    // The interrupted candidate was not committed. Finish its callback before
+    // restarting the search from the last accepted value.
+    return error.pending.then(() => shrinkMaybeAsync(shrinker.seed.gen, test));
+  }
+}
+
 /** Runs one repetition, preserving synchronous completion until a test awaits. */
 export function runRepMaybeAsync<T>(
   rep: Rep<T>,
@@ -248,11 +274,16 @@ export function runRepMaybeAsync<T>(
     });
   };
 
-  return thenMaybe(interesting(rep.arg.val), (failed) => {
+  const initial = interesting(rep.arg.val);
+  const startedAsync = isPromiseLike(initial);
+  return thenMaybe(initial, (failed) => {
     if (!failed) return success();
 
     system.log("\nTest failed. Shrinking...");
-    return thenMaybe(shrinkMaybeAsync(rep.arg, interesting), (shrunk) => {
+    const shrunk = startedAsync
+      ? shrinkMaybeAsync(rep.arg, interesting)
+      : shrinkSyncUntilAsync(rep.arg, interesting);
+    return thenMaybe(shrunk, (shrunk) => {
       const innerConsole = new FailingTestConsole(system);
       const rerun = (i: number): MaybePromise<RepFailure<T>> =>
         thenMaybe(invoke(shrunk.val, innerConsole), (outcome) => {

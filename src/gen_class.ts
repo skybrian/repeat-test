@@ -84,6 +84,56 @@ export class MutableGen<T> {
     return true;
   }
 
+  /** Tests an edit synchronously when possible, awaiting only a Promise result. */
+  tryEditsMaybeAsync(
+    edits: MultiEdit,
+    test: (val: T) => boolean | PromiseLike<boolean>,
+  ): boolean | Promise<boolean> {
+    this.#buf.reset();
+    const result = replayWithEdits(this.#script, this.#calls, edits, this.#buf);
+    return this.decide(result, test);
+  }
+
+  /** Tests a deletion synchronously when possible, awaiting only a Promise result. */
+  tryDeleteRangeMaybeAsync(
+    start: number,
+    end: number,
+    test: (val: T) => boolean | PromiseLike<boolean>,
+  ): boolean | Promise<boolean> {
+    this.#buf.reset();
+    const result = replayWithDeletedRange(
+      this.#script,
+      this.#calls,
+      start,
+      end,
+      this.#buf,
+    );
+    return this.decide(result, test);
+  }
+
+  private decide(
+    result: T | typeof filtered | typeof unchanged,
+    test: (val: T) => boolean | PromiseLike<boolean>,
+  ): boolean | Promise<boolean> {
+    if (result === filtered) return false;
+    if (result === unchanged) return true;
+    const accepted = test(result);
+    if (
+      accepted !== null &&
+      (typeof accepted === "object" || typeof accepted === "function") &&
+      typeof accepted.then === "function"
+    ) {
+      const calls = this.#buf.take();
+      return Promise.resolve(accepted).then((ok) => {
+        if (ok) this.commit(result, calls);
+        return ok;
+      });
+    }
+    if (!accepted) return false;
+    this.commit(result, this.#buf.take());
+    return true;
+  }
+
   /** Replays an edit without committing it until the caller accepts it. */
   prepareEdits(edits: MultiEdit): EditCandidate<T> {
     this.#buf.reset();
