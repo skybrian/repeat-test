@@ -148,6 +148,23 @@ const tree: Arbitrary<Tree> = arb.alias(() =>
 
 ## Writing Property Tests
 
+### Async Tests
+
+The test callback can return a Promise. Return or await `repeatTest` from the
+enclosing test so it waits for every repetition and any shrinking:
+
+```typescript
+Deno.test("rendered HTML", async () => {
+  await repeatTest(["hello", "world"], async (word) => {
+    const html = await Promise.resolve(`<p>${word}</p>`);
+    assert(html.includes(word));
+  });
+});
+```
+
+Callbacks that complete synchronously still run and throw synchronously.
+Repetitions are run one at a time, including when a callback returns a Promise.
+
 ### Verify Variety with `sometimes()`
 
 Use `console.sometimes(key, condition)` to ensure arbitraries generate

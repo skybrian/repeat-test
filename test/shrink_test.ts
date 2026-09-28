@@ -16,6 +16,7 @@ import { Gen } from "@/core.ts";
 import { CountingTestConsole } from "../src/console.ts";
 
 import { shrink, Shrinker } from "../src/shrink.ts";
+import { shrinkAsync, shrinkMaybeAsync } from "../src/shrink_steps.ts";
 import { generate, MutableGen } from "../src/gen_class.ts";
 import { randomPicker } from "../src/random.ts";
 import { onePlayout } from "../src/backtracking.ts";
@@ -65,6 +66,37 @@ const acceptAll = () => true;
 
 const bitReq = new IntRequest(0, 1);
 const roll = new IntRequest(1, 6);
+
+describe("async shrinking", () => {
+  it("awaits each candidate before trying the next", async () => {
+    const seed = dom.int(0, 100).regenerate(100);
+    assert(seed.ok);
+    let active = 0;
+    let maxActive = 0;
+    const smaller = await shrinkAsync(seed, async (n) => {
+      active++;
+      maxActive = Math.max(active, maxActive);
+      await Promise.resolve();
+      active--;
+      return n >= 10;
+    });
+    assertEquals(smaller.val, 10);
+    assertEquals(maxActive, 1);
+  });
+
+  it("can switch to async decisions during a shrink", async () => {
+    const seed = dom.string().regenerate("xyz");
+    assert(seed.ok);
+    let calls = 0;
+    const result = shrinkMaybeAsync(seed, (s) => {
+      calls++;
+      const accepted = s.endsWith("z");
+      return calls === 1 ? accepted : Promise.resolve(accepted);
+    });
+    assert(result instanceof Promise);
+    assertEquals((await result).val, shrink(seed, (s) => s.endsWith("z")).val);
+  });
+});
 
 describe("Shrinker", () => {
   describe("removeGroups", () => {

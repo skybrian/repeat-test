@@ -187,6 +187,32 @@ describe("Gen", () => {
 });
 
 describe("MutableGen", () => {
+  it("does not commit a prepared candidate until accepted", () => {
+    const original = Gen.mustBuild(bit, [1]);
+    const mut = MutableGen.from(original);
+    const candidate = mut.prepareEdits(() => snip);
+    assertEquals(candidate.kind, "candidate");
+    assert(mut.gen === original);
+    if (candidate.kind !== "candidate") return;
+    assertEquals(candidate.val, 0);
+
+    candidate.commit();
+    assertEquals(mut.gen.val, 0);
+    assertEquals([...mut.gen.replies], [0]);
+  });
+
+  it("prepares a deletion without changing the current gen", () => {
+    const original = Gen.mustBuild(twoBits, [1, 1]);
+    const mut = MutableGen.from(original);
+    const candidate = mut.prepareDeleteRange(0, 1);
+    assert(mut.gen === original);
+    assertEquals(candidate.kind, "candidate");
+    if (candidate.kind !== "candidate") return;
+    assertEquals(candidate.val, "(1, 0)");
+    candidate.commit();
+    assertEquals(mut.gen.val, "(1, 0)");
+  });
+
   describe("tryEdits", () => {
     it("keeps the same gen when there are no edits, for a single-group build", () => {
       const original = Gen.mustBuild(bit, [1]);
