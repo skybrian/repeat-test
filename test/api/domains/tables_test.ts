@@ -1,6 +1,7 @@
 import { deepStrictEqual } from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { frozen } from "@skybrian/repeat-test";
 import { Arbitrary } from "@skybrian/repeat-test/core";
 import * as arb from "@skybrian/repeat-test/arbs";
 import * as dom from "@skybrian/repeat-test/doms";
@@ -226,7 +227,18 @@ describe("table", () => {
     const table = dom.table(row, { keys: ["id"] });
 
     it("round-trips generated tables", () => {
-      repeatTest(table, (rows) => assertRoundTrip(table, rows));
+      // Keep the stress run (REPS=5x) at 1,000 random tables.
+      repeatTest(table, (rows) => assertRoundTrip(table, rows), { reps: 200 });
+    });
+
+    it("round-trips all ten IDs with both shapes and a maximum-length string", () => {
+      const rows = frozen(Array.from({ length: 10 }, (_, index): RowType => {
+        const id = index + 1;
+        return id % 2 === 0
+          ? { id, kind: "number", value: id }
+          : { id, kind: "string", value: id === 1 ? "x".repeat(1000) : "" };
+      }));
+      assertRoundTrip(table, rows);
     });
 
     it("rejects an array with a non-object", () => {
