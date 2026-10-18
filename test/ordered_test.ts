@@ -134,6 +134,17 @@ describe("OrderedTracker", () => {
       3: ["1,3"],
     });
   });
+  it("skips pruned holes left by shorter branches in earlier passes", () => {
+    // Branches 1 and 2 finish while branch 0 still has unexplored descendants.
+    // A later pass must skip these holes without pruning the live branch.
+    assertEquals(runSearch(walkFunction(3, 3, "1", "2")), {
+      0: ["000"],
+      1: ["1"],
+      2: ["010", "2"],
+      3: ["001", "011", "020", "021"],
+      4: ["002", "012", "022"],
+    });
+  });
   it("resets cancellation state between nested successes and honors maxPasses", () => {
     const expected = {
       0: ["000"],

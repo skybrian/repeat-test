@@ -74,11 +74,12 @@ run.
 - Regression test enumerates 1..10 on passes 0..9 without cancelled probes.
 - Tests retain pass-by-pass order, pending nested choices, pass limits, and
   nonzero-depth backtracking after narrow-pass exhaustion.
+- Variable-depth branches exercise already-pruned holes between live choices.
 - Walker tests cover fresh and existing nodes, original range validation,
   complete exhaustion, siblings, and ancestor bubbling.
 - An additional differential experiment on 500 seeded finite trees matched the
   baseline's values, order, pass numbers, and cutoffs at 1/2/3/5 passes.
-- Full Deno suite: 135 groups / 959 steps; Bun API suite: 278 tests. All pass,
+- Full Deno suite: 135 groups / 960 steps; Bun API suite: 278 tests. All pass,
   as do type checking, lint, formatting, and the quick suite.
 
 ### General benchmarks
