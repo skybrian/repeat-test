@@ -8,6 +8,7 @@ import { Arbitrary } from "../src/entrypoints/core.ts";
 import { Filtered } from "../src/pickable.ts";
 import { IntRequest, PickList } from "../src/picks.ts";
 import { Script } from "../src/script_class.ts";
+import { Backtracker } from "../src/backtracking.ts";
 
 import { assertGenerated, takeGenerated } from "./lib/asserts.ts";
 import {
@@ -101,6 +102,69 @@ describe("OrderedTracker", () => {
       0: ["0"],
       1: ["1"],
     });
+  });
+  it("widens a one-level range without cancelled probes", () => {
+    const req = new IntRequest(1, 10);
+    const result = runSearch((tracker) => {
+      tracker.startPlayout(0);
+      const pick = tracker.maybePick(req);
+      assert(pick !== undefined, "an available root pick should not cancel");
+      return String(pick);
+    });
+    assertEquals(
+      result,
+      Object.fromEntries(
+        Array.from({ length: 10 }, (_, pass) => [pass, [String(pass + 1)]]),
+      ),
+    );
+  });
+  it("keeps pending nested picks when only the narrow pass is exhausted", () => {
+    const result = runSearch((tracker) => {
+      tracker.startPlayout(0);
+      const root = tracker.maybePick(IntRequest.bit);
+      if (root === undefined) return undefined;
+      // The two root branches have different numbers of leaves.
+      const leaf = tracker.maybePick(new IntRequest(1, root + 2));
+      return leaf === undefined ? undefined : `${root},${leaf}`;
+    });
+    assertEquals(result, {
+      0: ["0,1"],
+      1: ["1,1"],
+      2: ["0,2", "1,2"],
+      3: ["1,3"],
+    });
+  });
+  it("resets cancellation state between nested successes and honors maxPasses", () => {
+    const expected = {
+      0: ["000"],
+      1: ["100"],
+      2: ["010", "110"],
+      3: ["001", "011", "101", "111"],
+    };
+    for (const maxPasses of [1, 2, 3, 4]) {
+      const walk = walkFunction(2, 3);
+      const cancelledPasses: number[] = [];
+      const result = runSearch((tracker) => {
+        const playout = walk(tracker);
+        if (playout === undefined) {
+          assert(tracker instanceof OrderedTracker);
+          cancelledPasses.push(tracker.currentPass);
+        }
+        return playout;
+      }, maxPasses);
+      assertEquals(
+        result,
+        Object.fromEntries(
+          Object.entries(expected).filter(([pass]) => Number(pass) < maxPasses),
+        ),
+        `maxPasses=${maxPasses}`,
+      );
+      assertEquals(
+        cancelledPasses,
+        [1, 2, 2].filter((pass) => pass < maxPasses),
+        `maxPasses=${maxPasses}`,
+      );
+    }
   });
   it("handles a binary tree of depth 5", () => {
     assertEquals(runSearch(walkFunction(2, 5)), {
@@ -210,6 +274,47 @@ describe("orderedPlayouts", () => {
     assert(stream.startAt(0));
     stream.endPlayout();
     assert(stream.done);
+  });
+
+  it("resumes at nonzero depth after a narrow-pass cancellation backs up", () => {
+    const tracker = new OrderedTracker();
+    const stream = new Backtracker(tracker);
+    const bit = IntRequest.bit;
+    // Reach pass 2, including a cancellation of the first prefix in pass 1.
+    for (const expected of [[0, 0, 0], [0, 0, undefined], [1, 0, 0]]) {
+      assert(stream.startAt(0));
+      for (const pick of expected) {
+        assertEquals(stream.nextPick(bit), pick);
+      }
+      if (stream.state === "picking") stream.endPlayout();
+    }
+    assertEquals(tracker.currentPass, 2);
+
+    for (const root of [0, 1]) {
+      assert(stream.startAt(0));
+      assertEquals(stream.nextPick(bit), root);
+      assertEquals(stream.nextPick(bit), 0);
+      // The third pick is exhausted only within this pass's narrow range.
+      assertEquals(stream.nextPick(bit), undefined);
+      assertEquals(stream.state, "playoutDone");
+      assertEquals(stream.depth, 1);
+      assertEquals(tracker.currentPass, 2);
+      assertEquals(stream.startAt(2), false);
+
+      // Keep the root pick, but retry the second pick after normalization.
+      assert(stream.startAt(1));
+      assertEquals(stream.nextPick(bit), 1);
+      assertEquals(stream.nextPick(bit), 0);
+      stream.endPlayout();
+    }
+
+    // Cancelling the narrow prefixes must not prune their later leaves.
+    assertEquals(tracker.currentPass, 3);
+    assert(stream.startAt(0));
+    assertEquals(stream.nextPick(bit), 0);
+    assertEquals(stream.nextPick(bit), 0);
+    assertEquals(stream.nextPick(bit), 1);
+    stream.endPlayout();
   });
 });
 

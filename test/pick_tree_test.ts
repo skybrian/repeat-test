@@ -148,6 +148,92 @@ describe("Walk", () => {
     });
   });
 
+  describe("pruneBranchTo", () => {
+    const req = new IntRequest(1, 5);
+
+    it("creates a node before pruning its lower choices", () => {
+      assert(walk.pruneBranchTo(3, req));
+      assertEquals(walk.depth, 0);
+      assertEquals(tree.branchesLeft([]), 3);
+      assertFalse(tree.available([1]));
+      assertFalse(tree.available([2]));
+      assertEquals(walk.pushUnpruned(req.min, req), 3);
+
+      // Pruning doesn't change the original request range.
+      walk.trim(0);
+      assertThrows(
+        () => walk.pushUnpruned(3, new IntRequest(3, 5)),
+        Error,
+        "range doesn't match",
+      );
+    });
+
+    it("prunes an existing node without reviving previously pruned choices", () => {
+      walk.push(req, 5);
+      walk.prune();
+      assert(walk.pruneBranchTo(3, req));
+      assertEquals(tree.branchesLeft([]), 2);
+      assertEquals(walk.pushUnpruned(1, req), 3);
+      assertFalse(tree.available([5]));
+    });
+
+    it("handles bounds below the minimum and at the maximum", () => {
+      assert(walk.pruneBranchTo(0, req));
+      assertEquals(tree.branchesLeft([]), 5);
+      assert(walk.pruneBranchTo(req.max, req));
+      assertEquals(tree.branchesLeft([]), 1);
+      assertEquals(walk.pushUnpruned(req.min, req), req.max);
+    });
+
+    it("exhausts the root when the bound exceeds the request", () => {
+      assertFalse(walk.pruneBranchTo(6, req));
+      assert(tree.done);
+      assert(walk.pruned);
+      assertEquals(walk.depth, 0);
+    });
+
+    it("exhausts an existing node when all its remaining choices are lower", () => {
+      walk.push(req, req.max);
+      walk.prune();
+      assertFalse(walk.pruneBranchTo(req.max, req));
+      assert(tree.done);
+      assert(walk.pruned);
+    });
+
+    it("backs up from an exhausted prefix without pruning its siblings", () => {
+      const bit = new IntRequest(0, 1);
+      walk.push(bit, 0);
+      walk.push(bit, 0);
+      assertFalse(walk.pruneBranchTo(6, req));
+      assertEquals(walk.getReplies(), [0]);
+      assertFalse(tree.available([0, 0]));
+      assert(tree.available([0, 1]));
+      assert(tree.available([1]));
+      assertEquals(walk.pushUnpruned(0, bit), 1);
+    });
+
+    it("backs up through empty ancestors", () => {
+      const bit = new IntRequest(0, 1);
+      walk.push(bit, 0);
+      walk.push(new IntRequest(0, 0), 0);
+      assertFalse(walk.pruneBranchTo(6, req));
+      assertEquals(walk.getReplies(), []);
+      assertFalse(tree.available([0]));
+      assert(tree.available([1]));
+      assertEquals(walk.pushUnpruned(0, bit), 1);
+    });
+
+    it("checks an existing range even when the bound would exhaust it", () => {
+      assert(walk.pruneBranchTo(3, req));
+      assertThrows(
+        () => walk.pruneBranchTo(6, new IntRequest(1, 4)),
+        Error,
+        "range doesn't match",
+      );
+      assertEquals(tree.branchesLeft([]), 3);
+    });
+  });
+
   describe("firstUnprunedInRange", () => {
     it("returns the minimum value for an unexplored tree", () => {
       assertEquals(walk.firstUnprunedInRange(0, 1), 0);

@@ -27,6 +27,7 @@ export class OrderedTracker implements Tracker {
 
   #currentPass = 0;
   #filteredThisPass = false;
+  #passAlreadyPruned = false;
 
   constructor(readonly maxPasses?: number) {}
 
@@ -61,7 +62,12 @@ export class OrderedTracker implements Tracker {
       return undefined; // pruned in previous pass
     }
     // No need to revisit branches already pruned in a previous pass.
-    this.#pass.pruneBranchTo(lowest);
+    if (!this.#pass.pruneBranchTo(lowest, replaced)) {
+      // Only this pass's narrower range is exhausted. Its walk has already
+      // backed up; don't prune the shared prefix or advance the pass again.
+      this.#passAlreadyPruned = true;
+      return undefined;
+    }
 
     const pick = this.#pass.pushUnpruned(req.min, replaced);
     assert(this.#shared.push(req, pick));
@@ -75,8 +81,12 @@ export class OrderedTracker implements Tracker {
   }
 
   nextPlayout(): number | undefined {
-    this.#shared.prune();
-    this.#pass.prune();
+    if (this.#passAlreadyPruned) {
+      this.#passAlreadyPruned = false;
+    } else {
+      this.#shared.prune();
+      this.#pass.prune();
+    }
     if (!this.#pass.pruned) {
       // continue current pass
       return this.#pass.depth;

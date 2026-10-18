@@ -442,12 +442,33 @@ export class Walk {
     return true;
   }
 
-  /** If the current branch is a Node, prune any lower picks. */
-  pruneBranchTo(pick: number) {
-    const branch = this.parent.getBranch(this.lastReply);
-    if (branch instanceof Node) {
-      branch.pruneTo(pick);
+  /**
+   * Creates a node if needed and prunes all choices below pick.
+   *
+   * Returns true if a choice remains. Otherwise prunes the current prefix,
+   * backing up just like prune(), and returns false.
+   *
+   * Preconditions: the Walk doesn't point at a pruned branch.
+   */
+  pruneBranchTo(pick: number, req: Range): boolean {
+    let branch = this.parent.getBranch(this.lastReply);
+    assert(branch !== PRUNED, "parent picked a pruned branch");
+    if (branch !== undefined) {
+      branch.checkRangeMatches(req);
     }
+    if (pick > req.max) {
+      this.prune();
+      return false;
+    }
+    if (branch === undefined) {
+      branch = this.parent.addChild(this.lastReply, req);
+    }
+    branch.pruneTo(pick);
+    if (branch.branchesLeft === 0) {
+      this.prune();
+      return false;
+    }
+    return true;
   }
 
   trim(depth: number) {
