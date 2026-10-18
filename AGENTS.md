@@ -7,6 +7,14 @@ QuickCheck.
 > [docs/reference.md](./docs/reference.md) for API documentation and usage
 > guidelines.
 
+## Git Identity
+
+Before making your first commit in a session, check `git config user.name` and
+`git config user.email`. Both must be explicitly configured and must not be
+placeholder identities such as `exe.dev user` or `exedev@<hostname>`. If either
+is missing or a placeholder, ask the user for their Git identity before
+committing; do not guess it.
+
 ## Task Quick Reference
 
 ```bash
