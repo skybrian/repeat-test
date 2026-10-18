@@ -39,6 +39,7 @@
   },
   "tasks": {
     "coverage": "rm -f lcov.info && deno test --coverage --clean && deno coverage --lcov > lcov.info && deno coverage --exclude=coverage_exclusions.ts",
+    "coverage:compare": "deno run --allow-run --allow-read --allow-write=coverage --allow-env=REPS scripts/coverage.ts compare",
     "test": "deno test",
     "test:api": "deno test test/api/",
     "test:api:bun": "bun test ./test/api/",
