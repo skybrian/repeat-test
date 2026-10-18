@@ -5,6 +5,7 @@
  *
  * Verifies:
  * - Full test suite passes
+ * - Bun is installed, dependencies install from the lockfile, and API tests pass
  * - Linting passes
  * - Type checking passes
  * - Examples run without errors
@@ -14,27 +15,39 @@
 
 type CheckResult = { name: string; ok: boolean; output?: string };
 
-async function run(
+type RunOptions = {
+  captureOutput?: boolean;
+  env?: Record<string, string>;
+};
+
+export async function run(
   cmd: string[],
-  opts?: { captureOutput?: boolean },
-): Promise<{ success: boolean; output: string }> {
-  const command = new Deno.Command(cmd[0], {
-    args: cmd.slice(1),
-    stdout: opts?.captureOutput ? "piped" : "inherit",
-    stderr: opts?.captureOutput ? "piped" : "inherit",
-  });
-  const result = await command.output();
-  const output = opts?.captureOutput
-    ? new TextDecoder().decode(result.stdout) +
-      new TextDecoder().decode(result.stderr)
-    : "";
-  return { success: result.success, output };
+  opts?: RunOptions,
+): Promise<{ success: boolean; output: string; launchFailed?: boolean }> {
+  try {
+    const command = new Deno.Command(cmd[0], {
+      args: cmd.slice(1),
+      stdout: opts?.captureOutput ? "piped" : "inherit",
+      stderr: opts?.captureOutput ? "piped" : "inherit",
+      env: opts?.env,
+    });
+    const result = await command.output();
+    const output = opts?.captureOutput
+      ? new TextDecoder().decode(result.stdout) +
+        new TextDecoder().decode(result.stderr)
+      : "";
+    return { success: result.success, output };
+  } catch (error) {
+    const output = `Could not run ${cmd.join(" ")}: ${error}`;
+    if (!opts?.captureOutput) console.error(output);
+    return { success: false, output, launchFailed: true };
+  }
 }
 
 async function check(
   name: string,
   cmd: string[],
-  opts?: { captureOutput?: boolean },
+  opts?: RunOptions,
 ): Promise<CheckResult> {
   console.log(`\n=== ${name} ===`);
   const { success, output } = await run(cmd, opts);
@@ -42,6 +55,36 @@ async function check(
     console.log(`FAILED`);
   }
   return { name, ok: success, output };
+}
+
+export async function checkBun(
+  runCheck: typeof check = check,
+): Promise<CheckResult[]> {
+  const version = await runCheck("Bun Version", ["bun", "--version"]);
+  if (!version.ok) {
+    console.error(
+      "Bun is required for release checks. Install Bun and ensure bun is on PATH.",
+    );
+    return [version];
+  }
+
+  const install = await runCheck("Bun Dependencies", [
+    "bun",
+    "install",
+    "--frozen-lockfile",
+  ]);
+  if (!install.ok) {
+    console.log(
+      "Skipping Bun API tests because dependency installation failed.",
+    );
+    return [version, install];
+  }
+
+  const tests = await runCheck("Bun API Tests", ["bun", "run", "test:api"], {
+    // Release checks must not inherit a reduced quick-test repetition budget.
+    env: { REPS: "100%" },
+  });
+  return [version, install, tests];
 }
 
 async function checkExamples(): Promise<CheckResult[]> {
@@ -61,11 +104,16 @@ async function checkExamples(): Promise<CheckResult[]> {
     const shouldFail = expectedToFail.has(entry.name);
     console.log(`  ${entry.name}${shouldFail ? " (expected to fail)" : ""}...`);
 
-    const { success } = await run(["deno", "run", "--allow-read", path], {
+    const { success, launchFailed } = await run([
+      "deno",
+      "run",
+      "--allow-read",
+      path,
+    ], {
       captureOutput: true,
     });
 
-    const ok = shouldFail ? !success : success;
+    const ok = !launchFailed && (shouldFail ? !success : success);
     if (!ok) {
       console.log(
         `    FAILED${shouldFail ? " (should have failed but passed)" : ""}`,
@@ -121,6 +169,9 @@ async function main(): Promise<number> {
 
   // Full test suite
   results.push(await check("Full Test Suite", ["deno", "test"]));
+
+  // Public API compatibility under Bun (internal tests require Deno).
+  results.push(...await checkBun());
 
   // Linting
   results.push(
@@ -195,4 +246,6 @@ async function main(): Promise<number> {
   }
 }
 
-Deno.exit(await main());
+if (import.meta.main) {
+  Deno.exit(await main());
+}
