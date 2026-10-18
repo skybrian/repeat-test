@@ -51,7 +51,7 @@ export class ArbRow<T extends Row> extends Arbitrary<T> {
     }
 
     if (cases.length === 1) {
-      super(scriptFromShape(name, cases[0].shape).with(opts));
+      super(scriptFromShape(cases[0].name, cases[0].shape).with(opts));
       this.#cases = cases;
       return;
     }
