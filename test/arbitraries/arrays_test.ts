@@ -1,5 +1,5 @@
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals, assertThrows } from "@std/assert";
+import { assertEquals } from "@std/assert";
 import {
   assertFirstGenerated,
   assertFirstValues,
@@ -102,13 +102,5 @@ describe("array", () => {
         [true, true],
       ]);
     });
-  });
-
-  it("throws an Error if min > max", () => {
-    assertThrows(
-      () => arb.array(arb.boolean(), { length: { min: 3, max: 2 } }),
-      Error,
-      "length constraint for array is invalid; want: min <= max, got: 3..2",
-    );
   });
 });

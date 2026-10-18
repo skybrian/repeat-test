@@ -45,6 +45,12 @@ Helpers in `support/` obey the same import boundary as the tests:
   substring; Node's built-in `throws` uses its third argument as a diagnostic
   message, not a substring matcher.
 - `ranges.ts` defines integer-range generators using the public Arbitrary API.
+- `console.ts` records runner diagnostics without writing expected failures to
+  the real console.
+
+Prefer tiny finite inputs and explicit repetition budgets for API tests. Runner
+shrinking tests pin a replay key in a small range, so they exercise real
+shrinking without sampling loops and remain effective when `REPS` is reduced.
 
 Private enumeration, pick-encoding, seeded sampling, and implementation-oracle
 helpers remain in `test/lib/` and are used only by internal tests.

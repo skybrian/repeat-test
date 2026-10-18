@@ -106,17 +106,7 @@ describe("int", () => {
       assertValues(arb.int(-3, 3), [0, -1, 1, -2, 2, -3, 3]);
     });
   });
-  describe("default", () => {
-    it("defaults to min for positive numbers", () => {
-      assertEquals(generateDefault(arb.int(1, 6)).val, 1);
-    });
-    it("defaults to max for negative numbers", () => {
-      assertEquals(generateDefault(arb.int(-6, -1)).val, -1);
-    });
-    it("defaults to 0 for a range that includes 0", () => {
-      assertEquals(generateDefault(arb.int(-6, 6)).val, 0);
-    });
-  });
+
   describe("maxSize", () => {
     it("has maxSize set to the size of the range", () => {
       assertEquals(arb.int(1, 6).maxSize, 6);

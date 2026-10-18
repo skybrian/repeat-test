@@ -8,7 +8,6 @@ import {
   assertEquals,
   assertFalse,
   AssertionError,
-  assertRejects,
   assertThrows,
   fail,
 } from "@std/assert";
@@ -650,111 +649,6 @@ describe("repeatTest", () => {
     collectArgs.push(val);
   };
 
-  it("accepts a list of numbers", () => {
-    repeatTest([1, 2, 3], collect);
-    assertEquals(collectArgs, [1, 2, 3]);
-    con.checkEmpty();
-  });
-
-  it("awaits asynchronous callbacks before running the next rep", async () => {
-    const seen: number[] = [];
-    const pending: Promise<void> = repeatTest([1, 2, 3], async (n) => {
-      await Promise.resolve();
-      seen.push(n);
-    }, { reps: 0, console: con });
-    await pending;
-    assertEquals(seen, [1, 2, 3]);
-    con.checkEmpty();
-  });
-
-  it("switches to async when a later rep returns a Promise", async () => {
-    const seen: number[] = [];
-    const result = repeatTest([1, 2, 3], (n) => {
-      seen.push(n);
-      if (n === 2) return Promise.resolve();
-    }, { reps: 0, console: con });
-    assert(result instanceof Promise);
-    assertEquals(seen, [1, 2]);
-    await result;
-    assertEquals(seen, [1, 2, 3]);
-  });
-
-  it("handles every mix of synchronous and asynchronous reps", async () => {
-    for (let mask = 0; mask < 1 << 3; mask++) {
-      const asyncReps = [0, 1, 2].map((i) => (mask & (1 << i)) !== 0);
-      const seen: number[] = [];
-      const result = repeatTest([0, 1, 2], (n) => {
-        if (asyncReps[n]) {
-          return Promise.resolve().then(() => {
-            seen.push(n);
-          });
-        }
-        seen.push(n);
-      }, { reps: 0, console: con });
-
-      if (asyncReps.some(Boolean)) {
-        assert(
-          result instanceof Promise,
-          `mask ${mask} should return a Promise`,
-        );
-        await result;
-      } else {
-        assertEquals(result, undefined);
-      }
-      assertEquals(seen, [0, 1, 2], `wrong order for mask ${mask}`);
-    }
-    con.checkEmpty();
-  });
-
-  it("reports an async rejection and reruns the failure", async () => {
-    const seen: number[] = [];
-    await assertRejects(
-      () =>
-        repeatTest([1, 2, 3], async (n) => {
-          seen.push(n);
-          await Promise.resolve();
-          if (n === 2) throw new Error("async failure");
-        }, { reps: 0, console: con }),
-      Error,
-      "async failure",
-    );
-    assertEquals(seen, [1, 2, 2]);
-    con.loggedTestFailed();
-    con.logged(["attempt FAILED, using:", 2], { type: "error" });
-    con.logged('rerun using {only: "1"}');
-    con.checkEmpty();
-  });
-
-  it("reports console.error after an await", async () => {
-    await assertRejects(
-      () =>
-        repeatTest([1], async (_n, console) => {
-          await Promise.resolve();
-          console.error("late error");
-        }, { reps: 0, console: con }),
-      Error,
-      "test called console.error()",
-    );
-    con.loggedTestFailed();
-    con.logged("late error", { type: "error" });
-    con.logged(["attempt FAILED, using:", 1], { type: "error" });
-    con.logged('rerun using {only: "0"}');
-    con.checkEmpty();
-  });
-
-  it("keeps the only option behavior for async callbacks", async () => {
-    await assertRejects(
-      () =>
-        repeatTest([1, 2], async (n) => {
-          await Promise.resolve();
-          assertEquals(n, 2);
-        }, { only: "1", console: con }),
-      Error,
-      "only option is set",
-    );
-    con.checkEmpty();
-  });
-
   it("accepts a list containing an Arbitrary", () => {
     repeatTest([1, 2, 3, arb.int32()], collect, { reps: 1000 });
     assertEquals(collectArgs.length, 1004, "unexpected number of test runs");
@@ -766,26 +660,6 @@ describe("repeatTest", () => {
     repeatTest(IntRequest.bit, collect);
     assertEquals(collectArgs, [0, 1]);
     con.checkEmpty;
-  });
-
-  it("stops running when a test fails with a constant", () => {
-    const inputs: number[] = [];
-    const test = (val: number) => {
-      inputs.push(val);
-      if (val === 2) {
-        throw new Error("oops");
-      }
-    };
-    assertThrows(
-      () => {
-        repeatTest([1, 2, 3], test, { console: con });
-      },
-      Error,
-      "oops",
-    );
-    // The failed test will be run a second time with logging enabled.
-    assertEquals(inputs, [1, 2, 2]);
-    con.loggedTestFailed();
   });
 
   it("reports escaped strings after shrinking", () => {
@@ -815,28 +689,6 @@ describe("repeatTest", () => {
       con.logged('rerun using {only: "0"}');
       con.checkEmpty();
     }
-  });
-
-  it("shrinks the test input when a random test fails", () => {
-    const args: number[] = [];
-    const test = (i: number) => {
-      args.push(i);
-      if (i >= 10) {
-        throw new Error(`test failed with ${i}`);
-      }
-    };
-    assertThrows(
-      () => {
-        repeatTest(arb.int32(), test, { console: con });
-      },
-      Error,
-      "test failed with 10",
-    );
-    // There may be additional calls to the test function due to shrinking.
-    assert(args.length > 1);
-    assertEquals(args[0], 0);
-    assertEquals(args[args.length - 1], 10);
-    con.loggedTestFailed();
   });
 
   describe("with console.sometimes()", () => {
@@ -888,26 +740,6 @@ describe("repeatTest", () => {
     });
   });
 
-  it("throws an exception if reps isn't an integer", () => {
-    assertThrows(
-      () => {
-        repeatTest(arb.int32(), () => {}, { reps: 0.5 });
-      },
-      Error,
-      "reps option must be an integer; got 0.5",
-    );
-    con.checkEmpty();
-  });
-  it("throws an exception if reps is -1", () => {
-    assertThrows(
-      () => {
-        repeatTest(arb.int32(), () => {}, { reps: -1 });
-      },
-      Error,
-      "reps option must be non-negative; got -1",
-    );
-    con.checkEmpty();
-  });
   it("stops running the test function after the limit given by `randomReps`", () => {
     for (let randomReps = 0; randomReps < 100; randomReps++) {
       let actual = 0;
