@@ -16,6 +16,30 @@ Machine: Intel Xeon Platinum 8259CL @ 2.50GHz (x86_64-unknown-linux-gnu)
 
 ---
 
+## Version 0.5.1 — API table test repetition budget
+
+Commit: 97ab5a9 | Deno 2.9.7 | Bun 1.4.3 | 2026-10-18
+
+The two-row-shape API round-trip test now requests 200 random repetitions, or
+1,000 under `REPS=5x`. Its schema is unchanged. A separate deterministic example
+round-trips all ten unique IDs, both shapes, and a 1,000-unit string; this
+example does not scale with `REPS`.
+
+Actual test timings, without coverage or profiling:
+
+- Default Bun API suite: randomized case 352 ms; fixed example 1 ms.
+- Three fresh Bun processes selecting these two cases under `REPS=5x`:
+  randomized case 1.679 / 1.672 / 1.616 s; fixed example 1–2 ms. Each complete
+  process took less than 1.8 s.
+- Deno's table test file passes under `REPS=5x`, reporting approximately 1 s for
+  this randomized case and 1 ms for the fixed example.
+
+These observations leave headroom under three seconds on this VM, not a hard
+timing guarantee. Default API suites pass in both runtimes, as do type checking,
+lint, formatting, and the quick suite.
+
+---
+
 ## Version 0.5.1 — ordered-search prefix pruning
 
 Before: 383962c | After: a9e9441 | Deno 2.9.7 | Bun 1.4.3 | 2026-10-18
