@@ -1,12 +1,14 @@
 {
   "name": "@skybrian/repeat-test",
-  "version": "0.5.1",
+  "version": "0.6.0-rc.1",
   "nodeModulesDir": "none",
   "compilerOptions": {
     "noImplicitOverride": true
   },
   "lint": {
-    "plugins": ["./scripts/api_test_lint.ts"]
+    "plugins": [
+      "./scripts/api_test_lint.ts"
+    ]
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.1",

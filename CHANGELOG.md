@@ -1,3 +1,13 @@
+## 0.6.0-rc.1
+
+- Added support for async tests. When `repeatTest` runs a test callback function
+  and it returns a Promise, it will await the result. You should use `await`
+  when calling repeatTest in this way.
+
+- Added Bun compatibility.
+
+- Fixed a bug where test output wasn't escaped.
+
 ## 0.5.1
 
 (This release was co-authored with AI.)
