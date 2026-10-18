@@ -11,6 +11,7 @@ import { Gen } from "./gen_class.ts";
 import { generateDefault } from "./ordered.ts";
 import { filter } from "./scripts/filter.ts";
 import { scriptOf } from "./scripts/scriptOf.ts";
+import { inspect } from "./inspect.ts";
 
 /** Thrown for validation errors. */
 export class ParseError<T> extends Error {
@@ -98,7 +99,7 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
       if (!msg.endsWith("\n")) {
         msg += "\n";
       }
-      const actual = Deno.inspect(gen.actual);
+      const actual = inspect(gen.actual);
       throw new ParseError(`${msg}\n${actual}\n`, val);
     }
     return gen.val;
@@ -289,7 +290,7 @@ export class Domain<T> implements Pickable<T>, HasScript<T> {
     return Domain.make(build, (val, sendErr, name) => {
       const pick = values.indexOf(val as T);
       if (pick === -1) {
-        sendErr(`not a member of '${name}': ${Deno.inspect(val)}`, val);
+        sendErr(`not a member of '${name}': ${inspect(val)}`, val);
         return undefined;
       }
       return [pick];

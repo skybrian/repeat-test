@@ -29,11 +29,19 @@ describe("of", () => {
   });
   it("rejects items not passed in as arguments", () => {
     const items = dom.of(1, 2, 3);
-    assertThrows(() => items.parse(4), Error, "not a member of '3 examples'");
+    assertThrows(
+      () => items.parse(4),
+      ParseError,
+      "not a member of '3 examples': 4",
+    );
   });
   it("uses a name added later in error messages", () => {
     const items = dom.of(1, 2, 3).with({ name: "digit" });
-    assertThrows(() => items.parse(4), Error, "not a member of 'digit'");
+    assertThrows(
+      () => items.parse(4),
+      ParseError,
+      "not a member of 'digit': 4",
+    );
   });
 
   it("automatically names simple constants", () => {
