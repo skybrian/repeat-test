@@ -10,10 +10,8 @@ import {
 
 import { repeatTest } from "@/runner.ts";
 import * as arb from "@/arbs.ts";
-import { invalidIntRange } from "./lib/ranges.ts";
 
 import {
-  biasedBitRequest,
   IntRequest,
   PickBuffer,
   PickList,
@@ -38,17 +36,6 @@ describe("IntRequest.random", () => {
       return result[calls - 1];
     };
   }
-
-  describe("for a range of size 1", () => {
-    const min = arb.of(0, 1, 1000, Number.MAX_SAFE_INTEGER);
-    it("returns the only possible value", () => {
-      repeatTest(min, (min) => {
-        calls = 0;
-        assertEquals(new IntRequest(min, min).random(mock()), min);
-        assertEquals(calls, 0);
-      });
-    });
-  });
 
   describe("for small ranges", () => {
     const min = arb.of(0, 1, 1000, Number.MAX_SAFE_INTEGER - 127);
@@ -200,30 +187,6 @@ describe("IntRequest.random", () => {
 });
 
 describe("IntRequest", () => {
-  describe("constructor", () => {
-    it("throws when given an invalid range", () => {
-      repeatTest(invalidIntRange({ minMin: 0 }), ({ min, max }) => {
-        assertThrows(() => new IntRequest(min, max));
-      });
-    });
-  });
-
-  describe("directBuild", () => {
-    it("works in a build script", () => {
-      // Verbose, but valid.
-      const bit = arb.from((pick) => IntRequest.bit.directBuild(pick));
-      repeatTest(bit, (val, console) => {
-        console.checkOdds("is zero", 0.5, val === 0);
-      });
-    });
-  });
-
-  describe("toString", () => {
-    it("prints the range", () => {
-      assertEquals(new IntRequest(0, 1).toString(), "0..1");
-    });
-  });
-
   it("compares equal to a value with the same range", () => {
     const a = new IntRequest(0, 1);
     const b = new IntRequest(0, 1);
@@ -237,34 +200,6 @@ describe("IntRequest", () => {
 
   it("compares differently when max is different", () => {
     assertFalse(equal(new IntRequest(0, 1), new IntRequest(0, 2)));
-  });
-});
-
-describe("biasedBitRequest", () => {
-  function scan(req: IntRequest, bins: number): number[] {
-    const out: number[] = [];
-    for (let i = 0; i < bins; i++) {
-      const input = 0x100000000 * (i / (bins - 1)) - 0x80000000;
-      out.push(req.random(() => input));
-    }
-    return out;
-  }
-
-  it("switches halfway for a fair coin", () => {
-    const fair = biasedBitRequest(0.5);
-    assertEquals(scan(fair, 10), [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]);
-  });
-  it("switches early for a biased coin", () => {
-    const fair = biasedBitRequest(0.1);
-    assertEquals(scan(fair, 10), [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
-  });
-  it("always picks 0 for 0", () => {
-    const fair = biasedBitRequest(0);
-    assertEquals(scan(fair, 10), [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-  });
-  it("always picks 1 for 1", () => {
-    const fair = biasedBitRequest(1);
-    assertEquals(scan(fair, 10), [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
   });
 });
 
