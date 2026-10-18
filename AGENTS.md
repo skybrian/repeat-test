@@ -62,7 +62,8 @@ scripts/             # Build/dev scripts
 - Test files are in `test/` with `_test.ts` suffix
 - Use `takeAll()` from `src/ordered.ts` to enumerate all values of small
   Arbitraries
-- Use `assertRoundTrip()` from `test/lib/asserts.ts` for Domain round-trip tests
+- Use `assertRoundTrip()` from `test/api/support/asserts.ts` for API Domain
+  round-trip tests; internal tests use `test/lib/asserts.ts`
 - Use `frozen()` instead of `Object.freeze()` for test examples
 
 ## Implementation Notes

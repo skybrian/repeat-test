@@ -35,3 +35,16 @@ generated npm package. Publishing remains managed by `deno.jsonc`.
 
 Keep implementation-specific tests elsewhere in `test/`. When a file mixes API
 and internal tests, extract individual cases rather than moving the entire file.
+
+## Shared support
+
+Helpers in `support/` obey the same import boundary as the tests:
+
+- `asserts.ts` checks Domain round trips using public `pickify` and `Gen.build`
+  APIs. Its `assertThrows` checks both the error constructor and a message
+  substring; Node's built-in `throws` uses its third argument as a diagnostic
+  message, not a substring matcher.
+- `ranges.ts` defines integer-range generators using the public Arbitrary API.
+
+Private enumeration, pick-encoding, seeded sampling, and implementation-oracle
+helpers remain in `test/lib/` and are used only by internal tests.
