@@ -6,6 +6,15 @@ support files must import repeat-test only through its published entry points:
 private source files, helpers from elsewhere in `test/`, or Deno-specific APIs.
 Use `node:test` and Node assertions, without runtime-specific test adapters.
 
+`deno lint` enforces this import boundary for every source file in this
+directory, including support files. Relative imports must stay within
+`test/api/`. The approved Node modules are `node:test`, `node:assert`, and
+`node:assert/strict`; extend the allowlist in `scripts/api_test_lint.ts`
+deliberately as needed. The rule also checks re-exports, type imports, and
+literal dynamic imports, and rejects computed dynamic imports and `require`. It
+is an architectural guardrail, not a security sandbox or a complete portability
+check.
+
 ```sh
 deno task test:api
 bun install --frozen-lockfile
