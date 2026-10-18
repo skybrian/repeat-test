@@ -16,6 +16,94 @@ Machine: Intel Xeon Platinum 8259CL @ 2.50GHz (x86_64-unknown-linux-gnu)
 
 ---
 
+## Version 0.5.1 — ordered-search prefix pruning
+
+Before: 383962c | After: a9e9441 | Deno 2.9.7 | Bun 1.4.3 | 2026-10-18
+
+Initialize the current pass's tree node before pruning its known-exhausted lower
+choices. If no choice remains within the pass's restricted range, normalize the
+pass walk without pruning the shared search prefix or advancing twice. The
+`PartialTracker` random-pick hot path is unchanged.
+
+No API test constraints, repetition counts, or timeout settings were changed.
+
+### Original table workload, before and after
+
+Used the same harness and commands described in the investigation below, on
+clean checkouts of both commits. Each cell is a fresh, unprofiled process; no
+coverage or explicit warmup. Ran sequentially, alternating runtime order by seed
+and before/after version order across seeds. Module loading and schema
+construction remain outside the measured workload.
+
+Seconds elapsed:
+
+| Random reps | Seed | Deno before | Deno after | Bun before | Bun after |
+| ----------: | ---: | ----------: | ---------: | ---------: | --------: |
+|       1,000 |  123 |       1.735 |      1.246 |      1.983 |     1.735 |
+|       1,000 |  456 |       1.760 |      1.252 |      1.998 |     1.774 |
+|       1,000 |  789 |       1.751 |      1.231 |      1.982 |     1.594 |
+|       5,000 |  123 |       8.375 |      5.386 |      8.838 |     7.249 |
+|       5,000 |  456 |       8.175 |      5.804 |      8.677 |     7.654 |
+|       5,000 |  789 |       8.278 |      5.412 |      8.540 |     7.280 |
+
+| Random reps | Runtime | Median before | Median after | Less elapsed time |
+| ----------: | ------- | ------------: | -----------: | ----------------: |
+|       1,000 | Deno    |       1.751 s |      1.246 s |             28.8% |
+|       1,000 | Bun     |       1.983 s |      1.735 s |             12.5% |
+|       5,000 | Deno    |       8.278 s |      5.412 s |             34.6% |
+|       5,000 | Bun     |       8.677 s |      7.280 s |             16.1% |
+
+All before/after and cross-runtime pairs had identical table, row, string, and
+code-unit counts and observed maximum lengths. Seed 123 still processes 5,001
+tables, 47,508 rows, and 3,572,704 string code units at 5,000 random reps. The
+phase run still pickifies 7,340,205 integer replies.
+
+Separate follow-up CPU profiles for seed 123 had no `Filtered`/`Error`
+constructor self samples in either runtime, versus approximately 20.7% in Deno
+and 2.8% in Bun in the original investigation. Sampling cannot establish that no
+exceptions were allocated, but this is consistent with eliminating the redundant
+ordered probes. The unprofiled table above, not profile timings, measures the
+improvement.
+
+The 5,000-rep workload still exceeds Bun's default five-second test timeout.
+This optimization does not remove the need for a longer timeout for that stress
+run.
+
+### Correctness checks
+
+- Regression test enumerates 1..10 on passes 0..9 without cancelled probes.
+- Tests retain pass-by-pass order, pending nested choices, pass limits, and
+  nonzero-depth backtracking after narrow-pass exhaustion.
+- Walker tests cover fresh and existing nodes, original range validation,
+  complete exhaustion, siblings, and ancestor bubbling.
+- An additional differential experiment on 500 seeded finite trees matched the
+  baseline's values, order, pass numbers, and cutoffs at 1/2/3/5 passes.
+- Full Deno suite: 135 groups / 959 steps; Bun API suite: 278 tests. All pass,
+  as do type checking, lint, formatting, and the quick suite.
+
+### General benchmarks
+
+Also ran `deno bench performance/benchmarks.ts` on each clean checkout. Average
+time per iteration, one benchmark invocation per version:
+
+| Benchmark                           |   Before |    After |
+| ----------------------------------- | -------: | -------: |
+| generate a string                   |  19.7 µs |  19.1 µs |
+| take 10k char16                     |  10.9 ms |   9.8 ms |
+| uniqueArray of 5 ints               | 214.6 µs | 196.5 µs |
+| uniqueArray of 6 ints               | 198.9 µs | 189.2 µs |
+| uniqueArray of 100 ints             |   2.1 ms |   2.2 ms |
+| generate 10k strings                | 348.7 ms | 352.7 ms |
+| fail to shrink a 1k string          |  80.3 ms |  85.8 ms |
+| fail to shrink var length 1k string | 125.9 ms | 127.1 ms |
+| shrink an array of strings          |  25.6 ms |  27.2 ms |
+
+The small mixed differences in this general suite are single-run observations,
+not established improvements or regressions. The focused table experiment uses
+three paired seeds and provides the stronger evidence for this change.
+
+---
+
 ## Version 0.5.1 — table round-trip investigation
 
 Commit: 68d5e91 | Deno 2.9.7 | Bun 1.4.3 | 2026-10-18
