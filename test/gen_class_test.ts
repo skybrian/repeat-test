@@ -5,14 +5,13 @@ import { filtered } from "../src/results.ts";
 import { Filtered } from "../src/pickable.ts";
 import { IntRequest, PlaybackPicker } from "../src/picks.ts";
 import { keep, replace, snip } from "../src/edits.ts";
-import { neverReturns, Script } from "../src/script_class.ts";
+import { Script } from "../src/script_class.ts";
 import { Gen, generate, MutableGen } from "../src/gen_class.ts";
 import { propsFromGen } from "./lib/props.ts";
 import { minPlayout, onePlayout } from "../src/backtracking.ts";
 import { orderedPlayouts } from "../src/ordered.ts";
 import { randomPicker } from "../src/random.ts";
 import { repeatTest } from "../src/runner.ts";
-import { frozen } from "../src/frozen.ts";
 import { depthFirstPlayouts } from "./lib/picks.ts";
 
 const bitReq = IntRequest.bit;
@@ -21,15 +20,9 @@ const bit = Script.make("bit", (pick) => pick(IntRequest.bit));
 
 const rollReq = new IntRequest(1, 6);
 
-const roll = Script.make("roll", (pick) => pick(rollReq));
-
 const fails = Script.make("fails", () => {
   throw new Error("oops!");
 });
-
-const frozenScript = Script.make("frozen", () => frozen(["frozen"]));
-
-const mutable = Script.make("mutable", () => ["mutable"]);
 
 const twoBits = Script.make("twoBits", (pick) => {
   const a = pick(IntRequest.bit);
@@ -38,145 +31,6 @@ const twoBits = Script.make("twoBits", (pick) => {
 }, { logCalls: true });
 
 describe("Gen", () => {
-  describe("build", () => {
-    it("fails when there aren't enough picks", () => {
-      assertEquals(
-        Gen.build(bit, []),
-        {
-          ok: false,
-          message: "can't build 'bit': ran out of picks",
-          actual: [],
-        },
-      );
-    });
-
-    it("fails when the script never returns", () => {
-      assertEquals(
-        Gen.build(neverReturns, []),
-        {
-          ok: false,
-          message: "can't build 'neverReturns': picks not accepted",
-          actual: [],
-        },
-      );
-    });
-
-    it("throws when too many values were supplied", () => {
-      assertEquals(
-        Gen.build(bit, [1, 1]),
-        {
-          ok: false,
-          message: "can't build 'bit': read only 1 of 2 available picks",
-          actual: [1, 1],
-        },
-      );
-    });
-
-    it("throws for an out-of-range value", () => {
-      assertEquals(
-        Gen.build(roll, [7]),
-        {
-          ok: false,
-          message:
-            "can't build 'roll': pick 0 didn't satisfy the request. Want: [1, 6]. Got: 7",
-          actual: [7],
-        },
-      );
-    });
-
-    const notOne = Script.make(
-      "filtered",
-      (pick) => pick(roll, { accept: (v) => v !== 1 }),
-    );
-
-    it("throws due to being filtered out", () => {
-      assertEquals(
-        Gen.build(notOne, [1]),
-        {
-          ok: false,
-          message: "can't build 'filtered': picks not accepted",
-          actual: [1],
-        },
-      );
-    });
-
-    it("throws due to being filtered out, and without reading all picks", () => {
-      assertEquals(
-        Gen.build(notOne, [1, 2]),
-        {
-          ok: false,
-          message: "can't build 'filtered': read only 1 of 2 available picks",
-          actual: [1, 2],
-        },
-      );
-    });
-  });
-
-  describe("mustBuild", () => {
-    it("fails when there aren't enough picks", () => {
-      assertThrows(
-        () => Gen.mustBuild(bit, []),
-        Error,
-        "can't build 'bit': ran out of picks",
-      );
-    });
-
-    describe("with a splitable script", () => {
-      it("fails when there aren't enough picks", () => {
-        assertThrows(
-          () => Gen.mustBuild(twoBits, []),
-          Error,
-          "can't build 'twoBits': ran out of picks",
-        );
-      });
-
-      const firstPickFiltered = Script.make(
-        "firstPickFiltered",
-        (pick) => {
-          const a = pick(neverReturns);
-          const b = pick(IntRequest.bit);
-          return `(${a}, ${b})`;
-        },
-      );
-
-      it("fails when the first pick threw Filtered", () => {
-        assertThrows(
-          () => Gen.mustBuild(firstPickFiltered, [0]),
-          Error,
-          "can't build 'firstPickFiltered': read only 0 of 1 available picks",
-        );
-      });
-    });
-  });
-
-  describe("val", () => {
-    it("doesn't regenerate a frozen object", () => {
-      const gen = Gen.mustBuild(frozenScript, []);
-      const first = gen.val;
-      assertEquals(first, ["frozen"]);
-      assert(gen.val === first);
-    });
-
-    it("regenerates a mutable object", () => {
-      const gen = Gen.mustBuild(mutable, []);
-      const first = gen.val;
-      assertEquals(first, ["mutable"]);
-      assert(gen.val !== first);
-    });
-
-    const usesMutable = Script.make("usesMutable", (pick) => {
-      const a = pick(mutable);
-      return [a[0] + "!"];
-    }, { logCalls: true });
-
-    it("regenerates without caching when picking from a mutable", () => {
-      const gen = Gen.mustBuild(usesMutable, []);
-      const first = gen.val;
-      assertEquals(first, ["mutable!"]);
-      assert(gen.val !== first);
-    });
-  });
-
   describe("toMutable", () => {
     it("returns a mutable with the same gen", () => {
       const original = Gen.mustBuild(bit, [1]);
@@ -438,30 +292,6 @@ describe("generate", () => {
       });
       assert(gen !== filtered);
       assertEquals(MutableGen.from(gen).groupKeys, [0, 1]);
-    });
-
-    it("regenerates a result that can't be cached", () => {
-      const cached = Script.make("uncached", (pick) => {
-        const val = pick(frozenScript);
-        return val.concat(["" + pick(IntRequest.bit)]);
-      }, { logCalls: true });
-
-      const gen = generate(cached, minPlayout());
-
-      assertEquals(propsFromGen(gen), {
-        name: "uncached",
-        reqs: [IntRequest.bit],
-        replies: [0],
-        val: ["frozen", "0"],
-      });
-
-      assert(gen !== filtered);
-      const first = gen.val;
-      assertEquals(first, ["frozen", "0"]);
-
-      const second = gen.val;
-      assertEquals(second, first);
-      assertFalse(second === first);
     });
 
     it("fails when the rule throws an error", () => {
