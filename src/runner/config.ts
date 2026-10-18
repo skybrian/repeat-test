@@ -2,6 +2,8 @@
  * Global configuration for the test runner, including environment variable handling.
  */
 
+import { env } from "node:process";
+
 /** Default number of random repetitions per test. */
 export const defaultReps = 1000;
 
@@ -56,7 +58,7 @@ export function parseReps(value: string): RepsConfig | undefined {
 const repsConfigFromEnv: RepsConfig | undefined = (() => {
   let envVal: string | undefined;
   try {
-    envVal = Deno.env.get("REPS");
+    envVal = env.REPS;
   } catch {
     // Permission denied - env access not allowed, silently ignore
     return undefined;
