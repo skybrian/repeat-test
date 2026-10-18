@@ -26,18 +26,18 @@ describe("inspect", () => {
   });
 
   it("quotes strings and escapes control characters", () => {
-    assertEquals(inspect(""), '""');
-    assertEquals(inspect("hello"), '"hello"');
-    assertEquals(inspect("line\nbreak\ttab"), '"line\\nbreak\\ttab"');
+    assertEquals(inspect(""), "''");
+    assertEquals(inspect("hello"), "'hello'");
+    assertEquals(inspect("line\nbreak\ttab"), "'line\\nbreak\\ttab'");
   });
 
   it("formats arrays", () => {
-    assertEquals(inspect(frozen([1, "two", null])), '[ 1, "two", null ]');
+    assertEquals(inspect(frozen([1, "two", null])), "[ 1, 'two', null ]");
   });
 
   it("formats nested objects", () => {
     const value = frozen({ a: 123, nested: frozen([true, "hello"]) });
-    assertEquals(inspect(value), '{ a: 123, nested: [ true, "hello" ] }');
+    assertEquals(inspect(value), "{ a: 123, nested: [ true, 'hello' ] }");
   });
 
   it("handles circular references", () => {

@@ -109,14 +109,14 @@ describe("Domain", () => {
       assertThrows(
         () => bit.parse("hello"),
         ParseError,
-        `not in domain\n\n"hello"\n`,
+        `not in domain\n\n'hello'\n`,
       );
     });
     it("throws a custom error if the callback called sendErr", () => {
       assertThrows(
         () => roll.parse("hello"),
         ParseError,
-        `not a number\n\n"hello"\n`,
+        `not a number\n\n'hello'\n`,
       );
     });
   });

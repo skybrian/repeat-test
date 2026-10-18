@@ -251,7 +251,7 @@ describe("taggedUnion", () => {
     assertThrows(
       () => colors.parse("red"),
       ParseError,
-      `not an object\n\n"red"`,
+      `not an object\n\n'red'`,
     );
   });
 
