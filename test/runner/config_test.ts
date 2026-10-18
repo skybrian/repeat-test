@@ -6,6 +6,7 @@ import {
   getReps,
   maxPicksDefault,
   parseReps,
+  setRepsForTesting,
 } from "../../src/runner/config.ts";
 import { repeatTest } from "../../src/runner.ts";
 import * as arb from "@/arbs.ts";
@@ -75,6 +76,38 @@ describe("getReps", () => {
 });
 
 describe("repeatTest with REPS", () => {
+  it("scales explicit repetition budgets and keeps at least one random rep", () => {
+    for (
+      const [multiplier, randomReps] of [[5, 10], [0.5, 1], [0, 1]]
+    ) {
+      const con = new RecordingConsole();
+      let calls = 0;
+      setRepsForTesting({ multiplier });
+      try {
+        repeatTest(arb.int(0, 100), () => {
+          calls++;
+        }, { reps: 2, console: con });
+        assertEquals(calls, 1 + randomReps); // Default plus scaled random reps.
+        con.checkEmpty();
+      } finally {
+        setRepsForTesting(null);
+      }
+    }
+  });
+
+  it("skips sometimes validation for reduced repetitions", () => {
+    const con = new RecordingConsole();
+    setRepsForTesting({ multiplier: 0.5 });
+    try {
+      repeatTest([false], (value, console) => {
+        console.sometimes("always false", value);
+      }, { reps: 2, console: con });
+      con.checkEmpty();
+    } finally {
+      setRepsForTesting(null);
+    }
+  });
+
   it("basic sometimes() coverage still works", () => {
     const con = new RecordingConsole();
     repeatTest(arb.boolean(), (val, console) => {
