@@ -41,3 +41,7 @@ normally.
 ## Documentation
 
 See the [docs directory](./docs/) for a longer introduction.
+
+For development, see [test coverage commands](./docs/testing.md) to compare
+API-only coverage with the full suite and inspect gaps in individual source
+files.

@@ -50,3 +50,37 @@ the full-suite run misses, so a negative gap is possible. "Internal-only" means
 observed only in the full run; it is not proof that API tests cannot reach it.
 The table measures line coverage, not branch coverage. HTML reports retain the
 additional coverage details provided by Deno.
+
+## Inspecting a file
+
+After collecting reports, inspect any measured source file without rerunning
+tests:
+
+```sh
+deno task coverage:file src/arbitraries/arrays.ts
+deno task coverage:file src/arbitraries/arrays.ts --all
+```
+
+The default view shows gaps in API coverage with two surrounding lines of
+context, merging overlapping groups. `--all` shows the entire file. Source lines
+have line numbers and these markers:
+
+- `A`: hit by API tests.
+- `I`: hit by the full suite, but not the API run.
+- `U`: measured, but hit by neither run.
+- `-`: no executable line record in either report (for example, a comment).
+
+Start with `I` lines when looking for additional API tests; `U` lines may reveal
+gaps in both suites. A line hit by the API run is marked `A` even if the
+independent full run missed it. Line coverage alone does not imply all branches
+are tested.
+
+The command reads saved reports only and requires no subprocess or write
+permissions. It rejects missing, modified, or stale reports with a refresh
+command, rather than displaying potentially incorrect line annotations.
+Staleness checks cover Deno's version and the contents of TypeScript/JavaScript
+files under `src/`, `test/`, `examples/`, and `scripts/`, plus the Deno config
+and lockfile, package config, and TypeScript config. They do not detect changes
+to external dependencies or non-code fixtures; refresh manually after such
+changes. The saved collection time and `REPS` setting are printed when
+inspecting a file.

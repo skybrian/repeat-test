@@ -23,6 +23,8 @@ deno task test          # Run all tests
 deno task test:quick    # Quick smoke test (REPS=1%)
 deno task release-check # Checks everything more thoroughly in preparation for a release
 deno task coverage      # Run tests with coverage
+deno task coverage:compare # Collect and compare API-only and full-suite coverage
+deno task coverage:file src/path.ts # Inspect saved line coverage for a source file
 ```
 
 ## Project Structure

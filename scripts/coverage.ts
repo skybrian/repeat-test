@@ -2,6 +2,8 @@
 
 /** Collect comparable coverage reports. Run through the tasks in deno.jsonc. */
 import { fileURLToPath } from "node:url";
+import { relative, resolve, sep } from "node:path";
+import { formatFileCoverage } from "./coverage_file.ts";
 import {
   compareCoverage,
   formatSummary,
@@ -18,6 +20,7 @@ interface Manifest {
   deno: string;
   reps: string;
   inputs: Record<string, string>;
+  reports: Record<string, string>;
 }
 
 async function digest(bytes: Uint8Array): Promise<string> {
@@ -107,6 +110,7 @@ async function collect() {
     deno: Deno.version.deno,
     reps,
     inputs,
+    reports: await reportHashes(),
   };
   await Deno.writeTextFile(
     manifestPath,
@@ -122,16 +126,82 @@ async function readReports() {
       await Deno.readTextFile(`coverage/${suite}/lcov.info`),
       root,
     );
-  return compareCoverage(await read("api"), await read("all"));
+  const files = compareCoverage(await read("api"), await read("all"));
+  if (!files.length) throw new Error("No src/ coverage found in the reports.");
+  return files;
+}
+
+async function reportHashes(): Promise<Record<string, string>> {
+  const hashes: Record<string, string> = {};
+  for (const suite of ["api", "all"]) {
+    hashes[suite] = await digest(
+      await Deno.readFile(`coverage/${suite}/lcov.info`),
+    );
+  }
+  return hashes;
+}
+
+async function inspect(path: string, showAll: boolean) {
+  const normalized = relative(root, resolve(root, path)).split(sep).join("/");
+  if (!normalized.startsWith("src/")) {
+    throw new Error("Choose a source file inside src/.");
+  }
+  let manifest: Manifest;
+  try {
+    manifest = JSON.parse(await Deno.readTextFile(manifestPath));
+    if (
+      !manifest || manifest.version !== 1 ||
+      typeof manifest.inputs !== "object" ||
+      typeof manifest.reports !== "object"
+    ) throw new Error("Invalid comparison manifest");
+  } catch {
+    throw new Error(`Missing or invalid coverage reports. Run ${refresh}.`);
+  }
+  if (
+    manifest.deno !== Deno.version.deno ||
+    JSON.stringify(manifest.inputs) !== JSON.stringify(await snapshot())
+  ) {
+    throw new Error(`Coverage reports are stale. Run ${refresh}.`);
+  }
+  try {
+    if (
+      JSON.stringify(manifest.reports) !==
+        JSON.stringify(await reportHashes())
+    ) throw new Error("Report contents changed");
+  } catch {
+    throw new Error(`Coverage reports are missing or changed. Run ${refresh}.`);
+  }
+  const files = await readReports();
+  const file = files.find((file) => file.path === normalized);
+  if (!file) {
+    throw new Error(
+      `No coverage record for ${normalized}. It may not have been loaded by either suite.`,
+    );
+  }
+  console.log(
+    `Collected ${manifest.created} with Deno ${manifest.deno}, REPS=${manifest.reps}\n`,
+  );
+  console.log(
+    formatFileCoverage(file, await Deno.readTextFile(normalized), showAll),
+  );
 }
 
 async function main() {
   Deno.chdir(root);
   const [command, ...args] = Deno.args;
-  if (command !== "compare" || args.length) {
-    throw new Error(`Usage: ${refresh}`);
+  if (command === "compare" && !args.length) {
+    await collect();
+  } else if (
+    command === "file" && args.length >= 1 && args.length <= 2 &&
+    !args[0].startsWith("-") &&
+    (args.length === 1 || args[1] === "--all")
+  ) {
+    await inspect(args[0], args[1] === "--all");
+  } else {
+    throw new Error(
+      `Usage:\n  ${refresh}\n  deno task coverage:file <src/path.ts> [--all]`,
+    );
   }
-  await collect();
 }
 
 if (import.meta.main) {
