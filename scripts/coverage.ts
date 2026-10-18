@@ -2,6 +2,11 @@
 
 /** Collect comparable coverage reports. Run through the tasks in deno.jsonc. */
 import { fileURLToPath } from "node:url";
+import {
+  compareCoverage,
+  formatSummary,
+  parseLcov,
+} from "./coverage_report.ts";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const manifestPath = "coverage/comparison.json";
@@ -108,6 +113,16 @@ async function collect() {
     JSON.stringify(manifest, null, 2) + "\n",
   );
   console.log("\nSaved coverage/{api,all}/lcov.info and HTML reports.");
+  console.log("\n" + formatSummary(await readReports()));
+}
+
+async function readReports() {
+  const read = async (suite: string) =>
+    parseLcov(
+      await Deno.readTextFile(`coverage/${suite}/lcov.info`),
+      root,
+    );
+  return compareCoverage(await read("api"), await read("all"));
 }
 
 async function main() {
