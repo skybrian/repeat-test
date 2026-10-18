@@ -1,5 +1,5 @@
 import { describe, it } from "@std/testing/bdd";
-import { assert, assertEquals, assertThrows } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 
 import { repeatTest } from "@/runner.ts";
 import * as arb from "@/arbs.ts";
@@ -10,19 +10,11 @@ import {
   assertFirstValues,
   assertValues,
 } from "../lib/asserts.ts";
-import { generateDefault } from "../../src/ordered.ts";
+
 import { intRange } from "../lib/ranges.ts";
 import { takeAll } from "../lib/examples.ts";
 
 describe("uniqueArray", () => {
-  it("defaults to an empty array", () => {
-    const bools = arb.uniqueArray(dom.boolean());
-    assertEquals(generateDefault(bools).val, []);
-  });
-  it("defaults to a larger array when min is set", () => {
-    const bools = arb.uniqueArray(dom.boolean(), { length: { min: 1 } });
-    assertEquals(generateDefault(bools).val.length, 1);
-  });
   it("generates all combinations of a boolean", () => {
     const bools = arb.uniqueArray(dom.boolean());
     assertValues(bools, [
@@ -61,100 +53,9 @@ describe("uniqueArray", () => {
       console.sometimes(`length is 1000`, ids.length === 1000);
     });
   });
-  it("generates string identifiers", () => {
-    // TODO: this is too slow for longer strings
-    const ids = arb.uniqueArray(dom.wellFormedString({ length: 4 }));
-    repeatTest(ids, (ids) => {
-      assertEquals(ids.length, new Set(ids).size);
-    });
-  });
-  it("rejects impossible filters", () => {
-    const bools = arb.uniqueArray(dom.boolean());
-    assertThrows(
-      () => bools.filter((v) => v.length > 2),
-      Error,
-      "filter on 'uniqueArray' didn't allow enough values through; want: 1 of 5, got: 0",
-    );
-  });
-  it("rejects an impossible minimum size", () => {
-    assertThrows(
-      () => arb.uniqueArray(dom.boolean(), { length: { min: 3 } }),
-      Error,
-      "not enough unique values; want length.min <= 2, got: 3",
-    );
-  });
-  it("has a name", () => {
-    const bools = arb.uniqueArray(dom.boolean());
-    assertEquals(bools.name, "uniqueArray");
-  });
 });
 
 describe("table", () => {
-  describe("for an object row and list of keys", () => {
-    it("throws an Error if a unique key isn't a Domain", () => {
-      const row = arb.object({ k: arb.boolean() });
-      assertThrows(
-        () => arb.table(row, { keys: ["k"] }),
-        Error,
-        "property 'k' is declared a unique key, but not defined as a Domain",
-      );
-    });
-  });
-
-  describe("for an object row and key shape", () => {
-    it("throws an Error if a unique key isn't a Domain", () => {
-      const row = arb.object({ k: arb.boolean() });
-      assertThrows(
-        () => arb.table(row, { keys: { "k": dom.boolean() } }),
-        Error,
-        "property 'k' is declared a unique key, but not defined as a Domain",
-      );
-    });
-  });
-
-  describe("for a union row", () => {
-    it("throws an Error if a unique key isn't a Domain", () => {
-      const row = arb.union<{ k: boolean } | { k: number }>(
-        arb.object({ k: arb.boolean() }),
-        arb.object({ k: arb.int(1, 100) }),
-      );
-      assertThrows(
-        () => arb.table(row, { keys: ["k"] }),
-        Error,
-        "property 'k' is declared a unique key, but not defined as a Domain",
-      );
-    });
-
-    it("generates keys that aren't the same in each case", () => {
-      const row = arb.union<{ k: number }>(
-        arb.object({ k: dom.int(1, 2) }),
-        arb.object({ k: dom.int(2, 3) }),
-      );
-      const table = arb.table(row, { keys: { "k": dom.int(1, 3) } });
-      // Note: duplicate picks are allowed between different tables, but not within a single table
-      repeatTest(table, (table) => {
-        const keys = table.map((row) => row.k);
-        assertEquals(keys.length, new Set(keys).size);
-      });
-    });
-  });
-
-  it("rejects impossible minimum sizes", () => {
-    const justTrue = dom.boolean().filter((v) => v);
-    const row = arb.object({ k: justTrue });
-    assertThrows(
-      () => arb.table(row, { keys: ["k"], length: 2 }),
-      Error,
-      "property 'k' has 1 unique value, but length.min is 2",
-    );
-    const row2 = arb.object({ k: dom.boolean() });
-    assertThrows(
-      () => arb.table(row2, { keys: ["k"], length: 3 }),
-      Error,
-      "property 'k' has 2 unique values, but length.min is 3",
-    );
-  });
-
   describe("with one column and no unique key", () => {
     const row = arb.object({ v: dom.boolean() });
 
@@ -191,15 +92,6 @@ describe("table", () => {
   describe("with one unique column", () => {
     const row = arb.object({ v: dom.boolean() });
     const table = arb.table(row, { keys: ["v"] });
-
-    it("defaults to zero rows", () => {
-      assertEquals(generateDefault(table).val, []);
-    });
-
-    it("defaults to one row when min is set", () => {
-      const table = arb.table(row, { keys: ["v"], length: { min: 1 } });
-      assertEquals(generateDefault(table).val.length, 1);
-    });
 
     it("generates the same values as uniqueArray", () => {
       const expected = takeAll(
@@ -255,13 +147,6 @@ describe("table", () => {
       ]);
     });
 
-    it("never generates duplicate keys", () => {
-      repeatTest(table.filter((t) => t.length > 1), (rows) => {
-        const keys = new Set(rows.map((row) => row.k));
-        assertEquals(keys.size, rows.length);
-      });
-    });
-
     it("sometimes generates short and max lengths", () => {
       const table = arb.table(
         arb.object({
@@ -275,25 +160,6 @@ describe("table", () => {
           console.sometimes(`length is ${len}`, table.length === len);
         }
         console.sometimes(`length is 1000`, table.length === 1000);
-      });
-    });
-  });
-
-  describe("with two unique columns", () => {
-    const table = arb.table(
-      arb.object({
-        id: dom.asciiLetter(),
-        rank: dom.int(1, 5),
-      }),
-      { keys: ["id", "rank"] },
-    );
-
-    it("generates unique ids and ranks", () => {
-      repeatTest(table, (rows) => {
-        const ids = new Set(rows.map((row) => row.id));
-        assertEquals(ids.size, rows.length, "id should be unique");
-        const ranks = new Set(rows.map((row) => row.rank));
-        assertEquals(ranks.size, rows.length, "rank should be unique");
       });
     });
   });

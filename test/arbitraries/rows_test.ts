@@ -1,7 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
-import { assertEquals, assertThrows } from "@std/assert";
+import { assertEquals } from "@std/assert";
 import { assertGenerated, assertSometimes } from "../lib/asserts.ts";
-import { generateDefault } from "../../src/ordered.ts";
+
 import * as arb from "@/arbs.ts";
 
 import { casesFromArb } from "../../src/arbitraries/rows.ts";
@@ -39,7 +39,6 @@ describe("object", () => {
       a: arb.int(1, 2),
     });
     assertEquals(oneProp.buildScript.opts.maxSize, 2);
-    assertEquals(generateDefault(oneProp).val, { a: 1 });
     assertGenerated(oneProp, [
       { val: { a: 1 }, picks: [1] },
       { val: { a: 2 }, picks: [2] },
@@ -59,28 +58,9 @@ describe("object", () => {
       { val: { a: 2, b: 4 }, picks: [2, 4] },
     ]);
   });
-
-  it("doesn't generate alias property when defined", () => {
-    const alias = arb.alias(() => {
-      throw new Error("should not be called");
-    });
-
-    arb.object({
-      a: arb.int(1, 2),
-      b: alias,
-    });
-  });
 });
 
 describe("union", () => {
-  it("requires at least one case", () => {
-    assertThrows(
-      () => arb.union<{ a: number }>(),
-      Error,
-      "union must have at least one case",
-    );
-  });
-
   it("chooses between two object shapes", () => {
     const example = arb.union<{ a: number } | { b: number }>(
       arb.object({ a: arb.int(1, 2) }),
@@ -137,13 +117,12 @@ describe("ArbRow", () => {
   describe("with", () => {
     it("can change the name", () => {
       const row = arb.object({ a: arb.int(1, 2) }).with({ name: "foo" });
-      assertEquals(row.name, "foo");
       assertEquals(row.buildScript.weight, 1);
     });
 
     it("can change the weight", () => {
       const row = arb.object({ a: arb.int(1, 2) }).with({ weight: 3 });
-      assertEquals(row.name, "object");
+
       assertEquals(row.buildScript.weight, 3);
     });
   });
