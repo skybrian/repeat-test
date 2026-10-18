@@ -1,0 +1,20 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "@skybrian/repeat-test",
+      "devDependencies": {
+        "@std/assert": "npm:@jsr/std__assert@1.0.8",
+        "pure-rand": "6.1.0",
+      },
+    },
+  },
+  "packages": {
+    "@jsr/std__internal": ["@jsr/std__internal@1.0.14", "https://npm.jsr.io/~/11/@jsr/std__internal/1.0.14.tgz", {}, "sha512-JT8b/t40WcR9q0GDwRZUooY7aXeXnFal8iidE/5TckdAFtvpVAsaJ71/Xgf1SfoChs41s6CZkuCYM8toaNgdvA=="],
+
+    "@std/assert": ["@jsr/std__assert@1.0.8", "https://npm.jsr.io/~/11/@jsr/std__assert/1.0.8.tgz", { "dependencies": { "@jsr/std__internal": "^1.0.5" } }, "sha512-2Sw6q3pyvy8loqtFzvtI5OKkTK7i/bWqqChz8b+/+MdyiFlYax4cIoh883/gWz+L8ghK1bbrhnNyhju8GMOkMg=="],
+
+    "pure-rand": ["pure-rand@6.1.0", "", {}, "sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA=="],
+  }
+}

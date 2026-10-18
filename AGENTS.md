@@ -54,7 +54,11 @@ scripts/             # Build/dev scripts
 
 ## Test Conventions
 
-- Tests use `@std/testing/bdd` style (describe/it)
+- Internal tests use `@std/testing/bdd` style (describe/it)
+- Public API tests live in `test/api/`, use `node:test`, and import repeat-test
+  only through published package entry points (see `test/api/README.md`)
+- Run API tests with `deno task test:api` and, after
+  `bun install --frozen-lockfile`, `bun run test:api`
 - Test files are in `test/` with `_test.ts` suffix
 - Use `takeAll()` from `src/ordered.ts` to enumerate all values of small
   Arbitraries

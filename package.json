@@ -1,0 +1,19 @@
+{
+  "name": "@skybrian/repeat-test",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/entrypoints/mod.ts",
+    "./core": "./src/entrypoints/core.ts",
+    "./arbs": "./src/entrypoints/arbs.ts",
+    "./doms": "./src/entrypoints/doms.ts",
+    "./runner": "./src/entrypoints/runner.ts"
+  },
+  "scripts": {
+    "test:api": "bun test ./test/api/"
+  },
+  "devDependencies": {
+    "@std/assert": "npm:@jsr/std__assert@1.0.8",
+    "pure-rand": "6.1.0"
+  }
+}

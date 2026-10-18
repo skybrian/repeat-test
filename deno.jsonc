@@ -1,6 +1,7 @@
 {
   "name": "@skybrian/repeat-test",
   "version": "0.5.1",
+  "nodeModulesDir": "none",
   "compilerOptions": {
     "noImplicitOverride": true
   },
@@ -36,6 +37,8 @@
   "tasks": {
     "coverage": "rm -f lcov.info && deno test --coverage --clean && deno coverage --lcov > lcov.info && deno coverage --exclude=coverage_exclusions.ts",
     "test": "deno test",
+    "test:api": "deno test test/api/",
+    "test:api:bun": "bun test ./test/api/",
     "test:quick": "REPS=1% deno test --allow-env",
     "status": "deno run --allow-run --allow-env scripts/status.ts",
     "release-check": "deno run --allow-run --allow-read scripts/release-check.ts",
